@@ -65,7 +65,7 @@ export default function ConferenciaPage() {
   const sb = createClient()
 
   useEffect(() => {
-    sb.from('clientes').select('id,nome,cnpj').order('nome').then(({ data }) => setClientes(data ?? []))
+    sb.from('clientes').select('id,nome,cnpj').order('nome').then(({ data }) => setClientes((data ?? []) as unknown as Cliente[]))
   }, [])
 
   const sugestoes = busca.length >= 2
