@@ -6,10 +6,16 @@ import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 
 const NAV_ITEMS = [
-  { href: '/fiscal/intranet', label: 'Intranet', icon: '⚡' },
-  { href: '/fiscal/clientes', label: 'Clientes', icon: '🏢' },
-  { href: '/fiscal/tarefas',  label: 'Tarefas',  icon: '✓'  },
-  { href: '/fiscal/bots',     label: 'Bots',     icon: '🤖' },
+  { href: '/fiscal/intranet',      label: 'Intranet',      icon: '⚡' },
+  { href: '/fiscal/dashboard',     label: 'Dashboard',     icon: '📊' },
+  { href: '/fiscal/clientes',      label: 'Clientes',      icon: '🏢' },
+  { href: '/fiscal/calendario',    label: 'Calendário',    icon: '📅' },
+  { href: '/fiscal/conferencia',   label: 'Conferência',   icon: '🔍' },
+  { href: '/fiscal/relatorios',    label: 'Relatórios',    icon: '📄' },
+  { href: '/fiscal/historico',     label: 'Histórico',     icon: '📈' },
+  { href: '/fiscal/empresas',      label: 'Empresas',      icon: '🗂️' },
+  { href: '/fiscal/parcelamentos', label: 'Parcelamentos', icon: '💳' },
+  { href: '/fiscal/ferramentas',   label: 'Ferramentas',   icon: '🔧' },
 ]
 
 interface Props {
@@ -34,7 +40,7 @@ export default function Sidebar({ profile }: Props) {
         <p className="text-white/30 text-xs mt-0.5">Setor Fiscal</p>
       </div>
 
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
         {NAV_ITEMS.map(item => {
           const active = pathname.startsWith(item.href)
           return (
@@ -54,17 +60,21 @@ export default function Sidebar({ profile }: Props) {
         })}
 
         {profile.role === 'admin' && (
-          <Link
-            href="/fiscal/admin"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
-              pathname.startsWith('/fiscal/admin')
-                ? 'bg-[#00B8D4]/15 text-[#00B8D4] font-medium'
-                : 'text-white/50 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <span>⚙️</span>
-            Admin
-          </Link>
+          <>
+            <div className="my-2 border-t border-white/8" />
+            <p className="px-3 text-white/20 text-[10px] uppercase tracking-wider mb-1">Admin</p>
+            <Link
+              href="/fiscal/parametros"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                pathname.startsWith('/fiscal/parametros')
+                  ? 'bg-[#00B8D4]/15 text-[#00B8D4] font-medium'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span>⚙️</span>
+              Parâmetros
+            </Link>
+          </>
         )}
       </nav>
 

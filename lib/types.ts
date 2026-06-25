@@ -24,6 +24,15 @@ export interface Cliente {
   obs: string | null
   prioridade: number
   mit: string | null
+  municipio: string | null
+  uf: string | null
+  envia_iss: boolean | null
+  confere_siga: boolean | null
+  login_iss: string | null
+  senha_iss: string | null
+  email_envio_iss: string | null
+  declaracao_anual: string | null
+  tarefas_personalizadas: string[] | null
   created_at: string
 }
 
