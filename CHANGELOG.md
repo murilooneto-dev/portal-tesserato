@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.3.1] - 2026-06-26
+
+### Corrigido
+- **Agenda (Intranet)**: botão "Ver descrição" adicionado em cada compromisso do modal de dia — expande a descrição completa com `break-words` para evitar overflow de texto longo
+- **Agenda (Intranet)**: modais de ver dia e de formulário ampliados (`max-w-xl`), painel de itens com altura maior (`max-h-[32rem]`)
+- **Agenda (Intranet)**: campo Título convertido de `<input>` para `<textarea rows={1}>` para quebrar linha em textos longos; Descrição com `rows={8}`
+- **Login**: logo carregada via `<img>` nativo em vez de `<Image>` do Next.js (evita falha de serving intermitente no Vercel)
+- **Sidebar**: logo corrigida para `<img>` nativo; link Admin já incluído desde v0.3.0
+
+### Arquivos alterados
+- `components/fiscal/AgendaPessoal.tsx` — expand de descrição por item, modais maiores, wrap de texto, textarea de título
+- `app/fiscal/agenda/page.tsx` — AgendaCard com botão "Ver descrição" (página standalone)
+- `app/login/page.tsx` — logo via `<img>` nativo
+- `components/fiscal/Sidebar.tsx` — logo via `<img>` nativo
+
+---
+
 ## [v0.3.0] - 2026-06-26
 
 ### Adicionado

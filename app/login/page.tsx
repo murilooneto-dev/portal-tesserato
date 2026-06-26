@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import LoginForm from '@/components/auth/LoginForm'
 
 export const metadata = { title: 'Login — Tesserato' }
@@ -8,14 +7,13 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#0d1117] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8 gap-3">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/logo.png"
             alt="Tesserato Contabilidade"
             width={96}
             height={96}
             className="rounded-xl"
-            priority
-            unoptimized
           />
           <div className="text-center">
             <p className="text-white font-bold text-lg tracking-wide">Tesserato Contabilidade</p>
