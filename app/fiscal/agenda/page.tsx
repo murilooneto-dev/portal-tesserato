@@ -106,6 +106,7 @@ export default function AgendaPage() {
   }
 
   const itensDia = diaSelecionado ? itensPorDia(diaSelecionado) : []
+  const [expandido, setExpandido] = useState<string | null>(null)
 
   return (
     <div className="p-8">
@@ -125,7 +126,7 @@ export default function AgendaPage() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1fr_300px] gap-8">
+      <div className="grid lg:grid-cols-[1fr_380px] gap-8">
         {/* Calendar */}
         <div>
           <div className="flex items-center justify-between mb-4">
@@ -180,24 +181,52 @@ export default function AgendaPage() {
                 <p className="text-white/30 text-sm">Nenhum compromisso neste dia.</p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {itensDia.map(it => (
-                    <div key={it.id} className="p-3 rounded-xl bg-white/5 border border-white/8">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium">{it.titulo}</p>
-                          {it.hora_compromisso && <p className="text-white/40 text-xs">{it.hora_compromisso}</p>}
-                          {it.descricao && <p className="text-white/50 text-xs mt-1">{it.descricao}</p>}
-                          <span className="text-xs mt-1 inline-block px-2 py-0.5 rounded-full" style={{ backgroundColor: STATUS_COR[it.status] + '30', color: STATUS_COR[it.status] }}>
-                            {STATUS_LABEL[it.status]}
-                          </span>
+                  {itensDia.map(it => {
+                    const aberto = expandido === it.id
+                    return (
+                      <div
+                        key={it.id}
+                        className="rounded-xl bg-white/5 border border-white/8 overflow-hidden transition-all"
+                        style={{ borderColor: aberto ? STATUS_COR[it.status] + '60' : undefined }}
+                      >
+                        {/* Cabeçalho clicável */}
+                        <div
+                          className="p-3 cursor-pointer hover:bg-white/5 transition-colors"
+                          onClick={() => setExpandido(aberto ? null : it.id)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-white text-sm font-medium leading-snug">{it.titulo}</p>
+                                <span className="text-white/25 text-xs">{aberto ? '▲' : '▼'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                {it.hora_compromisso && <p className="text-white/40 text-xs">{it.hora_compromisso}</p>}
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: STATUS_COR[it.status] + '25', color: STATUS_COR[it.status] }}>
+                                  {STATUS_LABEL[it.status]}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                              <button onClick={() => abrirEditar(it)} className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-white/20 transition-all">✏</button>
+                              <button onClick={() => excluir(it.id)} className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-red-400/30 transition-all">✕</button>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex gap-1 flex-shrink-0">
-                          <button onClick={() => abrirEditar(it)} className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-white/20 transition-all">✏</button>
-                          <button onClick={() => excluir(it.id)} className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-red-400/30 transition-all">✕</button>
-                        </div>
+
+                        {/* Corpo expandido */}
+                        {aberto && (
+                          <div className="px-3 pb-3 border-t border-white/8">
+                            {it.descricao ? (
+                              <p className="text-white/70 text-sm mt-3 whitespace-pre-wrap leading-relaxed">{it.descricao}</p>
+                            ) : (
+                              <p className="text-white/25 text-xs mt-3 italic">Sem descrição.</p>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

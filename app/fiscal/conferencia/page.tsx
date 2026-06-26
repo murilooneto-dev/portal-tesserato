@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import type { Cliente } from '@/lib/types'
 
@@ -17,13 +18,11 @@ function extrairChaves(text: string): string[] {
   return Array.from(new Set((text.match(/\d{44}/g) ?? [])))
 }
 
-async function lerXLSXBase64(base64: string): Promise<string[]> {
-  const XLSX = (await import('xlsx')).default
+function lerXLSXBase64(base64: string): string[] {
   const wb = XLSX.read(base64, { type: 'base64' })
   const chaves: string[] = []
   for (const name of wb.SheetNames) {
-    const sheet = wb.Sheets[name]
-    const csv = XLSX.utils.sheet_to_csv(sheet)
+    const csv = XLSX.utils.sheet_to_csv(wb.Sheets[name])
     chaves.push(...extrairChaves(csv))
   }
   return chaves
@@ -32,15 +31,13 @@ async function lerXLSXBase64(base64: string): Promise<string[]> {
 async function lerXLSXFile(file: File): Promise<string[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       try {
-        const XLSX = (await import('xlsx')).default
         const data = new Uint8Array(e.target!.result as ArrayBuffer)
         const wb = XLSX.read(data, { type: 'array' })
         const chaves: string[] = []
         for (const name of wb.SheetNames) {
-          const sheet = wb.Sheets[name]
-          const csv = XLSX.utils.sheet_to_csv(sheet)
+          const csv = XLSX.utils.sheet_to_csv(wb.Sheets[name])
           chaves.push(...extrairChaves(csv))
         }
         resolve(Array.from(new Set(chaves)))
@@ -163,7 +160,7 @@ export default function ConferenciaPage() {
                 className="text-xs bg-[#00B8D4]/20 border border-[#00B8D4]/40 text-[#00B8D4] px-3 py-1 rounded-lg hover:bg-[#00B8D4]/30 transition-all disabled:opacity-50">
                 {uploading ? 'Enviando...' : '+ Upload'}
               </button>
-              <input ref={uploadRef} type="file" accept=".xls,.xlsx" onChange={uploadDTE} className="hidden" />
+              <input ref={uploadRef} type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={uploadDTE} className="hidden" />
             </div>
             {arquivosDTE.length === 0 ? (
               <p className="text-white/20 text-sm">Nenhum arquivo armazenado.</p>
@@ -188,7 +185,7 @@ export default function ConferenciaPage() {
             <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-[#00B8D4]/30 transition-all">
               <span className="text-2xl">📂</span>
               <span className="text-sm text-white/50">{sistemFile ? sistemFile.name : 'Clique para selecionar .xls/.xlsx'}</span>
-              <input type="file" accept=".xls,.xlsx" onChange={e => setSistemFile(e.target.files?.[0] ?? null)} className="hidden" />
+              <input type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e => setSistemFile(e.target.files?.[0] ?? null)} className="hidden" />
             </label>
             {sistemFile && (
               <p className="text-xs text-white/30 mt-2 text-center">{(sistemFile.size / 1024).toFixed(1)} KB</p>
