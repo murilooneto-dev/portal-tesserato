@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface AgendaItem {
@@ -38,6 +39,7 @@ export default function AgendaPessoal() {
 
   // Modal de dia selecionado
   const [diaSel, setDiaSel] = useState<number | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [modalForm, setModalForm] = useState(false)
   const [form, setForm] = useState(emptyItem())
   const [editId, setEditId] = useState<string | null>(null)
@@ -88,6 +90,7 @@ export default function AgendaPessoal() {
     setDiaSel(dia)
     setModalForm(false)
     setEditId(null)
+    setExpandedId(null)
   }
 
   function abrirFormNovo(dia?: number) {
@@ -262,7 +265,7 @@ export default function AgendaPessoal() {
       {diaSel && !modalForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setDiaSel(null)}>
-          <div className="bg-[#0f1623] border border-white/12 rounded-2xl w-full max-w-md shadow-2xl"
+          <div className="bg-[#0f1623] border border-white/12 rounded-2xl w-full max-w-xl shadow-2xl"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
               <p className="text-white font-semibold">
@@ -278,27 +281,50 @@ export default function AgendaPessoal() {
               </div>
             </div>
 
-            <div className="p-5 max-h-80 overflow-y-auto">
+            <div className="p-5 max-h-[32rem] overflow-y-auto">
               {itensDiaSel.length === 0 ? (
                 <p className="text-white/25 text-sm text-center py-6">Nenhum compromisso neste dia.</p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {itensDiaSel.map(it => (
-                    <div key={it.id} className="p-3 rounded-xl bg-white/5 border border-white/8 flex items-start gap-3">
-                      <span className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: corDot(it) }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-medium">{it.titulo}</p>
-                        {it.hora_compromisso && <p className="text-white/40 text-xs">{it.hora_compromisso}</p>}
-                        {it.descricao && <p className="text-white/40 text-xs mt-0.5 truncate">{it.descricao}</p>}
+                  {itensDiaSel.map(it => {
+                    const aberto = expandedId === it.id
+                    return (
+                      <div key={it.id} className="rounded-xl bg-white/5 border border-white/8 transition-all"
+                        style={{ borderColor: aberto ? corDot(it) + '60' : undefined }}>
+                        <div className="p-3 flex items-start gap-3">
+                          <span className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: corDot(it) }} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-medium">{it.titulo}</p>
+                            {it.hora_compromisso && <p className="text-white/40 text-xs">{it.hora_compromisso}</p>}
+                            {!aberto && it.descricao && (
+                              <p className="text-white/40 text-xs mt-0.5 line-clamp-2 leading-relaxed">{it.descricao}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => abrirFormEditar(it)}
+                              className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 transition-all">✏</button>
+                            <button onClick={() => excluir(it.id)}
+                              className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 transition-all">✕</button>
+                          </div>
+                        </div>
+                        {aberto && (
+                          <div className="px-3 pb-3 ml-8 overflow-hidden">
+                            {it.descricao
+                              ? <p className="text-white/70 text-xs whitespace-pre-wrap break-words leading-relaxed">{it.descricao}</p>
+                              : <p className="text-white/25 text-xs italic">Sem descrição.</p>
+                            }
+                          </div>
+                        )}
+                        <button
+                          onClick={() => setExpandedId(aberto ? null : it.id)}
+                          className="w-full flex items-center justify-center gap-1 py-1.5 border-t border-white/8 text-white/40 hover:text-white/70 hover:bg-white/5 transition-all text-xs rounded-b-xl"
+                        >
+                          <ChevronDown size={11} className={`transition-transform duration-200 ${aberto ? 'rotate-180' : ''}`} />
+                          {aberto ? 'Fechar' : 'Ver descrição'}
+                        </button>
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button onClick={() => abrirFormEditar(it)}
-                          className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 transition-all">✏</button>
-                        <button onClick={() => excluir(it.id)}
-                          className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 transition-all">✕</button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -310,7 +336,7 @@ export default function AgendaPessoal() {
       {modalForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setModalForm(false)}>
-          <div className="bg-[#0f1623] border border-white/12 rounded-2xl w-full max-w-md shadow-2xl"
+          <div className="bg-[#0f1623] border border-white/12 rounded-2xl w-full max-w-xl shadow-2xl"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
               <p className="text-white font-semibold">{editId ? 'Editar Compromisso' : 'Novo Compromisso'}</p>
@@ -318,30 +344,30 @@ export default function AgendaPessoal() {
                 className="text-white/30 hover:text-white/70 text-lg px-1 transition-all">×</button>
             </div>
 
-            <div className="p-5 flex flex-col gap-4">
+            <div className="px-6 py-6 flex flex-col gap-5">
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Título *</label>
-                <input value={form.titulo} onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50" />
+                <label className="text-xs text-white/40 mb-1.5 block">Título *</label>
+                <textarea value={form.titulo} onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))}
+                  rows={1} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50 resize-none leading-relaxed" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-white/40 mb-1 block">Data *</label>
+                  <label className="text-xs text-white/40 mb-1.5 block">Data *</label>
                   <input type="date" value={form.data_compromisso}
                     onChange={e => setForm(p => ({ ...p, data_compromisso: e.target.value }))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 mb-1 block">Horário</label>
+                  <label className="text-xs text-white/40 mb-1.5 block">Horário</label>
                   <input type="time" value={form.hora_compromisso ?? ''}
                     onChange={e => setForm(p => ({ ...p, hora_compromisso: e.target.value }))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50" />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Descrição</label>
+                <label className="text-xs text-white/40 mb-1.5 block">Descrição</label>
                 <textarea value={form.descricao ?? ''} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))}
-                  rows={2} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50 resize-none" />
+                  rows={8} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50 resize-none leading-relaxed" />
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Status</label>
@@ -360,7 +386,7 @@ export default function AgendaPessoal() {
               </label>
             </div>
 
-            <div className="flex justify-end gap-3 px-5 py-4 border-t border-white/8">
+            <div className="flex justify-end gap-3 px-6 py-5 border-t border-white/8">
               <button onClick={() => setModalForm(false)}
                 className="text-sm text-white/40 hover:text-white px-4 py-2 rounded-xl border border-white/10 transition-all">
                 Cancelar

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const STATUS_COR_CARD: Record<string, string> = { pendente: '#f59e0b', concluido: '#10b981', cancelado: '#6b7280' }
@@ -17,43 +18,50 @@ function AgendaCard({ item, onEditar, onExcluir }: AgendaCardProps) {
   const cor = STATUS_COR_CARD[item.status] ?? '#6b7280'
   return (
     <div
-      className="rounded-xl bg-white/5 border border-white/8 overflow-hidden transition-all cursor-pointer"
-      style={{ borderColor: aberto ? cor + '80' : undefined }}
-      onClick={() => setAberto(v => !v)}
+      className="rounded-xl bg-white/5 border border-white/8 transition-all"
+      style={{ borderColor: aberto ? cor + '60' : undefined }}
     >
-      <div className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cor }} />
-              <p className="text-white text-sm font-semibold leading-snug">{item.titulo}</p>
-            </div>
-            {item.hora_compromisso && (
-              <p className="text-white/40 text-xs mt-0.5 ml-4">{item.hora_compromisso}</p>
-            )}
-            {item.descricao && !aberto && (
-              <p className="text-white/45 text-xs mt-1.5 ml-4 leading-relaxed" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                {item.descricao}
-              </p>
-            )}
-            {aberto && item.descricao && (
-              <p className="text-white/70 text-sm mt-2 ml-4 whitespace-pre-wrap leading-relaxed">
-                {item.descricao}
-              </p>
-            )}
-            {aberto && !item.descricao && (
-              <p className="text-white/25 text-xs mt-2 ml-4 italic">Sem descrição.</p>
-            )}
+      {/* Header — sempre visível */}
+      <div className="flex items-start justify-between gap-2 p-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cor }} />
+            <p className="text-white text-sm font-semibold leading-snug">{item.titulo}</p>
           </div>
-          <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-            <button onClick={onEditar} className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-white/20 transition-all">✏</button>
-            <button onClick={onExcluir} className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-red-400/30 transition-all">✕</button>
-          </div>
+          {item.hora_compromisso && (
+            <p className="text-white/40 text-xs mt-0.5 ml-4">{item.hora_compromisso}</p>
+          )}
+          {!aberto && item.descricao && (
+            <p className="text-white/45 text-xs mt-1.5 ml-4 leading-relaxed"
+              style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {item.descricao}
+            </p>
+          )}
         </div>
-        <div className="flex justify-center mt-2">
-          <span className="text-white/20 text-[10px] select-none">{aberto ? '▲ fechar' : '▼ expandir'}</span>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={onEditar} className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-white/20 transition-all">✏</button>
+          <button onClick={onExcluir} className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-red-400/30 transition-all">✕</button>
         </div>
       </div>
+
+      {/* Descrição expandida */}
+      {aberto && (
+        <div className="px-3 pb-3 ml-4">
+          {item.descricao
+            ? <p className="text-white/70 text-sm whitespace-pre-wrap leading-relaxed">{item.descricao}</p>
+            : <p className="text-white/25 text-xs italic">Sem descrição.</p>
+          }
+        </div>
+      )}
+
+      {/* Botão expandir — sempre visível */}
+      <button
+        onClick={() => setAberto(v => !v)}
+        className="w-full flex items-center justify-center gap-1 py-1.5 border-t border-white/8 text-white/40 hover:text-white/70 hover:bg-white/5 transition-all text-xs"
+      >
+        <ChevronDown size={13} className={`transition-transform duration-200 ${aberto ? 'rotate-180' : ''}`} />
+        {aberto ? 'Fechar' : 'Ver descrição'}
+      </button>
     </div>
   )
 }

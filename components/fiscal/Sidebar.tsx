@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -51,13 +50,13 @@ export default function Sidebar({ profile }: Props) {
     >
       <div className="px-4 py-4 border-b border-white/7">
         <div className="flex items-center gap-2.5">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/logo.png"
             alt="Tesserato"
             width={32}
             height={32}
             className="rounded-lg shrink-0"
-            unoptimized
           />
           <div>
             <p className="text-white text-xs font-bold tracking-wide leading-tight">Tesserato</p>
