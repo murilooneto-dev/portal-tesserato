@@ -29,9 +29,8 @@ export default function RelatoriosPage() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [filtroResp, setFiltroResp] = useState('TODOS')
   const [filtroGrupo, setFiltroGrupo] = useState('TODOS')
-  const [filtroTarefa, setFiltroTarefa] = useState('TODAS')
+  const [filtroAtividade, setFiltroAtividade] = useState('TODAS')
   const [apenasP, setApenasP] = useState(false)
-  const [tiposTarefa, setTiposTarefa] = useState<string[]>([])
   const [userNome, setUserNome] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -53,8 +52,6 @@ export default function RelatoriosPage() {
         ]).then(([c, t]) => {
           setClientes(c.data ?? [])
           setTarefas(t.data ?? [])
-          const tipos = Array.from(new Set((t.data ?? []).map((x: Tarefa) => x.tipo).filter(Boolean))).sort() as string[]
-          setTiposTarefa(tipos)
         })
       })
     })
@@ -64,10 +61,12 @@ export default function RelatoriosPage() {
     ? ['TODOS', ...Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[]))]
     : []
 
+  const atividades = Array.from(new Set(clientes.map(c => c.atividade).filter(Boolean) as string[])).sort()
+
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
     .filter(c => filtroGrupo === 'TODOS' || c.grupo === filtroGrupo)
-    .filter(c => filtroTarefa === 'TODAS' || tarefas.some(t => t.cliente_id === c.id && t.tipo === filtroTarefa))
+    .filter(c => filtroAtividade === 'TODAS' || c.atividade === filtroAtividade)
     .map(c => ({ cliente: c, ...progresso(c, tarefas) }))
     .filter(r => !apenasP || r.pct < 100)
     .sort((a, b) => a.pct - b.pct)
@@ -159,10 +158,10 @@ export default function RelatoriosPage() {
           <option value="mei" className="bg-[#0d1320]">MEI</option>
         </select>
 
-        <select value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)}
-          className="bg-[#0d1320] border border-[#00B8D4]/60 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#00B8D4]">
-          <option value="TODAS" className="bg-[#0d1320]">Todas as tarefas</option>
-          {tiposTarefa.map(t => <option key={t} value={t} className="bg-[#0d1320]">{t}</option>)}
+        <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)}
+          className="bg-[#0d1320] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00B8D4]/50">
+          <option value="TODAS" className="bg-[#0d1320]">Todas as atividades</option>
+          {atividades.map(a => <option key={a} value={a} className="bg-[#0d1320]">{a}</option>)}
         </select>
 
         <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-[#0d1320] cursor-pointer hover:border-white/20 transition-colors">

@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.3.0] - 2026-06-26
+
+### Adicionado
+- Ferramenta **Corrigir Encoding de Atividades** na página Admin: detecta qualquer valor de atividade fora do padrão (não só chars quebrados), sugere correção via normalização NFD + Levenshtein fuzzy, e oferece `<select>` manual para casos sem sugestão automática
+- Ferramenta **Corrigir Encoding de Tarefas** na página Admin: escaneia `clientes.tarefas_personalizadas` e `tarefas.tipo` com a mesma lógica, agrupando por cliente e tipo; campo de texto livre para tipos personalizados sem sugestão
+- Link **Admin** na Sidebar com ícone `ShieldCheck` (visível apenas para admins)
+- Filtro de **Atividade** na página de Relatórios, populado dinamicamente dos clientes cadastrados
+
+### Alterado
+- Relatórios: filtro de Tarefas removido e substituído pelo filtro de Atividade
+- Página Admin expandida para `max-w-4xl` para acomodar as tabelas de correção
+
+### Arquivos alterados
+- `components/fiscal/CorrigirAtividadesClient.tsx` — novo componente de correção de atividades (NFD + fuzzy Levenshtein)
+- `components/fiscal/CorrigirTarefasClient.tsx` — novo componente de correção de tarefas (template + registros)
+- `app/fiscal/admin/page.tsx` — duas novas seções de correção adicionadas
+- `components/fiscal/Sidebar.tsx` — link Admin com ShieldCheck
+- `app/fiscal/relatorios/page.tsx` — filtro de atividade substituindo filtro de tarefas
+
+---
+
 ## [v0.2.0] - 2026-06-26
 
 ### Adicionado
