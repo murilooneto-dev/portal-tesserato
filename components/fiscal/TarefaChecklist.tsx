@@ -20,6 +20,7 @@ interface Props {
   clienteId: string
   clienteNome: string
   grupo: string
+  tarefasPersonalizadas?: string[]
   tarefas: Tarefa[]
   mes: number
   ano: number
@@ -34,6 +35,7 @@ export default function TarefaChecklist({
   clienteId,
   clienteNome,
   grupo,
+  tarefasPersonalizadas = [],
   tarefas,
   mes,
   ano,
@@ -48,7 +50,7 @@ export default function TarefaChecklist({
   const [unlockPending, setUnlockPending] = useState(false)
   const [mit, setMit] = useState(mitInicial)
 
-  const tipos = getTiposParaGrupo(grupo)
+  const tipos = tarefasPersonalizadas.length > 0 ? tarefasPersonalizadas : getTiposParaGrupo(grupo)
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
   const total = tipos.length
   const concluidas = tipos.filter(t => mapaTarefa.get(t)?.concluida).length
