@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import TopNav from '@/components/fiscal/TopNav'
+import Sidebar from '@/components/fiscal/Sidebar'
 
 export default async function FiscalLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -24,9 +24,9 @@ export default async function FiscalLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1320] flex flex-col">
-      <TopNav profile={safeProfile} />
-      <main className="flex-1 overflow-auto">
+    <div className="flex h-screen overflow-hidden bg-[#0d1117]">
+      <Sidebar profile={safeProfile} />
+      <main className="flex-1 overflow-y-auto">
         {children}
       </main>
     </div>

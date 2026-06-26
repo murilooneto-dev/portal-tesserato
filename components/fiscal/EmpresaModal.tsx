@@ -50,6 +50,7 @@ interface Props {
   clienteId: string | null  // null = novo
   responsaveis: string[]
   onClose: () => void
+  readOnly?: boolean
 }
 
 const emptyForm = (): FormData => ({
@@ -60,11 +61,11 @@ const emptyForm = (): FormData => ({
   tarefas_personalizadas: [],
 })
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50 transition-colors"
-const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[#0d1320] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50 transition-colors"
+const inputCls = "w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
+const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[#0d1320] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
 const labelCls = "block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5"
 
-export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props) {
+export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnly = false }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
@@ -191,7 +192,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 shrink-0">
-          <h2 className="text-white font-bold text-base">{isEdit ? 'Editar Empresa' : 'Nova Empresa'}</h2>
+          <h2 className="text-white font-bold text-base">{readOnly ? 'Visualizar Empresa' : isEdit ? 'Editar Empresa' : 'Nova Empresa'}</h2>
           <button onClick={onClose} className="text-white/30 hover:text-white transition-colors text-xl px-1">×</button>
         </div>
 
@@ -205,31 +206,31 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Código</label>
-                <input className={inputCls} value={form.cod} onChange={e => set('cod', e.target.value)} placeholder="00000" />
+                <input className={inputCls} value={form.cod} onChange={e => set('cod', e.target.value)} placeholder="00000" disabled={readOnly} />
               </div>
               <div>
                 <label className={labelCls}>CNPJ {loadingCnpj && <span className="text-[#00B8D4] normal-case tracking-normal">Buscando...</span>}</label>
                 <input className={inputCls + ' font-mono'} value={form.cnpj}
                   onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }}
-                  placeholder="00.000.000/0000-00" />
+                  placeholder="00.000.000/0000-00" disabled={readOnly} />
               </div>
             </div>
 
             {/* Razão Social */}
             <div>
               <label className={labelCls}>Razão Social *</label>
-              <input className={inputCls} value={form.nome} onChange={e => set('nome', e.target.value)} required />
+              <input className={inputCls} value={form.nome} onChange={e => set('nome', e.target.value)} required disabled={readOnly} />
             </div>
 
             {/* Regime + Atividade */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Regime</label>
-                <input className={inputCls} value={form.regime} onChange={e => set('regime', e.target.value)} placeholder="Ex: Isenta" />
+                <input className={inputCls} value={form.regime} onChange={e => set('regime', e.target.value)} placeholder="Ex: Isenta" disabled={readOnly} />
               </div>
               <div>
                 <label className={labelCls}>Atividade</label>
-                <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)}>
+                <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly}>
                   <option value="">Selecionar...</option>
                   {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[#0d1320]">{a}</option>)}
                 </select>
@@ -241,7 +242,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
               <label className={`flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border transition-all ${
                 form.envia_iss ? 'border-amber-500/50 bg-amber-500/8' : 'border-white/8 bg-white/2'
               }`}>
-                <input type="checkbox" checked={form.envia_iss} onChange={e => set('envia_iss', e.target.checked)} className="w-4 h-4 accent-amber-400" />
+                <input type="checkbox" checked={form.envia_iss} onChange={e => set('envia_iss', e.target.checked)} className="w-4 h-4 accent-amber-400" disabled={readOnly} />
                 <span className={`text-xs font-bold uppercase tracking-widest ${form.envia_iss ? 'text-amber-400' : 'text-white/40'}`}>
                   Envia ISS?
                 </span>
@@ -256,16 +257,16 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>Login ISS</label>
-                    <input className={inputCls} value={form.login_iss} onChange={e => set('login_iss', e.target.value)} />
+                    <input className={inputCls} value={form.login_iss} onChange={e => set('login_iss', e.target.value)} disabled={readOnly} />
                   </div>
                   <div>
                     <label className={labelCls}>Senha ISS</label>
-                    <input className={inputCls} value={form.senha_iss} onChange={e => set('senha_iss', e.target.value)} />
+                    <input className={inputCls} value={form.senha_iss} onChange={e => set('senha_iss', e.target.value)} disabled={readOnly} />
                   </div>
                 </div>
                 <div>
                   <label className={labelCls}>Email Envio</label>
-                  <input className={inputCls} type="email" value={form.email_envio_iss} onChange={e => set('email_envio_iss', e.target.value)} />
+                  <input className={inputCls} type="email" value={form.email_envio_iss} onChange={e => set('email_envio_iss', e.target.value)} disabled={readOnly} />
                 </div>
               </div>
             )}
@@ -273,7 +274,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
             {/* Checkbox Confere SIGA */}
             <div>
               <label className={`flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-white/8 bg-white/2 transition-all`}>
-                <input type="checkbox" checked={form.confere_siga} onChange={e => set('confere_siga', e.target.checked)} className="w-4 h-4 accent-[#00B8D4]" />
+                <input type="checkbox" checked={form.confere_siga} onChange={e => set('confere_siga', e.target.checked)} className="w-4 h-4 accent-[#00B8D4]" disabled={readOnly} />
                 <span className="text-xs font-bold uppercase tracking-widest text-white/40">Confere SIGA?</span>
               </label>
             </div>
@@ -289,14 +290,14 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
                   if (!isEdit && novoGrupo && TAREFAS_PADRAO[novoGrupo]) {
                     set('tarefas_personalizadas', [...TAREFAS_PADRAO[novoGrupo]])
                   }
-                }}>
+                }} disabled={readOnly}>
                   <option value="" className="bg-[#0d1320]">Selecionar...</option>
                   {GRUPOS.map(g => <option key={g.value} value={g.value} className="bg-[#0d1320]">{g.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelCls}>Município</label>
-                <input className={inputCls} value={form.municipio} onChange={e => set('municipio', e.target.value)} />
+                <input className={inputCls} value={form.municipio} onChange={e => set('municipio', e.target.value)} disabled={readOnly} />
               </div>
             </div>
 
@@ -305,11 +306,11 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
               <div>
                 <label className={labelCls}>UF</label>
                 <input className={inputCls + ' uppercase'} value={form.uf}
-                  onChange={e => set('uf', e.target.value.toUpperCase().slice(0, 2))} maxLength={2} />
+                  onChange={e => set('uf', e.target.value.toUpperCase().slice(0, 2))} maxLength={2} disabled={readOnly} />
               </div>
               <div>
                 <label className={labelCls}>Responsável</label>
-                <select className={selectCls} value={form.responsavel} onChange={e => set('responsavel', e.target.value)}>
+                <select className={selectCls} value={form.responsavel} onChange={e => set('responsavel', e.target.value)} disabled={readOnly}>
                   <option value="" className="bg-[#0d1320]">Selecionar...</option>
                   {responsaveis.map(r => <option key={r} value={r} className="bg-[#0d1320]">{r}</option>)}
                 </select>
@@ -320,13 +321,13 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
             <div className="w-1/2 pr-2">
               <label className={labelCls}>Prioridade (0–5)</label>
               <input className={inputCls} type="number" min={0} max={5} value={form.prioridade}
-                onChange={e => set('prioridade', Number(e.target.value))} />
+                onChange={e => set('prioridade', Number(e.target.value))} disabled={readOnly} />
             </div>
 
             {/* Declaração Anual */}
             <div>
               <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-white/8 bg-white/2">
-                <input type="checkbox" checked={form.declaracao_anual} onChange={e => set('declaracao_anual', e.target.checked)} className="w-4 h-4 accent-[#00B8D4]" />
+                <input type="checkbox" checked={form.declaracao_anual} onChange={e => set('declaracao_anual', e.target.checked)} className="w-4 h-4 accent-[#00B8D4]" disabled={readOnly} />
                 <span className="text-xs font-bold uppercase tracking-widest text-white/40">Declaração Anual</span>
               </label>
             </div>
@@ -337,7 +338,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
                 <label className={labelCls + ' mb-0'}>
                   Tarefas ({form.tarefas_personalizadas.length})
                 </label>
-                {!isEdit && form.grupo && (
+                {!readOnly && !isEdit && form.grupo && (
                   <button type="button"
                     onClick={() => set('tarefas_personalizadas', [...(TAREFAS_PADRAO[form.grupo] ?? [])])}
                     className="text-xs text-white/30 hover:text-white/60 transition-colors border border-white/10 px-2 py-1 rounded-lg">
@@ -356,24 +357,28 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
                 {form.tarefas_personalizadas.map((t, i) => (
                   <span key={i} className="flex items-center gap-1.5 text-xs bg-[#00B8D4]/10 border border-[#00B8D4]/30 text-white px-2.5 py-1 rounded-lg">
                     {t}
-                    <button type="button"
-                      onClick={() => set('tarefas_personalizadas', form.tarefas_personalizadas.filter((_, idx) => idx !== i))}
-                      className="text-white/40 hover:text-red-400 transition-colors font-bold">×</button>
+                    {!readOnly && (
+                      <button type="button"
+                        onClick={() => set('tarefas_personalizadas', form.tarefas_personalizadas.filter((_, idx) => idx !== i))}
+                        className="text-white/40 hover:text-red-400 transition-colors font-bold">×</button>
+                    )}
                   </span>
                 ))}
               </div>
 
               {/* Input nova tarefa */}
-              <div className="flex gap-2">
-                <input value={novaTarefa} onChange={e => setNovaTarefa(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefa())}
-                  placeholder="Digitar nome da tarefa e pressionar Enter..."
-                  className={inputCls + ' flex-1 text-xs'} />
-                <button type="button" onClick={addTarefa}
-                  className="px-4 py-2 rounded-xl bg-[#00B8D4]/20 border border-[#00B8D4]/40 text-[#00B8D4] hover:bg-[#00B8D4]/30 text-xs font-semibold transition-colors whitespace-nowrap">
-                  + Adicionar
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="flex gap-2">
+                  <input value={novaTarefa} onChange={e => setNovaTarefa(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefa())}
+                    placeholder="Digitar nome da tarefa e pressionar Enter..."
+                    className={inputCls + ' flex-1 text-xs'} />
+                  <button type="button" onClick={addTarefa}
+                    className="px-4 py-2 rounded-xl bg-[#00B8D4]/20 border border-[#00B8D4]/40 text-[#00B8D4] hover:bg-[#00B8D4]/30 text-xs font-semibold transition-colors whitespace-nowrap">
+                    + Adicionar
+                  </button>
+                </div>
+              )}
             </div>
 
           </>)}
@@ -388,14 +393,21 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose }: Props
 
         {/* Footer */}
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-white/8 shrink-0">
-          <button onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-white/12 text-white/50 hover:text-white text-sm transition-colors">
-            Cancelar
-          </button>
-          <button onClick={handleSave} disabled={saving || !form.nome.trim()}
-            className="px-6 py-2.5 rounded-xl bg-[#00B8D4] text-white text-sm font-semibold hover:bg-[#00a3bc] transition-colors disabled:opacity-50">
-            {saving ? 'Salvando...' : 'Salvar empresa'}
-          </button>
+          {readOnly ? (
+            <button onClick={onClose}
+              className="px-6 py-2.5 rounded-xl bg-white/8 border border-white/12 text-white/70 hover:text-white text-sm transition-colors">
+              Fechar
+            </button>
+          ) : (<>
+            <button onClick={onClose}
+              className="px-5 py-2.5 rounded-xl border border-white/12 text-white/50 hover:text-white text-sm transition-colors">
+              Cancelar
+            </button>
+            <button onClick={handleSave} disabled={saving || !form.nome.trim()}
+              className="px-6 py-2.5 rounded-xl bg-[#00B8D4] text-white text-sm font-semibold hover:bg-[#00a3bc] transition-colors disabled:opacity-50">
+              {saving ? 'Salvando...' : 'Salvar empresa'}
+            </button>
+          </>)}
         </div>
       </div>
     </div>

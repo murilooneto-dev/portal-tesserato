@@ -16,8 +16,7 @@ export default async function EmpresasPage() {
   const mes = hoje.getMonth() + 1
   const ano = hoje.getFullYear()
 
-  let clientesQ = supabase.from('clientes').select('*').order('nome')
-  if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('responsavel', profile.nome)
+  const clientesQ = supabase.from('clientes').select('*').order('nome')
 
   const [{ data: clientes }, { data: tarefas }] = await Promise.all([
     clientesQ,
@@ -32,7 +31,7 @@ export default async function EmpresasPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <EmpresasClient clientes={clientes ?? []} contagemTarefas={contagemTarefas} />
+      <EmpresasClient clientes={clientes ?? []} contagemTarefas={contagemTarefas} profileNome={profile?.nome ?? null} isAdmin={isAdmin} />
     </div>
   )
 }

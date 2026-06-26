@@ -15,9 +15,11 @@ function corResponsavel(nome: string): string {
 interface Props {
   clientes: Cliente[]
   contagemTarefas: Record<string, number>
+  profileNome: string | null
+  isAdmin: boolean
 }
 
-export default function EmpresasClient({ clientes, contagemTarefas }: Props) {
+export default function EmpresasClient({ clientes, contagemTarefas, profileNome, isAdmin }: Props) {
   const [search, setSearch] = useState('')
   const [filtroGrupo, setFiltroGrupo] = useState('TODOS')
   const [filtroResponsavel, setFiltroResponsavel] = useState('TODOS')
@@ -25,6 +27,7 @@ export default function EmpresasClient({ clientes, contagemTarefas }: Props) {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [modalId, setModalId] = useState<string | null | 'novo'>(undefined as any)
   const [modalOpen, setModalOpen] = useState(false)
+  const [modalReadOnly, setModalReadOnly] = useState(false)
 
   const responsaveis = useMemo(() => Array.from(new Set(
     clientes.map(c => c.responsavel ?? '').filter(Boolean)
@@ -45,8 +48,9 @@ export default function EmpresasClient({ clientes, contagemTarefas }: Props) {
     return true
   }), [clientes, search, filtroGrupo, filtroResponsavel, filtroAtividade])
 
-  function openEdit(id: string) { setModalId(id); setModalOpen(true) }
-  function openNovo() { setModalId(null); setModalOpen(true) }
+  function openEdit(id: string) { setModalId(id); setModalReadOnly(false); setModalOpen(true) }
+  function openVer(id: string) { setModalId(id); setModalReadOnly(true); setModalOpen(true) }
+  function openNovo() { setModalId(null); setModalReadOnly(false); setModalOpen(true) }
   function closeModal() { setModalOpen(false) }
 
   async function handleDelete(id: string, nome: string) {
@@ -64,6 +68,7 @@ export default function EmpresasClient({ clientes, contagemTarefas }: Props) {
           clienteId={modalId === null ? null : (modalId as string)}
           responsaveis={responsaveis}
           onClose={closeModal}
+          readOnly={modalReadOnly}
         />
       )}
 
@@ -123,6 +128,7 @@ export default function EmpresasClient({ clientes, contagemTarefas }: Props) {
             if (c.atividade) infos.push(c.atividade)
             if (c.mit) infos.push(c.mit)
             if (nTarefas > 0) infos.push(`${nTarefas} tarefa${nTarefas > 1 ? 's' : ''}`)
+            const podeEditar = isAdmin || c.responsavel?.toLowerCase() === profileNome?.toLowerCase()
 
             return (
               <div key={c.id} className="flex items-center gap-4 px-5 py-4 hover:bg-white/2 transition-colors">
@@ -140,14 +146,23 @@ export default function EmpresasClient({ clientes, contagemTarefas }: Props) {
                       {c.responsavel.toUpperCase()}
                     </span>
                   )}
-                  <button onClick={() => openEdit(c.id)}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-xs transition-colors">
-                    Editar
-                  </button>
-                  <button onClick={() => handleDelete(c.id, c.nome)} disabled={deleting === c.id}
-                    className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs transition-colors disabled:opacity-50">
-                    {deleting === c.id ? '...' : 'Excluir'}
-                  </button>
+                  {podeEditar ? (
+                    <button onClick={() => openEdit(c.id)}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-xs transition-colors">
+                      Editar
+                    </button>
+                  ) : (
+                    <button onClick={() => openVer(c.id)}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-xs transition-colors">
+                      Ver
+                    </button>
+                  )}
+                  {podeEditar && (
+                    <button onClick={() => handleDelete(c.id, c.nome)} disabled={deleting === c.id}
+                      className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs transition-colors disabled:opacity-50">
+                      {deleting === c.id ? '...' : 'Excluir'}
+                    </button>
+                  )}
                 </div>
               </div>
             )
