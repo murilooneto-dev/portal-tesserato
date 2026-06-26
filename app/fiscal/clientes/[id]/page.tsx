@@ -69,10 +69,12 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
   }
 
   // Histórico por mês
+  const tiposDoCliente = (cliente.tarefas_personalizadas ?? []).length > 0
+    ? (cliente.tarefas_personalizadas as string[])
+    : (TAREFAS[cliente.grupo ?? 'normal'] ?? TAREFAS.normal)
   const historicoMeses = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
-    const tipos = TAREFAS[cliente.grupo ?? 'normal'] ?? TAREFAS.normal
-    const total = tipos.length
+    const total = tiposDoCliente.length
     const feitas = (tarefasAno ?? []).filter(t => t.mes === m && t.concluida).length
     const pct = total > 0 ? Math.round((feitas / total) * 100) : 0
     return { m, total, feitas, pct }
@@ -122,6 +124,7 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
         clienteId={id}
         clienteNome={cliente.nome}
         grupo={cliente.grupo ?? 'normal'}
+        tarefasPersonalizadas={cliente.tarefas_personalizadas ?? []}
         tarefas={tarefas ?? []}
         mes={mes}
         ano={ano}

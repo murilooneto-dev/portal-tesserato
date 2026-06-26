@@ -88,7 +88,7 @@ export default function TopNav({ profile }: Props) {
             className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
             style={{ backgroundColor: profile.cor }}
           >
-            {profile.nome.charAt(0).toUpperCase()}
+            {(profile.nome ?? 'U').charAt(0).toUpperCase()}
           </div>
           <span className="text-white/70 text-sm">{profile.nome}</span>
         </div>

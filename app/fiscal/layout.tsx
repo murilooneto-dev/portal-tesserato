@@ -14,11 +14,18 @@ export default async function FiscalLayout({ children }: { children: React.React
     .eq('id', user.id)
     .single()
 
-  if (!profile) redirect('/login')
+  const safeProfile = profile ?? {
+    id: user.id,
+    nome: user.email?.split('@')[0] ?? 'Usuário',
+    role: 'operador' as const,
+    cor: '#6366f1',
+    setor: 'fiscal' as const,
+    created_at: new Date().toISOString(),
+  }
 
   return (
     <div className="min-h-screen bg-[#0d1320] flex flex-col">
-      <TopNav profile={profile} />
+      <TopNav profile={safeProfile} />
       <main className="flex-1 overflow-auto">
         {children}
       </main>
