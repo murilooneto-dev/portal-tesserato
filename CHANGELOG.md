@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.3.2] - 2026-06-26
+
+### Corrigido
+- **Relatórios**: cálculo de progresso agora usa os registros reais da tabela `tarefas` (total e concluídas por cliente/mês/ano), igual ao Dashboard e Histórico — antes usava lista hardcoded que ignorava tarefas dinâmicas/personalizadas
+- **Relatórios**: filtro "Apenas pendências" e lista de tarefas pendentes passam a refletir o estado real do banco
+
+### Arquivos alterados
+- `app/fiscal/relatorios/page.tsx` — função `progresso` reescrita para usar tarefas reais em vez de tipos hardcoded
+
+---
+
 ## [v0.3.1] - 2026-06-26
 
 ### Corrigido
