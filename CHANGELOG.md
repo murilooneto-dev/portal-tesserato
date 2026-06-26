@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.3.3] - 2026-06-26
+
+### Corrigido
+- **Tarefas**: marcar tarefa como concluída agora funciona corretamente — server action substituído de `upsert` (que exigia unique constraint ausente no banco) para `select + update/insert` explícito
+- **Tarefas**: checkbox responde visualmente de imediato ao clique via estado otimista, sem aguardar round-trip ao servidor
+
+### Arquivos alterados
+- `app/fiscal/clientes/[id]/page.tsx` — `toggleTarefa` reescrito com select+update/insert em vez de upsert
+- `components/fiscal/TarefaChecklist.tsx` — estado otimista adicionado para resposta imediata ao clique
+
+---
+
 ## [v0.3.2] - 2026-06-26
 
 ### Corrigido

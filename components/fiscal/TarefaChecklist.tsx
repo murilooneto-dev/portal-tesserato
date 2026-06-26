@@ -45,6 +45,7 @@ export default function TarefaChecklist({
   onOptimisticUnlock,
 }: Props) {
   const [isPending, startTransition] = useTransition()
+  const [optimistic, setOptimistic] = useState<Record<string, boolean>>({})
   const [unlockingTipo, setUnlockingTipo] = useState<string | null>(null)
   const [motivoMap, setMotivoMap] = useState<Record<string, string>>({})
   const [unlockPending, setUnlockPending] = useState(false)
@@ -53,7 +54,7 @@ export default function TarefaChecklist({
   const tipos = tarefasPersonalizadas.length > 0 ? tarefasPersonalizadas : getTiposParaGrupo(grupo)
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
   const total = tipos.length
-  const concluidas = tipos.filter(t => mapaTarefa.get(t)?.concluida).length
+  const concluidas = tipos.filter(t => (t in optimistic ? optimistic[t] : mapaTarefa.get(t)?.concluida)).length
 
   const competencia = `${String(mes).padStart(2, '0')}/${ano}`
 
@@ -67,6 +68,7 @@ export default function TarefaChecklist({
     setUnlockPending(true)
     try {
       await desbloquearTarefa(tarefa.id, motivo, usuarioNome, clienteNome, tipo, competencia)
+      setOptimistic(prev => { const n = { ...prev }; delete n[tipo]; return n })
       onOptimisticUnlock?.(tipo)
       setUnlockingTipo(null)
       setMotivoMap(prev => { const n = { ...prev }; delete n[tipo]; return n })
@@ -98,7 +100,8 @@ export default function TarefaChecklist({
       <div className="flex flex-col gap-2">
         {tipos.map(tipo => {
           const tarefa = mapaTarefa.get(tipo)
-          const feito = tarefa?.concluida ?? false
+          const feitoReal = tarefa?.concluida ?? false
+          const feito = tipo in optimistic ? optimistic[tipo] : feitoReal
           const isUnlocking = unlockingTipo === tipo
 
           return (
@@ -107,7 +110,8 @@ export default function TarefaChecklist({
                 <button
                   onClick={() => {
                     if (feito) return // locked — use unlock flow
-                    startTransition(() => onToggle(tipo, !feito))
+                    setOptimistic(prev => ({ ...prev, [tipo]: true }))
+                    startTransition(() => onToggle(tipo, true))
                   }}
                   disabled={isPending || feito}
                   className={`flex-1 flex items-center gap-3 p-3 rounded-xl border text-left transition-all disabled:opacity-60 ${

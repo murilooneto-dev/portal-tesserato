@@ -61,10 +61,18 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('tarefas').upsert({
-      cliente_id: id, usuario_id: user.id, mes, ano, tipo, concluida,
-      concluida_em: concluida ? new Date().toISOString() : null,
-    }, { onConflict: 'cliente_id,mes,ano,tipo' })
+    const { data: existing } = await supabase
+      .from('tarefas').select('id')
+      .eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('tipo', tipo)
+      .maybeSingle()
+    if (existing?.id) {
+      await supabase.from('tarefas')
+        .update({ concluida, concluida_em: concluida ? new Date().toISOString() : null })
+        .eq('id', existing.id)
+    } else {
+      await supabase.from('tarefas')
+        .insert({ cliente_id: id, usuario_id: user.id, mes, ano, tipo, concluida, concluida_em: concluida ? new Date().toISOString() : null })
+    }
     revalidatePath(`/fiscal/clientes/${id}`)
   }
 
