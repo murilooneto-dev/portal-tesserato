@@ -12,12 +12,10 @@ const TAREFAS: Record<string, string[]> = {
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
 function progresso(cliente: Cliente, tarefas: Tarefa[]) {
-  const tipos = TAREFAS[cliente.grupo ?? 'normal'] ?? TAREFAS.normal
-  const total = tipos.length
-  const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.includes(t.tipo))
+  const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id)
+  const total = clienteTarefas.length
   const feitas = clienteTarefas.filter(t => t.concluida).length
-  const tiposConcluidos = new Set(clienteTarefas.filter(t => t.concluida).map(t => t.tipo))
-  const pendentes = tipos.filter(t => !tiposConcluidos.has(t))
+  const pendentes = clienteTarefas.filter(t => !t.concluida).map(t => t.tipo)
   return { total, feitas, pct: total > 0 ? Math.round((feitas / total) * 100) : 0, pendentes }
 }
 
