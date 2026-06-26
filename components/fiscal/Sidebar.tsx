@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 import {
   Zap, LayoutGrid, Users, Calendar,
-  FileText, TrendingUp, Building2, CreditCard, Wrench, Settings,
+  FileText, TrendingUp, Building2, CreditCard, Wrench, Settings, ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -99,6 +99,17 @@ export default function Sidebar({ profile }: Props) {
             >
               <Settings size={15} strokeWidth={1.75} />
               Parâmetros
+            </Link>
+            <Link
+              href="/fiscal/admin"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                pathname.startsWith('/fiscal/admin')
+                  ? 'bg-[#00B8D4]/15 text-[#00B8D4] font-medium'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <ShieldCheck size={15} strokeWidth={1.75} />
+              Admin
             </Link>
           </>
         )}
