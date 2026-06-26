@@ -88,17 +88,14 @@ export default async function DashboardPage() {
       {/* Alertas */}
       {alertas.length > 0 && (
         <section>
-          <h2 className="text-xs font-bold text-[#00B8D4] uppercase tracking-widest mb-4">Alertas do Calendário Fiscal</h2>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {alertas.map(a => {
               const lbl = alertaLabel(a.diff)
               return (
-                <div key={a.nome} className={`rounded-xl border px-4 py-3 flex items-center gap-4 ${alertaColor(a.diff)}`}>
-                  <div>
-                    <p className="text-white text-sm font-semibold">{a.nome}</p>
-                    <p className="text-white/40 text-xs mt-0.5">Dia {a.diaNum}</p>
-                  </div>
-                  <span className={`text-sm font-bold ${lbl.cls}`}>{lbl.text}</span>
+                <div key={a.nome} className={`rounded-full border px-3 py-1.5 flex items-center gap-2.5 ${alertaColor(a.diff)}`}>
+                  <span className="text-white text-xs font-semibold">{a.nome}</span>
+                  <span className="text-white/25 text-xs">·</span>
+                  <span className={`text-xs font-bold ${lbl.cls}`}>{lbl.text}</span>
                 </div>
               )
             })}
@@ -108,16 +105,16 @@ export default async function DashboardPage() {
 
       {/* Linha 1: Progresso Geral + Clientes */}
       <section className="grid grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white/3 border border-white/10 p-5">
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
           <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Progresso Geral</p>
           <p className="text-3xl font-bold text-white">{pct}%</p>
-          <div className="w-full h-1.5 bg-white/10 rounded-full mt-3 mb-2">
-            <div className="h-full bg-[#00B8D4] rounded-full transition-all" style={{ width: `${pct}%` }} />
+          <div className="w-full h-2 bg-white/8 rounded-full mt-3 mb-2">
+            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00B8D4, #0066cc)' }} />
           </div>
           <p className="text-sm text-white/35">{concluidasTarefas}/{totalTarefas} tarefas concluídas</p>
         </div>
 
-        <div className="rounded-2xl bg-white/3 border border-white/10 p-5">
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
           <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Total de Clientes</p>
           <p className="text-3xl font-bold text-white">{cs.length}</p>
           <div className="flex gap-4 mt-3">
@@ -140,7 +137,7 @@ export default async function DashboardPage() {
       {/* Progresso por responsável — somente admin */}
       {responsaveis.length > 0 && (
         <section>
-          <h2 className="text-xs font-bold text-[#00B8D4] uppercase tracking-widest mb-4">Progresso por Responsável</h2>
+          <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">Progresso por Responsável</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {responsaveis.map(nome => {
               const perfil      = ps.find(p => p.nome?.toUpperCase() === nome.toUpperCase())
@@ -151,7 +148,7 @@ export default async function DashboardPage() {
               const opTotal     = opTarefas.length
               const opPct       = opTotal > 0 ? Math.round((opConcluidas / opTotal) * 100) : 0
               return (
-                <div key={nome} className="rounded-2xl bg-white/3 border border-white/10 p-5">
+                <div key={nome} className="rounded-2xl bg-white/2 border border-white/7 p-5">
                   <div className="flex items-center gap-2.5 mb-3">
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                       style={{ backgroundColor: cor }}>
@@ -160,7 +157,7 @@ export default async function DashboardPage() {
                     <p className="text-sm text-white/70 font-medium truncate">{nome}</p>
                   </div>
                   <p className="text-3xl font-bold text-white">{opPct}%</p>
-                  <div className="w-full h-1.5 bg-white/10 rounded-full mt-3 mb-2">
+                  <div className="w-full h-2 bg-white/8 rounded-full mt-3 mb-2">
                     <div className="h-full rounded-full transition-all" style={{ width: `${opPct}%`, backgroundColor: cor }} />
                   </div>
                   <p className="text-sm text-white/35">{opConcluidas}/{opTotal} · {opClientes.length} clientes</p>
@@ -174,7 +171,7 @@ export default async function DashboardPage() {
       {/* Clientes com observações */}
       {clientesObs.length > 0 && (
         <section>
-          <h2 className="text-xs font-bold text-[#00B8D4] uppercase tracking-widest mb-4">Clientes com Observações</h2>
+          <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">Clientes com Observações</h2>
           <div className="flex flex-col gap-2">
             {clientesObs.map(c => (
               <Link key={c.id} href={`/fiscal/clientes/${c.id}`}

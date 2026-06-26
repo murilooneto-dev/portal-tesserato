@@ -140,7 +140,7 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
 
       <ClienteConferencia
         clienteNome={cliente.nome}
-        arquivosDTE={(arquivos ?? []).map(a => ({ id: a.id, name: a.name, content_base64: a.content_base64 ?? '' }))}
+        arquivosDTE={(arquivos ?? []).filter(a => /\.xlsx?$/i.test(a.name)).map(a => ({ id: a.id, name: a.name, content_base64: a.content_base64 ?? '' }))}
       />
 
       {/* Histórico anual */}

@@ -3,6 +3,61 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+const STATUS_COR_CARD: Record<string, string> = { pendente: '#f59e0b', concluido: '#10b981', cancelado: '#6b7280' }
+const STATUS_LABEL_CARD: Record<string, string> = { pendente: 'Pendente', concluido: 'Concluído', cancelado: 'Cancelado' }
+
+interface AgendaCardProps {
+  item: { id: string; titulo: string; descricao?: string; hora_compromisso?: string; status: string }
+  onEditar: () => void
+  onExcluir: () => void
+}
+
+function AgendaCard({ item, onEditar, onExcluir }: AgendaCardProps) {
+  const [aberto, setAberto] = useState(false)
+  const cor = STATUS_COR_CARD[item.status] ?? '#6b7280'
+  return (
+    <div
+      className="rounded-xl bg-white/5 border border-white/8 overflow-hidden transition-all cursor-pointer"
+      style={{ borderColor: aberto ? cor + '80' : undefined }}
+      onClick={() => setAberto(v => !v)}
+    >
+      <div className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cor }} />
+              <p className="text-white text-sm font-semibold leading-snug">{item.titulo}</p>
+            </div>
+            {item.hora_compromisso && (
+              <p className="text-white/40 text-xs mt-0.5 ml-4">{item.hora_compromisso}</p>
+            )}
+            {item.descricao && !aberto && (
+              <p className="text-white/45 text-xs mt-1.5 ml-4 leading-relaxed" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {item.descricao}
+              </p>
+            )}
+            {aberto && item.descricao && (
+              <p className="text-white/70 text-sm mt-2 ml-4 whitespace-pre-wrap leading-relaxed">
+                {item.descricao}
+              </p>
+            )}
+            {aberto && !item.descricao && (
+              <p className="text-white/25 text-xs mt-2 ml-4 italic">Sem descrição.</p>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+            <button onClick={onEditar} className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-white/20 transition-all">✏</button>
+            <button onClick={onExcluir} className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-red-400/30 transition-all">✕</button>
+          </div>
+        </div>
+        <div className="flex justify-center mt-2">
+          <span className="text-white/20 text-[10px] select-none">{aberto ? '▲ fechar' : '▼ expandir'}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface AgendaItem {
   id: string
   usuario_id: string
@@ -106,7 +161,6 @@ export default function AgendaPage() {
   }
 
   const itensDia = diaSelecionado ? itensPorDia(diaSelecionado) : []
-  const [expandido, setExpandido] = useState<string | null>(null)
 
   return (
     <div className="p-8">
@@ -181,52 +235,14 @@ export default function AgendaPage() {
                 <p className="text-white/30 text-sm">Nenhum compromisso neste dia.</p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {itensDia.map(it => {
-                    const aberto = expandido === it.id
-                    return (
-                      <div
-                        key={it.id}
-                        className="rounded-xl bg-white/5 border border-white/8 overflow-hidden transition-all"
-                        style={{ borderColor: aberto ? STATUS_COR[it.status] + '60' : undefined }}
-                      >
-                        {/* Cabeçalho clicável */}
-                        <div
-                          className="p-3 cursor-pointer hover:bg-white/5 transition-colors"
-                          onClick={() => setExpandido(aberto ? null : it.id)}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-white text-sm font-medium leading-snug">{it.titulo}</p>
-                                <span className="text-white/25 text-xs">{aberto ? '▲' : '▼'}</span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                {it.hora_compromisso && <p className="text-white/40 text-xs">{it.hora_compromisso}</p>}
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: STATUS_COR[it.status] + '25', color: STATUS_COR[it.status] }}>
-                                  {STATUS_LABEL[it.status]}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => abrirEditar(it)} className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-white/20 transition-all">✏</button>
-                              <button onClick={() => excluir(it.id)} className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-red-400/30 transition-all">✕</button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Corpo expandido */}
-                        {aberto && (
-                          <div className="px-3 pb-3 border-t border-white/8">
-                            {it.descricao ? (
-                              <p className="text-white/70 text-sm mt-3 whitespace-pre-wrap leading-relaxed">{it.descricao}</p>
-                            ) : (
-                              <p className="text-white/25 text-xs mt-3 italic">Sem descrição.</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {itensDia.map(it => (
+                    <AgendaCard
+                      key={it.id}
+                      item={it}
+                      onEditar={() => abrirEditar(it)}
+                      onExcluir={() => excluir(it.id)}
+                    />
+                  ))}
                 </div>
               )}
             </div>

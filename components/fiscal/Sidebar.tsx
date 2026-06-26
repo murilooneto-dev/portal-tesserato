@@ -1,21 +1,28 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
+import {
+  Zap, LayoutGrid, Users, Calendar,
+  FileText, TrendingUp, Building2, CreditCard, Wrench, Settings,
+  type LucideIcon,
+} from 'lucide-react'
 
-const NAV_ITEMS = [
-  { href: '/fiscal/intranet',      label: 'Intranet',      icon: '⚡' },
-  { href: '/fiscal/dashboard',     label: 'Dashboard',     icon: '📊' },
-  { href: '/fiscal/clientes',      label: 'Clientes',      icon: '🏢' },
-  { href: '/fiscal/calendario',    label: 'Calendário',    icon: '📅' },
-  { href: '/fiscal/conferencia',   label: 'Conferência',   icon: '🔍' },
-  { href: '/fiscal/relatorios',    label: 'Relatórios',    icon: '📄' },
-  { href: '/fiscal/historico',     label: 'Histórico',     icon: '📈' },
-  { href: '/fiscal/empresas',      label: 'Empresas',      icon: '🗂️' },
-  { href: '/fiscal/parcelamentos', label: 'Parcelamentos', icon: '💳' },
-  { href: '/fiscal/ferramentas',   label: 'Ferramentas',   icon: '🔧' },
+interface NavItem { href: string; label: string; icon: LucideIcon }
+
+const NAV_ITEMS: NavItem[] = [
+  { href: '/fiscal/intranet',      label: 'Intranet',      icon: Zap        },
+  { href: '/fiscal/dashboard',     label: 'Dashboard',     icon: LayoutGrid },
+  { href: '/fiscal/clientes',      label: 'Clientes',      icon: Users      },
+  { href: '/fiscal/calendario',    label: 'Calendário',    icon: Calendar   },
+  { href: '/fiscal/relatorios',    label: 'Relatórios',    icon: FileText   },
+  { href: '/fiscal/historico',     label: 'Histórico',     icon: TrendingUp },
+  { href: '/fiscal/empresas',      label: 'Empresas',      icon: Building2  },
+  { href: '/fiscal/parcelamentos', label: 'Parcelamentos', icon: CreditCard },
+  { href: '/fiscal/ferramentas',   label: 'Ferramentas',   icon: Wrench     },
 ]
 
 interface Props {
@@ -34,10 +41,29 @@ export default function Sidebar({ profile }: Props) {
   }
 
   return (
-    <aside className="w-56 min-h-screen bg-[#0d1117] border-r border-white/8 flex flex-col">
-      <div className="px-5 py-5 border-b border-white/8">
-        <span className="text-white font-bold text-sm tracking-wide">TESSERATO</span>
-        <p className="text-white/30 text-xs mt-0.5">Setor Fiscal</p>
+    <aside
+      className="w-56 h-screen shrink-0 border-r border-white/7 flex flex-col overflow-y-auto"
+      style={{
+        background: 'linear-gradient(180deg, #0d1320 0%, #0a1028 100%)',
+        backgroundImage: 'linear-gradient(180deg, #0d1320 0%, #0a1028 100%), radial-gradient(circle, rgba(0,184,212,0.045) 1px, transparent 1px)',
+        backgroundSize: 'auto, 18px 18px',
+      }}
+    >
+      <div className="px-4 py-4 border-b border-white/7">
+        <div className="flex items-center gap-2.5">
+          <Image
+            src="/logo.png"
+            alt="Tesserato"
+            width={32}
+            height={32}
+            className="rounded-lg shrink-0"
+            unoptimized
+          />
+          <div>
+            <p className="text-white text-xs font-bold tracking-wide leading-tight">Tesserato</p>
+            <p className="text-white/30 text-[10px] leading-tight">Setor Fiscal</p>
+          </div>
+        </div>
       </div>
 
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
@@ -53,7 +79,7 @@ export default function Sidebar({ profile }: Props) {
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >
-              <span>{item.icon}</span>
+              <item.icon size={15} strokeWidth={1.75} />
               {item.label}
             </Link>
           )
@@ -71,7 +97,7 @@ export default function Sidebar({ profile }: Props) {
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >
-              <span>⚙️</span>
+              <Settings size={15} strokeWidth={1.75} />
               Parâmetros
             </Link>
           </>
@@ -84,7 +110,7 @@ export default function Sidebar({ profile }: Props) {
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
             style={{ backgroundColor: profile.cor }}
           >
-            {profile.nome.charAt(0).toUpperCase()}
+            {(profile.nome ?? 'U').charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{profile.nome}</p>

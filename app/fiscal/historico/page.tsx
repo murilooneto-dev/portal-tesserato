@@ -119,7 +119,7 @@ export default function HistoricoPage() {
       {/* Cards dos responsáveis — somente admin */}
       {isAdmin && responsaveis.length > 0 && (
         <div>
-          <h2 className="text-xs font-bold text-[#00B8D4] uppercase tracking-widest mb-4">Progresso por responsável</h2>
+          <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">Progresso por responsável</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {responsaveis.map((resp, ri) => {
               const cor = CORES_RESP[ri % CORES_RESP.length]
@@ -191,7 +191,7 @@ export default function HistoricoPage() {
       <div>
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xs font-bold text-[#00B8D4] uppercase tracking-widest">Selecionar mês para detalhar</h2>
+            <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest">Selecionar mês para detalhar</h2>
             {selectedResp && (
               <p className="text-xs mt-0.5" style={{ color: CORES_RESP[responsaveis.indexOf(selectedResp) % CORES_RESP.length] }}>
                 Responsável: {selectedResp}

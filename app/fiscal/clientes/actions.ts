@@ -49,7 +49,14 @@ export async function salvarObs(clienteId: string, obs: string) {
   await supabase.from('clientes').update({ obs }).eq('id', clienteId)
 }
 
-const TIPOS_PERMITIDOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg']
+const TIPOS_PERMITIDOS = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/vnd.ms-excel', // .xls
+]
 const TAMANHO_MAX = 10 * 1024 * 1024 // 10 MB
 
 export async function uploadArquivo(clienteId: string, formData: FormData) {
@@ -58,7 +65,7 @@ export async function uploadArquivo(clienteId: string, formData: FormData) {
   if (!arquivo) return { error: 'Nenhum arquivo' }
 
   if (!TIPOS_PERMITIDOS.includes(arquivo.type)) {
-    return { error: 'Tipo de arquivo não permitido. Use PDF, PNG ou JPG.' }
+    return { error: 'Tipo de arquivo não permitido. Use PDF, PNG, JPG ou XLSX.' }
   }
   if (arquivo.size > TAMANHO_MAX) {
     return { error: 'Arquivo muito grande. Máximo permitido: 10 MB.' }

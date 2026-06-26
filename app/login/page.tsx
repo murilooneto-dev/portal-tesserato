@@ -9,12 +9,13 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8 gap-3">
           <Image
-            src="/logo.ico"
+            src="/logo.png"
             alt="Tesserato Contabilidade"
-            width={72}
-            height={72}
+            width={96}
+            height={96}
             className="rounded-xl"
             priority
+            unoptimized
           />
           <div className="text-center">
             <p className="text-white font-bold text-lg tracking-wide">Tesserato Contabilidade</p>

@@ -17,13 +17,16 @@ export default async function EditarEmpresaPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: cliente } = await supabase
-    .from('clientes')
-    .select('*')
-    .eq('id', id)
-    .single()
+  const [{ data: profile }, { data: cliente }] = await Promise.all([
+    supabase.from('profiles').select('nome,role').eq('id', user.id).single(),
+    supabase.from('clientes').select('*').eq('id', id).single(),
+  ])
 
   if (!cliente) notFound()
+
+  const isAdmin = profile?.role === 'admin'
+  const isResponsavel = cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
+  if (!isAdmin && !isResponsavel) redirect('/fiscal/empresas')
 
   const updateWithId = atualizarEmpresa.bind(null, id)
 
