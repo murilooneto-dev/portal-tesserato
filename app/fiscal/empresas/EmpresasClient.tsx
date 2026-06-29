@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo } from 'react'
 import type { Cliente } from '@/lib/types'
@@ -59,7 +59,7 @@ export default function EmpresasClient({ clientes, contagemTarefas, profileNome,
     try { await excluirEmpresa(id) } finally { setDeleting(null) }
   }
 
-  const selectCls = "bg-[#0d1117] border border-white/10 rounded-xl px-4 py-2.5 text-white/70 text-sm focus:outline-none focus:border-[#00B8D4]/50 transition-colors"
+  const selectCls = "bg-[#162546] border border-white/10 rounded-xl px-4 py-2.5 text-white/70 text-sm focus:outline-none focus:border-[#34CEFF]/50 transition-colors"
 
   return (
     <>
@@ -79,7 +79,7 @@ export default function EmpresasClient({ clientes, contagemTarefas, profileNome,
           <p className="text-sm text-white/40 mt-1">Cadastre e gerencie as empresas do setor fiscal.</p>
         </div>
         <button onClick={openNovo}
-          className="px-4 py-2.5 rounded-xl bg-[#00B8D4] text-white text-sm font-semibold hover:bg-[#00a3bc] transition-colors">
+          className="px-4 py-2.5 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors">
           + Nova Empresa
         </button>
       </div>
@@ -94,23 +94,23 @@ export default function EmpresasClient({ clientes, contagemTarefas, profileNome,
           <div className="flex-1" />
           <input type="text" placeholder="Buscar empresa, CNPJ ou código..."
             value={search} onChange={e => setSearch(e.target.value)}
-            className="min-w-[220px] px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#00B8D4]/50 transition-colors" />
+            className="min-w-[220px] px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#34CEFF]/50 transition-colors" />
 
           <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} className={selectCls}>
-            <option value="TODOS" className="bg-[#0d1117]">Todos os grupos</option>
-            <option value="normal" className="bg-[#0d1117]">Regime Normal</option>
-            <option value="simples" className="bg-[#0d1117]">Simples Nacional</option>
-            <option value="mei" className="bg-[#0d1117]">MEI</option>
+            <option value="TODOS" className="bg-[#162546]">Todos os grupos</option>
+            <option value="normal" className="bg-[#162546]">Regime Normal</option>
+            <option value="simples" className="bg-[#162546]">Simples Nacional</option>
+            <option value="mei" className="bg-[#162546]">MEI</option>
           </select>
 
           <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} className={selectCls}>
-            <option value="TODOS" className="bg-[#0d1117]">Todos os responsáveis</option>
-            {responsaveis.map(r => <option key={r} value={r} className="bg-[#0d1117]">{r}</option>)}
+            <option value="TODOS" className="bg-[#162546]">Todos os responsáveis</option>
+            {responsaveis.map(r => <option key={r} value={r} className="bg-[#162546]">{r}</option>)}
           </select>
 
           <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectCls}>
-            <option value="TODOS" className="bg-[#0d1117]">Todas as atividades</option>
-            {atividades.slice(1).map(a => <option key={a} value={a} className="bg-[#0d1117]">{a}</option>)}
+            <option value="TODOS" className="bg-[#162546]">Todas as atividades</option>
+            {atividades.slice(1).map(a => <option key={a} value={a} className="bg-[#162546]">{a}</option>)}
           </select>
         </div>
 

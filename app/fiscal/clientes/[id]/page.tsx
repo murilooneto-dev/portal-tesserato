@@ -56,22 +56,25 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
   const { data: arquivos } = await supabase
     .from('client_files').select('id,name,size,uploaded_at,content_base64').eq('cliente_id', id).order('uploaded_at', { ascending: false })
 
-  async function toggleTarefa(tipo: string, concluida: boolean) {
+  async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
     'use server'
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    const concluida_em = concluida
+      ? (data ? new Date(data + 'T12:00:00').toISOString() : new Date().toISOString())
+      : null
     const { data: existing } = await supabase
       .from('tarefas').select('id')
       .eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('tipo', tipo)
       .maybeSingle()
     if (existing?.id) {
       await supabase.from('tarefas')
-        .update({ concluida, concluida_em: concluida ? new Date().toISOString() : null })
+        .update({ concluida, concluida_em })
         .eq('id', existing.id)
     } else {
       await supabase.from('tarefas')
-        .insert({ cliente_id: id, usuario_id: user.id, mes, ano, tipo, concluida, concluida_em: concluida ? new Date().toISOString() : null })
+        .insert({ cliente_id: id, usuario_id: user.id, mes, ano, tipo, concluida, concluida_em })
     }
     revalidatePath(`/fiscal/clientes/${id}`)
   }
@@ -165,12 +168,12 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
                 href={`/fiscal/clientes/${id}?mes=${m}&ano=${ano}`}
                 className={`p-3 rounded-xl border text-center transition-all ${
                   isAtual
-                    ? 'bg-[#00B8D4]/15 border-[#00B8D4]/40'
+                    ? 'bg-[#34CEFF]/15 border-[#34CEFF]/40'
                     : 'bg-white/3 border-white/8 hover:bg-white/6'
                 }`}
               >
                 <p className="text-xs text-white/50 mb-1">{MESES_ABREV[m-1]}</p>
-                <p className={`text-lg font-bold ${pct === 100 ? 'text-[#00B8D4]' : pct > 0 ? 'text-white' : 'text-white/20'}`}>{pct}%</p>
+                <p className={`text-lg font-bold ${pct === 100 ? 'text-[#34CEFF]' : pct > 0 ? 'text-white' : 'text-white/20'}`}>{pct}%</p>
                 <p className="text-xs text-white/30">{feitas}/{total}</p>
               </Link>
             )

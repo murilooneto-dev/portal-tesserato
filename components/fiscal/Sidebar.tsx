@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -43,8 +43,7 @@ export default function Sidebar({ profile }: Props) {
     <aside
       className="w-56 h-screen shrink-0 border-r border-white/7 flex flex-col overflow-y-auto"
       style={{
-        background: 'linear-gradient(180deg, #0d1320 0%, #0a1028 100%)',
-        backgroundImage: 'linear-gradient(180deg, #0d1320 0%, #0a1028 100%), radial-gradient(circle, rgba(0,184,212,0.045) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(180deg, #1c2e52 0%, #162649 100%), radial-gradient(circle, rgba(52,206,255,0.045) 1px, transparent 1px)',
         backgroundSize: 'auto, 18px 18px',
       }}
     >
@@ -74,7 +73,7 @@ export default function Sidebar({ profile }: Props) {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                 active
-                  ? 'bg-[#00B8D4]/15 text-[#00B8D4] font-medium'
+                  ? 'bg-[#34CEFF]/15 text-[#34CEFF] font-medium'
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -92,7 +91,7 @@ export default function Sidebar({ profile }: Props) {
               href="/fiscal/parametros"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                 pathname.startsWith('/fiscal/parametros')
-                  ? 'bg-[#00B8D4]/15 text-[#00B8D4] font-medium'
+                  ? 'bg-[#34CEFF]/15 text-[#34CEFF] font-medium'
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -103,7 +102,7 @@ export default function Sidebar({ profile }: Props) {
               href="/fiscal/admin"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                 pathname.startsWith('/fiscal/admin')
-                  ? 'bg-[#00B8D4]/15 text-[#00B8D4] font-medium'
+                  ? 'bg-[#34CEFF]/15 text-[#34CEFF] font-medium'
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -56,7 +56,7 @@ function badgeColor(val: string | null): { bg: string; text: string; label: stri
   return { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'ENVIADO' }
 }
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50"
+const inputCls = "w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
 const labelCls = "block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5"
 
 export default function ParcelamentosPage() {
@@ -186,7 +186,7 @@ export default function ParcelamentosPage() {
       @page { size: A4 landscape; margin: 12mm; }
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: Arial, sans-serif; font-size: 8px; color: #111; background: white; }
-      .header { background: #0d1320; color: white; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+      .header { background: #1c2e52; color: white; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
       .header-left h1 { font-size: 18px; font-weight: bold; letter-spacing: -0.5px; }
       .header-left .sub { font-size: 10px; color: rgba(255,255,255,0.55); margin-top: 2px; }
       .header-right { text-align: right; font-size: 9px; color: rgba(255,255,255,0.55); line-height: 1.6; }
@@ -195,10 +195,10 @@ export default function ParcelamentosPage() {
       .meta-item { background: #f4f6f8; border-radius: 6px; padding: 6px 12px; }
       .meta-item .label { font-size: 7px; text-transform: uppercase; letter-spacing: 0.8px; color: #888; }
       .meta-item .value { font-size: 11px; font-weight: bold; color: #111; }
-      .section-title { font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; color: #0d1320; border-left: 3px solid #00B8D4; padding-left: 8px; margin: 14px 0 6px; }
+      .section-title { font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; color: #1c2e52; border-left: 3px solid #34CEFF; padding-left: 8px; margin: 14px 0 6px; }
       .section-title .count { font-weight: normal; color: #888; }
       table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-      th { background: #0d1320; color: white; padding: 4px 6px; text-align: left; font-size: 7px; text-transform: uppercase; letter-spacing: 0.5px; }
+      th { background: #1c2e52; color: white; padding: 4px 6px; text-align: left; font-size: 7px; text-transform: uppercase; letter-spacing: 0.5px; }
       th.month { text-align: center; width: 40px; }
       td { padding: 4px 6px; border-bottom: 1px solid #eee; vertical-align: middle; }
       td.month { text-align: center; font-size: 7.5px; font-weight: bold; }
@@ -243,17 +243,17 @@ export default function ParcelamentosPage() {
         <h1 className="text-lg font-bold text-white whitespace-nowrap">Parcelamentos {ANO}</h1>
         <input type="text" placeholder="Buscar empresa, CNPJ ou responsável..."
           value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/25 text-sm focus:outline-none focus:border-[#00B8D4]/40" />
+          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/25 text-sm focus:outline-none focus:border-[#34CEFF]/40" />
         <select value={secaoFiltro} onChange={e => setSecaoFiltro(e.target.value)}
-          className="px-4 py-2 rounded-xl bg-[#0d1320] border border-white/10 text-white/70 text-sm focus:outline-none min-w-[180px]">
+          className="px-4 py-2 rounded-xl bg-[#1c2e52] border border-white/10 text-white/70 text-sm focus:outline-none min-w-[180px]">
           <option value="TODOS">Todas as seções</option>
-          {SECOES.map(s => <option key={s} value={s} className="bg-[#0d1320]">{s}</option>)}
+          {SECOES.map(s => <option key={s} value={s} className="bg-[#1c2e52]">{s}</option>)}
         </select>
         {isAdmin && (
           <select value={respFiltro} onChange={e => setRespFiltro(e.target.value)}
-            className="px-4 py-2 rounded-xl bg-[#0d1320] border border-white/10 text-white/70 text-sm focus:outline-none min-w-[150px]">
+            className="px-4 py-2 rounded-xl bg-[#1c2e52] border border-white/10 text-white/70 text-sm focus:outline-none min-w-[150px]">
             <option value="TODOS">Todos os responsáveis</option>
-            {responsaveis.map(r => <option key={r} value={r} className="bg-[#0d1320]">{r}</option>)}
+            {responsaveis.map(r => <option key={r} value={r} className="bg-[#1c2e52]">{r}</option>)}
           </select>
         )}
         <button onClick={imprimir}
@@ -261,7 +261,7 @@ export default function ParcelamentosPage() {
           Relatório
         </button>
         <button onClick={openCreate}
-          className="px-4 py-2 rounded-xl bg-[#00B8D4] text-white text-sm font-semibold hover:bg-[#00a3bc] transition-colors whitespace-nowrap">
+          className="px-4 py-2 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors whitespace-nowrap">
           + Novo Parcelamento
         </button>
       </div>
@@ -275,7 +275,7 @@ export default function ParcelamentosPage() {
           return (
             <div key={secao}>
               {/* Seção header */}
-              <div className="flex items-center gap-3 pl-4 border-l-4 border-[#00B8D4] mb-3">
+              <div className="flex items-center gap-3 pl-4 border-l-4 border-[#34CEFF] mb-3">
                 <div>
                   <p className="text-white font-bold text-sm">{secao}</p>
                   <p className="text-white/35 text-xs">{rows.length} parcelamento{rows.length !== 1 ? 's' : ''}</p>
@@ -396,7 +396,7 @@ export default function ParcelamentosPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
           onClick={e => e.target === e.currentTarget && setModalOpen(false)}>
-          <div className="bg-[#0d1320] border border-white/12 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+          <div className="bg-[#1c2e52] border border-white/12 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 shrink-0">
               <h2 className="text-white font-bold text-base">{editItem ? 'Editar Parcelamento' : 'Novo Parcelamento'}</h2>
               <button onClick={() => setModalOpen(false)} className="text-white/30 hover:text-white text-xl">×</button>
@@ -407,8 +407,8 @@ export default function ParcelamentosPage() {
               <div>
                 <label className={labelCls}>Seção</label>
                 <select value={form.secao} onChange={e => setF('secao', e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#0d1320] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50">
-                  {SECOES.map(s => <option key={s} value={s} className="bg-[#0d1320]">{s}</option>)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#1c2e52] border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50">
+                  {SECOES.map(s => <option key={s} value={s} className="bg-[#1c2e52]">{s}</option>)}
                 </select>
               </div>
 
@@ -457,7 +457,7 @@ export default function ParcelamentosPage() {
                         value={(form as any)[mes] ?? ''}
                         onChange={e => setF(mes as any, e.target.value || null)}
                         placeholder="—"
-                        className="w-full px-2 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs text-center focus:outline-none focus:border-[#00B8D4]/50" />
+                        className="w-full px-2 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs text-center focus:outline-none focus:border-[#34CEFF]/50" />
                     </div>
                   ))}
                 </div>
@@ -477,7 +477,7 @@ export default function ParcelamentosPage() {
                 Cancelar
               </button>
               <button onClick={handleSave} disabled={saving || !form.empresa.trim()}
-                className="px-6 py-2.5 rounded-xl bg-[#00B8D4] text-white text-sm font-semibold hover:bg-[#00a3bc] transition-colors disabled:opacity-50">
+                className="px-6 py-2.5 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 interface Obrigacao {
   id: string
@@ -54,7 +54,7 @@ export default function CalendarioFiscal({ mes, ano }: Props) {
               key={ob.id}
               className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                 hojeFlag
-                  ? 'bg-white/8 border-[#00B8D4]/40'
+                  ? 'bg-white/8 border-[#34CEFF]/40'
                   : passado
                   ? 'bg-white/2 border-white/5 opacity-50'
                   : 'bg-white/4 border-white/8'
@@ -71,7 +71,7 @@ export default function CalendarioFiscal({ mes, ano }: Props) {
                 <p className="text-white/40 text-xs truncate">{ob.desc}</p>
               </div>
               {hojeFlag && (
-                <span className="text-[10px] text-[#00B8D4] font-semibold uppercase tracking-wide">hoje</span>
+                <span className="text-[10px] text-[#34CEFF] font-semibold uppercase tracking-wide">hoje</span>
               )}
             </div>
           )

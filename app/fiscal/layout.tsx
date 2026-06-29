@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+﻿import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/fiscal/Sidebar'
 
@@ -24,7 +24,7 @@ export default async function FiscalLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0d1117]">
+    <div className="flex h-screen overflow-hidden bg-[#162546]">
       <Sidebar profile={safeProfile} />
       <main className="flex-1 overflow-y-auto">
         {children}

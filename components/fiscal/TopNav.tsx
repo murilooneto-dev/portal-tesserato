@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Image from 'next/image'
 import Link from 'next/link'
@@ -58,7 +58,7 @@ export default function TopNav({ profile }: Props) {
               href={item.href}
               className={`shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-[#00B8D4] text-white'
+                  ? 'bg-[#34CEFF] text-white'
                   : 'text-white/50 hover:text-white hover:bg-white/6'
               }`}
             >
@@ -72,7 +72,7 @@ export default function TopNav({ profile }: Props) {
             href="/fiscal/parametros"
             className={`shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               pathname.startsWith('/fiscal/parametros')
-                ? 'bg-[#00B8D4] text-white'
+                ? 'bg-[#34CEFF] text-white'
                 : 'text-white/50 hover:text-white hover:bg-white/6'
             }`}
           >

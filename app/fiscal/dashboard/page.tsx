@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Cliente, Profile, Tarefa } from '@/lib/types'
 
@@ -109,7 +109,7 @@ export default async function DashboardPage() {
           <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Progresso Geral</p>
           <p className="text-3xl font-bold text-white">{pct}%</p>
           <div className="w-full h-2 bg-white/8 rounded-full mt-3 mb-2">
-            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00B8D4, #0066cc)' }} />
+            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #34CEFF, #0066cc)' }} />
           </div>
           <p className="text-sm text-white/35">{concluidasTarefas}/{totalTarefas} tarefas concluídas</p>
         </div>
@@ -141,7 +141,7 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {responsaveis.map(nome => {
               const perfil      = ps.find(p => p.nome?.toUpperCase() === nome.toUpperCase())
-              const cor         = perfil?.cor || '#00B8D4'
+              const cor         = perfil?.cor || '#34CEFF'
               const opClientes  = cs.filter(c => c.responsavel?.toUpperCase() === nome.toUpperCase())
               const opTarefas   = ts.filter(t => opClientes.some(c => c.id === t.cliente_id))
               const opConcluidas = opTarefas.filter(t => t.concluida).length
