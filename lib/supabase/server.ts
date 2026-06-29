@@ -21,6 +21,16 @@ export function createClientWithToken(token: string) {
   )
 }
 
+// Helper para server actions: retorna user + cliente com JWT explícito para operações no banco
+export async function getAuthenticatedClient() {
+  const authSupabase = await createClient()
+  const { data: { user } } = await authSupabase.auth.getUser()
+  if (!user) return { user: null, supabase: null }
+  const { data: { session } } = await authSupabase.auth.getSession()
+  if (!session?.access_token) return { user: null, supabase: null }
+  return { user, supabase: createClientWithToken(session.access_token) }
+}
+
 export async function createClient() {
   const cookieStore = await cookies()
 

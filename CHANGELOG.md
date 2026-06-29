@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.6] - 2026-06-29
+
+### Corrigido
+- **Fix global: todos os server actions agora usam JWT explícito** — o v0.4.5 corrigiu apenas `toggleTarefa` (tarefas) e `desbloquearTarefa`. Este release aplica a mesma correção em todos os actions de escrita do sistema: `salvarMIT`, `salvarObs`, `uploadArquivo`, `excluirArquivo` (clientes), `criarEmpresa`, `atualizarEmpresa`, `excluirEmpresa` (empresas), `salvarComunicado`, `atualizarPerfil`, `criarUsuario`, `salvarConfiguracoes` (parâmetros) e `salvarConfig` (bots)
+- **Novo helper `getAuthenticatedClient()`** em `lib/supabase/server.ts` — encapsula o padrão `getUser() + getSession() + createClientWithToken()` para reutilização em todos os server actions
+
+### Arquivos alterados
+- `lib/supabase/server.ts` — nova função `getAuthenticatedClient()` reutilizável
+- `app/fiscal/clientes/actions.ts` — todos os actions usam `getAuthenticatedClient()`
+- `app/fiscal/empresas/actions.ts` — todos os actions usam `getAuthenticatedClient()`
+- `app/fiscal/parametros/actions.ts` — todos os actions usam `getAuthenticatedClient()`
+- `app/fiscal/bots/page.tsx` — `salvarConfig` usa `createClientWithToken` explícito
+
+---
+
 ## [v0.4.5] - 2026-06-29
 
 ### Corrigido

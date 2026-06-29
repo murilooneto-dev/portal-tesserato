@@ -1,9 +1,10 @@
 'use server'
 
-import { createClient, createClientWithToken } from '@/lib/supabase/server'
+import { getAuthenticatedClient } from '@/lib/supabase/server'
 
 export async function toggleTarefa(tarefaId: string, concluida: boolean) {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) return
   await supabase
     .from('tarefas')
     .update({ concluida, concluida_em: concluida ? new Date().toISOString() : null })
@@ -18,11 +19,8 @@ export async function desbloquearTarefa(
   tarefaTipo: string,
   competencia: string,
 ) {
-  const authSupabase = await createClient()
-  const { data: { user } } = await authSupabase.auth.getUser()
-  const { data: { session } } = await authSupabase.auth.getSession()
-  if (!session?.access_token) return
-  const supabase = createClientWithToken(session.access_token)
+  const { user, supabase } = await getAuthenticatedClient()
+  if (!supabase) return
 
   await supabase
     .from('tarefas')
@@ -43,12 +41,14 @@ export async function desbloquearTarefa(
 }
 
 export async function salvarMIT(clienteId: string, valor: string) {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) return
   await supabase.from('clientes').update({ mit: valor }).eq('id', clienteId)
 }
 
 export async function salvarObs(clienteId: string, obs: string) {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) return
   await supabase.from('clientes').update({ obs }).eq('id', clienteId)
 }
 
@@ -63,7 +63,9 @@ const TIPOS_PERMITIDOS = [
 const TAMANHO_MAX = 10 * 1024 * 1024 // 10 MB
 
 export async function uploadArquivo(clienteId: string, formData: FormData) {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) return { error: 'Não autorizado' }
+
   const arquivo = formData.get('arquivo') as File | null
   if (!arquivo) return { error: 'Nenhum arquivo' }
 
@@ -89,6 +91,8 @@ export async function uploadArquivo(clienteId: string, formData: FormData) {
 }
 
 export async function excluirArquivo(arquivoId: string) {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) return
   await supabase.from('client_files').delete().eq('id', arquivoId)
 }
+

@@ -1,11 +1,12 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 
 export async function criarEmpresa(formData: FormData) {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) throw new Error('Não autorizado')
 
   const tarefasRaw = formData.get('tarefas_personalizadas') as string | null
   const tarefas = tarefasRaw ? JSON.parse(tarefasRaw) : []
@@ -40,7 +41,8 @@ export async function criarEmpresa(formData: FormData) {
 }
 
 export async function atualizarEmpresa(id: string, formData: FormData) {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) throw new Error('Não autorizado')
 
   const tarefasRaw = formData.get('tarefas_personalizadas') as string | null
   const tarefas = tarefasRaw ? JSON.parse(tarefasRaw) : []
@@ -75,7 +77,8 @@ export async function atualizarEmpresa(id: string, formData: FormData) {
 }
 
 export async function excluirEmpresa(id: string) {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) throw new Error('Não autorizado')
   const { error } = await supabase.from('clientes').delete().eq('id', id)
   if (error) throw new Error(error.message)
   revalidatePath('/fiscal/empresas')
