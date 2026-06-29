@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.4] - 2026-06-29
+
+### Corrigido
+- **Tarefas — input de data**: substituído `type="date"` (controlado pelo React, apagava ao digitar) por `type="text"` com máscara automática DD/MM/AAAA — o usuário digita os dígitos e as barras são inseridas automaticamente; salva quando a data está completa e válida; descarta entrada parcial ao sair do campo
+
+### Arquivos alterados
+- `components/fiscal/TarefaChecklist.tsx` — novo input de texto com auto-formatação DD/MM/AAAA, estado local `localText` separado do estado salvo
+
+---
+
 ## [v0.4.3] - 2026-06-29
 
 ### Corrigido

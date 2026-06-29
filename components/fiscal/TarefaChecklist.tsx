@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useTransition, useState } from 'react'
 import type { Tarefa } from '@/lib/types'
@@ -31,6 +31,32 @@ interface Props {
   onOptimisticUnlock?: (tipo: string) => void
 }
 
+function isoParaDisplay(iso: string): string {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function displayParaIso(display: string): string | null {
+  const digits = display.replace(/\D/g, '')
+  if (digits.length !== 8) return null
+  const d = digits.slice(0, 2)
+  const m = digits.slice(2, 4)
+  const y = digits.slice(4, 8)
+  if (parseInt(y, 10) < 1000) return null
+  const iso = `${y}-${m}-${d}`
+  const dateObj = new Date(iso + 'T12:00:00')
+  if (isNaN(dateObj.getTime())) return null
+  return iso
+}
+
+function autoFormatarData(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 8)
+  if (digits.length > 4) return `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`
+  if (digits.length > 2) return `${digits.slice(0,2)}/${digits.slice(2)}`
+  return digits
+}
+
 export default function TarefaChecklist({
   clienteId,
   clienteNome,
@@ -45,8 +71,8 @@ export default function TarefaChecklist({
   onOptimisticUnlock,
 }: Props) {
   const [isPending, startTransition] = useTransition()
-  // optimisticDates: tipo → 'YYYY-MM-DD' (concluída) | null (pendente) | undefined (usar banco)
   const [optimisticDates, setOptimisticDates] = useState<Record<string, string | null>>({})
+  const [localText, setLocalText] = useState<Record<string, string>>({})
   const [unlockingTipo, setUnlockingTipo] = useState<string | null>(null)
   const [motivoMap, setMotivoMap] = useState<Record<string, string>>({})
   const [unlockPending, setUnlockPending] = useState(false)
@@ -56,25 +82,38 @@ export default function TarefaChecklist({
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
   const total = tipos.length
 
-  function getDataAtual(tipo: string): string {
+  function getSavedIso(tipo: string): string {
     if (tipo in optimisticDates) return optimisticDates[tipo] ?? ''
     const t = mapaTarefa.get(tipo)
     if (!t?.concluida || !t.concluida_em) return ''
-    return t.concluida_em.slice(0, 10) // YYYY-MM-DD
+    return t.concluida_em.slice(0, 10)
   }
 
-  const concluidas = tipos.filter(t => getDataAtual(t) !== '').length
+  function getDisplayValue(tipo: string): string {
+    if (tipo in localText) return localText[tipo]
+    return isoParaDisplay(getSavedIso(tipo))
+  }
 
+  const concluidas = tipos.filter(t => getSavedIso(t) !== '').length
   const competencia = `${String(mes).padStart(2, '0')}/${ano}`
 
-  function handleDateChange(tipo: string, valor: string) {
-    if (valor) {
-      // Aguarda ano completo (4 dígitos ≥ 1000) antes de salvar
-      if (parseInt(valor.slice(0, 4), 10) < 1000) return
-      setOptimisticDates(prev => ({ ...prev, [tipo]: valor }))
-      startTransition(() => onToggle(tipo, true, valor))
-    } else {
-      // Apagou data → só abre unlock se já estava concluída
+  function handleTextChange(tipo: string, raw: string) {
+    const formatted = autoFormatarData(raw)
+    setLocalText(prev => ({ ...prev, [tipo]: formatted }))
+
+    const iso = displayParaIso(formatted)
+    if (iso) {
+      setOptimisticDates(prev => ({ ...prev, [tipo]: iso }))
+      setLocalText(prev => { const n = { ...prev }; delete n[tipo]; return n })
+      startTransition(() => onToggle(tipo, true, iso))
+    }
+  }
+
+  function handleTextBlur(tipo: string) {
+    const val = localText[tipo]
+    if (val === undefined) return
+
+    if (val === '') {
       const tarefa = mapaTarefa.get(tipo)
       if (tarefa?.concluida) {
         setUnlockingTipo(tipo)
@@ -82,6 +121,7 @@ export default function TarefaChecklist({
         setOptimisticDates(prev => ({ ...prev, [tipo]: null }))
       }
     }
+    setLocalText(prev => { const n = { ...prev }; delete n[tipo]; return n })
   }
 
   async function handleUnlock(tipo: string) {
@@ -123,9 +163,10 @@ export default function TarefaChecklist({
 
       <div className="flex flex-col gap-2">
         {tipos.map(tipo => {
-          const dataAtual = getDataAtual(tipo)
-          const feito = dataAtual !== ''
+          const savedIso = getSavedIso(tipo)
+          const feito = savedIso !== ''
           const isUnlocking = unlockingTipo === tipo
+          const displayVal = getDisplayValue(tipo)
 
           return (
             <div key={tipo} className="flex flex-col gap-0">
@@ -134,29 +175,27 @@ export default function TarefaChecklist({
                   ? 'bg-[#00CCEB]/8 border-[#00CCEB]/25'
                   : 'bg-white/3 border-white/8'
               }`}>
-                {/* Indicador de status */}
                 <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[#00CCEB]' : 'bg-white/15'}`} />
 
-                {/* Nome da tarefa */}
                 <span className={`text-sm flex-1 transition-colors ${feito ? 'text-white/50 line-through' : 'text-white'}`}>
                   {tipo}
                 </span>
 
-                {/* Input de data */}
                 <input
-                  type="date"
-                  value={dataAtual}
-                  onChange={e => handleDateChange(tipo, e.target.value)}
+                  type="text"
+                  value={displayVal}
+                  onChange={e => handleTextChange(tipo, e.target.value)}
+                  onBlur={() => handleTextBlur(tipo)}
                   disabled={isPending || isUnlocking}
-                  className={`text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 ${
+                  placeholder="DD/MM/AAAA"
+                  maxLength={10}
+                  className={`text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
                     feito
                       ? 'bg-[#00CCEB]/10 border-[#00CCEB]/30 text-[#00CCEB] focus:border-[#00CCEB]/60'
-                      : 'bg-white/5 border-white/10 text-white/60 focus:border-white/30 [color-scheme:dark]'
+                      : 'bg-white/5 border-white/10 text-white/60 focus:border-white/30 placeholder-white/20'
                   }`}
-                  style={{ colorScheme: 'dark' }}
                 />
 
-                {/* Desbloquear */}
                 {feito && (
                   <button
                     onClick={() => setUnlockingTipo(isUnlocking ? null : tipo)}
