@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.2] - 2026-06-29
+
+### Corrigido
+- **Tarefas (operador)**: usuários com role `operador` agora conseguem salvar tarefas — `toggleTarefa` e `desbloquearTarefa` passaram a usar `createAdminClient()` (service role key) para bypassar as RLS policies do Supabase que bloqueavam INSERTs e UPDATEs de não-admins
+- **Contador / progresso na lista de clientes**: `TIPOS_VALIDOS` hardcoded substituído por `clienteTiposSet` calculado por cliente — tipos personalizados (`tarefas_personalizadas`) agora contam no total e no progresso; `comPendencia` passa a refletir todos os clientes com tarefas ainda não concluídas
+
+### Arquivos alterados
+- `lib/supabase/server.ts` — nova função `createAdminClient()` usando `SUPABASE_SERVICE_ROLE_KEY`
+- `app/fiscal/clientes/[id]/page.tsx` — `toggleTarefa` usa admin client após verificar auth
+- `app/fiscal/clientes/actions.ts` — `toggleTarefa` e `desbloquearTarefa` usam admin client
+- `app/fiscal/clientes/page.tsx` — `TIPOS_VALIDOS` substituído por `clienteTiposSet` por cliente; `progressoMap.total` agora reflete tarefas configuradas
+
+---
+
 ## [v0.4.1] - 2026-06-29
 
 ### Alterado

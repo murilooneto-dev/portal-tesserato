@@ -3,11 +3,11 @@ import ClientesLista from '@/components/fiscal/ClientesLista'
 
 export const metadata = { title: 'Clientes — Tesserato Fiscal' }
 
-const TIPOS_VALIDOS = new Set([
-  'ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST',
-  'IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS',
-  'FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF','DAS',
-])
+const TAREFAS_GRUPOS: Record<string, string[]> = {
+  normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
+  simples: ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF'],
+  mei:     ['DAS'],
+}
 
 export default async function ClientesPage() {
   const supabase = await createClient()
@@ -34,18 +34,31 @@ export default async function ClientesPage() {
       .eq('ano', ano),
   ])
 
-  // Progresso por cliente no mês — conta apenas tipos válidos
-  const progressoMap: Record<string, { total: number; concluidas: number }> = {}
-  for (const t of tarefas ?? []) {
-    if (!TIPOS_VALIDOS.has(t.tipo)) continue
-    if (!progressoMap[t.cliente_id]) progressoMap[t.cliente_id] = { total: 0, concluidas: 0 }
-    progressoMap[t.cliente_id].total++
-    if (t.concluida) progressoMap[t.cliente_id].concluidas++
+  // Tipos válidos por cliente (personalizado ou padrão do grupo)
+  const clienteTiposSet: Record<string, Set<string>> = {}
+  for (const c of clientes ?? []) {
+    const tipos = (c.tarefas_personalizadas?.length > 0)
+      ? (c.tarefas_personalizadas as string[])
+      : (TAREFAS_GRUPOS[c.grupo ?? 'normal'] ?? TAREFAS_GRUPOS.normal)
+    clienteTiposSet[c.id] = new Set(tipos)
   }
 
-  // Monta set de cliente_ids com pelo menos 1 tarefa pendente (tipos válidos)
+  // Progresso por cliente: total = tarefas configuradas, concluidas = registros concluídos no banco
+  const progressoMap: Record<string, { total: number; concluidas: number }> = {}
+  for (const [clienteId, tiposSet] of Object.entries(clienteTiposSet)) {
+    progressoMap[clienteId] = { total: tiposSet.size, concluidas: 0 }
+  }
+  for (const t of tarefas ?? []) {
+    if (t.concluida && clienteTiposSet[t.cliente_id]?.has(t.tipo)) {
+      progressoMap[t.cliente_id].concluidas++
+    }
+  }
+
+  // Clientes com pendência: tipos configurados e ainda não todos concluídos
   const comPendencia = new Set(
-    (tarefas ?? []).filter(t => TIPOS_VALIDOS.has(t.tipo) && !t.concluida).map(t => t.cliente_id)
+    Object.entries(progressoMap)
+      .filter(([, p]) => p.concluidas < p.total)
+      .map(([id]) => id)
   )
 
   return (
