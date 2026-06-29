@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.3] - 2026-06-29
+
+### Corrigido
+- **Tarefas (operador)**: revertido uso de `createAdminClient()` — RLS corrigida diretamente no Supabase com policy permissiva para usuários autenticados; código volta a usar `createClient()` padrão sem dependência de `SUPABASE_SERVICE_ROLE_KEY` no Vercel
+
+### Arquivos alterados
+- `app/fiscal/clientes/[id]/page.tsx` — `toggleTarefa` usa `createClient()` novamente
+- `app/fiscal/clientes/actions.ts` — `toggleTarefa` e `desbloquearTarefa` sem `createAdminClient()`
+
+---
+
 ## [v0.4.2] - 2026-06-29
 
 ### Corrigido

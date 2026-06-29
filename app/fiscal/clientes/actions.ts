@@ -1,12 +1,9 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function toggleTarefa(tarefaId: string, concluida: boolean) {
-  const authSupabase = await createClient()
-  const { data: { user } } = await authSupabase.auth.getUser()
-  if (!user) return
-  const supabase = createAdminClient()
+  const supabase = await createClient()
   await supabase
     .from('tarefas')
     .update({ concluida, concluida_em: concluida ? new Date().toISOString() : null })
@@ -21,10 +18,8 @@ export async function desbloquearTarefa(
   tarefaTipo: string,
   competencia: string,
 ) {
-  const authSupabase = await createClient()
-  const { data: { user } } = await authSupabase.auth.getUser()
-  if (!user) return
-  const supabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   await supabase
     .from('tarefas')
@@ -32,7 +27,7 @@ export async function desbloquearTarefa(
     .eq('id', tarefaId)
 
   await supabase.from('task_unlock_log').insert({
-    usuario_id: user.id,
+    usuario_id: user?.id,
     usuario_nome: usuarioNome,
     cliente_id: null,
     cliente_nome: clienteNome,
