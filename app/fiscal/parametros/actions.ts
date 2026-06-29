@@ -1,11 +1,12 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 
 export async function salvarComunicado(formData: FormData) {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) throw new Error('Não autorizado')
   const texto = formData.get('dashboard_announcement') as string
 
   const { error } = await supabase
@@ -18,11 +19,9 @@ export async function salvarComunicado(formData: FormData) {
 }
 
 export async function atualizarPerfil(id: string, formData: FormData) {
-  const supabase = await createClient()
-
-  const { data: { user: caller } } = await supabase.auth.getUser()
-  if (!caller) throw new Error('Não autorizado.')
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', caller.id).single()
+  const { user, supabase } = await getAuthenticatedClient()
+  if (!supabase || !user) throw new Error('Não autorizado.')
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') throw new Error('Acesso negado.')
 
   const { error } = await supabase
@@ -46,11 +45,9 @@ export async function criarUsuario(payload: {
   cor: string
   abas: string[]
 }): Promise<{ error?: string }> {
-  // Verifica que o chamador é admin
-  const supabaseCheck = await createClient()
-  const { data: { user: caller } } = await supabaseCheck.auth.getUser()
-  if (!caller) return { error: 'Não autorizado.' }
-  const { data: callerProfile } = await supabaseCheck.from('profiles').select('role').eq('id', caller.id).single()
+  const { user, supabase } = await getAuthenticatedClient()
+  if (!supabase || !user) return { error: 'Não autorizado.' }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
 
   const url  = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -91,7 +88,8 @@ export async function criarUsuario(payload: {
 }
 
 export async function salvarConfiguracoes(settings: Record<string, unknown>): Promise<{ error?: string }> {
-  const supabase = await createClient()
+  const { supabase } = await getAuthenticatedClient()
+  if (!supabase) return { error: 'Não autorizado' }
   const { error } = await supabase
     .from('app_settings')
     .update(settings)
