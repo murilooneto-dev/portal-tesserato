@@ -74,7 +74,7 @@ export default async function TarefasPage() {
               <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="w-24 h-1.5 bg-white/8 rounded-full">
                   <div
-                    className="h-full bg-[#34CEFF] rounded-full transition-all"
+                    className="h-full bg-[#00CCEB] rounded-full transition-all"
                     style={{ width: `${pct}%` }}
                   />
                 </div>

@@ -169,7 +169,7 @@ export default function CorrigirAtividadesClient() {
                 <input type="checkbox"
                   checked={itens.length > 0 && itens.every(i => i.selecionado)}
                   onChange={e => toggleTodos(e.target.checked)}
-                  className="w-4 h-4 accent-[#34CEFF]" />
+                  className="w-4 h-4 accent-[#00CCEB]" />
               </th>
               <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Empresa</th>
               <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Valor atual</th>
@@ -184,7 +184,7 @@ export default function CorrigirAtividadesClient() {
                 <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
                   <input type="checkbox" checked={item.selecionado}
                     onChange={e => setItens(prev => prev.map(i => i.id === item.id ? { ...i, selecionado: e.target.checked } : i))}
-                    className="w-4 h-4 accent-[#34CEFF]" />
+                    className="w-4 h-4 accent-[#00CCEB]" />
                 </td>
                 <td className="px-4 py-2.5 text-white font-medium text-sm">{item.nome}</td>
                 <td className="px-4 py-2.5 text-red-400 font-mono text-xs">{item.atividade}</td>
@@ -195,9 +195,9 @@ export default function CorrigirAtividadesClient() {
                     <select
                       value={item.correcaoManual}
                       onChange={e => setManual(item.id, e.target.value)}
-                      className="w-full px-2 py-1 rounded-lg bg-[#1c2e52] border border-white/15 text-white text-xs focus:outline-none focus:border-[#34CEFF]/50">
+                      className="w-full px-2 py-1 rounded-lg bg-[#162444] border border-white/15 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50">
                       <option value="">Selecionar correção...</option>
-                      {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[#1c2e52]">{a}</option>)}
+                      {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[#162444]">{a}</option>)}
                     </select>
                   )}
                 </td>
@@ -209,7 +209,7 @@ export default function CorrigirAtividadesClient() {
 
       <div className="flex justify-end">
         <button onClick={corrigir} disabled={salvando || selecionados.length === 0}
-          className="px-5 py-2.5 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
+          className="px-5 py-2.5 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
           {salvando ? 'Corrigindo...' : `Corrigir ${selecionados.length} registro${selecionados.length !== 1 ? 's' : ''}`}
         </button>
       </div>

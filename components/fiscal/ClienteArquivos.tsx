@@ -75,7 +75,7 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais }: Props) 
         <label className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
           isPending
             ? 'opacity-50 pointer-events-none'
-            : 'bg-[#34CEFF]/15 border-[#34CEFF]/40 text-[#34CEFF] hover:bg-[#34CEFF]/25'
+            : 'bg-[#00CCEB]/15 border-[#00CCEB]/40 text-[#00CCEB] hover:bg-[#00CCEB]/25'
         }`}>
           {isPending ? 'Enviando...' : '+ Anexar'}
           <input

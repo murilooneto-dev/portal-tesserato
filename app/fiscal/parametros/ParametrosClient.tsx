@@ -44,15 +44,15 @@ const ABAS = [
   'Conferência', 'Relatórios', 'Histórico', 'Empresas', 'Parcelamentos',
 ]
 
-const inputCls = "w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/8 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#34CEFF]/50 transition-colors"
-const labelCls = "block text-xs font-bold text-[#34CEFF] uppercase tracking-widest mb-1.5"
+const inputCls = "w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/8 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#00CCEB]/50 transition-colors"
+const labelCls = "block text-xs font-bold text-[#00CCEB] uppercase tracking-widest mb-1.5"
 
 function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <label className="flex items-center gap-2 cursor-pointer select-none">
       <div
         onClick={() => onChange(!on)}
-        className={`relative w-10 h-5 rounded-full transition-colors ${on ? 'bg-[#34CEFF]' : 'bg-white/10'}`}
+        className={`relative w-10 h-5 rounded-full transition-colors ${on ? 'bg-[#00CCEB]' : 'bg-white/10'}`}
       >
         <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
       </div>
@@ -194,7 +194,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   }
 
   const sectionHeader = (title: string) => (
-    <p className="text-xs font-bold text-[#34CEFF] uppercase tracking-widest mb-4">{title}</p>
+    <p className="text-xs font-bold text-[#00CCEB] uppercase tracking-widest mb-4">{title}</p>
   )
 
   return (
@@ -236,7 +236,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
             <button
               onClick={handleSaveComunicado}
               disabled={savingAnn}
-              className="px-4 py-2 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50"
             >
               {savingAnn ? 'Salvando...' : 'Salvar comunicado'}
             </button>
@@ -268,7 +268,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
 
           <div className="flex items-center gap-2 mb-6">
             <input type="checkbox" id="usarSenhaApp" checked={usarSenhaApp} onChange={e => setUsarSenhaApp(e.target.checked)}
-              className="w-4 h-4 accent-[#34CEFF]" />
+              className="w-4 h-4 accent-[#00CCEB]" />
             <label htmlFor="usarSenhaApp" className="text-white/50 text-xs">Usar Senha de App (recomendado para contas com 2FA)</label>
           </div>
 
@@ -319,7 +319,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
 
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={handleSaveEmail} disabled={savingEmail}
-              className="px-4 py-2 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
+              className="px-4 py-2 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
               {savingEmail ? 'Salvando...' : 'Salvar configuração'}
             </button>
             <button className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 text-sm hover:bg-white/10 transition-colors">
@@ -356,7 +356,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                 <div>
                   <label className={labelCls}>Perfil</label>
                   <select value={novoPerfil} onChange={e => setNovoPerfil(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#162546] border border-white/8 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50 transition-colors">
+                    className="w-full px-4 py-2.5 rounded-xl bg-[#111e3a] border border-white/8 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 transition-colors">
                     <option value="operador">Operador</option>
                     <option value="admin">Admin</option>
                   </select>
@@ -377,7 +377,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                   {ABAS.map(aba => (
                     <label key={aba} className="flex items-center gap-2 cursor-pointer select-none">
                       <input type="checkbox" checked={novoAbas.includes(aba)} onChange={() => toggleAba(aba)}
-                        className="w-3.5 h-3.5 accent-[#34CEFF]" />
+                        className="w-3.5 h-3.5 accent-[#00CCEB]" />
                       <span className="text-white/60 text-xs">{aba}</span>
                     </label>
                   ))}
@@ -388,7 +388,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
               {novoUserOk && <p className="text-green-400 text-sm">Usuário criado com sucesso!</p>}
 
               <button onClick={handleCriarUsuario} disabled={criandoUser}
-                className="w-full py-2.5 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
+                className="w-full py-2.5 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
                 {criandoUser ? 'Criando...' : 'Criar usuário'}
               </button>
               <p className="text-white/20 text-xs text-center">Usuários criados aqui têm acesso apenas ao setor fiscal.</p>
@@ -424,7 +424,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                           <select
                             value={edits.role ?? p.role}
                             onChange={e => setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], role: e.target.value as Profile['role'] } }))}
-                            className="flex-1 px-3 py-2 rounded-lg bg-[#162546] border border-white/10 text-white text-sm focus:outline-none"
+                            className="flex-1 px-3 py-2 rounded-lg bg-[#111e3a] border border-white/10 text-white text-sm focus:outline-none"
                           >
                             <option value="admin">Admin</option>
                             <option value="operador">Operador</option>
@@ -438,7 +438,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                         </div>
                         <div className="flex gap-2">
                           <button onClick={() => handleSaveProfile(p.id)} disabled={savingProfile === p.id}
-                            className="flex-1 py-1.5 rounded-lg bg-[#34CEFF] text-white text-xs font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
+                            className="flex-1 py-1.5 rounded-lg bg-[#00CCEB] text-white text-xs font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
                             {savingProfile === p.id ? 'Salvando...' : 'Salvar'}
                           </button>
                           <button onClick={() => { setEditingProfile(null); setProfileEdits(prev => { const n = { ...prev }; delete n[p.id]; return n }) }}
@@ -474,7 +474,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       {/* Log modal */}
       {logModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#162546] border border-white/10 rounded-2xl w-full max-w-5xl max-h-[80vh] flex flex-col overflow-hidden">
+          <div className="bg-[#111e3a] border border-white/10 rounded-2xl w-full max-w-5xl max-h-[80vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
               <h2 className="text-white font-semibold">
                 {logModal === 'tarefas' ? `Log de Tarefas (últimos ${taskLogs.length})` : `Log de Exclusões (últimos ${deletionLogs.length})`}

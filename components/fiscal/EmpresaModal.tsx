@@ -61,8 +61,8 @@ const emptyForm = (): FormData => ({
   tarefas_personalizadas: [],
 })
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
-const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[#1c2e52] border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
+const inputCls = "w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
+const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[#162444] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
 const labelCls = "block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5"
 
 export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnly = false }: Props) {
@@ -188,7 +188,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[#1c2e52] border border-white/12 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="bg-[#162444] border border-white/12 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 shrink-0">
@@ -209,7 +209,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
                 <input className={inputCls} value={form.cod} onChange={e => set('cod', e.target.value)} placeholder="00000" disabled={readOnly} />
               </div>
               <div>
-                <label className={labelCls}>CNPJ {loadingCnpj && <span className="text-[#34CEFF] normal-case tracking-normal">Buscando...</span>}</label>
+                <label className={labelCls}>CNPJ {loadingCnpj && <span className="text-[#00CCEB] normal-case tracking-normal">Buscando...</span>}</label>
                 <input className={inputCls + ' font-mono'} value={form.cnpj}
                   onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }}
                   placeholder="00.000.000/0000-00" disabled={readOnly} />
@@ -232,7 +232,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
                 <label className={labelCls}>Atividade</label>
                 <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly}>
                   <option value="">Selecionar...</option>
-                  {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[#1c2e52]">{a}</option>)}
+                  {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[#162444]">{a}</option>)}
                 </select>
               </div>
             </div>
@@ -274,7 +274,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
             {/* Checkbox Confere SIGA */}
             <div>
               <label className={`flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-white/8 bg-white/2 transition-all`}>
-                <input type="checkbox" checked={form.confere_siga} onChange={e => set('confere_siga', e.target.checked)} className="w-4 h-4 accent-[#34CEFF]" disabled={readOnly} />
+                <input type="checkbox" checked={form.confere_siga} onChange={e => set('confere_siga', e.target.checked)} className="w-4 h-4 accent-[#00CCEB]" disabled={readOnly} />
                 <span className="text-xs font-bold uppercase tracking-widest text-white/40">Confere SIGA?</span>
               </label>
             </div>
@@ -291,8 +291,8 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
                     set('tarefas_personalizadas', [...TAREFAS_PADRAO[novoGrupo]])
                   }
                 }} disabled={readOnly}>
-                  <option value="" className="bg-[#1c2e52]">Selecionar...</option>
-                  {GRUPOS.map(g => <option key={g.value} value={g.value} className="bg-[#1c2e52]">{g.label}</option>)}
+                  <option value="" className="bg-[#162444]">Selecionar...</option>
+                  {GRUPOS.map(g => <option key={g.value} value={g.value} className="bg-[#162444]">{g.label}</option>)}
                 </select>
               </div>
               <div>
@@ -311,8 +311,8 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               <div>
                 <label className={labelCls}>Responsável</label>
                 <select className={selectCls} value={form.responsavel} onChange={e => set('responsavel', e.target.value)} disabled={readOnly}>
-                  <option value="" className="bg-[#1c2e52]">Selecionar...</option>
-                  {responsaveis.map(r => <option key={r} value={r} className="bg-[#1c2e52]">{r}</option>)}
+                  <option value="" className="bg-[#162444]">Selecionar...</option>
+                  {responsaveis.map(r => <option key={r} value={r} className="bg-[#162444]">{r}</option>)}
                 </select>
               </div>
             </div>
@@ -327,7 +327,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
             {/* Declaração Anual */}
             <div>
               <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-white/8 bg-white/2">
-                <input type="checkbox" checked={form.declaracao_anual} onChange={e => set('declaracao_anual', e.target.checked)} className="w-4 h-4 accent-[#34CEFF]" disabled={readOnly} />
+                <input type="checkbox" checked={form.declaracao_anual} onChange={e => set('declaracao_anual', e.target.checked)} className="w-4 h-4 accent-[#00CCEB]" disabled={readOnly} />
                 <span className="text-xs font-bold uppercase tracking-widest text-white/40">Declaração Anual</span>
               </label>
             </div>
@@ -355,7 +355,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
                   </p>
                 )}
                 {form.tarefas_personalizadas.map((t, i) => (
-                  <span key={i} className="flex items-center gap-1.5 text-xs bg-[#34CEFF]/10 border border-[#34CEFF]/30 text-white px-2.5 py-1 rounded-lg">
+                  <span key={i} className="flex items-center gap-1.5 text-xs bg-[#00CCEB]/10 border border-[#00CCEB]/30 text-white px-2.5 py-1 rounded-lg">
                     {t}
                     {!readOnly && (
                       <button type="button"
@@ -374,7 +374,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
                     placeholder="Digitar nome da tarefa e pressionar Enter..."
                     className={inputCls + ' flex-1 text-xs'} />
                   <button type="button" onClick={addTarefa}
-                    className="px-4 py-2 rounded-xl bg-[#34CEFF]/20 border border-[#34CEFF]/40 text-[#34CEFF] hover:bg-[#34CEFF]/30 text-xs font-semibold transition-colors whitespace-nowrap">
+                    className="px-4 py-2 rounded-xl bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] hover:bg-[#00CCEB]/30 text-xs font-semibold transition-colors whitespace-nowrap">
                     + Adicionar
                   </button>
                 </div>
@@ -404,7 +404,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               Cancelar
             </button>
             <button onClick={handleSave} disabled={saving || !form.nome.trim()}
-              className="px-6 py-2.5 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
+              className="px-6 py-2.5 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
               {saving ? 'Salvando...' : 'Salvar empresa'}
             </button>
           </>)}

@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.1] - 2026-06-29
+
+### Alterado
+- **Tema visual**: paleta ajustada de Azul Vívido (Opção 3) para Azul Aço (Opção 2) — fundo `#111e3a`, surfaces `#162444`, accent `#00CCEB`
+
+### Corrigido
+- **Tarefas**: input de data não bloqueia mais ao digitar os primeiros 2 dígitos do ano — agora aguarda ano completo (≥ 1000) antes de salvar
+
+### Arquivos alterados
+- `app/globals.css`, `app/fiscal/layout.tsx` e 29 outros componentes — substituição da paleta de cores
+- `components/fiscal/TarefaChecklist.tsx` — validação de ano completo no input de data
+
+---
+
 ## [v0.4.0] - 2026-06-29
 
 ### Adicionado

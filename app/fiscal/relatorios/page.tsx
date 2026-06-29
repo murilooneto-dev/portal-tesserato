@@ -95,7 +95,7 @@ export default function RelatoriosPage() {
   td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; font-size: 9px; vertical-align: middle; }
   tr:nth-child(even) td { background: #fafafa; }
   .bar-bg { background: #e5e7eb; border-radius: 3px; height: 6px; width: 60px; display: inline-block; vertical-align: middle; margin-right: 4px; }
-  .bar-fill { background: #34CEFF; height: 6px; border-radius: 3px; display: block; }
+  .bar-fill { background: #00CCEB; height: 6px; border-radius: 3px; display: block; }
   .badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 8px; font-weight: bold; }
   .normal { background: #dbeafe; color: #1d4ed8; }
   .simples { background: #dcfce7; color: #166534; }
@@ -145,27 +145,27 @@ export default function RelatoriosPage() {
 
         {isAdmin && (
           <select value={filtroResp} onChange={e => setFiltroResp(e.target.value)}
-            className="bg-[#1c2e52] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#34CEFF]/50">
-            {responsaveis.map(r => <option key={r} value={r} className="bg-[#1c2e52]">{r}</option>)}
+            className="bg-[#162444] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00CCEB]/50">
+            {responsaveis.map(r => <option key={r} value={r} className="bg-[#162444]">{r}</option>)}
           </select>
         )}
 
         <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)}
-          className="bg-[#1c2e52] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#34CEFF]/50">
-          <option value="TODOS" className="bg-[#1c2e52]">Todos</option>
-          <option value="normal" className="bg-[#1c2e52]">Regime Normal</option>
-          <option value="simples" className="bg-[#1c2e52]">Simples Nacional</option>
-          <option value="mei" className="bg-[#1c2e52]">MEI</option>
+          className="bg-[#162444] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00CCEB]/50">
+          <option value="TODOS" className="bg-[#162444]">Todos</option>
+          <option value="normal" className="bg-[#162444]">Regime Normal</option>
+          <option value="simples" className="bg-[#162444]">Simples Nacional</option>
+          <option value="mei" className="bg-[#162444]">MEI</option>
         </select>
 
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)}
-          className="bg-[#1c2e52] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#34CEFF]/50">
-          <option value="TODAS" className="bg-[#1c2e52]">Todas as atividades</option>
-          {atividades.map(a => <option key={a} value={a} className="bg-[#1c2e52]">{a}</option>)}
+          className="bg-[#162444] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00CCEB]/50">
+          <option value="TODAS" className="bg-[#162444]">Todas as atividades</option>
+          {atividades.map(a => <option key={a} value={a} className="bg-[#162444]">{a}</option>)}
         </select>
 
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-[#1c2e52] cursor-pointer hover:border-white/20 transition-colors">
-          <input type="checkbox" checked={apenasP} onChange={e => setApenasP(e.target.checked)} className="w-4 h-4 accent-[#34CEFF]" />
+        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-[#162444] cursor-pointer hover:border-white/20 transition-colors">
+          <input type="checkbox" checked={apenasP} onChange={e => setApenasP(e.target.checked)} className="w-4 h-4 accent-[#00CCEB]" />
           <span className="text-sm text-white/70 whitespace-nowrap">Apenas pendências</span>
         </label>
 
@@ -223,7 +223,7 @@ export default function RelatoriosPage() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-1.5 bg-white/15 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#34CEFF] rounded-full" style={{ width: `${r.pct}%` }} />
+                      <div className="h-full bg-[#00CCEB] rounded-full" style={{ width: `${r.pct}%` }} />
                     </div>
                     <span className="text-xs text-white/70">{r.pct}%</span>
                   </div>

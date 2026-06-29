@@ -22,7 +22,7 @@ const CARD_META: Record<Ferramenta, { titulo: string; descricao: string; cor: st
   ISS: {
     titulo: 'ISS',
     descricao: 'Clientes com envio de ISS habilitado',
-    cor: '#34CEFF',
+    cor: '#00CCEB',
     icon: '📋',
   },
   MEI: {
@@ -220,7 +220,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
                 placeholder="Buscar por nome ou CNPJ..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#34CEFF]/50 w-56"
+                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#00CCEB]/50 w-56"
               />
               <button
                 onClick={() => exportarPlanilha(listaFiltrada, aberto)}
