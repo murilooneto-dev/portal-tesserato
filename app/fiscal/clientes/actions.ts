@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createClientWithToken } from '@/lib/supabase/server'
 
 export async function toggleTarefa(tarefaId: string, concluida: boolean) {
   const supabase = await createClient()
@@ -18,8 +18,11 @@ export async function desbloquearTarefa(
   tarefaTipo: string,
   competencia: string,
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const authSupabase = await createClient()
+  const { data: { user } } = await authSupabase.auth.getUser()
+  const { data: { session } } = await authSupabase.auth.getSession()
+  if (!session?.access_token) return
+  const supabase = createClientWithToken(session.access_token)
 
   await supabase
     .from('tarefas')

@@ -9,6 +9,18 @@ export function createAdminClient() {
   )
 }
 
+// Cria cliente com JWT do usuário explícito no header — garante role "authenticated" no banco
+export function createClientWithToken(token: string) {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    }
+  )
+}
+
 export async function createClient() {
   const cookieStore = await cookies()
 

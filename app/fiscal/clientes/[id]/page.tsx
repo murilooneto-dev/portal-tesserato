@@ -1,7 +1,7 @@
 ﻿import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createClientWithToken } from '@/lib/supabase/server'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
@@ -58,9 +58,12 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
     'use server'
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const authSupabase = await createClient()
+    const { data: { user } } = await authSupabase.auth.getUser()
     if (!user) return
+    const { data: { session } } = await authSupabase.auth.getSession()
+    if (!session?.access_token) return
+    const supabase = createClientWithToken(session.access_token)
     const concluida_em = concluida
       ? (data ? new Date(data + 'T12:00:00').toISOString() : new Date().toISOString())
       : null
