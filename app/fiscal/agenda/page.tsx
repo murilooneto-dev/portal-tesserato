@@ -196,13 +196,13 @@ export default function AgendaPage() {
             <h2 className="text-white font-semibold">{MESES[mes]} {ano}</h2>
             <div className="flex gap-2">
               <button onClick={() => navMes(1)} className="text-white/50 hover:text-white px-3 py-1 rounded-lg border border-white/10 hover:border-white/20 transition-all">→</button>
-              <button onClick={() => abrirNovo()} className="text-xs bg-[#34CEFF]/20 border border-[#34CEFF]/40 text-[#34CEFF] px-3 py-1 rounded-lg hover:bg-[#34CEFF]/30 transition-all">+ Novo</button>
+              <button onClick={() => abrirNovo()} className="text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1 rounded-lg hover:bg-[#00CCEB]/30 transition-all">+ Novo</button>
             </div>
           </div>
 
           <div className="grid grid-cols-7 gap-px bg-white/5 rounded-xl overflow-hidden">
             {DIAS_SEMANA.map(d => (
-              <div key={d} className="bg-[#162546] text-center text-xs text-white/30 py-2 font-medium">{d}</div>
+              <div key={d} className="bg-[#111e3a] text-center text-xs text-white/30 py-2 font-medium">{d}</div>
             ))}
             {celulas.map((dia, i) => {
               const isHoje = dia === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear()
@@ -211,11 +211,11 @@ export default function AgendaPage() {
                 <div
                   key={i}
                   onClick={() => dia && setDiaSelecionado(dia === diaSelecionado ? null : dia)}
-                  className={`bg-[#162546] min-h-[60px] p-1.5 cursor-pointer transition-colors ${dia ? 'hover:bg-white/5' : ''} ${dia === diaSelecionado ? 'bg-white/5' : ''}`}
+                  className={`bg-[#111e3a] min-h-[60px] p-1.5 cursor-pointer transition-colors ${dia ? 'hover:bg-white/5' : ''} ${dia === diaSelecionado ? 'bg-white/5' : ''}`}
                 >
                   {dia && (
                     <>
-                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isHoje ? 'bg-[#34CEFF] text-white' : 'text-white/50'}`}>{dia}</span>
+                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isHoje ? 'bg-[#00CCEB] text-white' : 'text-white/50'}`}>{dia}</span>
                       <div className="flex flex-wrap gap-0.5 mt-1">
                         {itsDia.map(it => (
                           <span key={it.id} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: STATUS_COR[it.status] }} />
@@ -237,7 +237,7 @@ export default function AgendaPage() {
                 <h3 className="text-white font-semibold">
                   {diaSelecionado} de {MESES[mes]}
                 </h3>
-                <button onClick={() => abrirNovo(diaSelecionado)} className="text-xs bg-[#34CEFF]/20 border border-[#34CEFF]/40 text-[#34CEFF] px-3 py-1 rounded-lg hover:bg-[#34CEFF]/30 transition-all">+ Novo</button>
+                <button onClick={() => abrirNovo(diaSelecionado)} className="text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1 rounded-lg hover:bg-[#00CCEB]/30 transition-all">+ Novo</button>
               </div>
               {itensDia.length === 0 ? (
                 <p className="text-white/30 text-sm">Nenhum compromisso neste dia.</p>
@@ -271,29 +271,29 @@ export default function AgendaPage() {
               <div>
                 <label className="text-xs text-white/50 mb-1 block">Título *</label>
                 <input value={editando.titulo} onChange={e => setEditando(p => ({ ...p, titulo: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50" />
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/50 mb-1 block">Data *</label>
                   <input type="date" value={editando.data_compromisso} onChange={e => setEditando(p => ({ ...p, data_compromisso: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50" />
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
                 </div>
                 <div>
                   <label className="text-xs text-white/50 mb-1 block">Horário</label>
                   <input type="time" value={editando.hora_compromisso ?? ''} onChange={e => setEditando(p => ({ ...p, hora_compromisso: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50" />
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
                 </div>
               </div>
               <div>
                 <label className="text-xs text-white/50 mb-1 block">Descrição</label>
                 <textarea value={editando.descricao ?? ''} onChange={e => setEditando(p => ({ ...p, descricao: e.target.value }))} rows={2}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50 resize-none" />
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 resize-none" />
               </div>
               <div>
                 <label className="text-xs text-white/50 mb-1 block">Status</label>
                 <select value={editando.status} onChange={e => setEditando(p => ({ ...p, status: e.target.value as AgendaItem['status'] }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50">
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50">
                   <option value="pendente">Pendente</option>
                   <option value="concluido">Concluído</option>
                   <option value="cancelado">Cancelado</option>
@@ -301,14 +301,14 @@ export default function AgendaPage() {
               </div>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" checked={editando.lembrete_3_dias} onChange={e => setEditando(p => ({ ...p, lembrete_3_dias: e.target.checked }))}
-                  className="w-4 h-4 accent-[#34CEFF]" />
+                  className="w-4 h-4 accent-[#00CCEB]" />
                 <span className="text-sm text-white/70">Lembrete 3 dias antes</span>
               </label>
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setModalAberto(false)} className="text-sm text-white/50 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:border-white/20 transition-all">Cancelar</button>
               <button onClick={salvar} disabled={salvando || !editando.titulo || !editando.data_compromisso}
-                className="text-sm bg-[#34CEFF] text-white px-5 py-2 rounded-xl hover:bg-[#1ab8e8] transition-all disabled:opacity-50">
+                className="text-sm bg-[#00CCEB] text-white px-5 py-2 rounded-xl hover:bg-[#00b3d4] transition-all disabled:opacity-50">
                 {salvando ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

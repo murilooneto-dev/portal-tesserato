@@ -259,7 +259,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <label className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all text-sm ${
           sistemFile
-            ? 'bg-[#34CEFF]/10 border-[#34CEFF]/40 text-[#34CEFF]'
+            ? 'bg-[#00CCEB]/10 border-[#00CCEB]/40 text-[#00CCEB]'
             : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/80'
         }`}>
           <span>📂</span>
@@ -276,7 +276,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
         <button
           onClick={comparar}
           disabled={comparando || !sistemFile}
-          className="px-4 py-2 rounded-xl bg-[#34CEFF] text-white text-sm font-medium hover:bg-[#1ab8e8] transition-all disabled:opacity-40"
+          className="px-4 py-2 rounded-xl bg-[#00CCEB] text-white text-sm font-medium hover:bg-[#00b3d4] transition-all disabled:opacity-40"
         >
           {comparando ? '⏳ Comparando...' : '🔍 Comparar'}
         </button>
@@ -309,7 +309,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
         <div>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
-              { label: 'Chaves DTE',    val: resultado.dte,                  cor: '#34CEFF' },
+              { label: 'Chaves DTE',    val: resultado.dte,                  cor: '#00CCEB' },
               { label: 'Chaves SISTEMA', val: resultado.sistema,              cor: '#10b981' },
               { label: 'Divergências',   val: resultado.divergencias.length,  cor: resultado.divergencias.length > 0 ? '#ef4444' : '#10b981' },
             ].map(s => (
@@ -333,7 +333,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
               <div className="overflow-x-auto max-h-80 overflow-y-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-white/8 sticky top-0 bg-[#1c2e52]">
+                    <tr className="border-b border-white/8 sticky top-0 bg-[#162444]">
                       <th className="text-left text-white/30 uppercase px-3 py-2">#</th>
                       <th className="text-left text-white/30 uppercase px-3 py-2">UF</th>
                       <th className="text-left text-white/30 uppercase px-3 py-2">Nº NF</th>
@@ -347,7 +347,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
                     {resultado.divergencias.slice(0, 300).map((e, i) => (
                       <tr key={e.chave} className="border-b border-white/5 hover:bg-white/3 transition-colors">
                         <td className="px-3 py-1.5 text-white/30">{i + 1}</td>
-                        <td className="px-3 py-1.5 text-[#34CEFF] font-bold">{e.uf}</td>
+                        <td className="px-3 py-1.5 text-[#00CCEB] font-bold">{e.uf}</td>
                         <td className="px-3 py-1.5 text-white/70">{e.numero || '—'}</td>
                         <td className="px-3 py-1.5 text-white/60">{e.data || '—'}</td>
                         <td className="px-3 py-1.5 text-white/70 max-w-[180px] truncate">{e.fornecedor || '—'}</td>

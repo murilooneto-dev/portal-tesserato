@@ -69,7 +69,8 @@ export default function TarefaChecklist({
 
   function handleDateChange(tipo: string, valor: string) {
     if (valor) {
-      // Preencheu data → concluída
+      // Aguarda ano completo (4 dígitos ≥ 1000) antes de salvar
+      if (parseInt(valor.slice(0, 4), 10) < 1000) return
       setOptimisticDates(prev => ({ ...prev, [tipo]: valor }))
       startTransition(() => onToggle(tipo, true, valor))
     } else {
@@ -115,7 +116,7 @@ export default function TarefaChecklist({
 
       <div className="w-full h-1.5 bg-white/8 rounded-full mb-5">
         <div
-          className="h-full bg-[#34CEFF] rounded-full transition-all duration-300"
+          className="h-full bg-[#00CCEB] rounded-full transition-all duration-300"
           style={{ width: `${total > 0 ? (concluidas / total) * 100 : 0}%` }}
         />
       </div>
@@ -130,11 +131,11 @@ export default function TarefaChecklist({
             <div key={tipo} className="flex flex-col gap-0">
               <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
                 feito
-                  ? 'bg-[#34CEFF]/8 border-[#34CEFF]/25'
+                  ? 'bg-[#00CCEB]/8 border-[#00CCEB]/25'
                   : 'bg-white/3 border-white/8'
               }`}>
                 {/* Indicador de status */}
-                <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[#34CEFF]' : 'bg-white/15'}`} />
+                <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[#00CCEB]' : 'bg-white/15'}`} />
 
                 {/* Nome da tarefa */}
                 <span className={`text-sm flex-1 transition-colors ${feito ? 'text-white/50 line-through' : 'text-white'}`}>
@@ -149,7 +150,7 @@ export default function TarefaChecklist({
                   disabled={isPending || isUnlocking}
                   className={`text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 ${
                     feito
-                      ? 'bg-[#34CEFF]/10 border-[#34CEFF]/30 text-[#34CEFF] focus:border-[#34CEFF]/60'
+                      ? 'bg-[#00CCEB]/10 border-[#00CCEB]/30 text-[#00CCEB] focus:border-[#00CCEB]/60'
                       : 'bg-white/5 border-white/10 text-white/60 focus:border-white/30 [color-scheme:dark]'
                   }`}
                   style={{ colorScheme: 'dark' }}
@@ -174,12 +175,12 @@ export default function TarefaChecklist({
                     onChange={e => setMotivoMap(prev => ({ ...prev, [tipo]: e.target.value }))}
                     placeholder="Motivo obrigatório..."
                     rows={2}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 resize-none focus:outline-none focus:border-[#34CEFF]/50"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 resize-none focus:outline-none focus:border-[#00CCEB]/50"
                   />
                   <button
                     onClick={() => handleUnlock(tipo)}
                     disabled={!(motivoMap[tipo]?.trim()) || unlockPending}
-                    className="self-end text-xs bg-[#34CEFF]/20 border border-[#34CEFF]/40 text-[#34CEFF] px-3 py-1.5 rounded-lg hover:bg-[#34CEFF]/30 transition-all disabled:opacity-40"
+                    className="self-end text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1.5 rounded-lg hover:bg-[#00CCEB]/30 transition-all disabled:opacity-40"
                   >
                     {unlockPending ? 'Aguarde...' : 'Confirmar desbloqueio'}
                   </button>
@@ -201,7 +202,7 @@ export default function TarefaChecklist({
             onChange={e => setMit(e.target.value)}
             onBlur={handleMITBlur}
             placeholder="Anotação MIT..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#34CEFF]/50 transition-colors"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#00CCEB]/50 transition-colors"
           />
         </div>
       )}

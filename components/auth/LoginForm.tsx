@@ -67,7 +67,7 @@ export default function LoginForm() {
     }
   }
 
-  const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#34CEFF] transition-colors text-sm"
+  const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#00CCEB] transition-colors text-sm"
 
   /* ---- Tela de redefinição enviada ---- */
   if (view === 'forgot_sent') {
@@ -79,7 +79,7 @@ export default function LoginForm() {
           <p className="text-white/40 text-sm mt-1">Verifique sua caixa de entrada em <span className="text-white/70">{emailReset}</span> e siga as instruções para redefinir sua senha.</p>
         </div>
         <button onClick={() => { setView('login'); setEmailReset('') }}
-          className="text-[#34CEFF] text-sm hover:underline mt-2">
+          className="text-[#00CCEB] text-sm hover:underline mt-2">
           Voltar ao login
         </button>
       </div>
@@ -111,7 +111,7 @@ export default function LoginForm() {
         {erroReset && <p className="text-red-400 text-sm">{erroReset}</p>}
 
         <button type="submit" disabled={enviandoReset}
-          className="py-3 rounded-xl bg-[#34CEFF] text-white font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
+          className="py-3 rounded-xl bg-[#00CCEB] text-white font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
           {enviandoReset ? 'Enviando...' : 'Enviar link de redefinição'}
         </button>
 
@@ -180,7 +180,7 @@ export default function LoginForm() {
         <label className="flex items-center gap-2 cursor-pointer select-none group">
           <div
             onClick={() => setLembrar(v => !v)}
-            className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${lembrar ? 'bg-[#34CEFF] border-[#34CEFF]' : 'border-white/20 bg-transparent'}`}
+            className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${lembrar ? 'bg-[#00CCEB] border-[#00CCEB]' : 'border-white/20 bg-transparent'}`}
           >
             {lembrar && (
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -192,7 +192,7 @@ export default function LoginForm() {
         </label>
 
         <button type="button" onClick={() => { setView('forgot'); setEmailReset(email) }}
-          className="text-xs text-white/40 hover:text-[#34CEFF] transition-colors">
+          className="text-xs text-white/40 hover:text-[#00CCEB] transition-colors">
           Esqueci minha senha
         </button>
       </div>
@@ -202,7 +202,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={carregando}
-        className="mt-1 py-3 rounded-xl bg-[#34CEFF] text-white font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="mt-1 py-3 rounded-xl bg-[#00CCEB] text-white font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {carregando ? 'Entrando...' : 'Entrar'}
       </button>

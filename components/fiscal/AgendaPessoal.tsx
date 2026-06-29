@@ -19,7 +19,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const STATUS_COR: Record<string, string> = {
-  pendente:  '#34CEFF',
+  pendente:  '#00CCEB',
   concluido: '#10b981',
   cancelado: '#6b7280',
 }
@@ -159,7 +159,7 @@ export default function AgendaPessoal() {
 
   return (
     <div>
-      <h2 className="text-xs font-bold text-[#34CEFF] uppercase tracking-widest mb-5">Minha Agenda</h2>
+      <h2 className="text-xs font-bold text-[#00CCEB] uppercase tracking-widest mb-5">Minha Agenda</h2>
 
       {/* Lembretes próximos 3 dias */}
       {lembretes.length > 0 && (
@@ -227,7 +227,7 @@ export default function AgendaPessoal() {
                 {dia && (
                   <>
                     <div className={`w-7 h-7 flex items-center justify-center rounded-full mx-auto text-sm font-medium mb-1 ${
-                      isHoje ? 'bg-[#34CEFF] text-white font-bold' : 'text-white/50'
+                      isHoje ? 'bg-[#00CCEB] text-white font-bold' : 'text-white/50'
                     }`}>
                       {dia}
                     </div>
@@ -273,7 +273,7 @@ export default function AgendaPessoal() {
               </p>
               <div className="flex gap-2">
                 <button onClick={() => abrirFormNovo()}
-                  className="text-xs bg-[#34CEFF]/20 border border-[#34CEFF]/40 text-[#34CEFF] px-3 py-1.5 rounded-lg hover:bg-[#34CEFF]/30 transition-all">
+                  className="text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1.5 rounded-lg hover:bg-[#00CCEB]/30 transition-all">
                   + Novo
                 </button>
                 <button onClick={() => setDiaSel(null)}
@@ -348,31 +348,31 @@ export default function AgendaPessoal() {
               <div>
                 <label className="text-xs text-white/40 mb-1.5 block">Título *</label>
                 <textarea value={form.titulo} onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))}
-                  rows={1} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50 resize-none leading-relaxed" />
+                  rows={1} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 resize-none leading-relaxed" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-white/40 mb-1.5 block">Data *</label>
                   <input type="date" value={form.data_compromisso}
                     onChange={e => setForm(p => ({ ...p, data_compromisso: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50" />
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
                 </div>
                 <div>
                   <label className="text-xs text-white/40 mb-1.5 block">Horário</label>
                   <input type="time" value={form.hora_compromisso ?? ''}
                     onChange={e => setForm(p => ({ ...p, hora_compromisso: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50" />
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
                 </div>
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1.5 block">Descrição</label>
                 <textarea value={form.descricao ?? ''} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))}
-                  rows={8} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50 resize-none leading-relaxed" />
+                  rows={8} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 resize-none leading-relaxed" />
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Status</label>
                 <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as AgendaItem['status'] }))}
-                  className="w-full bg-[#1c2e52] border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50">
+                  className="w-full bg-[#162444] border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50">
                   <option value="pendente">Pendente</option>
                   <option value="concluido">Concluído</option>
                   <option value="cancelado">Cancelado</option>
@@ -381,7 +381,7 @@ export default function AgendaPessoal() {
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" checked={form.lembrete_3_dias}
                   onChange={e => setForm(p => ({ ...p, lembrete_3_dias: e.target.checked }))}
-                  className="w-4 h-4 accent-[#34CEFF]" />
+                  className="w-4 h-4 accent-[#00CCEB]" />
                 <span className="text-sm text-white/60">Lembrete 3 dias antes</span>
               </label>
             </div>
@@ -392,7 +392,7 @@ export default function AgendaPessoal() {
                 Cancelar
               </button>
               <button onClick={salvar} disabled={salvando || !form.titulo || !form.data_compromisso}
-                className="text-sm bg-[#34CEFF] text-white px-5 py-2 rounded-xl hover:bg-[#1ab8e8] transition-all disabled:opacity-50">
+                className="text-sm bg-[#00CCEB] text-white px-5 py-2 rounded-xl hover:bg-[#00b3d4] transition-all disabled:opacity-50">
                 {salvando ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

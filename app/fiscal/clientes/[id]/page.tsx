@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
+﻿import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
@@ -168,12 +168,12 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
                 href={`/fiscal/clientes/${id}?mes=${m}&ano=${ano}`}
                 className={`p-3 rounded-xl border text-center transition-all ${
                   isAtual
-                    ? 'bg-[#34CEFF]/15 border-[#34CEFF]/40'
+                    ? 'bg-[#00CCEB]/15 border-[#00CCEB]/40'
                     : 'bg-white/3 border-white/8 hover:bg-white/6'
                 }`}
               >
                 <p className="text-xs text-white/50 mb-1">{MESES_ABREV[m-1]}</p>
-                <p className={`text-lg font-bold ${pct === 100 ? 'text-[#34CEFF]' : pct > 0 ? 'text-white' : 'text-white/20'}`}>{pct}%</p>
+                <p className={`text-lg font-bold ${pct === 100 ? 'text-[#00CCEB]' : pct > 0 ? 'text-white' : 'text-white/20'}`}>{pct}%</p>
                 <p className="text-xs text-white/30">{feitas}/{total}</p>
               </Link>
             )

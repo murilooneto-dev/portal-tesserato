@@ -5,7 +5,7 @@ export const metadata = { title: 'Login — Tesserato' }
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-[#162546] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#111e3a] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8 gap-3">
           <Image

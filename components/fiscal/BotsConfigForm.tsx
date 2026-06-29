@@ -52,22 +52,22 @@ function BotCard({ bot, config, onSave }: {
           <label className="text-xs text-white/40 mb-1 block">Pasta de downloads</label>
           <input value={pasta} onChange={e => setPasta(e.target.value)}
             placeholder="C:\Users\...\Downloads"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#34CEFF] transition-colors" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#00CCEB] transition-colors" />
         </div>
         <div>
           <label className="text-xs text-white/40 mb-1 block">Email remetente</label>
           <input type="email" value={emailRem} onChange={e => setEmailRem(e.target.value)}
             placeholder="remetente@email.com"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#34CEFF] transition-colors" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#00CCEB] transition-colors" />
         </div>
         <div>
           <label className="text-xs text-white/40 mb-1 block">Email destinatário</label>
           <input type="email" value={emailDest} onChange={e => setEmailDest(e.target.value)}
             placeholder="destinatario@email.com"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#34CEFF] transition-colors" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#00CCEB] transition-colors" />
         </div>
         <button onClick={handleSave} disabled={salvando}
-          className="self-end mt-1 px-5 py-2 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
+          className="self-end mt-1 px-5 py-2 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
           {sucesso ? '✓ Salvo' : salvando ? 'Salvando...' : 'Salvar'}
         </button>
       </div>

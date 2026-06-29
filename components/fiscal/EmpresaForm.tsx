@@ -96,13 +96,13 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
           <input
             name="cod"
             defaultValue={defaultValues.cod ?? ''}
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
             placeholder="Opcional"
           />
         </div>
         <div>
           <label className="block text-white/60 text-xs mb-1.5">
-            CNPJ {loadingCnpj && <span className="text-[#34CEFF] ml-1">Buscando...</span>}
+            CNPJ {loadingCnpj && <span className="text-[#00CCEB] ml-1">Buscando...</span>}
           </label>
           <input
             name="cnpj"
@@ -111,7 +111,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
               setCnpj(e.target.value)
               fetchCnpj(e.target.value)
             }}
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50 font-mono"
+            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 font-mono"
             placeholder="00.000.000/0000-00"
           />
         </div>
@@ -125,7 +125,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
           required
           value={nome}
           onChange={e => setNome(e.target.value)}
-          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
           placeholder="Razão Social"
         />
       </div>
@@ -137,7 +137,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
           <input
             name="regime"
             defaultValue={defaultValues.regime ?? ''}
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
             placeholder="Ex: Simples Nacional"
           />
         </div>
@@ -146,7 +146,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
           <select
             name="grupo"
             defaultValue={defaultValues.grupo ?? ''}
-            className="w-full px-3 py-2 rounded-xl bg-[#162546] border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+            className="w-full px-3 py-2 rounded-xl bg-[#111e3a] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
           >
             <option value="">Selecionar...</option>
             {GRUPOS.map(g => (
@@ -162,7 +162,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
         <select
           name="atividade"
           defaultValue={defaultValues.atividade ?? ''}
-          className="w-full px-3 py-2 rounded-xl bg-[#162546] border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+          className="w-full px-3 py-2 rounded-xl bg-[#111e3a] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
         >
           <option value="">Selecionar...</option>
           {ATIVIDADES.map(a => (
@@ -179,7 +179,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
             name="municipio"
             value={municipio}
             onChange={e => setMunicipio(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
           />
         </div>
         <div>
@@ -188,7 +188,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
             name="uf"
             value={uf}
             onChange={e => setUf(e.target.value.toUpperCase().slice(0, 2))}
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50 uppercase"
+            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 uppercase"
             maxLength={2}
           />
         </div>
@@ -201,7 +201,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
           <input
             name="responsavel"
             defaultValue={defaultValues.responsavel ?? ''}
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
           />
         </div>
         <div>
@@ -212,7 +212,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
             min={1}
             max={5}
             defaultValue={defaultValues.prioridade ?? 3}
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
           />
         </div>
       </div>
@@ -224,7 +224,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
             name="declaracao_anual"
             type="checkbox"
             defaultChecked={defaultValues.declaracao_anual ?? false}
-            className="w-4 h-4 rounded accent-[#34CEFF]"
+            className="w-4 h-4 rounded accent-[#00CCEB]"
           />
           <span className="text-white/70 text-sm">Declaração Anual</span>
         </label>
@@ -234,7 +234,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
             type="checkbox"
             checked={enviaSS}
             onChange={e => setEnviaSS(e.target.checked)}
-            className="w-4 h-4 rounded accent-[#34CEFF]"
+            className="w-4 h-4 rounded accent-[#00CCEB]"
           />
           <span className="text-white/70 text-sm">Envia ISS</span>
         </label>
@@ -242,14 +242,14 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
 
       {/* ISS fields — only shown when enviaSS */}
       {enviaSS && (
-        <div className="pl-4 border-l-2 border-[#34CEFF]/30 space-y-4">
+        <div className="pl-4 border-l-2 border-[#00CCEB]/30 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-white/60 text-xs mb-1.5">Login ISS</label>
               <input
                 name="login_iss"
                 defaultValue={defaultValues.login_iss ?? ''}
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
               />
             </div>
             <div>
@@ -257,7 +257,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
               <input
                 name="senha_iss"
                 defaultValue={defaultValues.senha_iss ?? ''}
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
               />
             </div>
           </div>
@@ -267,7 +267,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
               name="email_envio_iss"
               type="email"
               defaultValue={defaultValues.email_envio_iss ?? ''}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
             />
           </div>
         </div>
@@ -296,7 +296,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
             onChange={e => setNovaTarefa(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefa())}
             placeholder="Nova tarefa..."
-            className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50"
+            className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
           />
           <button
             type="button"
@@ -312,7 +312,7 @@ export default function EmpresaForm({ defaultValues = {}, action, submitLabel }:
         <button
           type="submit"
           disabled={submitting}
-          className="px-6 py-2.5 rounded-xl bg-[#34CEFF] text-white text-sm font-medium hover:bg-[#34CEFF]/90 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 rounded-xl bg-[#00CCEB] text-white text-sm font-medium hover:bg-[#00CCEB]/90 transition-colors disabled:opacity-50"
         >
           {submitting ? 'Salvando...' : submitLabel}
         </button>

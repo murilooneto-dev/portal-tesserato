@@ -43,7 +43,7 @@ export default function ClienteObs({ clienteId, obsInicial }: Props) {
             onChange={e => setObs(e.target.value)}
             rows={3}
             placeholder="Observações sobre este cliente..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 resize-none focus:outline-none focus:border-[#34CEFF]/50 transition-colors"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 resize-none focus:outline-none focus:border-[#00CCEB]/50 transition-colors"
           />
           <div className="flex gap-2 justify-end">
             <button
@@ -55,7 +55,7 @@ export default function ClienteObs({ clienteId, obsInicial }: Props) {
             <button
               onClick={salvar}
               disabled={isPending}
-              className="text-xs bg-[#34CEFF]/20 border border-[#34CEFF]/40 text-[#34CEFF] px-3 py-1.5 rounded-lg hover:bg-[#34CEFF]/30 transition-all disabled:opacity-50"
+              className="text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1.5 rounded-lg hover:bg-[#00CCEB]/30 transition-all disabled:opacity-50"
             >
               {isPending ? 'Salvando...' : 'Salvar'}
             </button>

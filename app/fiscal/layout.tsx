@@ -24,7 +24,7 @@ export default async function FiscalLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#162546]">
+    <div className="flex h-screen overflow-hidden bg-[#111e3a]">
       <Sidebar profile={safeProfile} />
       <main className="flex-1 overflow-y-auto">
         {children}

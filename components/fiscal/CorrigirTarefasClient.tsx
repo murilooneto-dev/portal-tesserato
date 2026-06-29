@@ -210,7 +210,7 @@ export default function CorrigirTarefasClient() {
                 <input type="checkbox"
                   checked={itens.length > 0 && itens.every(i => i.selecionado)}
                   onChange={e => toggleTodos(e.target.checked)}
-                  className="w-4 h-4 accent-[#34CEFF]" />
+                  className="w-4 h-4 accent-[#00CCEB]" />
               </th>
               <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Origem</th>
               <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Empresa</th>
@@ -225,7 +225,7 @@ export default function CorrigirTarefasClient() {
                 <td className="px-4 py-2.5">
                   <input type="checkbox" checked={item.selecionado}
                     onChange={() => toggleSelecionado(idx)}
-                    className="w-4 h-4 accent-[#34CEFF]" />
+                    className="w-4 h-4 accent-[#00CCEB]" />
                 </td>
                 <td className="px-4 py-2.5">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
@@ -246,7 +246,7 @@ export default function CorrigirTarefasClient() {
                       value={item.correcaoManual}
                       onChange={e => setCorrecaoManual(idx, e.target.value)}
                       placeholder="Digite o valor correto..."
-                      className="w-full px-2 py-1 rounded-lg bg-white/5 border border-white/15 text-white text-xs focus:outline-none focus:border-[#34CEFF]/50"
+                      className="w-full px-2 py-1 rounded-lg bg-white/5 border border-white/15 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50"
                     />
                   )}
                 </td>
@@ -258,7 +258,7 @@ export default function CorrigirTarefasClient() {
 
       <div className="flex justify-end">
         <button onClick={corrigir} disabled={salvando || selecionados.length === 0}
-          className="px-5 py-2.5 rounded-xl bg-[#34CEFF] text-white text-sm font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
+          className="px-5 py-2.5 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
           {salvando ? 'Corrigindo...' : `Corrigir ${selecionados.length} registro${selecionados.length !== 1 ? 's' : ''}`}
         </button>
       </div>
