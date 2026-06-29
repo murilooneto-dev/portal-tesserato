@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.5] - 2026-06-29
+
+### Corrigido
+- **Tarefas (operador) — fix definitivo**: o `@supabase/ssr` não garante que o JWT do usuário seja incluído nas requests PostgREST do server action — as operações chegavam ao banco como role `anon`, violando a RLS (erro 42501). Solução: após `getUser()`, o access_token da sessão é extraído e um novo cliente Supabase é criado com o header `Authorization: Bearer <token>` explícito, garantindo que INSERT e UPDATE sejam feitos como `authenticated`
+
+### Arquivos alterados
+- `lib/supabase/server.ts` — nova função `createClientWithToken(token)` para cliente com JWT explícito
+- `app/fiscal/clientes/[id]/page.tsx` — `toggleTarefa` usa `createClientWithToken` para operações no banco
+- `app/fiscal/clientes/actions.ts` — `desbloquearTarefa` usa `createClientWithToken` para operações no banco
+
+---
+
 ## [v0.4.4] - 2026-06-29
 
 ### Corrigido
