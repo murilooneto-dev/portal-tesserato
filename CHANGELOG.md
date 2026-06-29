@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.0] - 2026-06-29
+
+### Adicionado
+- **Tema visual**: nova paleta Azul Vívido em todo o portal — fundo `#162546`, surfaces `#1c2e52`, accent `#34CEFF`
+- **Tarefas**: input de data substitui o checkbox de conclusão — exibe a data de conclusão e permite edição direta
+- **Relatórios**: linhas de clientes clicáveis, visual mais claro e legível
+
+### Corrigido
+- **Login**: logo quebrada na primeira carga — substituído `<img>` por `<Image unoptimized priority>` para forçar preload no Turbopack
+- **Sidebar**: removida propriedade CSS `background` (shorthand) conflitante com `backgroundImage`/`backgroundSize`
+
+### Arquivos alterados
+- `app/globals.css` — cor de fundo global atualizada
+- `app/fiscal/layout.tsx` — bg atualizado
+- `app/login/page.tsx` — logo com `<Image priority unoptimized>`
+- `components/fiscal/Sidebar.tsx` — novo gradiente azul, fix de shorthand CSS
+- `app/fiscal/relatorios/page.tsx` — linhas clicáveis
+- `components/fiscal/TarefaChecklist.tsx` — input de data em vez de checkbox
+- `app/fiscal/clientes/[id]/page.tsx` — `toggleTarefa` aceita data de conclusão
+- 24 outros arquivos — substituição da paleta de cores (`#00B8D4` → `#34CEFF`, fundos e surfaces)
+
+---
+
 ## [v0.3.3] - 2026-06-26
 
 ### Corrigido

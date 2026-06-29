@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -44,10 +44,10 @@ export default function ResetPasswordPage() {
     setTimeout(() => router.push('/login'), 2500)
   }
 
-  const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#00B8D4] transition-colors text-sm"
+  const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#34CEFF] transition-colors text-sm"
 
   return (
-    <div className="min-h-screen bg-[#0d1117] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#162546] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-8">
           <svg width="56" height="56" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
                 {erro && <p className="text-red-400 text-sm">{erro}</p>}
 
                 <button type="submit" disabled={salvando}
-                  className="mt-1 py-3 rounded-xl bg-[#00B8D4] text-white font-semibold hover:bg-[#00a3bc] transition-colors disabled:opacity-50">
+                  className="mt-1 py-3 rounded-xl bg-[#34CEFF] text-white font-semibold hover:bg-[#1ab8e8] transition-colors disabled:opacity-50">
                   {salvando ? 'Salvando...' : 'Salvar nova senha'}
                 </button>
               </form>

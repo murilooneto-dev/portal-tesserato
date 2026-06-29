@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
@@ -138,7 +138,7 @@ export default function ConferenciaPage() {
         <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Empresa</label>
         <input value={busca} onChange={e => { setBusca(e.target.value); if (!e.target.value) setClienteSel(null) }}
           placeholder="Buscar empresa..."
-          className="w-full max-w-sm bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#00B8D4]/50" />
+          className="w-full max-w-sm bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#34CEFF]/50" />
         {sugestoes.length > 0 && (
           <div className="absolute top-full mt-1 w-full max-w-sm bg-[#161b22] border border-white/10 rounded-xl overflow-hidden z-10 shadow-lg">
             {sugestoes.map(c => (
@@ -157,7 +157,7 @@ export default function ConferenciaPage() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white/60 uppercase tracking-widest">Planilhas DTE</h3>
               <button onClick={() => uploadRef.current?.click()} disabled={uploading}
-                className="text-xs bg-[#00B8D4]/20 border border-[#00B8D4]/40 text-[#00B8D4] px-3 py-1 rounded-lg hover:bg-[#00B8D4]/30 transition-all disabled:opacity-50">
+                className="text-xs bg-[#34CEFF]/20 border border-[#34CEFF]/40 text-[#34CEFF] px-3 py-1 rounded-lg hover:bg-[#34CEFF]/30 transition-all disabled:opacity-50">
                 {uploading ? 'Enviando...' : '+ Upload'}
               </button>
               <input ref={uploadRef} type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={uploadDTE} className="hidden" />
@@ -182,7 +182,7 @@ export default function ConferenciaPage() {
           {/* SISTEMA file */}
           <div className="p-5 rounded-xl bg-white/3 border border-white/8">
             <h3 className="text-sm font-semibold text-white/60 uppercase tracking-widest mb-4">Planilha SISTEMA</h3>
-            <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-[#00B8D4]/30 transition-all">
+            <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-[#34CEFF]/30 transition-all">
               <span className="text-2xl">📂</span>
               <span className="text-sm text-white/50">{sistemFile ? sistemFile.name : 'Clique para selecionar .xls/.xlsx'}</span>
               <input type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e => setSistemFile(e.target.files?.[0] ?? null)} className="hidden" />
@@ -197,7 +197,7 @@ export default function ConferenciaPage() {
       {clienteSel && (
         <div className="flex gap-3 mb-8">
           <button onClick={comparar} disabled={comparando || !arquivosDTE.length || !sistemFile}
-            className="bg-[#00B8D4] text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-[#00a3bc] transition-all disabled:opacity-40">
+            className="bg-[#34CEFF] text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-[#1ab8e8] transition-all disabled:opacity-40">
             {comparando ? '⏳ Comparando...' : '🔍 Comparar'}
           </button>
           {resultado && (
@@ -214,7 +214,7 @@ export default function ConferenciaPage() {
         <div>
           <div className="grid grid-cols-3 gap-4 mb-6">
             {[
-              { label: 'Chaves DTE', val: resultado.dte, cor: '#00B8D4' },
+              { label: 'Chaves DTE', val: resultado.dte, cor: '#34CEFF' },
               { label: 'Chaves SISTEMA', val: resultado.sistema, cor: '#10b981' },
               { label: 'Divergências', val: resultado.divergencias.length, cor: resultado.divergencias.length > 0 ? '#ef4444' : '#10b981' },
             ].map(s => (
@@ -232,7 +232,7 @@ export default function ConferenciaPage() {
               </div>
               <div className="overflow-x-auto max-h-96 overflow-y-auto">
                 <table className="w-full">
-                  <thead><tr className="border-b border-white/8 sticky top-0 bg-[#0d1117]">
+                  <thead><tr className="border-b border-white/8 sticky top-0 bg-[#162546]">
                     <th className="text-left text-xs text-white/40 uppercase px-4 py-2">#</th>
                     <th className="text-left text-xs text-white/40 uppercase px-4 py-2">UF</th>
                     <th className="text-left text-xs text-white/40 uppercase px-4 py-2">Chave (44 dígitos)</th>
@@ -241,7 +241,7 @@ export default function ConferenciaPage() {
                     {resultado.divergencias.slice(0, 300).map((k, i) => (
                       <tr key={k} className="border-b border-white/5">
                         <td className="px-4 py-2 text-white/30 text-xs">{i+1}</td>
-                        <td className="px-4 py-2 text-[#00B8D4] text-xs font-bold">{UF[k.slice(0,2)] ?? k.slice(0,2)}</td>
+                        <td className="px-4 py-2 text-[#34CEFF] text-xs font-bold">{UF[k.slice(0,2)] ?? k.slice(0,2)}</td>
                         <td className="px-4 py-2 text-white/60 text-xs font-mono break-all">{k}</td>
                       </tr>
                     ))}

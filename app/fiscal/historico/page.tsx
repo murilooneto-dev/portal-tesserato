@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -104,7 +104,7 @@ export default function HistoricoPage() {
                       className="w-full rounded-sm transition-all"
                       style={{
                         height: `${barH}px`,
-                        backgroundColor: isCur ? '#00B8D4' : s.total > 0 ? '#3b82f6' : 'rgba(255,255,255,0.12)',
+                        backgroundColor: isCur ? '#34CEFF' : s.total > 0 ? '#3b82f6' : 'rgba(255,255,255,0.12)',
                       }}
                     />
                   </div>
@@ -212,7 +212,7 @@ export default function HistoricoPage() {
             const s = filtroStats[i]
             const isCur = i + 1 === MES_ATUAL
             const respIdx = selectedResp ? responsaveis.indexOf(selectedResp) : -1
-            const cor = respIdx >= 0 ? CORES_RESP[respIdx % CORES_RESP.length] : '#00B8D4'
+            const cor = respIdx >= 0 ? CORES_RESP[respIdx % CORES_RESP.length] : '#34CEFF'
 
             const pctColor = s.pct === 100 ? '#10b981' : s.pct > 0 ? '#f59e0b' : 'rgba(255,255,255,0.25)'
 

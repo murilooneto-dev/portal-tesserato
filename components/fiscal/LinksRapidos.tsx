@@ -1,4 +1,4 @@
-import type { LinkRapido } from '@/lib/types'
+﻿import type { LinkRapido } from '@/lib/types'
 
 interface Props {
   links: LinkRapido[]
@@ -13,7 +13,7 @@ export default function LinksRapidos({ links }: Props) {
 
   return (
     <div>
-      <h2 className="text-xs font-bold text-[#00B8D4] uppercase tracking-widest mb-4">
+      <h2 className="text-xs font-bold text-[#34CEFF] uppercase tracking-widest mb-4">
         Links Úteis
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -38,7 +38,7 @@ export default function LinksRapidos({ links }: Props) {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium leading-tight truncate group-hover:text-[#00B8D4] transition-colors">
+                <p className="text-white text-sm font-medium leading-tight truncate group-hover:text-[#34CEFF] transition-colors">
                   {link.titulo}
                 </p>
                 <p className="text-white/30 text-xs truncate mt-0.5">{domain}</p>

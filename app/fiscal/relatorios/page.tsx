@@ -1,6 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Cliente, Tarefa } from '@/lib/types'
 
@@ -20,6 +21,7 @@ function progresso(cliente: Cliente, tarefas: Tarefa[]) {
 }
 
 export default function RelatoriosPage() {
+  const router = useRouter()
   const hoje = new Date()
   const [mes] = useState(hoje.getMonth() + 1)
   const [ano] = useState(hoje.getFullYear())
@@ -93,7 +95,7 @@ export default function RelatoriosPage() {
   td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; font-size: 9px; vertical-align: middle; }
   tr:nth-child(even) td { background: #fafafa; }
   .bar-bg { background: #e5e7eb; border-radius: 3px; height: 6px; width: 60px; display: inline-block; vertical-align: middle; margin-right: 4px; }
-  .bar-fill { background: #00B8D4; height: 6px; border-radius: 3px; display: block; }
+  .bar-fill { background: #34CEFF; height: 6px; border-radius: 3px; display: block; }
   .badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 8px; font-weight: bold; }
   .normal { background: #dbeafe; color: #1d4ed8; }
   .simples { background: #dcfce7; color: #166534; }
@@ -143,27 +145,27 @@ export default function RelatoriosPage() {
 
         {isAdmin && (
           <select value={filtroResp} onChange={e => setFiltroResp(e.target.value)}
-            className="bg-[#0d1320] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00B8D4]/50">
-            {responsaveis.map(r => <option key={r} value={r} className="bg-[#0d1320]">{r}</option>)}
+            className="bg-[#1c2e52] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#34CEFF]/50">
+            {responsaveis.map(r => <option key={r} value={r} className="bg-[#1c2e52]">{r}</option>)}
           </select>
         )}
 
         <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)}
-          className="bg-[#0d1320] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00B8D4]/50">
-          <option value="TODOS" className="bg-[#0d1320]">Todos</option>
-          <option value="normal" className="bg-[#0d1320]">Regime Normal</option>
-          <option value="simples" className="bg-[#0d1320]">Simples Nacional</option>
-          <option value="mei" className="bg-[#0d1320]">MEI</option>
+          className="bg-[#1c2e52] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#34CEFF]/50">
+          <option value="TODOS" className="bg-[#1c2e52]">Todos</option>
+          <option value="normal" className="bg-[#1c2e52]">Regime Normal</option>
+          <option value="simples" className="bg-[#1c2e52]">Simples Nacional</option>
+          <option value="mei" className="bg-[#1c2e52]">MEI</option>
         </select>
 
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)}
-          className="bg-[#0d1320] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00B8D4]/50">
-          <option value="TODAS" className="bg-[#0d1320]">Todas as atividades</option>
-          {atividades.map(a => <option key={a} value={a} className="bg-[#0d1320]">{a}</option>)}
+          className="bg-[#1c2e52] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#34CEFF]/50">
+          <option value="TODAS" className="bg-[#1c2e52]">Todas as atividades</option>
+          {atividades.map(a => <option key={a} value={a} className="bg-[#1c2e52]">{a}</option>)}
         </select>
 
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-[#0d1320] cursor-pointer hover:border-white/20 transition-colors">
-          <input type="checkbox" checked={apenasP} onChange={e => setApenasP(e.target.checked)} className="w-4 h-4 accent-[#00B8D4]" />
+        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-[#1c2e52] cursor-pointer hover:border-white/20 transition-colors">
+          <input type="checkbox" checked={apenasP} onChange={e => setApenasP(e.target.checked)} className="w-4 h-4 accent-[#34CEFF]" />
           <span className="text-sm text-white/70 whitespace-nowrap">Apenas pendências</span>
         </label>
 
@@ -183,29 +185,33 @@ export default function RelatoriosPage() {
           { label: 'Em Andamento', val: stats.andamento, cor: '#f59e0b' },
           { label: 'Não Iniciados', val: stats.zero, cor: '#ef4444' },
         ].map(s => (
-          <div key={s.label} className="p-4 rounded-xl bg-white/3 border border-white/8">
+          <div key={s.label} className="p-4 rounded-xl bg-white/6 border border-white/12">
             <p className="text-2xl font-bold" style={{ color: s.cor }}>{s.val}</p>
-            <p className="text-white/40 text-xs mt-1">{s.label}</p>
+            <p className="text-white/60 text-xs mt-1">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-white/8">
+      <div className="overflow-x-auto rounded-xl border border-white/12">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/8">
+            <tr className="border-b border-white/12">
               {['#','Cliente','CNPJ','Regime','Responsável','Progresso','Tarefas Pendentes','MIT'].map(h => (
-                <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-3">{h}</th>
+                <th key={h} className="text-left text-xs font-semibold text-white/60 uppercase tracking-widest px-4 py-3">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtrados.map((r, i) => (
-              <tr key={r.cliente.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
-                <td className="px-4 py-3 text-white/30 text-xs">{i+1}</td>
+              <tr
+                key={r.cliente.id}
+                onClick={() => router.push(`/fiscal/clientes/${r.cliente.id}`)}
+                className="border-b border-white/8 hover:bg-white/6 cursor-pointer transition-colors"
+              >
+                <td className="px-4 py-3 text-white/40 text-xs">{i+1}</td>
                 <td className="px-4 py-3 text-white text-sm font-medium">{r.cliente.nome}</td>
-                <td className="px-4 py-3 text-white/40 text-xs font-mono">{r.cliente.cnpj ?? '—'}</td>
+                <td className="px-4 py-3 text-white/50 text-xs font-mono">{r.cliente.cnpj ?? '—'}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     r.cliente.grupo === 'simples' ? 'bg-green-500/15 text-green-400' :
@@ -213,28 +219,28 @@ export default function RelatoriosPage() {
                     'bg-blue-500/15 text-blue-400'
                   }`}>{r.cliente.regime ?? r.cliente.grupo ?? '—'}</span>
                 </td>
-                <td className="px-4 py-3 text-white/50 text-xs">{r.cliente.responsavel ?? '—'}</td>
+                <td className="px-4 py-3 text-white/60 text-xs">{r.cliente.responsavel ?? '—'}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-20 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#00B8D4] rounded-full" style={{ width: `${r.pct}%` }} />
+                    <div className="w-20 h-1.5 bg-white/15 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#34CEFF] rounded-full" style={{ width: `${r.pct}%` }} />
                     </div>
-                    <span className="text-xs text-white/60">{r.pct}%</span>
+                    <span className="text-xs text-white/70">{r.pct}%</span>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm max-w-[260px]">
                   {r.pct === 100
                     ? <span className="text-green-400 text-xs font-medium">✓ Concluído</span>
-                    : <span className="text-white/50 text-xs leading-relaxed">{r.pendentes.join(' · ')}</span>
+                    : <span className="text-white/60 text-xs leading-relaxed">{r.pendentes.join(' · ')}</span>
                   }
                 </td>
-                <td className="px-4 py-3 text-white/40 text-xs">{r.cliente.mit ?? '—'}</td>
+                <td className="px-4 py-3 text-white/50 text-xs">{r.cliente.mit ?? '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
         {filtrados.length === 0 && (
-          <p className="text-center text-white/20 py-12 text-sm">Nenhum cliente encontrado.</p>
+          <p className="text-center text-white/30 py-12 text-sm">Nenhum cliente encontrado.</p>
         )}
       </div>
     </div>

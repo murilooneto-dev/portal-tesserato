@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
@@ -75,7 +75,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     return true
   }), [clientes, busca, filtroResponsavel, filtroGrupo, filtroAtividade, filtroPendencia, comPendencia])
 
-  const selectClass = "bg-[#0d1320] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00B8D4]/50 transition-colors"
+  const selectClass = "bg-[#1c2e52] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#34CEFF]/50 transition-colors"
 
   return (
     <div>
@@ -86,25 +86,25 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
           placeholder="Buscar cliente ou CNPJ..."
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[#0d1320] border border-white/10 text-white placeholder-white/25 text-sm focus:outline-none focus:border-[#00B8D4]/50 transition-colors"
+          className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[#1c2e52] border border-white/10 text-white placeholder-white/25 text-sm focus:outline-none focus:border-[#34CEFF]/50 transition-colors"
         />
         <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} className={selectClass}>
-          {responsaveis.map(r => <option key={r} value={r} className="bg-[#0d1320]">{r === 'TODOS' ? 'TODOS' : r}</option>)}
+          {responsaveis.map(r => <option key={r} value={r} className="bg-[#1c2e52]">{r === 'TODOS' ? 'TODOS' : r}</option>)}
         </select>
         <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[#0d1320]">Todos os grupos</option>
-          {grupos.slice(1).map(g => <option key={g} value={g} className="bg-[#0d1320]">{g}</option>)}
+          <option value="TODOS" className="bg-[#1c2e52]">Todos os grupos</option>
+          {grupos.slice(1).map(g => <option key={g} value={g} className="bg-[#1c2e52]">{g}</option>)}
         </select>
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[#0d1320]">Todas as atividades</option>
-          {atividades.slice(1).map(a => <option key={a} value={a} className="bg-[#0d1320]">{a}</option>)}
+          <option value="TODOS" className="bg-[#1c2e52]">Todas as atividades</option>
+          {atividades.slice(1).map(a => <option key={a} value={a} className="bg-[#1c2e52]">{a}</option>)}
         </select>
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-[#0d1320] cursor-pointer select-none hover:border-white/20 transition-colors">
+        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-[#1c2e52] cursor-pointer select-none hover:border-white/20 transition-colors">
           <input
             type="checkbox"
             checked={filtroPendencia}
             onChange={e => setFiltroPendencia(e.target.checked)}
-            className="w-4 h-4 accent-[#00B8D4]"
+            className="w-4 h-4 accent-[#34CEFF]"
           />
           <span className="text-sm text-white/70 whitespace-nowrap">Apenas pendentes</span>
         </label>
@@ -166,7 +166,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
                   </span>
                 )}
                 {cliente.atividade && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#00B8D4]/15 text-[#00B8D4] border border-[#00B8D4]/30">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#34CEFF]/15 text-[#34CEFF] border border-[#34CEFF]/30">
                     {cliente.atividade}
                   </span>
                 )}
@@ -186,7 +186,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
                   </p>
                   <div className="w-full h-1 bg-white/10 rounded-full mt-1">
                     <div className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : pendente ? '#f59e0b' : '#00B8D4' }} />
+                      style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : pendente ? '#f59e0b' : '#34CEFF' }} />
                   </div>
                   <p className="text-white/25 text-[10px] mt-0.5">{concluidas}/{total}</p>
                 </div>
