@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.6] - 2026-06-30
+
+### Corrigido
+- Ferramenta "Registros sem data de conclusão" agora cruza `tarefas_personalizadas` de todos os clientes com os registros existentes, encontrando também tarefas que nunca foram interagidas (sem registro na tabela `tarefas`)
+
+### Alterado
+- `buscarTarefasSemData` recebe também o parâmetro `ano`; agrupa por tipo (não mais por tipo+mês+ano, já que o filtro de mês/ano é obrigatório)
+- Interface `RegistroSemData` ganha campo `semRegistro` para indicar quantos clientes não têm nenhum registro no banco
+- UI: seletor de ano adicionado ao lado do seletor de mês
+- Tabela mostra contagem de clientes "s/reg" por tipo quando aplicável
+- Botão de exclusão conta apenas registros que existem (ids), não o total
+
+### Arquivos alterados
+- `app/fiscal/parametros/actions.ts` — `buscarTarefasSemData` reescrita com cruzamento de clientes × tarefas_personalizadas
+- `app/fiscal/parametros/ParametrosClient.tsx` — seletor de ano, novo campo `semRegistro` na UI
+
+---
+
 ## [v0.5.5] - 2026-06-30
 
 ### Alterado
