@@ -37,7 +37,7 @@ export default async function ClientesPage() {
   // Tipos válidos por cliente (personalizado ou padrão do grupo)
   const clienteTiposSet: Record<string, Set<string>> = {}
   for (const c of clientes ?? []) {
-    const tipos = (c.tarefas_personalizadas?.length > 0)
+    const tipos = ((c.tarefas_personalizadas?.length ?? 0) > 0)
       ? (c.tarefas_personalizadas as string[])
       : (TAREFAS_GRUPOS[c.grupo ?? 'normal'] ?? TAREFAS_GRUPOS.normal)
     clienteTiposSet[c.id] = new Set(tipos)

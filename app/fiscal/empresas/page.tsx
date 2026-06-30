@@ -27,7 +27,7 @@ export default async function EmpresasPage() {
   // Conta tarefas configuradas por cliente (template, não registros do banco)
   const contagemTarefas: Record<string, number> = {}
   for (const c of clientes ?? []) {
-    const tipos = (c.tarefas_personalizadas?.length > 0)
+    const tipos = ((c.tarefas_personalizadas?.length ?? 0) > 0)
       ? (c.tarefas_personalizadas as string[])
       : (TAREFAS_GRUPOS[c.grupo ?? 'normal'] ?? TAREFAS_GRUPOS.normal)
     contagemTarefas[c.id] = tipos.length
