@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { createClient, createClientWithToken } from '@/lib/supabase/server'
+import { createClient, getAuthenticatedAdmin } from '@/lib/supabase/server'
 import BotsConfigForm from '@/components/fiscal/BotsConfigForm'
 import type { BotTipo, BotConfig } from '@/lib/types'
 
@@ -18,19 +18,13 @@ export default async function BotsPage() {
 
   async function salvarConfig(bot: BotTipo, dados: Partial<BotConfig>) {
     'use server'
-    const authSupabase = await createClient()
-    const { data: { user } } = await authSupabase.auth.getUser()
-    if (!user) return
-    const { data: { session } } = await authSupabase.auth.getSession()
-    if (!session?.access_token) return
-    const db = createClientWithToken(session.access_token)
-
-    await db.from('bots_config').upsert({
-      usuario_id: user.id,
+    const { user, supabase } = await getAuthenticatedAdmin()
+    if (!supabase) return
+    await supabase.from('bots_config').upsert({
+      usuario_id: user!.id,
       bot,
       ...dados,
     }, { onConflict: 'usuario_id,bot' })
-
     revalidatePath('/fiscal/bots')
   }
 

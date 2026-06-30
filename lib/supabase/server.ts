@@ -2,35 +2,16 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
+// Service role client — bypassa RLS; use apenas em server actions após verificar auth
 export function createAdminClient() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
 
-// Cria cliente com JWT do usuário explícito no header — garante role "authenticated" no banco
-export function createClientWithToken(token: string) {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { autoRefreshToken: false, persistSession: false },
-    }
-  )
-}
-
-// Helper para server actions: retorna user + cliente com JWT explícito para operações no banco
-export async function getAuthenticatedClient() {
-  const authSupabase = await createClient()
-  const { data: { user } } = await authSupabase.auth.getUser()
-  if (!user) return { user: null, supabase: null }
-  const { data: { session } } = await authSupabase.auth.getSession()
-  if (!session?.access_token) return { user: null, supabase: null }
-  return { user, supabase: createClientWithToken(session.access_token) }
-}
-
+// Client SSR — usa cookies da sessão; bom para leituras e verificação de auth
 export async function createClient() {
   const cookieStore = await cookies()
 
@@ -52,4 +33,13 @@ export async function createClient() {
       },
     }
   )
+}
+
+// Helper para server actions: verifica identidade via SSR, opera no banco via service role
+// Não depende de getSession() — evita falha silenciosa com token stale/null
+export async function getAuthenticatedAdmin() {
+  const authClient = await createClient()
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user) return { user: null, supabase: null }
+  return { user, supabase: createAdminClient() }
 }
