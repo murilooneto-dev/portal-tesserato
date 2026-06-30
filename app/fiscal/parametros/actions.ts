@@ -112,12 +112,15 @@ export async function aplicarTemplateAClientes(
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', atualizados: 0 }
 
-  const { data: templateRow } = await supabase
+  const { data: templateRow, error: templateErr } = await supabase
     .from('atividade_templates')
     .select('tarefas')
     .eq('atividade', atividadeBase)
     .single()
 
+  if (templateErr && templateErr.code !== 'PGRST116') {
+    return { error: templateErr.message, atualizados: 0 }
+  }
   const tarefasBase: string[] = templateRow?.tarefas ?? []
   if (tarefasBase.length === 0) return { atualizados: 0 }
 
