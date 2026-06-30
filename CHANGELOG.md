@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.5] - 2026-06-30
+
+### Alterado
+- Ferramenta "Registros sem data de conclusão" agora filtra por mês selecionado (padrão: Junho)
+
+### Arquivos alterados
+- `app/fiscal/parametros/actions.ts` — `buscarTarefasSemData` aceita parâmetro `mes` opcional
+- `app/fiscal/parametros/ParametrosClient.tsx` — seletor de mês adicionado na UI; mudar o mês reseta o resultado anterior
+
+---
+
 ## [v0.5.4] - 2026-06-30
 
 ### Adicionado

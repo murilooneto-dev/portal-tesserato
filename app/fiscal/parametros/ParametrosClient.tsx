@@ -156,6 +156,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
 
   // Tarefas sem data
   const [analisandoSemData, setAnalisandoSemData] = useState(false)
+  const [mesFiltroSemData, setMesFiltroSemData] = useState(6)
   const [dadosSemData, setDadosSemData] = useState<{ registros: RegistroSemData[]; totalRegistros: number } | null>(null)
   const [selecionadosSemData, setSelecionadosSemData] = useState<Set<string>>(new Set())  // chaves "tipo||mes||ano"
   const [excluindoSemData, setExcluindoSemData] = useState(false)
@@ -246,7 +247,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
     setSemDataMsg('')
     setDadosSemData(null)
     setSelecionadosSemData(new Set())
-    const result = await buscarTarefasSemData()
+    const result = await buscarTarefasSemData(mesFiltroSemData)
     setAnalisandoSemData(false)
     if (result.error) { setSemDataMsg(`Erro: ${result.error}`); return }
     if (result.totalRegistros === 0) { setSemDataMsg('Nenhum registro sem data encontrado.'); return }
@@ -1055,7 +1056,15 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
           </p>
 
           {!dadosSemData ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <select
+                value={mesFiltroSemData}
+                onChange={e => { setMesFiltroSemData(Number(e.target.value)); setDadosSemData(null); setSemDataMsg('') }}
+                className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 text-xs">
+                {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((nome, i) => (
+                  <option key={i+1} value={i+1}>{nome}</option>
+                ))}
+              </select>
               <button
                 onClick={handleAnalisarSemData}
                 disabled={analisandoSemData}

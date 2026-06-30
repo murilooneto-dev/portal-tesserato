@@ -288,7 +288,7 @@ export interface RegistroSemData {
   clientes: string[]  // nomes dos clientes afetados
 }
 
-export async function buscarTarefasSemData(): Promise<{
+export async function buscarTarefasSemData(mes?: number): Promise<{
   error?: string
   registros: RegistroSemData[]
   totalRegistros: number
@@ -298,13 +298,17 @@ export async function buscarTarefasSemData(): Promise<{
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', registros: [], totalRegistros: 0 }
 
-  const { data: rows, error } = await supabase
+  let query = supabase
     .from('tarefas')
     .select('id, tipo, mes, ano, cliente_id, clientes(nome)')
     .is('concluida_em', null)
     .order('tipo')
     .order('ano')
     .order('mes')
+
+  if (mes !== undefined) query = query.eq('mes', mes)
+
+  const { data: rows, error } = await query
 
   if (error) return { error: error.message, registros: [], totalRegistros: 0 }
 
