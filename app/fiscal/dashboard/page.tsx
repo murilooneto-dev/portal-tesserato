@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Cliente, Profile, Tarefa } from '@/lib/types'
 
@@ -53,15 +53,29 @@ export default async function DashboardPage() {
   const ps = (profiles ?? []) as Profile[]
   const ts = (tarefas ?? []) as Tarefa[]
 
-  const totalTarefas = ts.length
-  const concluidasTarefas = ts.filter(t => t.concluida).length
+  const TAREFAS_GRUPOS: Record<string, string[]> = {
+    normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
+    simples: ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF'],
+    mei:     ['DAS'],
+  }
+
+  function tiposCliente(c: Cliente): string[] {
+    if ((c.tarefas_personalizadas?.length ?? 0) > 0) return c.tarefas_personalizadas as string[]
+    return TAREFAS_GRUPOS[c.grupo ?? 'normal'] ?? TAREFAS_GRUPOS.normal
+  }
+
+  // Mapa de tipos válidos por cliente (igual à lógica de clientes/page.tsx)
+  const tiposMap: Record<string, Set<string>> = {}
+  for (const c of cs) tiposMap[c.id] = new Set(tiposCliente(c))
+
+  const totalTarefas = cs.reduce((sum, c) => sum + tiposCliente(c).length, 0)
+  const concluidasTarefas = ts.filter(t => t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)).length
   const pct = totalTarefas > 0 ? Math.round((concluidasTarefas / totalTarefas) * 100) : 0
 
-  const normal  = cs.filter(c => c.regime?.toLowerCase() === 'normal').length
-  const simples = cs.filter(c => c.regime?.toLowerCase().includes('simples')).length
-  const mei     = cs.filter(c => c.regime?.toLowerCase() === 'mei').length
+  const normal  = cs.filter(c => (c.grupo ?? 'normal') === 'normal').length
+  const simples = cs.filter(c => c.grupo === 'simples').length
+  const mei     = cs.filter(c => c.grupo === 'mei').length
 
-  const operadores = ps.filter(p => p.role === 'operador')
   const ultimoDia  = new Date(ano, mes, 0).getDate()
 
   const alertas = OBRIGACOES_CAL.map(ob => {
@@ -134,7 +148,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Progresso por responsável — somente admin */}
+      {/* Progresso por responsável */}
       {responsaveis.length > 0 && (
         <section>
           <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">Progresso por Responsável</h2>
@@ -144,8 +158,8 @@ export default async function DashboardPage() {
               const cor         = perfil?.cor || '#00CCEB'
               const opClientes  = cs.filter(c => c.responsavel?.toUpperCase() === nome.toUpperCase())
               const opTarefas   = ts.filter(t => opClientes.some(c => c.id === t.cliente_id))
-              const opConcluidas = opTarefas.filter(t => t.concluida).length
-              const opTotal     = opTarefas.length
+              const opConcluidas = opTarefas.filter(t => t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)).length
+              const opTotal     = opClientes.reduce((sum, c) => sum + tiposCliente(c).length, 0)
               const opPct       = opTotal > 0 ? Math.round((opConcluidas / opTotal) * 100) : 0
               return (
                 <div key={nome} className="rounded-2xl bg-white/2 border border-white/7 p-5">

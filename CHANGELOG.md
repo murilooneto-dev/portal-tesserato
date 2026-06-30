@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.10] - 2026-06-30
+
+### Corrigido
+- **Erro de build TypeScript no Vercel**: expressão `?.length > 0` substituída por `(?.length ?? 0) > 0` em `clientes/page.tsx`, `empresas/page.tsx` e `dashboard/page.tsx` — TypeScript strict não aceita comparação com `undefined`
+- **Contador Normal/Simples/MEI no dashboard zerava**: filtro usava campo `regime` (texto livre como "Presumido", "Lucro Real") em vez do campo categórico `grupo` (`normal` / `simples` / `mei`)
+- **Progresso por responsável inflado no dashboard**: `opConcluidas` contava todas as tarefas concluídas no banco, incluindo tipos que foram removidos do template do cliente — agora filtra pelo `tiposMap`, igual à lógica de `clientes/page.tsx`
+
+### Alterado
+- **Filtro de grupo na lista de clientes**: substituídas as opções dinâmicas do banco ("normal", "simples") por labels legíveis fixos ("Regime Normal", "Simples Nacional", "MEI"), alinhado ao filtro da página de Relatórios
+
+### Arquivos alterados
+- `app/fiscal/clientes/page.tsx` — fix `?.length > 0`
+- `app/fiscal/dashboard/page.tsx` — fix TS; fix contador grupo; fix progresso por responsável com `tiposMap`
+- `app/fiscal/empresas/page.tsx` — fix `?.length > 0`; contagem de tarefas via template (sem query extra ao banco)
+- `components/fiscal/ClientesLista.tsx` — filtro de grupo com labels "Regime Normal", "Simples Nacional", "MEI"
+
+---
+
 ## [v0.4.8] - 2026-06-30
 
 ### Corrigido

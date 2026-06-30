@@ -51,9 +51,6 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     clientes.map(c => c.responsavel ?? '').filter(Boolean)
   )).sort()], [clientes])
 
-  const grupos = useMemo(() => ['TODOS', ...Array.from(new Set(
-    clientes.map(c => c.grupo ?? '').filter(Boolean)
-  )).sort()], [clientes])
 
   const atividades = useMemo(() => ['TODOS', ...Array.from(new Set(
     clientes.map(c => c.atividade ?? '').filter(Boolean)
@@ -92,8 +89,10 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
           {responsaveis.map(r => <option key={r} value={r} className="bg-[#162444]">{r === 'TODOS' ? 'TODOS' : r}</option>)}
         </select>
         <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[#162444]">Todos os grupos</option>
-          {grupos.slice(1).map(g => <option key={g} value={g} className="bg-[#162444]">{g}</option>)}
+          <option value="TODOS" className="bg-[#162444]">Todos</option>
+          <option value="normal" className="bg-[#162444]">Regime Normal</option>
+          <option value="simples" className="bg-[#162444]">Simples Nacional</option>
+          <option value="mei" className="bg-[#162444]">MEI</option>
         </select>
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[#162444]">Todas as atividades</option>
