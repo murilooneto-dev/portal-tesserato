@@ -5,6 +5,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.8] - 2026-06-30
+
+### Corrigido
+- **`getAuthenticatedAdmin()` não trava mais quando `SUPABASE_SERVICE_ROLE_KEY` está ausente**: adicionado fallback para cliente JWT autenticado, evitando crash silencioso. Operações de leitura e escrita passam a funcionar mesmo sem a variável de ambiente, desde que as políticas RLS do Supabase permitam o role `authenticated`
+- **Erros de configuração agora visíveis ao usuário**: quando a service role key está faltando, `criarUsuario` retorna mensagem clara `"SUPABASE_SERVICE_ROLE_KEY não configurada no servidor."` em vez do enganoso `"Acesso negado."`
+- **`createAdminClient()` lança exceção clara** se a key não estiver configurada, facilitando diagnóstico em logs do Vercel
+
+### ⚠️ Passos necessários para ativação completa
+
+**Passo 1 — SQL no Supabase** (resolve operações de operadores imediatamente):
+Execute no Supabase → Database → SQL Editor:
+```sql
+CREATE POLICY "autenticados_acesso_total" ON tarefas
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "autenticados_acesso_total" ON clientes
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "autenticados_acesso_total" ON client_files
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "autenticados_acesso_total" ON profiles
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "autenticados_acesso_total" ON task_unlock_log
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "autenticados_acesso_total" ON bots_config
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "autenticados_acesso_total" ON app_settings
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+```
+
+**Passo 2 — Vercel** (necessário apenas para criar usuários novos):
+Adicione `SUPABASE_SERVICE_ROLE_KEY` em Vercel → Settings → Environment Variables → Redeploy
+
+### Arquivos alterados
+- `lib/supabase/server.ts` — fallback JWT em `getAuthenticatedAdmin()`; validação antecipada em `createAdminClient()`
+
+---
+
 ## [v0.4.7] - 2026-06-30
 
 ### Corrigido
