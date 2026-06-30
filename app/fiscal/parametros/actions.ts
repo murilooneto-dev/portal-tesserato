@@ -221,6 +221,64 @@ export async function renomearTarefaEmClientes(
   return { clientesAtualizados, tarefasCorrigidas }
 }
 
+export async function excluirTarefaDeClientes(
+  tarefaTipo: string,
+  clienteIds: string[]
+): Promise<{ error?: string; clientesAtualizados: number; registrosExcluidos: number }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', clientesAtualizados: 0, registrosExcluidos: 0 }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', clientesAtualizados: 0, registrosExcluidos: 0 }
+  if (clienteIds.length === 0) return { error: 'Nenhum cliente selecionado.', clientesAtualizados: 0, registrosExcluidos: 0 }
+
+  const { data: clientes } = await supabase.from('clientes').select('id, tarefas_personalizadas').in('id', clienteIds)
+  let clientesAtualizados = 0
+
+  for (const c of clientes ?? []) {
+    const original: string[] = c.tarefas_personalizadas ?? []
+    if (!original.includes(tarefaTipo)) continue
+    await supabase.from('clientes').update({ tarefas_personalizadas: original.filter(t => t !== tarefaTipo) }).eq('id', c.id)
+    clientesAtualizados++
+  }
+
+  const { data: registros } = await supabase.from('tarefas').select('id').eq('tipo', tarefaTipo).in('cliente_id', clienteIds)
+  let registrosExcluidos = 0
+  if ((registros ?? []).length > 0) {
+    await supabase.from('tarefas').delete().eq('tipo', tarefaTipo).in('cliente_id', clienteIds)
+    registrosExcluidos = registros!.length
+  }
+
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/parametros')
+  return { clientesAtualizados, registrosExcluidos }
+}
+
+export async function preencherDataEmClientes(
+  tarefaTipo: string,
+  mes: number,
+  ano: number,
+  dataISO: string,
+  clienteIds: string[]
+): Promise<{ error?: string; registrosAtualizados: number }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', registrosAtualizados: 0 }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', registrosAtualizados: 0 }
+  if (clienteIds.length === 0) return { error: 'Nenhum cliente selecionado.', registrosAtualizados: 0 }
+
+  let registrosAtualizados = 0
+  for (const clienteId of clienteIds) {
+    await supabase.from('tarefas').upsert(
+      { tipo: tarefaTipo, cliente_id: clienteId, mes, ano, concluida: true, concluida_em: dataISO },
+      { onConflict: 'tipo,cliente_id,mes,ano' }
+    )
+    registrosAtualizados++
+  }
+
+  revalidatePath('/fiscal/clientes')
+  return { registrosAtualizados }
+}
+
 function semAcento(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
 }

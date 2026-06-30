@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
-import { salvarTemplate, aplicarTemplateAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes } from './actions'
+import { salvarTemplate, aplicarTemplateAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes } from './actions'
 import type { GrupoDuplicata } from './actions'
 import { resolverTemplate } from '@/lib/atividade-templates'
 
@@ -144,8 +144,12 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
     todasTarefas: string[]
     clientes: { id: string; nome: string; tarefas: string[] }[]
   } | null>(null)
+  const [modoAlteracao, setModoAlteracao] = useState<'renomear' | 'excluir' | 'data'>('renomear')
   const [tarefaOrigem, setTarefaOrigem] = useState('')
   const [tarefaDestino, setTarefaDestino] = useState('')
+  const [dataPreenchimento, setDataPreenchimento] = useState('')
+  const [mesPreenchimento, setMesPreenchimento] = useState(new Date().getMonth() + 1)
+  const [anoPreenchimento, setAnoPreenchimento] = useState(new Date().getFullYear())
   const [clientesSelecionados, setClientesSelecionados] = useState<Set<string>>(new Set())
   const [aplicandoAlteracao, setAplicandoAlteracao] = useState(false)
   const [alteracaoMsg, setAlteracaoMsg] = useState('')
@@ -200,16 +204,29 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   }
 
   async function handleAplicarAlteracao() {
-    const destino = tarefaDestino.trim()
-    if (!destino || !tarefaOrigem) { setAlteracaoMsg('Selecione a tarefa e informe o novo nome.'); return }
+    if (!tarefaOrigem) { setAlteracaoMsg('Selecione uma tarefa.'); return }
     if (clientesSelecionados.size === 0) { setAlteracaoMsg('Selecione ao menos um cliente.'); return }
+    const ids = Array.from(clientesSelecionados)
+
     setAplicandoAlteracao(true)
-    const result = await renomearTarefaEmClientes(tarefaOrigem, destino, Array.from(clientesSelecionados))
-    setAplicandoAlteracao(false)
-    if (result.error) {
-      setAlteracaoMsg(`Erro: ${result.error}`)
+    let msg = ''
+
+    if (modoAlteracao === 'renomear') {
+      if (!tarefaDestino) { setAlteracaoMsg('Selecione o novo nome.'); setAplicandoAlteracao(false); return }
+      const r = await renomearTarefaEmClientes(tarefaOrigem, tarefaDestino, ids)
+      msg = r.error ? `Erro: ${r.error}` : `Concluído — ${r.clientesAtualizados} cliente(s) renomeados, ${r.tarefasCorrigidas} registro(s) corrigidos`
+    } else if (modoAlteracao === 'excluir') {
+      const r = await excluirTarefaDeClientes(tarefaOrigem, ids)
+      msg = r.error ? `Erro: ${r.error}` : `Concluído — tarefa removida de ${r.clientesAtualizados} cliente(s), ${r.registrosExcluidos} registro(s) excluídos`
     } else {
-      setAlteracaoMsg(`Concluído — ${result.clientesAtualizados} cliente(s) atualizados, ${result.tarefasCorrigidas} registro(s) corrigidos`)
+      if (!dataPreenchimento) { setAlteracaoMsg('Selecione a data.'); setAplicandoAlteracao(false); return }
+      const r = await preencherDataEmClientes(tarefaOrigem, mesPreenchimento, anoPreenchimento, dataPreenchimento, ids)
+      msg = r.error ? `Erro: ${r.error}` : `Concluído — ${r.registrosAtualizados} registro(s) marcados como concluídos`
+    }
+
+    setAplicandoAlteracao(false)
+    setAlteracaoMsg(msg)
+    if (!msg.startsWith('Erro')) {
       setDadosAlteracao(null)
       setTarefaOrigem('')
       setTarefaDestino('')
@@ -828,30 +845,90 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Seletor de modo */}
+              <div className="flex gap-1.5">
+                {([['renomear', 'Renomear'], ['excluir', 'Excluir'], ['data', 'Preencher data']] as const).map(([modo, label]) => (
+                  <button
+                    key={modo}
+                    onClick={() => { setModoAlteracao(modo); setAlteracaoMsg('') }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${modoAlteracao === modo ? 'bg-violet-500/30 border border-violet-500/50 text-violet-200' : 'bg-white/5 border border-white/10 text-white/40 hover:text-white/70 hover:bg-white/10'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tarefa de origem (comum a todos os modos) */}
+              <div>
+                <label className={labelCls}>Tarefa</label>
+                <select
+                  value={tarefaOrigem}
+                  onChange={e => handleSelecionarTarefaOrigem(e.target.value)}
+                  className="w-full max-w-xs px-2.5 py-1.5 rounded-lg bg-[#162444] border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50">
+                  <option value="">— selecione —</option>
+                  {dadosAlteracao.todasTarefas.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Campo específico por modo */}
+              {modoAlteracao === 'renomear' && (
                 <div>
-                  <label className={labelCls}>Tarefa a renomear</label>
+                  <label className={labelCls}>Renomear para</label>
                   <select
-                    value={tarefaOrigem}
-                    onChange={e => handleSelecionarTarefaOrigem(e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-[#162444] border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50">
-                    <option value="">— selecione —</option>
-                    {dadosAlteracao.todasTarefas.map(t => (
+                    value={tarefaDestino}
+                    onChange={e => setTarefaDestino(e.target.value)}
+                    className="w-full max-w-xs px-2.5 py-1.5 rounded-lg bg-[#162444] border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50">
+                    <option value="">— selecione o novo nome —</option>
+                    {dadosAlteracao.todasTarefas.filter(t => t !== tarefaOrigem).map(t => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className={labelCls}>Novo nome</label>
-                  <input
-                    value={tarefaDestino}
-                    onChange={e => setTarefaDestino(e.target.value.toUpperCase())}
-                    placeholder="NOVO NOME"
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50"
-                  />
-                </div>
-              </div>
+              )}
 
+              {modoAlteracao === 'excluir' && tarefaOrigem && (
+                <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3">
+                  <p className="text-red-300 text-xs">A tarefa <span className="font-semibold">'{tarefaOrigem}'</span> será removida da lista de cada cliente selecionado e todos os seus registros históricos serão excluídos.</p>
+                </div>
+              )}
+
+              {modoAlteracao === 'data' && (
+                <div className="flex flex-wrap gap-3">
+                  <div>
+                    <label className={labelCls}>Mês</label>
+                    <select
+                      value={mesPreenchimento}
+                      onChange={e => setMesPreenchimento(Number(e.target.value))}
+                      className="px-2.5 py-1.5 rounded-lg bg-[#162444] border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50">
+                      {['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'].map((m, i) => (
+                        <option key={i} value={i + 1}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Ano</label>
+                    <input
+                      type="number"
+                      value={anoPreenchimento}
+                      onChange={e => setAnoPreenchimento(Number(e.target.value))}
+                      min={2020} max={2099}
+                      className="w-24 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Data de conclusão</label>
+                    <input
+                      type="date"
+                      value={dataPreenchimento}
+                      onChange={e => setDataPreenchimento(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Lista de clientes */}
               {tarefaOrigem && (() => {
                 const filtrados = dadosAlteracao.clientes.filter(c => c.tarefas.includes(tarefaOrigem))
                 const todosSelected = filtrados.length > 0 && filtrados.every(c => clientesSelecionados.has(c.id))
@@ -894,19 +971,26 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                 )
               })()}
 
-              {tarefaOrigem && clientesSelecionados.size > 0 && tarefaDestino.trim() && tarefaDestino.trim() !== tarefaOrigem && (
-                <div className="rounded-lg bg-white/3 border border-white/8 px-4 py-3">
-                  <p className="text-white/60 text-xs">
-                    Renomear <span className="text-white font-semibold">'{tarefaOrigem}'</span> → <span className="text-[#00CCEB] font-semibold">'{tarefaDestino.trim()}'</span> em <span className="text-white font-semibold">{clientesSelecionados.size}</span> cliente(s)
-                  </p>
+              {/* Preview */}
+              {tarefaOrigem && clientesSelecionados.size > 0 && (
+                <div className="rounded-lg bg-white/3 border border-white/8 px-4 py-3 text-xs text-white/60">
+                  {modoAlteracao === 'renomear' && tarefaDestino && tarefaDestino !== tarefaOrigem && (
+                    <>Renomear <span className="text-white font-semibold">'{tarefaOrigem}'</span> → <span className="text-[#00CCEB] font-semibold">'{tarefaDestino}'</span> em <span className="text-white font-semibold">{clientesSelecionados.size}</span> cliente(s)</>
+                  )}
+                  {modoAlteracao === 'excluir' && (
+                    <>Excluir <span className="text-white font-semibold">'{tarefaOrigem}'</span> de <span className="text-white font-semibold">{clientesSelecionados.size}</span> cliente(s)</>
+                  )}
+                  {modoAlteracao === 'data' && dataPreenchimento && (
+                    <>Marcar <span className="text-white font-semibold">'{tarefaOrigem}'</span> como concluída em <span className="text-[#00CCEB] font-semibold">{new Date(dataPreenchimento + 'T12:00:00').toLocaleDateString('pt-BR')}</span> para <span className="text-white font-semibold">{clientesSelecionados.size}</span> cliente(s) — {['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][mesPreenchimento - 1]}/{anoPreenchimento}</>
+                  )}
                 </div>
               )}
 
               <div className="flex items-center gap-3 flex-wrap">
                 <button
                   onClick={handleAplicarAlteracao}
-                  disabled={aplicandoAlteracao || !tarefaOrigem || !tarefaDestino.trim() || clientesSelecionados.size === 0}
-                  className="px-4 py-2 rounded-lg bg-violet-500/20 border border-violet-500/40 text-violet-300 text-xs font-semibold hover:bg-violet-500/30 transition-colors disabled:opacity-50">
+                  disabled={aplicandoAlteracao || !tarefaOrigem || clientesSelecionados.size === 0}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${modoAlteracao === 'excluir' ? 'bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30' : 'bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30'}`}>
                   {aplicandoAlteracao ? 'Aplicando...' : 'Confirmar e aplicar'}
                 </button>
                 <button

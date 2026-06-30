@@ -8,11 +8,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 ## [v0.5.3] - 2026-06-30
 
 ### Adicionado
-- **Alteração em massa de tarefa** em Parâmetros → Manutenção de Dados: selecione uma tarefa, marque os clientes desejados (com "selecionar todos") e informe o novo nome — aplica o rename em `tarefas_personalizadas` de todos os clientes selecionados e nos registros da tabela `tarefas` de uma vez só
+- **Alteração em massa de tarefa** em Parâmetros → Manutenção de Dados: 3 modos de operação com seletor de modo (Renomear / Excluir / Preencher data), dropdown de tarefa, checkboxes de clientes com "Selecionar todos", preview da operação e confirmação
+  - **Renomear**: selecione a tarefa e o novo nome (ambos via dropdown das tarefas cadastradas) — aplica em `tarefas_personalizadas` e na tabela `tarefas`
+  - **Excluir**: remove a tarefa da lista de tarefas de cada cliente selecionado e exclui todos os registros históricos
+  - **Preencher data**: define `concluida = true` e `concluida_em` para os clientes selecionados em um mês/ano específico (upsert)
 
 ### Arquivos alterados
-- `app/fiscal/parametros/actions.ts` — nova action `buscarDadosParaAlteracao()` e `renomearTarefaEmClientes()`
-- `app/fiscal/parametros/ParametrosClient.tsx` — UI de alteração em massa com dropdown, checkboxes, preview e confirmação
+- `app/fiscal/parametros/actions.ts` — novas actions `buscarDadosParaAlteracao()`, `renomearTarefaEmClientes()`, `excluirTarefaDeClientes()`, `preencherDataEmClientes()`
+- `app/fiscal/parametros/ParametrosClient.tsx` — UI com seletor de modo, dropdowns, checkboxes, campos específicos por modo e preview
 
 ---
 
