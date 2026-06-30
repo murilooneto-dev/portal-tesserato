@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.2] - 2026-06-30
+
+### Alterado
+- **Limpeza de duplicatas — fluxo de 2 etapas**: botão "Analisar duplicatas" agora exibe uma tabela de preview com todas as variantes encontradas antes de aplicar qualquer mudança. Para cada grupo, o dropdown pré-seleciona a versão com acento (quando detectada automaticamente) ou exibe aviso ⚠ para seleção manual. Só aplica ao clicar em "Confirmar e aplicar"
+
+### Arquivos alterados
+- `app/fiscal/parametros/actions.ts` — nova action `analisarTarefasDuplicadas()` separada da aplicação; `limparTarefasDuplicadas()` agora recebe mapeamento explícito
+- `app/fiscal/parametros/ParametrosClient.tsx` — UI de 2 etapas: analisar → preview+confirmar → aplicar
+
+---
+
 ## [v0.5.1] - 2026-06-30
 
 ### Adicionado
