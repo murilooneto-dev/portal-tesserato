@@ -5,6 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.7] - 2026-06-30
+
+### Corrigido
+- **Causa raiz identificada e resolvida**: o `@supabase/ssr` é criado com `autoRefreshToken: false` e `skipAutoInitialize: true`. Isso faz com que `getSession()` leia do storage local (cookies) sem renovar — se o token estiver expirado ou o storage não inicializado, retorna `null`. O `getAuthenticatedClient()` retornava `{ supabase: null }` silenciosamente e todos os server actions faziam `if (!supabase) return` sem salvar nada e sem erro visível
+- **`middleware.ts` adicionado**: renova a sessão do Supabase em cada request (obrigatório pelo `@supabase/ssr`). Garante que os cookies de sessão estejam sempre frescos antes de qualquer Server Component ou Server Action
+- **`getAuthenticatedAdmin()` substitui `getAuthenticatedClient()`**: usa `getUser()` para verificar identidade (faz request ao servidor Supabase, sempre funciona) e retorna `createAdminClient()` (service role) para operações no banco — não depende de `getSession()` em nenhum momento. A service role key bypass RLS e foi provada funcionar no diagnóstico SQL inicial
+- **Todos os server actions atualizados** para usar `getAuthenticatedAdmin()`
+
+### ⚠️ Ação necessária para funcionar em produção
+Adicione `SUPABASE_SERVICE_ROLE_KEY` nas variáveis de ambiente do Vercel:
+1. Abra o Vercel → seu projeto → **Settings → Environment Variables**
+2. Clique **Add New**
+3. Nome: `SUPABASE_SERVICE_ROLE_KEY`
+4. Valor: (copie do arquivo `.env.local` do projeto)
+5. Clique **Save** → **Redeploy**
+
+### Arquivos alterados
+- `middleware.ts` — novo arquivo, renova sessão em cada request
+- `lib/supabase/server.ts` — `getAuthenticatedAdmin()` com service role; removida abordagem JWT quebrada
+- `app/fiscal/clientes/[id]/page.tsx` — `toggleTarefa` usa `getAuthenticatedAdmin()`
+- `app/fiscal/clientes/actions.ts` — todos os actions usam `getAuthenticatedAdmin()`
+- `app/fiscal/empresas/actions.ts` — todos os actions usam `getAuthenticatedAdmin()`
+- `app/fiscal/parametros/actions.ts` — todos os actions usam `getAuthenticatedAdmin()`
+- `app/fiscal/bots/page.tsx` — `salvarConfig` usa `getAuthenticatedAdmin()`
+
+---
+
 ## [v0.4.6] - 2026-06-29
 
 ### Corrigido

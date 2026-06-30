@@ -1,25 +1,19 @@
 'use server'
 
-import { getAuthenticatedClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getAuthenticatedAdmin, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function salvarComunicado(formData: FormData) {
-  const { supabase } = await getAuthenticatedClient()
+  const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) throw new Error('Não autorizado')
   const texto = formData.get('dashboard_announcement') as string
-
-  const { error } = await supabase
-    .from('app_settings')
-    .update({ dashboard_announcement: texto })
-    .eq('id', 1)
-
+  const { error } = await supabase.from('app_settings').update({ dashboard_announcement: texto }).eq('id', 1)
   if (error) throw new Error(error.message)
   revalidatePath('/fiscal/parametros')
 }
 
 export async function atualizarPerfil(id: string, formData: FormData) {
-  const { user, supabase } = await getAuthenticatedClient()
+  const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) throw new Error('Não autorizado.')
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') throw new Error('Acesso negado.')
@@ -45,26 +39,22 @@ export async function criarUsuario(payload: {
   cor: string
   abas: string[]
 }): Promise<{ error?: string }> {
-  const { user, supabase } = await getAuthenticatedClient()
+  const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
 
-  const url  = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key  = process.env.SUPABASE_SERVICE_ROLE_KEY
-
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) return { error: 'SUPABASE_SERVICE_ROLE_KEY não configurada no servidor.' }
 
-  const admin = createAdminClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const admin = createAdminClient()
 
   const { data: authData, error: authErr } = await admin.auth.admin.createUser({
     email: payload.login,
     password: payload.senha,
     email_confirm: true,
   })
-
   if (authErr) return { error: authErr.message }
 
   const userId = authData.user.id
@@ -88,12 +78,9 @@ export async function criarUsuario(payload: {
 }
 
 export async function salvarConfiguracoes(settings: Record<string, unknown>): Promise<{ error?: string }> {
-  const { supabase } = await getAuthenticatedClient()
+  const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return { error: 'Não autorizado' }
-  const { error } = await supabase
-    .from('app_settings')
-    .update(settings)
-    .eq('id', 1)
+  const { error } = await supabase.from('app_settings').update(settings).eq('id', 1)
   if (error) return { error: error.message }
   revalidatePath('/fiscal/parametros')
   return {}

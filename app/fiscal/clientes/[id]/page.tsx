@@ -1,7 +1,7 @@
 ﻿import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
-import { createClient, createClientWithToken } from '@/lib/supabase/server'
+import { createClient, getAuthenticatedAdmin } from '@/lib/supabase/server'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
@@ -58,12 +58,8 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
     'use server'
-    const authSupabase = await createClient()
-    const { data: { user } } = await authSupabase.auth.getUser()
-    if (!user) return
-    const { data: { session } } = await authSupabase.auth.getSession()
-    if (!session?.access_token) return
-    const supabase = createClientWithToken(session.access_token)
+    const { user, supabase } = await getAuthenticatedAdmin()
+    if (!supabase) return
     const concluida_em = concluida
       ? (data ? new Date(data + 'T12:00:00').toISOString() : new Date().toISOString())
       : null
@@ -77,7 +73,7 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
         .eq('id', existing.id)
     } else {
       await supabase.from('tarefas')
-        .insert({ cliente_id: id, usuario_id: user.id, mes, ano, tipo, concluida, concluida_em })
+        .insert({ cliente_id: id, usuario_id: user!.id, mes, ano, tipo, concluida, concluida_em })
     }
     revalidatePath(`/fiscal/clientes/${id}`)
   }

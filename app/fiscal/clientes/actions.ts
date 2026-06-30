@@ -1,9 +1,9 @@
 'use server'
 
-import { getAuthenticatedClient } from '@/lib/supabase/server'
+import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 
 export async function toggleTarefa(tarefaId: string, concluida: boolean) {
-  const { supabase } = await getAuthenticatedClient()
+  const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
   await supabase
     .from('tarefas')
@@ -19,7 +19,7 @@ export async function desbloquearTarefa(
   tarefaTipo: string,
   competencia: string,
 ) {
-  const { user, supabase } = await getAuthenticatedClient()
+  const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
 
   await supabase
@@ -41,13 +41,13 @@ export async function desbloquearTarefa(
 }
 
 export async function salvarMIT(clienteId: string, valor: string) {
-  const { supabase } = await getAuthenticatedClient()
+  const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
   await supabase.from('clientes').update({ mit: valor }).eq('id', clienteId)
 }
 
 export async function salvarObs(clienteId: string, obs: string) {
-  const { supabase } = await getAuthenticatedClient()
+  const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
   await supabase.from('clientes').update({ obs }).eq('id', clienteId)
 }
@@ -57,13 +57,13 @@ const TIPOS_PERMITIDOS = [
   'image/png',
   'image/jpeg',
   'image/jpg',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-  'application/vnd.ms-excel', // .xls
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
 ]
 const TAMANHO_MAX = 10 * 1024 * 1024 // 10 MB
 
 export async function uploadArquivo(clienteId: string, formData: FormData) {
-  const { supabase } = await getAuthenticatedClient()
+  const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return { error: 'Não autorizado' }
 
   const arquivo = formData.get('arquivo') as File | null
@@ -91,8 +91,7 @@ export async function uploadArquivo(clienteId: string, formData: FormData) {
 }
 
 export async function excluirArquivo(arquivoId: string) {
-  const { supabase } = await getAuthenticatedClient()
+  const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
   await supabase.from('client_files').delete().eq('id', arquivoId)
 }
-
