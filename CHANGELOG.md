@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.0] - 2026-06-30
+
+### Adicionado
+- **Templates de tarefas por atividade**: novo sistema que substitui o fallback por grupo. Administrador configura 3 templates base (Serviço, Comércio, Indústria) em Parâmetros; atividades combinadas são resolvidas automaticamente pela união das bases
+- **UI de templates em Parâmetros**: 3 cards editáveis (adicionar/remover tarefas, salvar por base), botão "Aplicar a clientes existentes" com merge incremental (nunca remove tarefas existentes), preview ao vivo das atividades combinadas
+- **Auto-preenchimento no EmpresaModal**: ao selecionar a atividade de um novo cliente, as tarefas do template correspondente são pré-carregadas em `tarefas_personalizadas`; botão "Restaurar padrão da atividade" disponível
+
+### Refatorado
+- **`tiposCliente()` removido**: todas as páginas (`clientes/page`, `dashboard/page`, `clientes/[id]/page`, `empresas/page`) agora usam `tarefas_personalizadas` diretamente como fonte de verdade — sem fallback a `TAREFAS_GRUPOS` por grupo
+- **`TAREFAS_PADRAO` e `TAREFAS_GRUPOS` eliminados**: constantes hardcoded de tarefas por grupo removidas de todos os arquivos server-side e do `EmpresaModal`
+
+### Corrigido
+- **Logo quebrada na primeira visita**: `proxy.ts` agora exclui `logo.png` do middleware (antes só excluía `logo.ico`)
+
+### Arquivos alterados
+- `lib/atividade-templates.ts` — novo utilitário: `basesDeAtividade()` e `resolverTemplate()`
+- `app/fiscal/parametros/actions.ts` — novas server actions: `salvarTemplate` e `aplicarTemplateAClientes`
+- `app/fiscal/parametros/page.tsx` — carrega `atividade_templates` do banco e passa para ParametrosClient
+- `app/fiscal/parametros/ParametrosClient.tsx` — nova seção "Templates de Tarefas por Atividade"
+- `components/fiscal/EmpresaModal.tsx` — auto-preenche tarefas pela atividade; remove `TAREFAS_PADRAO`
+- `app/fiscal/empresas/page.tsx` — carrega templates e simplifica `contagemTarefas`
+- `app/fiscal/empresas/EmpresasClient.tsx` — passa prop `templates` para `EmpresaModal`
+- `app/fiscal/clientes/page.tsx` — simplifica `tiposMap` para usar `tarefas_personalizadas`
+- `app/fiscal/dashboard/page.tsx` — simplifica `tiposMap` e `tiposCliente`
+- `app/fiscal/clientes/[id]/page.tsx` — simplifica `tiposDoCliente` sem fallback de grupo
+- `proxy.ts` — exclui `logo.png` do matcher do middleware
+
+---
+
 ## [v0.4.10] - 2026-06-30
 
 ### Corrigido
