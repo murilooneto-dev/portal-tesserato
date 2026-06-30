@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
-import { salvarTemplate, aplicarTemplateAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes } from './actions'
-import type { GrupoDuplicata } from './actions'
+import { salvarTemplate, aplicarTemplateAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes, buscarTarefasSemData, excluirRegistrosDeTarefas } from './actions'
+import type { GrupoDuplicata, RegistroSemData } from './actions'
 import { resolverTemplate } from '@/lib/atividade-templates'
 
 interface TaskLog {
@@ -154,6 +154,13 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [aplicandoAlteracao, setAplicandoAlteracao] = useState(false)
   const [alteracaoMsg, setAlteracaoMsg] = useState('')
 
+  // Tarefas sem data
+  const [analisandoSemData, setAnalisandoSemData] = useState(false)
+  const [dadosSemData, setDadosSemData] = useState<{ registros: RegistroSemData[]; totalRegistros: number } | null>(null)
+  const [selecionadosSemData, setSelecionadosSemData] = useState<Set<string>>(new Set())  // chaves "tipo||mes||ano"
+  const [excluindoSemData, setExcluindoSemData] = useState(false)
+  const [semDataMsg, setSemDataMsg] = useState('')
+
   async function handleAnalisarDuplicatas() {
     setAnalisando(true)
     setDuplicatasMsg('')
@@ -231,6 +238,37 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       setTarefaOrigem('')
       setTarefaDestino('')
       setClientesSelecionados(new Set())
+    }
+  }
+
+  async function handleAnalisarSemData() {
+    setAnalisandoSemData(true)
+    setSemDataMsg('')
+    setDadosSemData(null)
+    setSelecionadosSemData(new Set())
+    const result = await buscarTarefasSemData()
+    setAnalisandoSemData(false)
+    if (result.error) { setSemDataMsg(`Erro: ${result.error}`); return }
+    if (result.totalRegistros === 0) { setSemDataMsg('Nenhum registro sem data encontrado.'); return }
+    setDadosSemData(result)
+    // Pré-seleciona todos
+    setSelecionadosSemData(new Set(result.registros.map(r => `${r.tipo}||${r.mes}||${r.ano}`)))
+  }
+
+  async function handleExcluirSemData() {
+    if (!dadosSemData || selecionadosSemData.size === 0) return
+    const ids = dadosSemData.registros
+      .filter(r => selecionadosSemData.has(`${r.tipo}||${r.mes}||${r.ano}`))
+      .flatMap(r => r.ids)
+    setExcluindoSemData(true)
+    const result = await excluirRegistrosDeTarefas(ids)
+    setExcluindoSemData(false)
+    if (result.error) {
+      setSemDataMsg(`Erro: ${result.error}`)
+    } else {
+      setSemDataMsg(`Concluído — ${result.excluidos} registro(s) excluídos`)
+      setDadosSemData(null)
+      setSelecionadosSemData(new Set())
     }
   }
 
@@ -1001,6 +1039,105 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                 {alteracaoMsg && (
                   <p className={`text-xs ${alteracaoMsg.startsWith('Erro') || alteracaoMsg.startsWith('Selecione') ? 'text-red-400' : 'text-green-400'}`}>
                     {alteracaoMsg}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Divisor */}
+          <div className="border-t border-white/8 my-6" />
+
+          {/* Tarefas sem data */}
+          <p className="text-white/60 text-sm font-medium mb-1">Registros sem data de conclusão</p>
+          <p className="text-white/30 text-xs mb-4">
+            Lista todos os registros na tabela de tarefas onde a data de conclusão está em branco. Permite excluir em massa por tipo/mês/ano.
+          </p>
+
+          {!dadosSemData ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleAnalisarSemData}
+                disabled={analisandoSemData}
+                className="px-4 py-2 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold hover:bg-rose-500/30 transition-colors disabled:opacity-50">
+                {analisandoSemData ? 'Analisando...' : 'Analisar registros sem data'}
+              </button>
+              {semDataMsg && (
+                <p className={`text-xs ${semDataMsg.startsWith('Erro') ? 'text-red-400' : semDataMsg.startsWith('Nenhum') ? 'text-white/40' : 'text-green-400'}`}>
+                  {semDataMsg}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <p className="text-white/40 text-xs">{dadosSemData.totalRegistros} registro(s) sem data em {dadosSemData.registros.length} combinação(ões) tipo/mês/ano</p>
+                <button
+                  onClick={() => setSelecionadosSemData(
+                    selecionadosSemData.size === dadosSemData.registros.length
+                      ? new Set()
+                      : new Set(dadosSemData.registros.map(r => `${r.tipo}||${r.mes}||${r.ano}`))
+                  )}
+                  className="text-[#00CCEB] text-xs hover:underline">
+                  {selecionadosSemData.size === dadosSemData.registros.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                </button>
+              </div>
+
+              <div className="rounded-xl border border-white/8 overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-white/8 bg-white/3">
+                      <th className="w-8 px-3 py-2.5"></th>
+                      <th className="text-left px-3 py-2.5 text-white/40 font-semibold">Tarefa</th>
+                      <th className="text-left px-3 py-2.5 text-white/40 font-semibold">Mês/Ano</th>
+                      <th className="text-right px-3 py-2.5 text-white/40 font-semibold">Registros</th>
+                      <th className="text-left px-3 py-2.5 text-white/40 font-semibold">Clientes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dadosSemData.registros.map(r => {
+                      const key = `${r.tipo}||${r.mes}||${r.ano}`
+                      const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+                      return (
+                        <tr key={key} className="border-b border-white/5 last:border-0 hover:bg-white/2">
+                          <td className="px-3 py-2.5">
+                            <input
+                              type="checkbox"
+                              checked={selecionadosSemData.has(key)}
+                              onChange={e => {
+                                const next = new Set(selecionadosSemData)
+                                if (e.target.checked) next.add(key); else next.delete(key)
+                                setSelecionadosSemData(next)
+                              }}
+                              className="w-3.5 h-3.5 accent-rose-400"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 text-white font-medium">{r.tipo}</td>
+                          <td className="px-3 py-2.5 text-white/60">{meses[r.mes - 1]}/{r.ano}</td>
+                          <td className="px-3 py-2.5 text-right text-white/50">{r.total}</td>
+                          <td className="px-3 py-2.5 text-white/40 truncate max-w-[260px]">{r.clientes.join(', ')}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={handleExcluirSemData}
+                  disabled={excluindoSemData || selecionadosSemData.size === 0}
+                  className="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-semibold hover:bg-red-500/30 transition-colors disabled:opacity-50">
+                  {excluindoSemData ? 'Excluindo...' : `Excluir selecionados (${[...selecionadosSemData].reduce((acc, key) => acc + (dadosSemData.registros.find(r => `${r.tipo}||${r.mes}||${r.ano}` === key)?.total ?? 0), 0)} registros)`}
+                </button>
+                <button
+                  onClick={() => { setDadosSemData(null); setSemDataMsg('') }}
+                  className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-colors">
+                  Cancelar
+                </button>
+                {semDataMsg && (
+                  <p className={`text-xs ${semDataMsg.startsWith('Erro') ? 'text-red-400' : 'text-green-400'}`}>
+                    {semDataMsg}
                   </p>
                 )}
               </div>

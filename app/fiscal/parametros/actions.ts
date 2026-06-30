@@ -279,6 +279,73 @@ export async function preencherDataEmClientes(
   return { registrosAtualizados }
 }
 
+export interface RegistroSemData {
+  tipo: string
+  mes: number
+  ano: number
+  total: number
+  ids: string[]
+  clientes: string[]  // nomes dos clientes afetados
+}
+
+export async function buscarTarefasSemData(): Promise<{
+  error?: string
+  registros: RegistroSemData[]
+  totalRegistros: number
+}> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', registros: [], totalRegistros: 0 }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', registros: [], totalRegistros: 0 }
+
+  const { data: rows, error } = await supabase
+    .from('tarefas')
+    .select('id, tipo, mes, ano, cliente_id, clientes(nome)')
+    .is('concluida_em', null)
+    .order('tipo')
+    .order('ano')
+    .order('mes')
+
+  if (error) return { error: error.message, registros: [], totalRegistros: 0 }
+
+  // Agrupa por tipo+mes+ano
+  const grupos: Record<string, RegistroSemData> = {}
+  for (const r of rows ?? []) {
+    const key = `${r.tipo}||${r.mes}||${r.ano}`
+    const clienteJoin = r.clientes as unknown as { nome: string } | { nome: string }[] | null
+    const nomeCliente = Array.isArray(clienteJoin) ? (clienteJoin[0]?.nome ?? r.cliente_id) : (clienteJoin?.nome ?? r.cliente_id)
+    if (!grupos[key]) {
+      grupos[key] = { tipo: r.tipo, mes: r.mes, ano: r.ano, total: 0, ids: [], clientes: [] }
+    }
+    grupos[key].total++
+    grupos[key].ids.push(r.id)
+    grupos[key].clientes.push(nomeCliente)
+  }
+
+  const registros = Object.values(grupos).sort((a, b) =>
+    a.tipo.localeCompare(b.tipo) || a.ano - b.ano || a.mes - b.mes
+  )
+
+  return { registros, totalRegistros: (rows ?? []).length }
+}
+
+export async function excluirRegistrosDeTarefas(
+  ids: string[]
+): Promise<{ error?: string; excluidos: number }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', excluidos: 0 }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', excluidos: 0 }
+  if (ids.length === 0) return { error: 'Nenhum registro selecionado.', excluidos: 0 }
+
+  const { error } = await supabase.from('tarefas').delete().in('id', ids)
+  if (error) return { error: error.message, excluidos: 0 }
+
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/parametros')
+  return { excluidos: ids.length }
+}
+
 function semAcento(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
 }

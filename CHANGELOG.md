@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.4] - 2026-06-30
+
+### Adicionado
+- **Registros sem data de conclusão** em Parâmetros → Manutenção de Dados: analisa todos os registros da tabela `tarefas` com `concluida_em IS NULL`, exibe tabela agrupada por tipo/mês/ano com lista de clientes afetados, checkboxes com "Selecionar todos" e botão de exclusão em massa que mostra contagem de registros a excluir
+
+### Arquivos alterados
+- `app/fiscal/parametros/actions.ts` — novas actions `buscarTarefasSemData()` e `excluirRegistrosDeTarefas()`; nova interface `RegistroSemData`
+- `app/fiscal/parametros/ParametrosClient.tsx` — nova seção com análise, tabela e exclusão de registros sem data
+
+---
+
 ## [v0.5.3] - 2026-06-30
 
 ### Adicionado
