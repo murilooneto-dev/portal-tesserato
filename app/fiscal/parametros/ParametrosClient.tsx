@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
+import { salvarTemplate, aplicarTemplateAClientes } from './actions'
+import { resolverTemplate } from '@/lib/atividade-templates'
 
 interface TaskLog {
   id: string
@@ -32,6 +34,7 @@ interface Props {
   taskLogs: TaskLog[]
   deletionLogs: DeletionLog[]
   emailSettings?: Record<string, string>
+  atividadeTemplates: Record<string, string[]>
 }
 
 function formatDate(s: string | null) {
@@ -61,7 +64,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   )
 }
 
-export default function ParametrosClient({ profiles, dashboardAnnouncement, taskLogs, deletionLogs, emailSettings = {} }: Props) {
+export default function ParametrosClient({ profiles, dashboardAnnouncement, taskLogs, deletionLogs, emailSettings = {}, atividadeTemplates }: Props) {
   const router = useRouter()
 
   // Comunicado
@@ -108,6 +111,26 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
 
   // Logs modais
   const [logModal, setLogModal] = useState<'tarefas' | 'exclusoes' | null>(null)
+
+  // Templates de atividade
+  const BASES = ['Serviço', 'Comércio', 'Indústria'] as const
+  const ATIVIDADES_COMBINADAS = [
+    'Serviço e Comércio',
+    'Serviço e Indústria',
+    'Comércio e Indústria',
+    'Serviço, Comércio e Indústria',
+  ]
+  const [templates, setTemplates] = useState<Record<string, string[]>>({
+    Serviço:   atividadeTemplates['Serviço']   ?? [],
+    Comércio:  atividadeTemplates['Comércio']  ?? [],
+    Indústria: atividadeTemplates['Indústria'] ?? [],
+  })
+  const [novasTarefas, setNovasTarefas] = useState<Record<string, string>>({
+    Serviço: '', Comércio: '', Indústria: '',
+  })
+  const [salvandoTemplate, setSalvandoTemplate] = useState<string | null>(null)
+  const [aplicandoTemplate, setAplicandoTemplate] = useState<string | null>(null)
+  const [templateMsg, setTemplateMsg] = useState<Record<string, string>>({})
 
   async function handleSaveComunicado() {
     setSavingAnn(true)
@@ -191,6 +214,39 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
 
   function toggleAba(aba: string) {
     setNovoAbas(prev => prev.includes(aba) ? prev.filter(a => a !== aba) : [...prev, aba])
+  }
+
+  async function handleSalvarTemplate(base: string) {
+    setSalvandoTemplate(base)
+    const result = await salvarTemplate(base, templates[base])
+    setSalvandoTemplate(null)
+    setTemplateMsg(prev => ({ ...prev, [base]: result.error ? `Erro: ${result.error}` : 'Salvo!' }))
+    setTimeout(() => setTemplateMsg(prev => ({ ...prev, [base]: '' })), 3000)
+  }
+
+  async function handleAplicarTemplate(base: string) {
+    setAplicandoTemplate(base)
+    const result = await aplicarTemplateAClientes(base)
+    setAplicandoTemplate(null)
+    const msg = result.error
+      ? `Erro: ${result.error}`
+      : `${result.atualizados} cliente(s) atualizados`
+    setTemplateMsg(prev => ({ ...prev, [base + '_aplicar']: msg }))
+    setTimeout(() => setTemplateMsg(prev => ({ ...prev, [base + '_aplicar']: '' })), 4000)
+  }
+
+  function addTarefaTemplate(base: string) {
+    const t = (novasTarefas[base] ?? '').trim().toUpperCase()
+    if (!t || templates[base].includes(t)) return
+    setTemplates(prev => ({ ...prev, [base]: [...prev[base], t] }))
+    setNovasTarefas(prev => ({ ...prev, [base]: '' }))
+  }
+
+  function removeTarefaTemplate(base: string, idx: number) {
+    setTemplates(prev => ({
+      ...prev,
+      [base]: prev[base].filter((_, i) => i !== idx),
+    }))
   }
 
   const sectionHeader = (title: string) => (
@@ -463,6 +519,98 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                         </button>
                       </div>
                     )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Templates de Tarefas por Atividade */}
+        <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
+          {sectionHeader('Templates de Tarefas por Atividade')}
+          <p className="text-white/30 text-xs mb-5">
+            Configure as tarefas padrão para cada atividade base. Atividades combinadas são geradas automaticamente pela união das bases.
+          </p>
+
+          {/* 3 cards editáveis */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {BASES.map(base => (
+              <div key={base} className="bg-white/3 border border-white/8 rounded-xl p-4 flex flex-col gap-3">
+                <p className="text-white font-semibold text-sm">{base}</p>
+
+                {/* Lista de tarefas */}
+                <div className="flex flex-wrap gap-1.5 min-h-[40px]">
+                  {templates[base].length === 0 && (
+                    <p className="text-white/20 text-xs">Nenhuma tarefa</p>
+                  )}
+                  {templates[base].map((t, i) => (
+                    <span key={i} className="flex items-center gap-1 text-xs bg-[#00CCEB]/10 border border-[#00CCEB]/30 text-white px-2 py-0.5 rounded-md">
+                      {t}
+                      <button
+                        onClick={() => removeTarefaTemplate(base, i)}
+                        className="text-white/30 hover:text-red-400 transition-colors font-bold ml-0.5">×</button>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Input nova tarefa */}
+                <div className="flex gap-1.5">
+                  <input
+                    value={novasTarefas[base] ?? ''}
+                    onChange={e => setNovasTarefas(prev => ({ ...prev, [base]: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefaTemplate(base))}
+                    placeholder="Nova tarefa..."
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50"
+                  />
+                  <button
+                    onClick={() => addTarefaTemplate(base)}
+                    className="px-2.5 py-1.5 rounded-lg bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] text-xs font-bold hover:bg-[#00CCEB]/30 transition-colors">
+                    +
+                  </button>
+                </div>
+
+                {/* Botões */}
+                <div className="flex flex-col gap-1.5 mt-auto pt-1">
+                  <button
+                    onClick={() => handleSalvarTemplate(base)}
+                    disabled={salvandoTemplate === base}
+                    className="w-full py-1.5 rounded-lg bg-[#00CCEB] text-white text-xs font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
+                    {salvandoTemplate === base ? 'Salvando...' : 'Salvar template'}
+                  </button>
+                  <button
+                    onClick={() => handleAplicarTemplate(base)}
+                    disabled={aplicandoTemplate === base}
+                    className="w-full py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs hover:bg-white/10 transition-colors disabled:opacity-50">
+                    {aplicandoTemplate === base ? 'Aplicando...' : 'Aplicar a clientes existentes'}
+                  </button>
+                  {templateMsg[base] && (
+                    <p className={`text-xs text-center ${templateMsg[base].startsWith('Erro') ? 'text-red-400' : 'text-green-400'}`}>
+                      {templateMsg[base]}
+                    </p>
+                  )}
+                  {templateMsg[base + '_aplicar'] && (
+                    <p className="text-xs text-center text-blue-400">{templateMsg[base + '_aplicar']}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Preview atividades combinadas */}
+          <div>
+            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-3">Preview — Atividades Combinadas (somente leitura)</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {ATIVIDADES_COMBINADAS.map(ativ => {
+                const tarefas = resolverTemplate(ativ, templates)
+                return (
+                  <div key={ativ} className="rounded-xl border border-white/6 bg-white/2 px-4 py-3">
+                    <p className="text-white/50 text-xs font-semibold mb-2">{ativ}</p>
+                    <p className="text-white/30 text-xs">
+                      {tarefas.length === 0
+                        ? 'Nenhuma tarefa'
+                        : tarefas.join(' · ')}
+                    </p>
                   </div>
                 )
               })}

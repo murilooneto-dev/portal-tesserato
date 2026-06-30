@@ -14,11 +14,6 @@ interface Props {
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-const TAREFAS: Record<string, string[]> = {
-  normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
-  simples: ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF'],
-  mei:     ['DAS'],
-}
 
 export default async function ClienteDetalhePage({ params, searchParams }: Props) {
   const { id } = await params
@@ -79,9 +74,7 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
   }
 
   // Histórico por mês
-  const tiposDoCliente = (cliente.tarefas_personalizadas ?? []).length > 0
-    ? (cliente.tarefas_personalizadas as string[])
-    : (TAREFAS[cliente.grupo ?? 'normal'] ?? TAREFAS.normal)
+  const tiposDoCliente = cliente.tarefas_personalizadas ?? []
   const historicoMeses = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
     const total = tiposDoCliente.length
