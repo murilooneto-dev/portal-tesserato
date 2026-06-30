@@ -22,11 +22,13 @@ export default async function ParametrosPage() {
     { data: appSettings },
     { data: taskLogs },
     { data: deletionLogs },
+    { data: atividadeTemplates },
   ] = await Promise.all([
     supabase.from('profiles').select('*').order('nome'),
     supabase.from('app_settings').select('*').eq('id', 1).single(),
     supabase.from('task_unlock_log').select('*').order('created_at', { ascending: false }).limit(50),
     supabase.from('deletion_log').select('*').order('created_at', { ascending: false }).limit(50),
+    supabase.from('atividade_templates').select('atividade,tarefas'),
   ])
 
   const s = (appSettings as any) ?? {}
@@ -42,6 +44,11 @@ export default async function ParametrosPage() {
   const emailSettings: Record<string, string> = {}
   for (const k of emailKeys) { if (s[k] != null) emailSettings[k] = String(s[k]) }
 
+  const templatesMap: Record<string, string[]> = {}
+  for (const row of atividadeTemplates ?? []) {
+    templatesMap[row.atividade] = row.tarefas ?? []
+  }
+
   return (
     <ParametrosClient
       profiles={profiles ?? []}
@@ -49,6 +56,7 @@ export default async function ParametrosPage() {
       taskLogs={taskLogs ?? []}
       deletionLogs={deletionLogs ?? []}
       emailSettings={emailSettings}
+      atividadeTemplates={templatesMap}
     />
   )
 }
