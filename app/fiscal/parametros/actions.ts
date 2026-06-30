@@ -312,7 +312,8 @@ export async function buscarTarefasSemData(): Promise<{
   const grupos: Record<string, RegistroSemData> = {}
   for (const r of rows ?? []) {
     const key = `${r.tipo}||${r.mes}||${r.ano}`
-    const nomeCliente = (r.clientes as { nome: string } | null)?.nome ?? r.cliente_id
+    const clienteJoin = r.clientes as unknown as { nome: string } | { nome: string }[] | null
+    const nomeCliente = Array.isArray(clienteJoin) ? (clienteJoin[0]?.nome ?? r.cliente_id) : (clienteJoin?.nome ?? r.cliente_id)
     if (!grupos[key]) {
       grupos[key] = { tipo: r.tipo, mes: r.mes, ano: r.ano, total: 0, ids: [], clientes: [] }
     }
