@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.4.9] - 2026-06-30
+
+### Corrigido
+- **Contador de tarefas na página Empresas não contava tarefas recém-adicionadas**: o campo "· X tarefas" contava linhas na tabela `tarefas` (só criadas quando alguém marca/desmarca). Uma tarefa personalizada nova nunca tocada não aparecia. Agora conta as tarefas configuradas em `tarefas_personalizadas` (ou padrão do grupo), que reflete o template real do cliente
+- **Progresso Geral no Dashboard (`totalTarefas`) corrigido**: mesmo bug — usava `ts.length` (linhas no banco) em vez da soma de tarefas configuradas por cliente
+- **Progresso por Responsável no Dashboard (`opTotal`) corrigido**: mesma correção aplicada ao card de cada responsável
+
+### Arquivos alterados
+- `app/fiscal/empresas/page.tsx` — `contagemTarefas` agora usa `tarefas_personalizadas` ou padrão do grupo
+- `app/fiscal/dashboard/page.tsx` — `totalTarefas` e `opTotal` calculados a partir dos templates dos clientes
+
+---
+
 ## [v0.4.8] - 2026-06-30
 
 ### Corrigido

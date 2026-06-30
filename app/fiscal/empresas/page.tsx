@@ -16,17 +16,21 @@ export default async function EmpresasPage() {
   const mes = hoje.getMonth() + 1
   const ano = hoje.getFullYear()
 
-  const clientesQ = supabase.from('clientes').select('*').order('nome')
+  const { data: clientes } = await supabase.from('clientes').select('*').order('nome')
 
-  const [{ data: clientes }, { data: tarefas }] = await Promise.all([
-    clientesQ,
-    supabase.from('tarefas').select('cliente_id').eq('mes', mes).eq('ano', ano),
-  ])
+  const TAREFAS_GRUPOS: Record<string, string[]> = {
+    normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
+    simples: ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF'],
+    mei:     ['DAS'],
+  }
 
-  // Conta tarefas por cliente no mês atual
+  // Conta tarefas configuradas por cliente (template, não registros do banco)
   const contagemTarefas: Record<string, number> = {}
-  for (const t of tarefas ?? []) {
-    contagemTarefas[t.cliente_id] = (contagemTarefas[t.cliente_id] ?? 0) + 1
+  for (const c of clientes ?? []) {
+    const tipos = (c.tarefas_personalizadas?.length > 0)
+      ? (c.tarefas_personalizadas as string[])
+      : (TAREFAS_GRUPOS[c.grupo ?? 'normal'] ?? TAREFAS_GRUPOS.normal)
+    contagemTarefas[c.id] = tipos.length
   }
 
   return (
