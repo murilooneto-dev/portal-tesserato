@@ -85,3 +85,62 @@ export async function salvarConfiguracoes(settings: Record<string, unknown>): Pr
   revalidatePath('/fiscal/parametros')
   return {}
 }
+
+export async function salvarTemplate(
+  atividade: string,
+  tarefas: string[]
+): Promise<{ error?: string }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.' }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
+
+  const { error } = await supabase
+    .from('atividade_templates')
+    .upsert({ atividade, tarefas }, { onConflict: 'atividade' })
+
+  if (error) return { error: error.message }
+  revalidatePath('/fiscal/parametros')
+  return {}
+}
+
+export async function aplicarTemplateAClientes(
+  atividadeBase: string
+): Promise<{ error?: string; atualizados: number }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', atualizados: 0 }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', atualizados: 0 }
+
+  const { data: templateRow } = await supabase
+    .from('atividade_templates')
+    .select('tarefas')
+    .eq('atividade', atividadeBase)
+    .single()
+
+  const tarefasBase: string[] = templateRow?.tarefas ?? []
+  if (tarefasBase.length === 0) return { atualizados: 0 }
+
+  const { data: clientes } = await supabase
+    .from('clientes')
+    .select('id, atividade, tarefas_personalizadas')
+
+  let atualizados = 0
+  for (const c of clientes ?? []) {
+    if (!c.atividade?.includes(atividadeBase)) continue
+
+    const existentes: string[] = c.tarefas_personalizadas ?? []
+    const novas = tarefasBase.filter(t => !existentes.includes(t))
+    if (novas.length === 0) continue
+
+    await supabase
+      .from('clientes')
+      .update({ tarefas_personalizadas: [...existentes, ...novas] })
+      .eq('id', c.id)
+
+    atualizados++
+  }
+
+  revalidatePath('/fiscal/clientes')
+  return { atualizados }
+}
