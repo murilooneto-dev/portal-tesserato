@@ -149,73 +149,98 @@ export async function aplicarTemplateAClientes(
 }
 
 function semAcento(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
 }
 
-function deduplicarTarefas(tarefas: string[]): string[] {
-  // Para cada chave normalizada, elege a versão canônica (prefere a que tem acento)
-  const melhor: Record<string, string> = {}
-  for (const t of tarefas) {
-    const key = semAcento(t)
-    const atual = melhor[key]
-    if (!atual) {
-      melhor[key] = t
-    } else {
-      // Prefere a versão que difere da normalizada (tem acento/caractere especial)
-      const atualTemAcento = atual !== semAcento(atual)
-      const tTemAcento = t !== semAcento(t)
-      if (tTemAcento && !atualTemAcento) melhor[key] = t
-    }
-  }
-  // Reconstrói na ordem original, sem duplicatas
-  const seen = new Set<string>()
-  const result: string[] = []
-  for (const t of tarefas) {
-    const key = semAcento(t)
-    if (!seen.has(key)) {
-      seen.add(key)
-      result.push(melhor[key])
-    }
-  }
-  return result
+export interface GrupoDuplicata {
+  normalizado: string     // chave sem acento (ex: "SAIDAS")
+  versoes: string[]       // todas as variantes encontradas (ex: ["SAIDAS", "SAÍDAS"])
+  sugerido: string | null // auto-sugerido: a versão com acento, se houver exatamente uma
+  clientesAfetados: number
 }
 
-export async function limparTarefasDuplicadas(): Promise<{
+export async function analisarTarefasDuplicadas(): Promise<{
   error?: string
-  clientesAtualizados: number
-  tarefasCorrigidas: number
+  grupos: GrupoDuplicata[]
+  todasTarefas: string[]  // lista de todas as tarefas únicas (para seleção manual)
 }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', grupos: [], todasTarefas: [] }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', grupos: [], todasTarefas: [] }
+
+  const { data: clientes } = await supabase.from('clientes').select('id, tarefas_personalizadas')
+
+  const gruposMap: Record<string, { versoes: Set<string>; afetados: Set<string> }> = {}
+  const todasSet = new Set<string>()
+
+  for (const c of clientes ?? []) {
+    const tarefas: string[] = c.tarefas_personalizadas ?? []
+    const vistasNessaCliente: Record<string, string[]> = {}
+
+    for (const t of tarefas) {
+      todasSet.add(t)
+      const key = semAcento(t)
+      if (!gruposMap[key]) gruposMap[key] = { versoes: new Set(), afetados: new Set() }
+      gruposMap[key].versoes.add(t)
+      if (!vistasNessaCliente[key]) vistasNessaCliente[key] = []
+      vistasNessaCliente[key].push(t)
+    }
+    // Marca clientes que têm 2+ variantes da mesma tarefa
+    for (const [key, versoes] of Object.entries(vistasNessaCliente)) {
+      if (versoes.length > 1) gruposMap[key].afetados.add(c.id)
+    }
+  }
+
+  const grupos: GrupoDuplicata[] = []
+  for (const [normalizado, { versoes, afetados }] of Object.entries(gruposMap)) {
+    if (versoes.size < 2) continue
+    const versoesArr = Array.from(versoes).sort()
+    const comAcento = versoesArr.filter(v => semAcento(v) !== v)
+    const sugerido = comAcento.length === 1 ? comAcento[0] : null
+    grupos.push({ normalizado, versoes: versoesArr, sugerido, clientesAfetados: afetados.size })
+  }
+
+  return {
+    grupos: grupos.sort((a, b) => b.clientesAfetados - a.clientesAfetados),
+    todasTarefas: Array.from(todasSet).sort(),
+  }
+}
+
+// mapeamento: { [normalizado]: canonico } — ex: { "SAIDAS": "SAÍDAS" }
+export async function limparTarefasDuplicadas(
+  mapeamento: Record<string, string>
+): Promise<{ error?: string; clientesAtualizados: number; tarefasCorrigidas: number }> {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
 
-  // 1. Corrigir tarefas_personalizadas dos clientes
   const { data: clientes } = await supabase.from('clientes').select('id, tarefas_personalizadas')
   let clientesAtualizados = 0
-  const canonMap: Record<string, string> = {} // chave normalizada → versão canônica (acumulado global)
 
   for (const c of clientes ?? []) {
     const original: string[] = c.tarefas_personalizadas ?? []
     if (original.length === 0) continue
-    const deduped = deduplicarTarefas(original)
-    // Acumula mapeamento para corrigir a tabela tarefas depois
-    for (const t of deduped) canonMap[semAcento(t)] = t
+    const seen = new Set<string>()
+    const deduped: string[] = []
+    for (const t of original) {
+      const key = semAcento(t)
+      if (!seen.has(key)) {
+        seen.add(key)
+        deduped.push(mapeamento[key] ?? t)
+      }
+    }
     const mudou = deduped.length !== original.length || deduped.some((t, i) => t !== original[i])
     if (!mudou) continue
     await supabase.from('clientes').update({ tarefas_personalizadas: deduped }).eq('id', c.id)
     clientesAtualizados++
   }
 
-  // 2. Corrigir tipos na tabela tarefas (registros com versão sem acento)
+  // Corrige registros na tabela tarefas
   let tarefasCorrigidas = 0
-  for (const [normalizado, canonico] of Object.entries(canonMap)) {
-    // Busca registros cujo tipo normalizado bate mas o tipo em si é diferente do canônico
-    const { data: registros } = await supabase
-      .from('tarefas')
-      .select('id, tipo')
-      .neq('tipo', canonico)
-
+  for (const [normalizado, canonico] of Object.entries(mapeamento)) {
+    const { data: registros } = await supabase.from('tarefas').select('id, tipo').neq('tipo', canonico)
     for (const r of registros ?? []) {
       if (semAcento(r.tipo) === normalizado) {
         await supabase.from('tarefas').update({ tipo: canonico }).eq('id', r.id)

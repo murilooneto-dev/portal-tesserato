@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
-import { salvarTemplate, aplicarTemplateAClientes, limparTarefasDuplicadas } from './actions'
+import { salvarTemplate, aplicarTemplateAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas } from './actions'
+import type { GrupoDuplicata } from './actions'
 import { resolverTemplate } from '@/lib/atividade-templates'
 
 interface TaskLog {
@@ -131,14 +132,32 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [salvandoTemplate, setSalvandoTemplate] = useState<string | null>(null)
   const [aplicandoTemplate, setAplicandoTemplate] = useState<string | null>(null)
   const [templateMsg, setTemplateMsg] = useState<Record<string, string>>({})
-  const [limpandoDuplicatas, setLimpandoDuplicatas] = useState(false)
+  const [analisando, setAnalisando] = useState(false)
+  const [analise, setAnalise] = useState<{ grupos: GrupoDuplicata[]; todasTarefas: string[] } | null>(null)
+  const [mapeamento, setMapeamento] = useState<Record<string, string>>({})
+  const [aplicando, setAplicando] = useState(false)
   const [duplicatasMsg, setDuplicatasMsg] = useState('')
 
-  async function handleLimparDuplicatas() {
-    setLimpandoDuplicatas(true)
+  async function handleAnalisarDuplicatas() {
+    setAnalisando(true)
     setDuplicatasMsg('')
-    const result = await limparTarefasDuplicadas()
-    setLimpandoDuplicatas(false)
+    setAnalise(null)
+    const result = await analisarTarefasDuplicadas()
+    setAnalisando(false)
+    if (result.error) { setDuplicatasMsg(`Erro: ${result.error}`); return }
+    if (result.grupos.length === 0) { setDuplicatasMsg('Nenhuma duplicata encontrada.'); return }
+    // Pré-preenche mapeamento com sugestões automáticas
+    const map: Record<string, string> = {}
+    for (const g of result.grupos) map[g.normalizado] = g.sugerido ?? g.versoes[0]
+    setMapeamento(map)
+    setAnalise(result)
+  }
+
+  async function handleAplicarLimpeza() {
+    setAplicando(true)
+    const result = await limparTarefasDuplicadas(mapeamento)
+    setAplicando(false)
+    setAnalise(null)
     if (result.error) {
       setDuplicatasMsg(`Erro: ${result.error}`)
     } else {
@@ -638,27 +657,99 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
           <p className="text-white/30 text-xs mb-5">
             Ferramentas administrativas para corrigir inconsistências nos dados dos clientes.
           </p>
-          <div className="flex flex-col gap-3 max-w-md">
-            <div className="flex flex-col gap-2">
-              <p className="text-white/60 text-sm font-medium">Remover tarefas duplicadas</p>
-              <p className="text-white/30 text-xs">
-                Analisa o cadastro de todos os clientes e remove tarefas repetidas mantendo apenas a versão com acentuação correta (ex: remove "SAIDAS" se "SAÍDAS" já existe).
+
+          <p className="text-white/60 text-sm font-medium mb-1">Remover tarefas duplicadas</p>
+          <p className="text-white/30 text-xs mb-4">
+            Analisa todos os clientes e identifica tarefas repetidas com grafias diferentes (ex: "SAIDAS" e "SAÍDAS"). Você confirma qual versão manter antes de aplicar.
+          </p>
+
+          {/* Etapa 1: botão Analisar */}
+          {!analise && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleAnalisarDuplicatas}
+                disabled={analisando}
+                className="px-4 py-2 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-50">
+                {analisando ? 'Analisando...' : 'Analisar duplicatas'}
+              </button>
+              {duplicatasMsg && (
+                <p className={`text-xs ${duplicatasMsg.startsWith('Erro') ? 'text-red-400' : duplicatasMsg.startsWith('Nenhuma') ? 'text-white/40' : 'text-green-400'}`}>
+                  {duplicatasMsg}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Etapa 2: preview + confirmação */}
+          {analise && (
+            <div className="flex flex-col gap-4">
+              <p className="text-white/50 text-xs">
+                {analise.grupos.length} grupo(s) de duplicata encontrado(s). Confirme qual versão manter para cada um:
               </p>
-              <div className="flex items-center gap-3 mt-1">
+
+              <div className="rounded-xl border border-white/8 overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-white/8 bg-white/3">
+                      <th className="text-left px-4 py-2.5 text-white/40 font-semibold">Versões encontradas</th>
+                      <th className="text-left px-4 py-2.5 text-white/40 font-semibold">Manter como</th>
+                      <th className="text-right px-4 py-2.5 text-white/40 font-semibold">Clientes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analise.grupos.map(g => (
+                      <tr key={g.normalizado} className="border-b border-white/5 last:border-0">
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {g.versoes.map(v => (
+                              <span key={v} className={`px-2 py-0.5 rounded text-[11px] border ${mapeamento[g.normalizado] === v ? 'bg-white/5 border-white/10 text-white/60' : 'bg-red-500/10 border-red-500/20 text-red-300 line-through'}`}>
+                                {v}
+                              </span>
+                            ))}
+                          </div>
+                          {!g.sugerido && (
+                            <p className="text-yellow-400/70 text-[10px] mt-1">⚠ Sem versão com acento detectada — selecione manualmente</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={mapeamento[g.normalizado] ?? ''}
+                            onChange={e => setMapeamento(prev => ({ ...prev, [g.normalizado]: e.target.value }))}
+                            className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50 w-full max-w-[220px] bg-[#162444]">
+                            <optgroup label="Versões encontradas">
+                              {g.versoes.map(v => <option key={v} value={v}>{v}</option>)}
+                            </optgroup>
+                            <optgroup label="Outras tarefas cadastradas">
+                              {analise.todasTarefas.filter(t => !g.versoes.includes(t)).map(t => (
+                                <option key={t} value={t}>{t}</option>
+                              ))}
+                            </optgroup>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 text-right text-white/40">
+                          {g.clientesAfetados}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={handleLimparDuplicatas}
-                  disabled={limpandoDuplicatas}
+                  onClick={handleAplicarLimpeza}
+                  disabled={aplicando}
                   className="px-4 py-2 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-50">
-                  {limpandoDuplicatas ? 'Processando...' : 'Executar limpeza'}
+                  {aplicando ? 'Aplicando...' : 'Confirmar e aplicar'}
                 </button>
-                {duplicatasMsg && (
-                  <p className={`text-xs ${duplicatasMsg.startsWith('Erro') ? 'text-red-400' : 'text-green-400'}`}>
-                    {duplicatasMsg}
-                  </p>
-                )}
+                <button
+                  onClick={() => { setAnalise(null); setDuplicatasMsg('') }}
+                  className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-colors">
+                  Cancelar
+                </button>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
