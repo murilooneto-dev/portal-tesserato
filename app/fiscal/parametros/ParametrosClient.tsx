@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
-import { salvarTemplate, aplicarTemplateAClientes } from './actions'
+import { salvarTemplate, aplicarTemplateAClientes, limparTarefasDuplicadas } from './actions'
 import { resolverTemplate } from '@/lib/atividade-templates'
 
 interface TaskLog {
@@ -131,6 +131,20 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [salvandoTemplate, setSalvandoTemplate] = useState<string | null>(null)
   const [aplicandoTemplate, setAplicandoTemplate] = useState<string | null>(null)
   const [templateMsg, setTemplateMsg] = useState<Record<string, string>>({})
+  const [limpandoDuplicatas, setLimpandoDuplicatas] = useState(false)
+  const [duplicatasMsg, setDuplicatasMsg] = useState('')
+
+  async function handleLimparDuplicatas() {
+    setLimpandoDuplicatas(true)
+    setDuplicatasMsg('')
+    const result = await limparTarefasDuplicadas()
+    setLimpandoDuplicatas(false)
+    if (result.error) {
+      setDuplicatasMsg(`Erro: ${result.error}`)
+    } else {
+      setDuplicatasMsg(`Concluído — ${result.clientesAtualizados} cliente(s) corrigidos, ${result.tarefasCorrigidas} registro(s) de tarefa atualizados`)
+    }
+  }
 
   async function handleSaveComunicado() {
     setSavingAnn(true)
@@ -614,6 +628,35 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </div>
+
+        {/* Manutenção de Dados */}
+        <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
+          {sectionHeader('Manutenção de Dados')}
+          <p className="text-white/30 text-xs mb-5">
+            Ferramentas administrativas para corrigir inconsistências nos dados dos clientes.
+          </p>
+          <div className="flex flex-col gap-3 max-w-md">
+            <div className="flex flex-col gap-2">
+              <p className="text-white/60 text-sm font-medium">Remover tarefas duplicadas</p>
+              <p className="text-white/30 text-xs">
+                Analisa o cadastro de todos os clientes e remove tarefas repetidas mantendo apenas a versão com acentuação correta (ex: remove "SAIDAS" se "SAÍDAS" já existe).
+              </p>
+              <div className="flex items-center gap-3 mt-1">
+                <button
+                  onClick={handleLimparDuplicatas}
+                  disabled={limpandoDuplicatas}
+                  className="px-4 py-2 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-50">
+                  {limpandoDuplicatas ? 'Processando...' : 'Executar limpeza'}
+                </button>
+                {duplicatasMsg && (
+                  <p className={`text-xs ${duplicatasMsg.startsWith('Erro') ? 'text-red-400' : 'text-green-400'}`}>
+                    {duplicatasMsg}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

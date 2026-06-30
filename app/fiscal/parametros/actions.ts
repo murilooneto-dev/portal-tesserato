@@ -147,3 +147,84 @@ export async function aplicarTemplateAClientes(
   revalidatePath('/fiscal/clientes')
   return { atualizados }
 }
+
+function semAcento(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
+}
+
+function deduplicarTarefas(tarefas: string[]): string[] {
+  // Para cada chave normalizada, elege a versão canônica (prefere a que tem acento)
+  const melhor: Record<string, string> = {}
+  for (const t of tarefas) {
+    const key = semAcento(t)
+    const atual = melhor[key]
+    if (!atual) {
+      melhor[key] = t
+    } else {
+      // Prefere a versão que difere da normalizada (tem acento/caractere especial)
+      const atualTemAcento = atual !== semAcento(atual)
+      const tTemAcento = t !== semAcento(t)
+      if (tTemAcento && !atualTemAcento) melhor[key] = t
+    }
+  }
+  // Reconstrói na ordem original, sem duplicatas
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const t of tarefas) {
+    const key = semAcento(t)
+    if (!seen.has(key)) {
+      seen.add(key)
+      result.push(melhor[key])
+    }
+  }
+  return result
+}
+
+export async function limparTarefasDuplicadas(): Promise<{
+  error?: string
+  clientesAtualizados: number
+  tarefasCorrigidas: number
+}> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
+
+  // 1. Corrigir tarefas_personalizadas dos clientes
+  const { data: clientes } = await supabase.from('clientes').select('id, tarefas_personalizadas')
+  let clientesAtualizados = 0
+  const canonMap: Record<string, string> = {} // chave normalizada → versão canônica (acumulado global)
+
+  for (const c of clientes ?? []) {
+    const original: string[] = c.tarefas_personalizadas ?? []
+    if (original.length === 0) continue
+    const deduped = deduplicarTarefas(original)
+    // Acumula mapeamento para corrigir a tabela tarefas depois
+    for (const t of deduped) canonMap[semAcento(t)] = t
+    const mudou = deduped.length !== original.length || deduped.some((t, i) => t !== original[i])
+    if (!mudou) continue
+    await supabase.from('clientes').update({ tarefas_personalizadas: deduped }).eq('id', c.id)
+    clientesAtualizados++
+  }
+
+  // 2. Corrigir tipos na tabela tarefas (registros com versão sem acento)
+  let tarefasCorrigidas = 0
+  for (const [normalizado, canonico] of Object.entries(canonMap)) {
+    // Busca registros cujo tipo normalizado bate mas o tipo em si é diferente do canônico
+    const { data: registros } = await supabase
+      .from('tarefas')
+      .select('id, tipo')
+      .neq('tipo', canonico)
+
+    for (const r of registros ?? []) {
+      if (semAcento(r.tipo) === normalizado) {
+        await supabase.from('tarefas').update({ tipo: canonico }).eq('id', r.id)
+        tarefasCorrigidas++
+      }
+    }
+  }
+
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/parametros')
+  return { clientesAtualizados, tarefasCorrigidas }
+}
