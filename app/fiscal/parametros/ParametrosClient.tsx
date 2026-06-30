@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
-import { salvarTemplate, aplicarTemplateAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas } from './actions'
+import { salvarTemplate, aplicarTemplateAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes } from './actions'
 import type { GrupoDuplicata } from './actions'
 import { resolverTemplate } from '@/lib/atividade-templates'
 
@@ -138,6 +138,18 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [aplicando, setAplicando] = useState(false)
   const [duplicatasMsg, setDuplicatasMsg] = useState('')
 
+  // Alteração em massa
+  const [carregandoDados, setCarregandoDados] = useState(false)
+  const [dadosAlteracao, setDadosAlteracao] = useState<{
+    todasTarefas: string[]
+    clientes: { id: string; nome: string; tarefas: string[] }[]
+  } | null>(null)
+  const [tarefaOrigem, setTarefaOrigem] = useState('')
+  const [tarefaDestino, setTarefaDestino] = useState('')
+  const [clientesSelecionados, setClientesSelecionados] = useState<Set<string>>(new Set())
+  const [aplicandoAlteracao, setAplicandoAlteracao] = useState(false)
+  const [alteracaoMsg, setAlteracaoMsg] = useState('')
+
   async function handleAnalisarDuplicatas() {
     setAnalisando(true)
     setDuplicatasMsg('')
@@ -162,6 +174,46 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       setDuplicatasMsg(`Erro: ${result.error}`)
     } else {
       setDuplicatasMsg(`Concluído — ${result.clientesAtualizados} cliente(s) corrigidos, ${result.tarefasCorrigidas} registro(s) de tarefa atualizados`)
+    }
+  }
+
+  async function handleCarregarDados() {
+    setCarregandoDados(true)
+    setAlteracaoMsg('')
+    const result = await buscarDadosParaAlteracao()
+    setCarregandoDados(false)
+    if (result.error) { setAlteracaoMsg(`Erro: ${result.error}`); return }
+    setDadosAlteracao(result)
+    setTarefaOrigem('')
+    setTarefaDestino('')
+    setClientesSelecionados(new Set())
+  }
+
+  function handleSelecionarTarefaOrigem(tarefa: string) {
+    setTarefaOrigem(tarefa)
+    setTarefaDestino(tarefa)
+    if (!dadosAlteracao) return
+    const ids = dadosAlteracao.clientes
+      .filter(c => c.tarefas.includes(tarefa))
+      .map(c => c.id)
+    setClientesSelecionados(new Set(ids))
+  }
+
+  async function handleAplicarAlteracao() {
+    const destino = tarefaDestino.trim()
+    if (!destino || !tarefaOrigem) { setAlteracaoMsg('Selecione a tarefa e informe o novo nome.'); return }
+    if (clientesSelecionados.size === 0) { setAlteracaoMsg('Selecione ao menos um cliente.'); return }
+    setAplicandoAlteracao(true)
+    const result = await renomearTarefaEmClientes(tarefaOrigem, destino, Array.from(clientesSelecionados))
+    setAplicandoAlteracao(false)
+    if (result.error) {
+      setAlteracaoMsg(`Erro: ${result.error}`)
+    } else {
+      setAlteracaoMsg(`Concluído — ${result.clientesAtualizados} cliente(s) atualizados, ${result.tarefasCorrigidas} registro(s) corrigidos`)
+      setDadosAlteracao(null)
+      setTarefaOrigem('')
+      setTarefaDestino('')
+      setClientesSelecionados(new Set())
     }
   }
 
@@ -747,6 +799,126 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                   className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-colors">
                   Cancelar
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Divisor */}
+          <div className="border-t border-white/8 my-6" />
+
+          {/* Alteração em massa */}
+          <p className="text-white/60 text-sm font-medium mb-1">Alteração em massa de tarefa</p>
+          <p className="text-white/30 text-xs mb-4">
+            Selecione uma tarefa, escolha os clientes e informe o novo nome. Aplica em todos os selecionados de uma vez.
+          </p>
+
+          {!dadosAlteracao ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCarregarDados}
+                disabled={carregandoDados}
+                className="px-4 py-2 rounded-lg bg-violet-500/20 border border-violet-500/40 text-violet-300 text-xs font-semibold hover:bg-violet-500/30 transition-colors disabled:opacity-50">
+                {carregandoDados ? 'Carregando...' : 'Carregar tarefas'}
+              </button>
+              {alteracaoMsg && (
+                <p className={`text-xs ${alteracaoMsg.startsWith('Erro') ? 'text-red-400' : 'text-green-400'}`}>
+                  {alteracaoMsg}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Tarefa a renomear</label>
+                  <select
+                    value={tarefaOrigem}
+                    onChange={e => handleSelecionarTarefaOrigem(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-[#162444] border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50">
+                    <option value="">— selecione —</option>
+                    {dadosAlteracao.todasTarefas.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Novo nome</label>
+                  <input
+                    value={tarefaDestino}
+                    onChange={e => setTarefaDestino(e.target.value.toUpperCase())}
+                    placeholder="NOVO NOME"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50"
+                  />
+                </div>
+              </div>
+
+              {tarefaOrigem && (() => {
+                const filtrados = dadosAlteracao.clientes.filter(c => c.tarefas.includes(tarefaOrigem))
+                const todosSelected = filtrados.length > 0 && filtrados.every(c => clientesSelecionados.has(c.id))
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-white/40 text-xs">{filtrados.length} cliente(s) com essa tarefa</p>
+                      {filtrados.length > 0 && (
+                        <button
+                          onClick={() => setClientesSelecionados(
+                            todosSelected ? new Set() : new Set(filtrados.map(c => c.id))
+                          )}
+                          className="text-[#00CCEB] text-xs hover:underline">
+                          {todosSelected ? 'Limpar seleção' : 'Selecionar todos'}
+                        </button>
+                      )}
+                    </div>
+                    {filtrados.length === 0 ? (
+                      <p className="text-white/20 text-xs py-2">Nenhum cliente possui essa tarefa.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                        {filtrados.map(c => (
+                          <label key={c.id} className="flex items-center gap-2 cursor-pointer select-none px-2.5 py-1.5 rounded-lg bg-white/3 border border-white/6 hover:bg-white/6 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={clientesSelecionados.has(c.id)}
+                              onChange={e => {
+                                const next = new Set(clientesSelecionados)
+                                if (e.target.checked) next.add(c.id); else next.delete(c.id)
+                                setClientesSelecionados(next)
+                              }}
+                              className="w-3.5 h-3.5 accent-[#00CCEB] shrink-0"
+                            />
+                            <span className="text-white/70 text-xs truncate">{c.nome}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {tarefaOrigem && clientesSelecionados.size > 0 && tarefaDestino.trim() && tarefaDestino.trim() !== tarefaOrigem && (
+                <div className="rounded-lg bg-white/3 border border-white/8 px-4 py-3">
+                  <p className="text-white/60 text-xs">
+                    Renomear <span className="text-white font-semibold">'{tarefaOrigem}'</span> → <span className="text-[#00CCEB] font-semibold">'{tarefaDestino.trim()}'</span> em <span className="text-white font-semibold">{clientesSelecionados.size}</span> cliente(s)
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={handleAplicarAlteracao}
+                  disabled={aplicandoAlteracao || !tarefaOrigem || !tarefaDestino.trim() || clientesSelecionados.size === 0}
+                  className="px-4 py-2 rounded-lg bg-violet-500/20 border border-violet-500/40 text-violet-300 text-xs font-semibold hover:bg-violet-500/30 transition-colors disabled:opacity-50">
+                  {aplicandoAlteracao ? 'Aplicando...' : 'Confirmar e aplicar'}
+                </button>
+                <button
+                  onClick={() => { setDadosAlteracao(null); setAlteracaoMsg('') }}
+                  className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-colors">
+                  Cancelar
+                </button>
+                {alteracaoMsg && (
+                  <p className={`text-xs ${alteracaoMsg.startsWith('Erro') || alteracaoMsg.startsWith('Selecione') ? 'text-red-400' : 'text-green-400'}`}>
+                    {alteracaoMsg}
+                  </p>
+                )}
               </div>
             </div>
           )}

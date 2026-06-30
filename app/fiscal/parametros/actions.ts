@@ -148,6 +148,79 @@ export async function aplicarTemplateAClientes(
   return { atualizados }
 }
 
+export async function buscarDadosParaAlteracao(): Promise<{
+  error?: string
+  todasTarefas: string[]
+  clientes: { id: string; nome: string; tarefas: string[] }[]
+}> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', todasTarefas: [], clientes: [] }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', todasTarefas: [], clientes: [] }
+
+  const { data: rows, error } = await supabase.from('clientes').select('id, nome, tarefas_personalizadas')
+  if (error) return { error: error.message, todasTarefas: [], clientes: [] }
+
+  const todasSet = new Set<string>()
+  const clientes = (rows ?? []).map(c => {
+    const tarefas: string[] = c.tarefas_personalizadas ?? []
+    for (const t of tarefas) todasSet.add(t)
+    return { id: c.id as string, nome: c.nome as string, tarefas }
+  })
+
+  return { todasTarefas: Array.from(todasSet).sort(), clientes }
+}
+
+export async function renomearTarefaEmClientes(
+  tarefaOrigem: string,
+  tarefaDestino: string,
+  clienteIds: string[]
+): Promise<{ error?: string; clientesAtualizados: number; tarefasCorrigidas: number }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
+
+  const destino = tarefaDestino.trim()
+  if (!destino) return { error: 'Nome de destino não pode ser vazio.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
+  if (clienteIds.length === 0) return { error: 'Nenhum cliente selecionado.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
+
+  const { data: clientes } = await supabase.from('clientes').select('id, tarefas_personalizadas').in('id', clienteIds)
+  let clientesAtualizados = 0
+
+  for (const c of clientes ?? []) {
+    const original: string[] = c.tarefas_personalizadas ?? []
+    if (!original.includes(tarefaOrigem)) continue
+    const renamed = original.map(t => t === tarefaOrigem ? destino : t)
+    // Se destino já existia na lista, remove a duplicata gerada pelo rename
+    const seen = new Set<string>()
+    const deduped = renamed.filter(t => { if (seen.has(t)) return false; seen.add(t); return true })
+    await supabase.from('clientes').update({ tarefas_personalizadas: deduped }).eq('id', c.id)
+    clientesAtualizados++
+  }
+
+  // Corrige registros na tabela tarefas
+  const { data: registros } = await supabase
+    .from('tarefas')
+    .select('id')
+    .eq('tipo', tarefaOrigem)
+    .in('cliente_id', clienteIds)
+
+  let tarefasCorrigidas = 0
+  if ((registros ?? []).length > 0) {
+    await supabase
+      .from('tarefas')
+      .update({ tipo: destino })
+      .eq('tipo', tarefaOrigem)
+      .in('cliente_id', clienteIds)
+    tarefasCorrigidas = registros!.length
+  }
+
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/parametros')
+  return { clientesAtualizados, tarefasCorrigidas }
+}
+
 function semAcento(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
 }

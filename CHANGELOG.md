@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.3] - 2026-06-30
+
+### Adicionado
+- **Alteração em massa de tarefa** em Parâmetros → Manutenção de Dados: selecione uma tarefa, marque os clientes desejados (com "selecionar todos") e informe o novo nome — aplica o rename em `tarefas_personalizadas` de todos os clientes selecionados e nos registros da tabela `tarefas` de uma vez só
+
+### Arquivos alterados
+- `app/fiscal/parametros/actions.ts` — nova action `buscarDadosParaAlteracao()` e `renomearTarefaEmClientes()`
+- `app/fiscal/parametros/ParametrosClient.tsx` — UI de alteração em massa com dropdown, checkboxes, preview e confirmação
+
+---
+
 ## [v0.5.2] - 2026-06-30
 
 ### Alterado
