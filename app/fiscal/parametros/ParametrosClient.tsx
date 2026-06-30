@@ -157,6 +157,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   // Tarefas sem data
   const [analisandoSemData, setAnalisandoSemData] = useState(false)
   const [mesFiltroSemData, setMesFiltroSemData] = useState(6)
+  const [anoFiltroSemData, setAnoFiltroSemData] = useState(new Date().getFullYear())
   const [dadosSemData, setDadosSemData] = useState<{ registros: RegistroSemData[]; totalRegistros: number } | null>(null)
   const [selecionadosSemData, setSelecionadosSemData] = useState<Set<string>>(new Set())  // chaves "tipo||mes||ano"
   const [excluindoSemData, setExcluindoSemData] = useState(false)
@@ -247,7 +248,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
     setSemDataMsg('')
     setDadosSemData(null)
     setSelecionadosSemData(new Set())
-    const result = await buscarTarefasSemData(mesFiltroSemData)
+    const result = await buscarTarefasSemData(mesFiltroSemData, anoFiltroSemData)
     setAnalisandoSemData(false)
     if (result.error) { setSemDataMsg(`Erro: ${result.error}`); return }
     if (result.totalRegistros === 0) { setSemDataMsg('Nenhum registro sem data encontrado.'); return }
@@ -1052,7 +1053,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
           {/* Tarefas sem data */}
           <p className="text-white/60 text-sm font-medium mb-1">Registros sem data de conclusão</p>
           <p className="text-white/30 text-xs mb-4">
-            Lista todos os registros na tabela de tarefas onde a data de conclusão está em branco. Permite excluir em massa por tipo/mês/ano.
+            Cruza todos os clientes com suas tarefas personalizadas e lista as que não têm data de conclusão no mês/ano selecionado.
           </p>
 
           {!dadosSemData ? (
@@ -1063,6 +1064,14 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                 className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 text-xs">
                 {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((nome, i) => (
                   <option key={i+1} value={i+1}>{nome}</option>
+                ))}
+              </select>
+              <select
+                value={anoFiltroSemData}
+                onChange={e => { setAnoFiltroSemData(Number(e.target.value)); setDadosSemData(null); setSemDataMsg('') }}
+                className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 text-xs">
+                {[2024, 2025, 2026, 2027].map(a => (
+                  <option key={a} value={a}>{a}</option>
                 ))}
               </select>
               <button
@@ -1080,7 +1089,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <p className="text-white/40 text-xs">{dadosSemData.totalRegistros} registro(s) sem data em {dadosSemData.registros.length} combinação(ões) tipo/mês/ano</p>
+                <p className="text-white/40 text-xs">{dadosSemData.totalRegistros} tarefa(s) sem conclusão em {dadosSemData.registros.length} tipo(s) — {dadosSemData.registros.reduce((s, r) => s + r.ids.length, 0)} com registro excluível</p>
                 <button
                   onClick={() => setSelecionadosSemData(
                     selecionadosSemData.size === dadosSemData.registros.length
@@ -1123,7 +1132,10 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                           </td>
                           <td className="px-3 py-2.5 text-white font-medium">{r.tipo}</td>
                           <td className="px-3 py-2.5 text-white/60">{meses[r.mes - 1]}/{r.ano}</td>
-                          <td className="px-3 py-2.5 text-right text-white/50">{r.total}</td>
+                          <td className="px-3 py-2.5 text-right text-white/50">
+                            {r.total}
+                            {r.semRegistro > 0 && <span className="ml-1 text-white/25 text-[10px]">({r.semRegistro} s/reg)</span>}
+                          </td>
                           <td className="px-3 py-2.5 text-white/40 truncate max-w-[260px]">{r.clientes.join(', ')}</td>
                         </tr>
                       )
@@ -1137,7 +1149,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                   onClick={handleExcluirSemData}
                   disabled={excluindoSemData || selecionadosSemData.size === 0}
                   className="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-semibold hover:bg-red-500/30 transition-colors disabled:opacity-50">
-                  {excluindoSemData ? 'Excluindo...' : `Excluir selecionados (${[...selecionadosSemData].reduce((acc, key) => acc + (dadosSemData.registros.find(r => `${r.tipo}||${r.mes}||${r.ano}` === key)?.total ?? 0), 0)} registros)`}
+                  {excluindoSemData ? 'Excluindo...' : `Excluir selecionados (${[...selecionadosSemData].reduce((acc, key) => acc + (dadosSemData.registros.find(r => `${r.tipo}||${r.mes}||${r.ano}` === key)?.ids.length ?? 0), 0)} registros)`}
                 </button>
                 <button
                   onClick={() => { setDadosSemData(null); setSemDataMsg('') }}

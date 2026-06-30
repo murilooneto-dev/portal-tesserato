@@ -284,11 +284,12 @@ export interface RegistroSemData {
   mes: number
   ano: number
   total: number
-  ids: string[]
-  clientes: string[]  // nomes dos clientes afetados
+  ids: string[]        // registros existentes com concluida_em nulo (podem ser excluídos)
+  clientes: string[]   // todos os clientes sem conclusão (com ou sem registro)
+  semRegistro: number  // clientes que não têm nenhum registro em tarefas para esse mês/ano
 }
 
-export async function buscarTarefasSemData(mes?: number): Promise<{
+export async function buscarTarefasSemData(mes?: number, ano?: number): Promise<{
   error?: string
   registros: RegistroSemData[]
   totalRegistros: number
@@ -298,39 +299,65 @@ export async function buscarTarefasSemData(mes?: number): Promise<{
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', registros: [], totalRegistros: 0 }
 
-  let query = supabase
+  const mesEfetivo = mes ?? new Date().getMonth() + 1
+  const anoEfetivo = ano ?? new Date().getFullYear()
+
+  // 1. Todos os clientes com suas listas de tarefas
+  const { data: clientesRows, error: errClientes } = await supabase
+    .from('clientes')
+    .select('id, nome, tarefas_personalizadas')
+    .order('nome')
+  if (errClientes) return { error: errClientes.message, registros: [], totalRegistros: 0 }
+
+  // 2. Todos os registros em tarefas para o mês/ano selecionado
+  const { data: tarefasRows, error: errTarefas } = await supabase
     .from('tarefas')
-    .select('id, tipo, mes, ano, cliente_id, clientes(nome)')
-    .is('concluida_em', null)
-    .order('tipo')
-    .order('ano')
-    .order('mes')
+    .select('id, tipo, cliente_id, concluida_em')
+    .eq('mes', mesEfetivo)
+    .eq('ano', anoEfetivo)
+  if (errTarefas) return { error: errTarefas.message, registros: [], totalRegistros: 0 }
 
-  if (mes !== undefined) query = query.eq('mes', mes)
+  // Mapas de lookup por clienteId||tipo
+  const completedKeys = new Set<string>()
+  const semDataMap = new Map<string, string>() // clienteId||tipo → id do registro
 
-  const { data: rows, error } = await query
-
-  if (error) return { error: error.message, registros: [], totalRegistros: 0 }
-
-  // Agrupa por tipo+mes+ano
-  const grupos: Record<string, RegistroSemData> = {}
-  for (const r of rows ?? []) {
-    const key = `${r.tipo}||${r.mes}||${r.ano}`
-    const clienteJoin = r.clientes as unknown as { nome: string } | { nome: string }[] | null
-    const nomeCliente = Array.isArray(clienteJoin) ? (clienteJoin[0]?.nome ?? r.cliente_id) : (clienteJoin?.nome ?? r.cliente_id)
-    if (!grupos[key]) {
-      grupos[key] = { tipo: r.tipo, mes: r.mes, ano: r.ano, total: 0, ids: [], clientes: [] }
+  for (const t of tarefasRows ?? []) {
+    const key = `${t.cliente_id}||${t.tipo}`
+    if (t.concluida_em !== null) {
+      completedKeys.add(key)
+    } else {
+      semDataMap.set(key, t.id)
     }
-    grupos[key].total++
-    grupos[key].ids.push(r.id)
-    grupos[key].clientes.push(nomeCliente)
   }
 
-  const registros = Object.values(grupos).sort((a, b) =>
-    a.tipo.localeCompare(b.tipo) || a.ano - b.ano || a.mes - b.mes
-  )
+  // Cruzamento: para cada cliente × tarefa, achar os incompletos
+  const grupos: Record<string, RegistroSemData> = {}
 
-  return { registros, totalRegistros: (rows ?? []).length }
+  for (const cliente of clientesRows ?? []) {
+    for (const tipo of (cliente.tarefas_personalizadas ?? [])) {
+      const key = `${cliente.id}||${tipo}`
+      if (completedKeys.has(key)) continue // já concluída, pula
+
+      if (!grupos[tipo]) {
+        grupos[tipo] = { tipo, mes: mesEfetivo, ano: anoEfetivo, total: 0, ids: [], clientes: [], semRegistro: 0 }
+      }
+
+      grupos[tipo].total++
+      grupos[tipo].clientes.push(cliente.nome)
+
+      const recordId = semDataMap.get(key)
+      if (recordId) {
+        grupos[tipo].ids.push(recordId)
+      } else {
+        grupos[tipo].semRegistro++
+      }
+    }
+  }
+
+  const registros = Object.values(grupos).sort((a, b) => a.tipo.localeCompare(b.tipo))
+  const totalRegistros = registros.reduce((sum, r) => sum + r.total, 0)
+
+  return { registros, totalRegistros }
 }
 
 export async function excluirRegistrosDeTarefas(
