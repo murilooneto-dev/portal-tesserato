@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 
 export async function toggleTarefa(tarefaId: string, concluida: boolean) {
@@ -9,6 +10,11 @@ export async function toggleTarefa(tarefaId: string, concluida: boolean) {
     .from('tarefas')
     .update({ concluida, concluida_em: concluida ? new Date().toISOString() : null })
     .eq('id', tarefaId)
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/dashboard')
+  revalidatePath('/fiscal/historico')
+  revalidatePath('/fiscal/relatorios')
+  revalidatePath('/fiscal/tarefas')
 }
 
 export async function desbloquearTarefa(
@@ -38,6 +44,12 @@ export async function desbloquearTarefa(
     valor_novo: 'pendente',
     motivo,
   })
+
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/dashboard')
+  revalidatePath('/fiscal/historico')
+  revalidatePath('/fiscal/relatorios')
+  revalidatePath('/fiscal/tarefas')
 }
 
 export async function salvarMIT(clienteId: string, valor: string) {

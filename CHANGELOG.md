@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.7] - 2026-06-30
+
+### Corrigido
+- Progresso de tarefas ficava "zerado" na lista de clientes mesmo com tarefas concluídas (visíveis no detalhe do cliente, com data e botão "Desbloquear"). Causa: `revalidatePath` ao marcar/desbloquear uma tarefa só invalidava o cache da página de detalhe do próprio cliente (`/fiscal/clientes/[id]`), deixando a lista de clientes e outras páginas que leem `tarefas` com dados em cache desatualizados
+- `desbloquearTarefa` (botão "Desbloquear") não revalidava nenhuma página após alterar o status da tarefa
+
+### Arquivos alterados
+- `app/fiscal/clientes/[id]/page.tsx` — `toggleTarefa` agora também revalida `/fiscal/clientes`, `/fiscal/dashboard`, `/fiscal/historico`, `/fiscal/relatorios` e `/fiscal/tarefas`
+- `app/fiscal/clientes/actions.ts` — `toggleTarefa` e `desbloquearTarefa` ganham as mesmas revalidações
+
+---
+
 ## [v0.5.6] - 2026-06-30
 
 ### Corrigido
