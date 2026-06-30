@@ -71,6 +71,11 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
         .insert({ cliente_id: id, usuario_id: user!.id, mes, ano, tipo, concluida, concluida_em })
     }
     revalidatePath(`/fiscal/clientes/${id}`)
+    revalidatePath('/fiscal/clientes')
+    revalidatePath('/fiscal/dashboard')
+    revalidatePath('/fiscal/historico')
+    revalidatePath('/fiscal/relatorios')
+    revalidatePath('/fiscal/tarefas')
   }
 
   // Histórico por mês
