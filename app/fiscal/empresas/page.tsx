@@ -4,12 +4,6 @@ import EmpresasClient from './EmpresasClient'
 
 export const metadata = { title: 'Empresas — Tesserato Fiscal' }
 
-const TAREFAS_GRUPOS: Record<string, string[]> = {
-  normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
-  simples: ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF'],
-  mei:     ['DAS'],
-}
-
 export default async function EmpresasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -18,20 +12,24 @@ export default async function EmpresasPage() {
   const { data: profile } = await supabase.from('profiles').select('nome,role').eq('id', user.id).single()
   const isAdmin = profile?.role === 'admin'
 
-  const { data: clientes } = await supabase.from('clientes').select('*').order('nome')
+  const [{ data: clientes }, { data: atividadeTemplates }] = await Promise.all([
+    supabase.from('clientes').select('*').order('nome'),
+    supabase.from('atividade_templates').select('atividade,tarefas'),
+  ])
 
-  // Conta tarefas configuradas por cliente (template, não registros do banco)
+  const templatesMap: Record<string, string[]> = {}
+  for (const row of atividadeTemplates ?? []) {
+    templatesMap[row.atividade] = row.tarefas ?? []
+  }
+
   const contagemTarefas: Record<string, number> = {}
   for (const c of clientes ?? []) {
-    const tipos = ((c.tarefas_personalizadas?.length ?? 0) > 0)
-      ? (c.tarefas_personalizadas as string[])
-      : (TAREFAS_GRUPOS[c.grupo ?? 'normal'] ?? TAREFAS_GRUPOS.normal)
-    contagemTarefas[c.id] = tipos.length
+    contagemTarefas[c.id] = (c.tarefas_personalizadas?.length ?? 0)
   }
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <EmpresasClient clientes={clientes ?? []} contagemTarefas={contagemTarefas} profileNome={profile?.nome ?? null} isAdmin={isAdmin} />
+      <EmpresasClient clientes={clientes ?? []} contagemTarefas={contagemTarefas} profileNome={profile?.nome ?? null} isAdmin={isAdmin} templates={templatesMap} />
     </div>
   )
 }

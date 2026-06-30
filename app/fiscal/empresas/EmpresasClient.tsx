@@ -17,9 +17,10 @@ interface Props {
   contagemTarefas: Record<string, number>
   profileNome: string | null
   isAdmin: boolean
+  templates: Record<string, string[]>
 }
 
-export default function EmpresasClient({ clientes, contagemTarefas, profileNome, isAdmin }: Props) {
+export default function EmpresasClient({ clientes, contagemTarefas, profileNome, isAdmin, templates }: Props) {
   const [search, setSearch] = useState('')
   const [filtroGrupo, setFiltroGrupo] = useState('TODOS')
   const [filtroResponsavel, setFiltroResponsavel] = useState('TODOS')
@@ -69,6 +70,7 @@ export default function EmpresasClient({ clientes, contagemTarefas, profileNome,
           responsaveis={responsaveis}
           onClose={closeModal}
           readOnly={modalReadOnly}
+          templates={templates}
         />
       )}
 
