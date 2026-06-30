@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { resolverTemplate } from '@/lib/atividade-templates'
 
 const GRUPOS = [
   { value: 'normal',  label: 'Regime Normal' },
@@ -20,11 +21,6 @@ const ATIVIDADES = [
   'Serviço, Comércio e Indústria',
 ]
 
-const TAREFAS_PADRAO: Record<string, string[]> = {
-  normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
-  simples: ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF'],
-  mei:     ['DAS'],
-}
 
 interface FormData {
   cod: string
@@ -51,6 +47,7 @@ interface Props {
   responsaveis: string[]
   onClose: () => void
   readOnly?: boolean
+  templates: Record<string, string[]>
 }
 
 const emptyForm = (): FormData => ({
@@ -65,7 +62,7 @@ const inputCls = "w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/1
 const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[#162444] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
 const labelCls = "block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5"
 
-export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnly = false }: Props) {
+export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnly = false, templates }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
@@ -230,7 +227,17 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               </div>
               <div>
                 <label className={labelCls}>Atividade</label>
-                <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly}>
+                <select className={selectCls} value={form.atividade} onChange={e => {
+                  const novaAtividade = e.target.value
+                  set('atividade', novaAtividade)
+                  // Em nova empresa: preenche tarefas com o template da atividade
+                  if (!isEdit && novaAtividade) {
+                    const tarefasTemplate = resolverTemplate(novaAtividade, templates)
+                    if (tarefasTemplate.length > 0) {
+                      set('tarefas_personalizadas', tarefasTemplate)
+                    }
+                  }
+                }} disabled={readOnly}>
                   <option value="">Selecionar...</option>
                   {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[#162444]">{a}</option>)}
                 </select>
@@ -284,12 +291,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               <div>
                 <label className={labelCls}>Grupo</label>
                 <select className={selectCls} value={form.grupo} onChange={e => {
-                  const novoGrupo = e.target.value
-                  set('grupo', novoGrupo)
-                  // Em nova empresa: preenche tarefas com o padrão do grupo selecionado
-                  if (!isEdit && novoGrupo && TAREFAS_PADRAO[novoGrupo]) {
-                    set('tarefas_personalizadas', [...TAREFAS_PADRAO[novoGrupo]])
-                  }
+                  set('grupo', e.target.value)
                 }} disabled={readOnly}>
                   <option value="" className="bg-[#162444]">Selecionar...</option>
                   {GRUPOS.map(g => <option key={g.value} value={g.value} className="bg-[#162444]">{g.label}</option>)}
@@ -338,11 +340,11 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
                 <label className={labelCls + ' mb-0'}>
                   Tarefas ({form.tarefas_personalizadas.length})
                 </label>
-                {!readOnly && !isEdit && form.grupo && (
+                {!readOnly && !isEdit && form.atividade && (
                   <button type="button"
-                    onClick={() => set('tarefas_personalizadas', [...(TAREFAS_PADRAO[form.grupo] ?? [])])}
+                    onClick={() => set('tarefas_personalizadas', resolverTemplate(form.atividade, templates))}
                     className="text-xs text-white/30 hover:text-white/60 transition-colors border border-white/10 px-2 py-1 rounded-lg">
-                    Restaurar padrão do grupo
+                    Restaurar padrão da atividade
                   </button>
                 )}
               </div>
@@ -351,7 +353,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               <div className="flex flex-wrap gap-1.5 mb-3 min-h-[32px]">
                 {form.tarefas_personalizadas.length === 0 && (
                   <p className="text-white/20 text-xs">
-                    {form.grupo ? 'Selecione o grupo acima para pré-preencher as tarefas padrão.' : 'Nenhuma tarefa adicionada.'}
+                    {form.atividade ? 'Selecione a atividade acima para pré-preencher as tarefas padrão.' : 'Nenhuma tarefa adicionada.'}
                   </p>
                 )}
                 {form.tarefas_personalizadas.map((t, i) => (
