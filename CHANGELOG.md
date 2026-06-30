@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.1] - 2026-06-30
+
+### Adicionado
+- **Limpeza de tarefas duplicadas em Parâmetros → Manutenção de Dados**: botão "Executar limpeza" analisa todos os clientes e remove tarefas repetidas mantendo apenas a versão com acentuação correta (ex: remove "SAIDAS" quando "SAÍDAS" já existe). Corrige também os registros históricos na tabela `tarefas`
+
+### Arquivos alterados
+- `app/fiscal/parametros/actions.ts` — `limparTarefasDuplicadas()`: deduplicação algorítmica por normalização NFD
+- `app/fiscal/parametros/ParametrosClient.tsx` — seção "Manutenção de Dados" com botão e feedback de resultado
+
+---
+
 ## [v0.5.0] - 2026-06-30
 
 ### Adicionado
