@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
+import MesSeletor from './MesSeletor'
 import {
   Zap, LayoutGrid, Users, Calendar,
   FileText, TrendingUp, Building2, CreditCard, Wrench, Settings, ShieldCheck,
@@ -26,9 +27,11 @@ const NAV_ITEMS: NavItem[] = [
 
 interface Props {
   profile: Profile
+  mes: number
+  ano: number
 }
 
-export default function Sidebar({ profile }: Props) {
+export default function Sidebar({ profile, mes, ano }: Props) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -48,7 +51,7 @@ export default function Sidebar({ profile }: Props) {
       }}
     >
       <div className="px-4 py-4 border-b border-white/7">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 mb-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
@@ -62,6 +65,7 @@ export default function Sidebar({ profile }: Props) {
             <p className="text-white/30 text-[10px] leading-tight">Setor Fiscal</p>
           </div>
         </div>
+        <MesSeletor mes={mes} ano={ano} />
       </div>
 
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">

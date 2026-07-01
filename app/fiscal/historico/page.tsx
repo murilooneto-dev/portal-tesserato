@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Cliente, Tarefa } from '@/lib/types'
+import { useMesAno } from '@/lib/mes-atual-context'
 
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const MESES_ABR  = ['J','F','M','A','M','J','J','A','S','O','N','D']
 const MESES_ABR3 = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-const ANO_ATUAL  = new Date().getFullYear()
-const MES_ATUAL  = new Date().getMonth() + 1
 
 const CORES_RESP = ['#ec4899','#3b82f6','#10b981','#eab308','#f97316','#8b5cf6','#06b6d4','#f43f5e']
 
@@ -21,6 +20,7 @@ export default function HistoricoPage() {
   const [selectedResp, setSelectedResp] = useState<string | null>(null)
   const [loading, setLoading]       = useState(true)
   const [isAdmin, setIsAdmin]       = useState(false)
+  const { mes, ano } = useMesAno()
 
   useEffect(() => {
     const sb = createClient()
@@ -40,7 +40,7 @@ export default function HistoricoPage() {
             const { data } = await sb
               .from('tarefas')
               .select('*')
-              .eq('ano', ANO_ATUAL)
+              .eq('ano', ano)
               .in('cliente_id', ids)
               .limit(10000)
             ts = data ?? []
@@ -51,7 +51,7 @@ export default function HistoricoPage() {
         })
       })
     })
-  }, [])
+  }, [ano])
 
   const responsaveis = Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean))) as string[]
 
@@ -85,7 +85,7 @@ export default function HistoricoPage() {
 
       {/* Título + gráfico global */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Histórico Anual — {ANO_ATUAL}</h1>
+        <h1 className="text-2xl font-bold text-white">Histórico Anual — {ano}</h1>
         <p className="text-sm text-white/40 mt-1">Progresso de cada mês do ano</p>
 
         <div className="mt-5 rounded-2xl border border-white/8 bg-white/2 px-6 pt-5 pb-4">
@@ -93,7 +93,7 @@ export default function HistoricoPage() {
             {globalStats.map((s, i) => {
               const m = i + 1
               const barH = s.total > 0 ? Math.max(8, Math.round((s.total / maxGlobal) * 100)) : 3
-              const isCur = m === MES_ATUAL
+              const isCur = m === mes
               return (
                 <div key={m} className="flex flex-col items-center flex-1 gap-1">
                   <span className="text-[10px] text-white/40 h-4 leading-4">
@@ -149,7 +149,7 @@ export default function HistoricoPage() {
                   <div className="flex items-end gap-px" style={{ height: '48px' }}>
                     {stats.map((s, i) => {
                       const h = s.total > 0 ? Math.max(4, Math.round((s.total / maxR) * 40)) : 0
-                      const isCur = i + 1 === MES_ATUAL
+                      const isCur = i + 1 === mes
                       return (
                         <div key={i} className="flex-1 flex flex-col items-center justify-end gap-px">
                           {s.total > 0 ? (
@@ -174,7 +174,7 @@ export default function HistoricoPage() {
                   <div className="flex mt-0.5">
                     {Array.from({ length: 12 }, (_, i) => (
                       <div key={i} className="flex-1 text-center text-[9px]">
-                        {i + 1 === MES_ATUAL
+                        {i + 1 === mes
                           ? <span style={{ color: cor }}>{MESES_ABR[i]}</span>
                           : null}
                       </div>
@@ -210,7 +210,7 @@ export default function HistoricoPage() {
         <div className="grid grid-cols-4 gap-3">
           {MESES_NOME.map((nome, i) => {
             const s = filtroStats[i]
-            const isCur = i + 1 === MES_ATUAL
+            const isCur = i + 1 === mes
             const respIdx = selectedResp ? responsaveis.indexOf(selectedResp) : -1
             const cor = respIdx >= 0 ? CORES_RESP[respIdx % CORES_RESP.length] : '#00CCEB'
 

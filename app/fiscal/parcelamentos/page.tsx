@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-
-const ANO = new Date().getFullYear()
+import { useMesAno } from '@/lib/mes-atual-context'
 
 const SECOES = [
   'RECEITA FEDERAL - ECAC',
@@ -72,6 +71,8 @@ export default function ParcelamentosPage() {
   const [saving, setSaving] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [userNome, setUserNome] = useState<string | null>(null)
+
+  const { ano } = useMesAno()
 
   const sb = createClient()
 
@@ -181,7 +182,7 @@ export default function ParcelamentosPage() {
 
     const html = `<!DOCTYPE html><html lang="pt-BR"><head>
     <meta charset="UTF-8">
-    <title>Parcelamentos ${ANO} — Tesserato Contabilidade</title>
+    <title>Parcelamentos ${ano} — Tesserato Contabilidade</title>
     <style>
       @page { size: A4 landscape; margin: 12mm; }
       * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -210,7 +211,7 @@ export default function ParcelamentosPage() {
     </style></head><body>
     <div class="header">
       <div class="header-left">
-        <h1>Relatório de Parcelamentos — ${ANO}</h1>
+        <h1>Relatório de Parcelamentos — ${ano}</h1>
         <div class="sub">Tesserato Contabilidade · Setor Fiscal</div>
       </div>
       <div class="header-right">
@@ -220,7 +221,7 @@ export default function ParcelamentosPage() {
       </div>
     </div>
     <div class="meta">
-      <div class="meta-item"><div class="label">Ano de referência</div><div class="value">${ANO}</div></div>
+      <div class="meta-item"><div class="label">Ano de referência</div><div class="value">${ano}</div></div>
       <div class="meta-item"><div class="label">Total de parcelamentos</div><div class="value">${filtered.length}</div></div>
       <div class="meta-item"><div class="label">Seções</div><div class="value">${(secaoFiltro === 'TODOS' ? SECOES : [secaoFiltro]).filter(s => filtered.some(p => p.secao === s)).length}</div></div>
       ${respFiltro !== 'TODOS' ? `<div class="meta-item"><div class="label">Responsável</div><div class="value">${respFiltro}</div></div>` : ''}
@@ -240,7 +241,7 @@ export default function ParcelamentosPage() {
     <div className="min-h-screen">
       {/* Top bar */}
       <div className="flex items-center gap-3 px-8 py-4 bg-[#0b1019] border-b border-white/8 sticky top-0 z-10">
-        <h1 className="text-lg font-bold text-white whitespace-nowrap">Parcelamentos {ANO}</h1>
+        <h1 className="text-lg font-bold text-white whitespace-nowrap">Parcelamentos {ano}</h1>
         <input type="text" placeholder="Buscar empresa, CNPJ ou responsável..."
           value={search} onChange={e => setSearch(e.target.value)}
           className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/25 text-sm focus:outline-none focus:border-[#00CCEB]/40" />

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Cliente, Tarefa } from '@/lib/types'
+import { useMesAno } from '@/lib/mes-atual-context'
 
 const TAREFAS: Record<string, string[]> = {
   normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
@@ -22,9 +23,7 @@ function progresso(cliente: Cliente, tarefas: Tarefa[]) {
 
 export default function RelatoriosPage() {
   const router = useRouter()
-  const hoje = new Date()
-  const [mes] = useState(hoje.getMonth() + 1)
-  const [ano] = useState(hoje.getFullYear())
+  const { mes, ano } = useMesAno()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [filtroResp, setFiltroResp] = useState('TODOS')

@@ -1,13 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Cliente, Profile, Tarefa } from '@/lib/types'
+import { getMesAno } from '@/lib/mes-atual-server'
+import { getMesAnoRealAgora } from '@/lib/mes-atual'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
-
-function getMesAno() {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
-  return { mes: now.getMonth() + 1, ano: now.getFullYear(), hoje: now }
-}
 
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
@@ -41,7 +38,12 @@ function alertaLabel(diff: number) {
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { mes, ano, hoje } = getMesAno()
+  const { mes, ano } = await getMesAno()
+  const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const ehMesAtual = (() => {
+    const real = getMesAnoRealAgora()
+    return mes === real.mes && ano === real.ano
+  })()
 
   const [{ data: clientes }, { data: profiles }, { data: tarefas }] = await Promise.all([
     supabase.from('clientes').select('*').order('nome'),
@@ -69,12 +71,14 @@ export default async function DashboardPage() {
 
   const ultimoDia  = new Date(ano, mes, 0).getDate()
 
-  const alertas = OBRIGACOES_CAL.map(ob => {
-    const diaNum = ob.dia === -1 ? ultimoDia : ob.dia
-    const due  = new Date(ano, mes - 1, diaNum)
-    const diff = Math.ceil((due.getTime() - hoje.getTime()) / 86400000)
-    return { ...ob, diaNum, diff }
-  }).filter(a => a.diff >= 0 && a.diff <= 10)
+  const alertas = ehMesAtual
+    ? OBRIGACOES_CAL.map(ob => {
+        const diaNum = ob.dia === -1 ? ultimoDia : ob.dia
+        const due  = new Date(ano, mes - 1, diaNum)
+        const diff = Math.ceil((due.getTime() - hoje.getTime()) / 86400000)
+        return { ...ob, diaNum, diff }
+      }).filter(a => a.diff >= 0 && a.diff <= 10)
+    : []
 
   const clientesObs = cs.filter(c => c.obs && c.obs.trim() !== '')
   const responsaveis = Array.from(
