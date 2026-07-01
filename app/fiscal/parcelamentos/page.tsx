@@ -76,6 +76,7 @@ export default function ParcelamentosPage() {
   const [ano, setAno] = useState<number>(() => getMesAnoRealAgora().ano)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com o cookie (sistema externo) no mount
     setAno(getMesAnoCliente().ano)
   }, [])
 

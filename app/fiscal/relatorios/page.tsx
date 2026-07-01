@@ -29,6 +29,7 @@ export default function RelatoriosPage() {
 
   useEffect(() => {
     const { mes: m, ano: a } = getMesAnoCliente()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com o cookie (sistema externo) no mount
     setMes(m)
     setAno(a)
   }, [])
