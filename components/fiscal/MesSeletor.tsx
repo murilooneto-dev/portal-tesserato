@@ -15,16 +15,11 @@ interface Props {
 }
 
 function gerarOpcoes(): { mes: number; ano: number; valor: string; label: string }[] {
-  const real = getMesAnoRealAgora()
-  const base = new Date(real.ano, real.mes - 1, 1)
-  const opcoes = []
-  for (let offset = 2; offset >= -23; offset--) {
-    const d = new Date(base.getFullYear(), base.getMonth() + offset, 1)
-    const mes = d.getMonth() + 1
-    const ano = d.getFullYear()
-    opcoes.push({ mes, ano, valor: `${mes}-${ano}`, label: `${MESES_NOME[mes - 1]} ${ano}` })
-  }
-  return opcoes
+  const { ano } = getMesAnoRealAgora()
+  return MESES_NOME.map((nome, i) => {
+    const mes = i + 1
+    return { mes, ano, valor: `${mes}-${ano}`, label: nome }
+  })
 }
 
 export default function MesSeletor({ mes, ano }: Props) {
