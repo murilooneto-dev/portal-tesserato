@@ -2,6 +2,8 @@
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { createClient, getAuthenticatedAdmin } from '@/lib/supabase/server'
+import { getMesAno } from '@/lib/mes-atual-server'
+import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
@@ -9,15 +11,13 @@ import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
 
 interface Props {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ mes?: string; ano?: string }>
 }
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 
-export default async function ClienteDetalhePage({ params, searchParams }: Props) {
+export default async function ClienteDetalhePage({ params }: Props) {
   const { id } = await params
-  const sp = await searchParams
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -31,13 +31,8 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
   // Não-admins só podem ver seus próprios clientes
   if (profile?.role !== 'admin' && cliente.responsavel?.toLowerCase() !== profile?.nome?.toLowerCase()) notFound()
 
-  const hojeSpTz = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-  const [diaStr, mesStr, anoStr] = hojeSpTz.split('/')
-  const mesAtual = parseInt(mesStr)
-  const anoAtual = parseInt(anoStr)
-
-  const mes = parseInt(sp.mes ?? String(mesAtual))
-  const ano = parseInt(sp.ano ?? String(anoAtual))
+  const { mes, ano } = await getMesAno()
+  const anoAtual = getMesAnoRealAgora().ano
 
   // Tarefas do mês selecionado
   const { data: tarefas } = await supabase
@@ -88,12 +83,6 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
     return { m, total, feitas, pct }
   })
 
-  // Navegação mês
-  const prevMes = mes === 1 ? 12 : mes - 1
-  const prevAno = mes === 1 ? ano - 1 : ano
-  const nextMes = mes === 12 ? 1 : mes + 1
-  const nextAno = mes === 12 ? ano + 1 : ano
-
   return (
     <div className="p-8 max-w-4xl mx-auto">
       {/* Header */}
@@ -112,16 +101,9 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
                   {cliente.municipio && <span className="text-xs text-white/50 bg-white/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
                 </div>
               </div>
-              {/* Month nav */}
-              <div className="flex items-center gap-2">
-                <Link href={`/fiscal/clientes/${id}?mes=${prevMes}&ano=${prevAno}`}
-                  className="text-white/40 hover:text-white px-2 py-1 rounded-lg border border-white/10 hover:border-white/20 transition-all text-sm">←</Link>
-                <span className="text-white font-medium text-sm min-w-[100px] text-center">
-                  {MESES_ABREV[mes-1]} / {ano}
-                </span>
-                <Link href={`/fiscal/clientes/${id}?mes=${nextMes}&ano=${nextAno}`}
-                  className="text-white/40 hover:text-white px-2 py-1 rounded-lg border border-white/10 hover:border-white/20 transition-all text-sm">→</Link>
-              </div>
+              <span className="text-white font-medium text-sm">
+                {MESES_ABREV[mes-1]} / {ano}
+              </span>
             </div>
           </div>
         </div>
@@ -160,19 +142,18 @@ export default async function ClienteDetalhePage({ params, searchParams }: Props
           {historicoMeses.map(({ m, total, feitas, pct }) => {
             const isAtual = m === mes && ano === anoAtual
             return (
-              <Link
+              <div
                 key={m}
-                href={`/fiscal/clientes/${id}?mes=${m}&ano=${ano}`}
-                className={`p-3 rounded-xl border text-center transition-all ${
+                className={`p-3 rounded-xl border text-center ${
                   isAtual
                     ? 'bg-[#00CCEB]/15 border-[#00CCEB]/40'
-                    : 'bg-white/3 border-white/8 hover:bg-white/6'
+                    : 'bg-white/3 border-white/8'
                 }`}
               >
                 <p className="text-xs text-white/50 mb-1">{MESES_ABREV[m-1]}</p>
                 <p className={`text-lg font-bold ${pct === 100 ? 'text-[#00CCEB]' : pct > 0 ? 'text-white' : 'text-white/20'}`}>{pct}%</p>
                 <p className="text-xs text-white/30">{feitas}/{total}</p>
-              </Link>
+              </div>
             )
           })}
         </div>

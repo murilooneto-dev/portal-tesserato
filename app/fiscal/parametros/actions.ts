@@ -148,6 +148,68 @@ export async function aplicarTemplateAClientes(
   return { atualizados }
 }
 
+export async function salvarTemplateGrupo(
+  grupo: string,
+  tarefas: string[]
+): Promise<{ error?: string }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.' }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
+
+  const { error } = await supabase
+    .from('grupo_templates')
+    .upsert({ grupo, tarefas }, { onConflict: 'grupo' })
+
+  if (error) return { error: error.message }
+  revalidatePath('/fiscal/parametros')
+  return {}
+}
+
+export async function aplicarTemplateGrupoAClientes(
+  grupo: string
+): Promise<{ error?: string; atualizados: number }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', atualizados: 0 }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', atualizados: 0 }
+
+  const { data: templateRow, error: templateErr } = await supabase
+    .from('grupo_templates')
+    .select('tarefas')
+    .eq('grupo', grupo)
+    .single()
+
+  if (templateErr && templateErr.code !== 'PGRST116') {
+    return { error: templateErr.message, atualizados: 0 }
+  }
+  const tarefasBase: string[] = templateRow?.tarefas ?? []
+  if (tarefasBase.length === 0) return { atualizados: 0 }
+
+  const { data: clientes } = await supabase
+    .from('clientes')
+    .select('id, grupo, tarefas_personalizadas')
+
+  let atualizados = 0
+  for (const c of clientes ?? []) {
+    if (c.grupo !== grupo) continue
+
+    const existentes: string[] = c.tarefas_personalizadas ?? []
+    const novas = tarefasBase.filter(t => !existentes.includes(t))
+    if (novas.length === 0) continue
+
+    await supabase
+      .from('clientes')
+      .update({ tarefas_personalizadas: [...existentes, ...novas] })
+      .eq('id', c.id)
+
+    atualizados++
+  }
+
+  revalidatePath('/fiscal/clientes')
+  return { atualizados }
+}
+
 export async function buscarDadosParaAlteracao(): Promise<{
   error?: string
   todasTarefas: string[]
@@ -277,6 +339,28 @@ export async function preencherDataEmClientes(
 
   revalidatePath('/fiscal/clientes')
   return { registrosAtualizados }
+}
+
+export async function buscarConclusoesTarefa(
+  tarefaTipo: string,
+  mes: number,
+  ano: number
+): Promise<{ error?: string; clienteIdsConcluidos: string[] }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', clienteIdsConcluidos: [] }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', clienteIdsConcluidos: [] }
+
+  const { data, error } = await supabase
+    .from('tarefas')
+    .select('cliente_id')
+    .eq('tipo', tarefaTipo)
+    .eq('mes', mes)
+    .eq('ano', ano)
+    .eq('concluida', true)
+
+  if (error) return { error: error.message, clienteIdsConcluidos: [] }
+  return { clienteIdsConcluidos: (data ?? []).map(r => r.cliente_id as string) }
 }
 
 export interface RegistroSemData {

@@ -1,10 +1,10 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
-import { salvarTemplate, aplicarTemplateAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes, buscarTarefasSemData, excluirRegistrosDeTarefas } from './actions'
+import { salvarTemplate, aplicarTemplateAClientes, salvarTemplateGrupo, aplicarTemplateGrupoAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes, buscarConclusoesTarefa, buscarTarefasSemData, excluirRegistrosDeTarefas } from './actions'
 import type { GrupoDuplicata, RegistroSemData } from './actions'
 import { resolverTemplate } from '@/lib/atividade-templates'
 
@@ -36,6 +36,7 @@ interface Props {
   deletionLogs: DeletionLog[]
   emailSettings?: Record<string, string>
   atividadeTemplates: Record<string, string[]>
+  grupoTemplates: Record<string, string[]>
 }
 
 function formatDate(s: string | null) {
@@ -65,7 +66,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   )
 }
 
-export default function ParametrosClient({ profiles, dashboardAnnouncement, taskLogs, deletionLogs, emailSettings = {}, atividadeTemplates }: Props) {
+export default function ParametrosClient({ profiles, dashboardAnnouncement, taskLogs, deletionLogs, emailSettings = {}, atividadeTemplates, grupoTemplates }: Props) {
   const router = useRouter()
 
   // Comunicado
@@ -132,6 +133,24 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [salvandoTemplate, setSalvandoTemplate] = useState<string | null>(null)
   const [aplicandoTemplate, setAplicandoTemplate] = useState<string | null>(null)
   const [templateMsg, setTemplateMsg] = useState<Record<string, string>>({})
+
+  // Templates de grupo
+  const GRUPOS_TEMPLATE = [
+    { value: 'normal',  label: 'Regime Normal' },
+    { value: 'simples', label: 'Simples Nacional' },
+    { value: 'mei',     label: 'MEI' },
+  ]
+  const [templatesGrupo, setTemplatesGrupo] = useState<Record<string, string[]>>({
+    normal:  grupoTemplates['normal']  ?? [],
+    simples: grupoTemplates['simples'] ?? [],
+    mei:     grupoTemplates['mei']     ?? [],
+  })
+  const [novasTarefasGrupo, setNovasTarefasGrupo] = useState<Record<string, string>>({
+    normal: '', simples: '', mei: '',
+  })
+  const [salvandoTemplateGrupo, setSalvandoTemplateGrupo] = useState<string | null>(null)
+  const [aplicandoTemplateGrupo, setAplicandoTemplateGrupo] = useState<string | null>(null)
+  const [templateGrupoMsg, setTemplateGrupoMsg] = useState<Record<string, string>>({})
   const [analisando, setAnalisando] = useState(false)
   const [analise, setAnalise] = useState<{ grupos: GrupoDuplicata[]; todasTarefas: string[] } | null>(null)
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({})
@@ -153,6 +172,26 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [clientesSelecionados, setClientesSelecionados] = useState<Set<string>>(new Set())
   const [aplicandoAlteracao, setAplicandoAlteracao] = useState(false)
   const [alteracaoMsg, setAlteracaoMsg] = useState('')
+  const [concluidosData, setConcluidosData] = useState<Set<string> | null>(null)
+  const [carregandoConcluidos, setCarregandoConcluidos] = useState(false)
+
+  useEffect(() => {
+    if (modoAlteracao !== 'data' || !tarefaOrigem) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com o servidor (busca de conclusoes) ao trocar de tarefa/modo
+      setConcluidosData(null)
+      return
+    }
+    let cancelado = false
+    setCarregandoConcluidos(true)
+    buscarConclusoesTarefa(tarefaOrigem, mesPreenchimento, anoPreenchimento).then(result => {
+      if (cancelado) return
+      setCarregandoConcluidos(false)
+      const concluidos = new Set(result.clienteIdsConcluidos)
+      setConcluidosData(concluidos)
+      setClientesSelecionados(prev => new Set(Array.from(prev).filter(id => !concluidos.has(id))))
+    })
+    return () => { cancelado = true }
+  }, [modoAlteracao, tarefaOrigem, mesPreenchimento, anoPreenchimento])
 
   // Tarefas sem data
   const [analisandoSemData, setAnalisandoSemData] = useState(false)
@@ -388,6 +427,39 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
     setTemplates(prev => ({
       ...prev,
       [base]: prev[base].filter((_, i) => i !== idx),
+    }))
+  }
+
+  async function handleSalvarTemplateGrupo(grupo: string) {
+    setSalvandoTemplateGrupo(grupo)
+    const result = await salvarTemplateGrupo(grupo, templatesGrupo[grupo])
+    setSalvandoTemplateGrupo(null)
+    setTemplateGrupoMsg(prev => ({ ...prev, [grupo]: result.error ? `Erro: ${result.error}` : 'Salvo!' }))
+    setTimeout(() => setTemplateGrupoMsg(prev => ({ ...prev, [grupo]: '' })), 3000)
+  }
+
+  async function handleAplicarTemplateGrupo(grupo: string) {
+    setAplicandoTemplateGrupo(grupo)
+    const result = await aplicarTemplateGrupoAClientes(grupo)
+    setAplicandoTemplateGrupo(null)
+    const msg = result.error
+      ? `Erro: ${result.error}`
+      : `${result.atualizados} cliente(s) atualizados`
+    setTemplateGrupoMsg(prev => ({ ...prev, [grupo + '_aplicar']: msg }))
+    setTimeout(() => setTemplateGrupoMsg(prev => ({ ...prev, [grupo + '_aplicar']: '' })), 4000)
+  }
+
+  function addTarefaTemplateGrupo(grupo: string) {
+    const t = (novasTarefasGrupo[grupo] ?? '').trim().toUpperCase()
+    if (!t || templatesGrupo[grupo].includes(t)) return
+    setTemplatesGrupo(prev => ({ ...prev, [grupo]: [...prev[grupo], t] }))
+    setNovasTarefasGrupo(prev => ({ ...prev, [grupo]: '' }))
+  }
+
+  function removeTarefaTemplateGrupo(grupo: string, idx: number) {
+    setTemplatesGrupo(prev => ({
+      ...prev,
+      [grupo]: prev[grupo].filter((_, i) => i !== idx),
     }))
   }
 
@@ -760,6 +832,77 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
           </div>
         </div>
 
+        {/* Templates de Tarefas por Grupo */}
+        <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
+          {sectionHeader('Templates de Tarefas por Grupo')}
+          <p className="text-white/30 text-xs mb-5">
+            Configure as tarefas padrão para cada grupo (Regime Normal, Simples Nacional, MEI).
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {GRUPOS_TEMPLATE.map(({ value: grupo, label }) => (
+              <div key={grupo} className="bg-white/3 border border-white/8 rounded-xl p-4 flex flex-col gap-3">
+                <p className="text-white font-semibold text-sm">{label}</p>
+
+                {/* Lista de tarefas */}
+                <div className="flex flex-wrap gap-1.5 min-h-[40px]">
+                  {templatesGrupo[grupo].length === 0 && (
+                    <p className="text-white/20 text-xs">Nenhuma tarefa</p>
+                  )}
+                  {templatesGrupo[grupo].map((t, i) => (
+                    <span key={i} className="flex items-center gap-1 text-xs bg-[#00CCEB]/10 border border-[#00CCEB]/30 text-white px-2 py-0.5 rounded-md">
+                      {t}
+                      <button
+                        onClick={() => removeTarefaTemplateGrupo(grupo, i)}
+                        className="text-white/30 hover:text-red-400 transition-colors font-bold ml-0.5">×</button>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Input nova tarefa */}
+                <div className="flex gap-1.5">
+                  <input
+                    value={novasTarefasGrupo[grupo] ?? ''}
+                    onChange={e => setNovasTarefasGrupo(prev => ({ ...prev, [grupo]: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefaTemplateGrupo(grupo))}
+                    placeholder="Nova tarefa..."
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50"
+                  />
+                  <button
+                    onClick={() => addTarefaTemplateGrupo(grupo)}
+                    className="px-2.5 py-1.5 rounded-lg bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] text-xs font-bold hover:bg-[#00CCEB]/30 transition-colors">
+                    +
+                  </button>
+                </div>
+
+                {/* Botões */}
+                <div className="flex flex-col gap-1.5 mt-auto pt-1">
+                  <button
+                    onClick={() => handleSalvarTemplateGrupo(grupo)}
+                    disabled={salvandoTemplateGrupo === grupo}
+                    className="w-full py-1.5 rounded-lg bg-[#00CCEB] text-white text-xs font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
+                    {salvandoTemplateGrupo === grupo ? 'Salvando...' : 'Salvar template'}
+                  </button>
+                  <button
+                    onClick={() => handleAplicarTemplateGrupo(grupo)}
+                    disabled={aplicandoTemplateGrupo === grupo}
+                    className="w-full py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs hover:bg-white/10 transition-colors disabled:opacity-50">
+                    {aplicandoTemplateGrupo === grupo ? 'Aplicando...' : 'Aplicar a clientes existentes'}
+                  </button>
+                  {templateGrupoMsg[grupo] && (
+                    <p className={`text-xs text-center ${templateGrupoMsg[grupo].startsWith('Erro') ? 'text-red-400' : 'text-green-400'}`}>
+                      {templateGrupoMsg[grupo]}
+                    </p>
+                  )}
+                  {templateGrupoMsg[grupo + '_aplicar'] && (
+                    <p className="text-xs text-center text-blue-400">{templateGrupoMsg[grupo + '_aplicar']}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Manutenção de Dados */}
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
           {sectionHeader('Manutenção de Dados')}
@@ -969,13 +1112,21 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
               )}
 
               {/* Lista de clientes */}
-              {tarefaOrigem && (() => {
-                const filtrados = dadosAlteracao.clientes.filter(c => c.tarefas.includes(tarefaOrigem))
+              {tarefaOrigem && modoAlteracao === 'data' && carregandoConcluidos && (
+                <p className="text-white/30 text-xs py-2">Verificando quem já tem essa data preenchida...</p>
+              )}
+              {tarefaOrigem && !(modoAlteracao === 'data' && carregandoConcluidos) && (() => {
+                let filtrados = dadosAlteracao.clientes.filter(c => c.tarefas.includes(tarefaOrigem))
+                if (modoAlteracao === 'data' && concluidosData) {
+                  filtrados = filtrados.filter(c => !concluidosData.has(c.id))
+                }
                 const todosSelected = filtrados.length > 0 && filtrados.every(c => clientesSelecionados.has(c.id))
                 return (
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-white/40 text-xs">{filtrados.length} cliente(s) com essa tarefa</p>
+                      <p className="text-white/40 text-xs">
+                        {filtrados.length} cliente(s) {modoAlteracao === 'data' ? 'sem essa data preenchida' : 'com essa tarefa'}
+                      </p>
                       {filtrados.length > 0 && (
                         <button
                           onClick={() => setClientesSelecionados(
@@ -987,7 +1138,9 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                       )}
                     </div>
                     {filtrados.length === 0 ? (
-                      <p className="text-white/20 text-xs py-2">Nenhum cliente possui essa tarefa.</p>
+                      <p className="text-white/20 text-xs py-2">
+                        {modoAlteracao === 'data' ? 'Todos os clientes com essa tarefa já têm essa data preenchida.' : 'Nenhum cliente possui essa tarefa.'}
+                      </p>
                     ) : (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pr-1">
                         {filtrados.map(c => (

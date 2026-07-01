@@ -44,10 +44,10 @@ export default function MesSeletor({ mes, ano }: Props) {
       className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/8 text-white/70 text-[11px] font-medium disabled:opacity-50"
     >
       {!opcoes.some(o => o.valor === valorAtual) && (
-        <option value={valorAtual}>{MESES_NOME[mes - 1]} {ano}</option>
+        <option value={valorAtual} className="bg-[#162444]">{MESES_NOME[mes - 1]} {ano}</option>
       )}
       {opcoes.map(o => (
-        <option key={o.valor} value={o.valor}>{o.label}</option>
+        <option key={o.valor} value={o.valor} className="bg-[#162444]">{o.label}</option>
       ))}
     </select>
   )

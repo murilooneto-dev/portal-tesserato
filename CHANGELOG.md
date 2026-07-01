@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.9] - 2026-07-01
+
+### Adicionado
+- Ferramenta "Templates de Tarefas por Grupo" em Parâmetros (Regime Normal / Simples Nacional / MEI), espelhando a ferramenta já existente por Atividade — salva template e aplica em massa aos clientes existentes, só adicionando tarefas que ainda não existem em `tarefas_personalizadas`
+- No modo "data" da ferramenta de Alteração em massa, a lista de clientes agora mostra só quem ainda não tem aquela tarefa concluída no mês/ano selecionado
+
+### Corrigido
+- Dropdown do seletor global de mês (`MesSeletor`) tinha fundo branco nas opções — agora usa o fundo escuro padrão do sistema
+- Página de detalhe do cliente (`/fiscal/clientes/[id]`) tinha um seletor de mês próprio (setas + grid de meses clicável, via query string) que conflitava com o seletor global do Sidebar — removido; a página agora segue o mês/ano selecionado globalmente, e o histórico anual virou somente leitura
+
+### Arquivos alterados
+- `app/fiscal/parametros/actions.ts` — novas actions `salvarTemplateGrupo`, `aplicarTemplateGrupoAClientes`, `buscarConclusoesTarefa`
+- `app/fiscal/parametros/page.tsx` — carrega `grupo_templates`, passa `grupoTemplates`
+- `app/fiscal/parametros/ParametrosClient.tsx` — nova seção de templates por grupo; filtro de "sem data preenchida" na alteração em massa
+- `components/fiscal/MesSeletor.tsx` — fundo escuro nas `<option>`
+- `app/fiscal/clientes/[id]/page.tsx` — remove seletor de mês local, usa `getMesAno()` global
+
+---
+
 ## [v0.5.8] - 2026-07-01
 
 ### Adicionado
