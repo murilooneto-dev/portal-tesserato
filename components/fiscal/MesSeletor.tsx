@@ -39,7 +39,7 @@ export default function MesSeletor({ mes, ano }: Props) {
       <button
         onClick={anterior}
         disabled={isPending}
-        className="text-white/40 hover:text-white transition-colors px-1.5 disabled:opacity-30"
+        className="text-white/40 hover:text-white transition-colors px-1.5 disabled:opacity-50"
         aria-label="Mês anterior"
       >
         ‹
@@ -50,7 +50,7 @@ export default function MesSeletor({ mes, ano }: Props) {
       <button
         onClick={proximo}
         disabled={isPending}
-        className="text-white/40 hover:text-white transition-colors px-1.5 disabled:opacity-30"
+        className="text-white/40 hover:text-white transition-colors px-1.5 disabled:opacity-50"
         aria-label="Próximo mês"
       >
         ›
