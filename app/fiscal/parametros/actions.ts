@@ -2,6 +2,7 @@
 
 import { getAuthenticatedAdmin, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { buscarTodasTarefas } from '@/lib/tarefas-paginacao'
 
 export async function salvarComunicado(formData: FormData) {
   const { supabase } = await getAuthenticatedAdmin()
@@ -550,12 +551,14 @@ export async function limparTarefasDuplicadas(
     clientesAtualizados++
   }
 
-  // Corrige registros na tabela tarefas
+  // Corrige registros na tabela tarefas — busca todas as linhas uma única vez (paginado,
+  // pois o Supabase limita cada requisição a um máximo de linhas) e corrige em memória
+  const todosRegistros = await buscarTodasTarefas<{ id: string; tipo: string }>(supabase, 'id, tipo')
+
   let tarefasCorrigidas = 0
   for (const [normalizado, canonico] of Object.entries(mapeamento)) {
-    const { data: registros } = await supabase.from('tarefas').select('id, tipo').neq('tipo', canonico)
-    for (const r of registros ?? []) {
-      if (semAcento(r.tipo) === normalizado) {
+    for (const r of todosRegistros) {
+      if (r.tipo !== canonico && semAcento(r.tipo) === normalizado) {
         await supabase.from('tarefas').update({ tipo: canonico }).eq('id', r.id)
         tarefasCorrigidas++
       }

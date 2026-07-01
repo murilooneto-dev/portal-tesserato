@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Cliente, Profile, Tarefa } from '@/lib/types'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
+import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
 
@@ -45,15 +46,15 @@ export default async function DashboardPage() {
     return mes === real.mes && ano === real.ano
   })()
 
-  const [{ data: clientes }, { data: profiles }, { data: tarefas }] = await Promise.all([
+  const [{ data: clientes }, { data: profiles }, tarefas] = await Promise.all([
     supabase.from('clientes').select('*').order('nome'),
     supabase.from('profiles').select('*'),
-    supabase.from('tarefas').select('*').eq('mes', mes).eq('ano', ano),
+    buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano),
   ])
 
   const cs = (clientes ?? []) as Cliente[]
   const ps = (profiles ?? []) as Profile[]
-  const ts = (tarefas ?? []) as Tarefa[]
+  const ts = tarefas
 
   // Mapa de tipos válidos por cliente
   const tiposMap: Record<string, Set<string>> = {}

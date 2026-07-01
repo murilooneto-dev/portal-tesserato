@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import ClientesLista from '@/components/fiscal/ClientesLista'
 import { getMesAno } from '@/lib/mes-atual-server'
+import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
+import type { Tarefa } from '@/lib/types'
 
 export const metadata = { title: 'Clientes — Tesserato Fiscal' }
 
@@ -18,13 +20,9 @@ export default async function ClientesPage() {
   let clientesQ = supabase.from('clientes').select('*').order('nome')
   if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('responsavel', profile.nome)
 
-  const [{ data: clientes }, { data: tarefas }] = await Promise.all([
+  const [{ data: clientes }, tarefas] = await Promise.all([
     clientesQ,
-    supabase
-      .from('tarefas')
-      .select('cliente_id, concluida, tipo')
-      .eq('mes', mes)
-      .eq('ano', ano),
+    buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo'>>(supabase, mes, ano, 'cliente_id, concluida, tipo'),
   ])
 
   // Mapa de tipos por cliente
