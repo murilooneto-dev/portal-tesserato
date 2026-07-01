@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.8] - 2026-07-01
+
+### Adicionado
+- Seletor global de mês/ano no Sidebar (`MesSeletor`), permitindo a qualquer usuário navegar entre meses e ver o progresso fiscal daquele período em Dashboard, Clientes, Tarefas e Relatórios (que passam a filtrar dados pelo mês/ano selecionado), e em Histórico e Parcelamentos (que passam a exibir o ano selecionado — Histórico também destaca visualmente o mês selecionado)
+- A seleção fica guardada num cookie de sessão (expira ao fechar o navegador); Calendário e Agenda mantêm sua navegação de mês própria, independente do seletor global
+
+### Arquivos alterados
+- `lib/mes-atual.ts`, `lib/mes-atual-server.ts`, `lib/mes-atual-actions.ts`, `lib/mes-atual-cliente.ts` — novos helpers de leitura/escrita do mês/ano selecionado
+- `components/fiscal/MesSeletor.tsx` — novo componente de navegação de mês no Sidebar
+- `components/fiscal/Sidebar.tsx`, `app/fiscal/layout.tsx` — integração do seletor
+- `app/fiscal/dashboard/page.tsx`, `app/fiscal/clientes/page.tsx`, `app/fiscal/tarefas/page.tsx` — passam a ler o mês/ano selecionado globalmente
+- `app/fiscal/relatorios/page.tsx`, `app/fiscal/historico/page.tsx`, `app/fiscal/parcelamentos/page.tsx` — passam a sincronizar o mês/ano (ou só o ano) selecionado via cookie
+
+---
+
 ## [v0.5.7] - 2026-06-30
 
 ### Corrigido
