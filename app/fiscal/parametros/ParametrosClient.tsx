@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
-import { salvarTemplate, aplicarTemplateAClientes, salvarTemplateGrupo, aplicarTemplateGrupoAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes, buscarConclusoesTarefa, buscarTarefasSemData, excluirRegistrosDeTarefas } from './actions'
-import type { GrupoDuplicata, RegistroSemData } from './actions'
+import { salvarTemplate, aplicarTemplateAClientes, salvarTemplateGrupo, aplicarTemplateGrupoAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes, buscarConclusoesTarefa, buscarTarefasSemData, excluirRegistrosDeTarefas, analisarParcelamentosDuplicados, limparParcelamentosDuplicados } from './actions'
+import type { GrupoDuplicata, RegistroSemData, GrupoParcelamentoDuplicado } from './actions'
 import { resolverTemplate } from '@/lib/atividade-templates'
 
 interface TaskLog {
@@ -157,6 +157,12 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [aplicando, setAplicando] = useState(false)
   const [duplicatasMsg, setDuplicatasMsg] = useState('')
 
+  // Parcelamentos duplicados
+  const [analisandoParcelamentos, setAnalisandoParcelamentos] = useState(false)
+  const [analiseParcelamentos, setAnaliseParcelamentos] = useState<{ grupos: GrupoParcelamentoDuplicado[] } | null>(null)
+  const [aplicandoParcelamentos, setAplicandoParcelamentos] = useState(false)
+  const [parcelamentosMsg, setParcelamentosMsg] = useState('')
+
   // Alteração em massa
   const [carregandoDados, setCarregandoDados] = useState(false)
   const [dadosAlteracao, setDadosAlteracao] = useState<{
@@ -226,6 +232,29 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       setDuplicatasMsg(`Erro: ${result.error}`)
     } else {
       setDuplicatasMsg(`Concluído — ${result.clientesAtualizados} cliente(s) corrigidos, ${result.tarefasCorrigidas} registro(s) de tarefa atualizados`)
+    }
+  }
+
+  async function handleAnalisarParcelamentosDuplicados() {
+    setAnalisandoParcelamentos(true)
+    setParcelamentosMsg('')
+    setAnaliseParcelamentos(null)
+    const result = await analisarParcelamentosDuplicados()
+    setAnalisandoParcelamentos(false)
+    if (result.error) { setParcelamentosMsg(`Erro: ${result.error}`); return }
+    if (result.grupos.length === 0) { setParcelamentosMsg('Nenhuma duplicata encontrada.'); return }
+    setAnaliseParcelamentos(result)
+  }
+
+  async function handleAplicarLimpezaParcelamentos() {
+    setAplicandoParcelamentos(true)
+    const result = await limparParcelamentosDuplicados()
+    setAplicandoParcelamentos(false)
+    setAnaliseParcelamentos(null)
+    if (result.error) {
+      setParcelamentosMsg(`Erro: ${result.error}`)
+    } else {
+      setParcelamentosMsg(`Concluído — ${result.gruposMesclados} grupo(s) mesclados, ${result.linhasRemovidas} linha(s) removida(s)`)
     }
   }
 
@@ -996,6 +1025,74 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                 </button>
                 <button
                   onClick={() => { setAnalise(null); setDuplicatasMsg('') }}
+                  className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-colors">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Divisor */}
+          <div className="border-t border-white/8 my-6" />
+
+          {/* Remover parcelamentos duplicados */}
+          <p className="text-white/60 text-sm font-medium mb-1">Remover parcelamentos duplicados</p>
+          <p className="text-white/30 text-xs mb-4">
+            Analisa a tabela de Parcelamentos e identifica linhas repetidas (mesma empresa, CNPJ e seção). Mescla os campos preenchidos de cada duplicata numa única linha e remove as sobras.
+          </p>
+
+          {!analiseParcelamentos ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleAnalisarParcelamentosDuplicados}
+                disabled={analisandoParcelamentos}
+                className="px-4 py-2 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-50">
+                {analisandoParcelamentos ? 'Analisando...' : 'Analisar duplicatas'}
+              </button>
+              {parcelamentosMsg && (
+                <p className={`text-xs ${parcelamentosMsg.startsWith('Erro') ? 'text-red-400' : parcelamentosMsg.startsWith('Nenhuma') ? 'text-white/40' : 'text-green-400'}`}>
+                  {parcelamentosMsg}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <p className="text-white/50 text-xs">
+                {analiseParcelamentos.grupos.length} grupo(s) de duplicata encontrado(s) — {analiseParcelamentos.grupos.reduce((s, g) => s + g.quantidade, 0)} linhas ao todo, viram {analiseParcelamentos.grupos.length} após mesclar.
+              </p>
+
+              <div className="rounded-xl border border-white/8 overflow-hidden max-h-64 overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-white/8 bg-white/3">
+                      <th className="text-left px-4 py-2.5 text-white/40 font-semibold">Empresa</th>
+                      <th className="text-left px-4 py-2.5 text-white/40 font-semibold">CNPJ</th>
+                      <th className="text-left px-4 py-2.5 text-white/40 font-semibold">Seção</th>
+                      <th className="text-right px-4 py-2.5 text-white/40 font-semibold">Cópias</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analiseParcelamentos.grupos.map(g => (
+                      <tr key={g.chave} className="border-b border-white/5 last:border-0">
+                        <td className="px-4 py-3 text-white/70">{g.empresa}</td>
+                        <td className="px-4 py-3 text-white/40">{g.cnpj ?? '—'}</td>
+                        <td className="px-4 py-3 text-white/40">{g.secao}</td>
+                        <td className="px-4 py-3 text-right text-orange-300 font-semibold">{g.quantidade}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleAplicarLimpezaParcelamentos}
+                  disabled={aplicandoParcelamentos}
+                  className="px-4 py-2 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-50">
+                  {aplicandoParcelamentos ? 'Aplicando...' : 'Mesclar e remover duplicatas'}
+                </button>
+                <button
+                  onClick={() => { setAnaliseParcelamentos(null); setParcelamentosMsg('') }}
                   className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-colors">
                   Cancelar
                 </button>

@@ -569,3 +569,110 @@ export async function limparTarefasDuplicadas(
   revalidatePath('/fiscal/parametros')
   return { clientesAtualizados, tarefasCorrigidas }
 }
+
+const CAMPOS_MESCLAVEIS_PARCELAMENTO = [
+  'regime', 'responsavel', 'local_tipo', 'tarefa', 'senhas',
+  'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez',
+] as const
+
+function chaveParcelamento(r: { empresa: string | null; cnpj: string | null; secao: string | null }): string {
+  return `${(r.empresa ?? '').trim().toUpperCase()}|${r.cnpj ?? ''}|${r.secao ?? ''}`
+}
+
+export interface GrupoParcelamentoDuplicado {
+  chave: string
+  empresa: string
+  cnpj: string | null
+  secao: string
+  quantidade: number
+}
+
+export async function analisarParcelamentosDuplicados(): Promise<{
+  error?: string
+  grupos: GrupoParcelamentoDuplicado[]
+}> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', grupos: [] }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', grupos: [] }
+
+  const { data: registros, error } = await supabase
+    .from('parcelamentos')
+    .select('id, empresa, cnpj, secao')
+  if (error) return { error: error.message, grupos: [] }
+
+  const gruposMap: Record<string, typeof registros> = {}
+  for (const r of registros ?? []) {
+    const chave = chaveParcelamento(r)
+    if (!gruposMap[chave]) gruposMap[chave] = []
+    gruposMap[chave]!.push(r)
+  }
+
+  const grupos: GrupoParcelamentoDuplicado[] = Object.entries(gruposMap)
+    .filter(([, rows]) => (rows ?? []).length > 1)
+    .map(([chave, rows]) => ({
+      chave,
+      empresa: rows![0].empresa,
+      cnpj: rows![0].cnpj,
+      secao: rows![0].secao,
+      quantidade: rows!.length,
+    }))
+    .sort((a, b) => b.quantidade - a.quantidade)
+
+  return { grupos }
+}
+
+export async function limparParcelamentosDuplicados(): Promise<{
+  error?: string
+  gruposMesclados: number
+  linhasRemovidas: number
+}> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', gruposMesclados: 0, linhasRemovidas: 0 }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', gruposMesclados: 0, linhasRemovidas: 0 }
+
+  const { data: registros, error } = await supabase.from('parcelamentos').select('*')
+  if (error) return { error: error.message, gruposMesclados: 0, linhasRemovidas: 0 }
+
+  const gruposMap: Record<string, typeof registros> = {}
+  for (const r of registros ?? []) {
+    const chave = chaveParcelamento(r)
+    if (!gruposMap[chave]) gruposMap[chave] = []
+    gruposMap[chave]!.push(r)
+  }
+
+  let gruposMesclados = 0
+  let linhasRemovidas = 0
+
+  for (const rows of Object.values(gruposMap)) {
+    if (!rows || rows.length < 2) continue
+    const [base, ...outros] = rows
+
+    const mesclado: Record<string, unknown> = {}
+    for (const campo of CAMPOS_MESCLAVEIS_PARCELAMENTO) {
+      let valor = (base as Record<string, unknown>)[campo]
+      if (!valor) {
+        for (const o of outros) {
+          const vOutro = (o as Record<string, unknown>)[campo]
+          if (vOutro) { valor = vOutro; break }
+        }
+      }
+      mesclado[campo] = valor ?? null
+    }
+
+    const mudou = CAMPOS_MESCLAVEIS_PARCELAMENTO.some(c => mesclado[c] !== (base as Record<string, unknown>)[c])
+    if (mudou) {
+      await supabase.from('parcelamentos').update(mesclado).eq('id', base.id)
+    }
+
+    const idsRemover = outros.map(o => o.id)
+    await supabase.from('parcelamentos').delete().in('id', idsRemover)
+    linhasRemovidas += idsRemover.length
+    gruposMesclados++
+  }
+
+  revalidatePath('/fiscal/parcelamentos')
+  revalidatePath('/fiscal/parametros')
+  return { gruposMesclados, linhasRemovidas }
+}

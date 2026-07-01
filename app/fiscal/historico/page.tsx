@@ -227,9 +227,6 @@ export default function HistoricoPage() {
                 <p className="text-2xl font-bold mt-1" style={{ color: isCur ? '#fff' : pctColor }}>
                   {s.pct}%
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: isCur ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.35)' }}>
-                  {s.concluidas}/{s.total} tarefas
-                </p>
               </div>
             )
           })}
