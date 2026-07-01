@@ -1,6 +1,7 @@
 ﻿import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/fiscal/Sidebar'
+import { getMesAno } from '@/lib/mes-atual-server'
 
 export default async function FiscalLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -23,9 +24,11 @@ export default async function FiscalLayout({ children }: { children: React.React
     created_at: new Date().toISOString(),
   }
 
+  const { mes, ano } = await getMesAno()
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#111e3a]">
-      <Sidebar profile={safeProfile} />
+      <Sidebar profile={safeProfile} mes={mes} ano={ano} />
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
