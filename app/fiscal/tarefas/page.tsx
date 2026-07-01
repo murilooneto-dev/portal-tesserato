@@ -1,6 +1,7 @@
 ﻿import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getMesAno } from '@/lib/mes-atual-server'
 
 export const metadata = { title: 'Tarefas — Tesserato Fiscal' }
 
@@ -9,9 +10,7 @@ const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov'
 export default async function TarefasPage() {
   const supabase = await createClient()
 
-  const hoje = new Date()
-  const mes = hoje.getMonth() + 1
-  const ano = hoje.getFullYear()
+  const { mes, ano } = await getMesAno()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
