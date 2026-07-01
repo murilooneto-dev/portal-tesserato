@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getMesAnoRealAgora } from '@/lib/mes-atual'
-import { getMesAnoCliente } from '@/lib/mes-atual-cliente'
+import { useMesAno } from '@/lib/mes-atual-context'
 
 const SECOES = [
   'RECEITA FEDERAL - ECAC',
@@ -73,12 +72,7 @@ export default function ParcelamentosPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [userNome, setUserNome] = useState<string | null>(null)
 
-  const [ano, setAno] = useState<number>(() => getMesAnoRealAgora().ano)
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com o cookie (sistema externo) no mount
-    setAno(getMesAnoCliente().ano)
-  }, [])
+  const { ano } = useMesAno()
 
   const sb = createClient()
 

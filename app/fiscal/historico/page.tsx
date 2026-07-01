@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Cliente, Tarefa } from '@/lib/types'
-import { getMesAnoRealAgora } from '@/lib/mes-atual'
-import { getMesAnoCliente } from '@/lib/mes-atual-cliente'
+import { useMesAno } from '@/lib/mes-atual-context'
 
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const MESES_ABR  = ['J','F','M','A','M','J','J','A','S','O','N','D']
@@ -21,15 +20,7 @@ export default function HistoricoPage() {
   const [selectedResp, setSelectedResp] = useState<string | null>(null)
   const [loading, setLoading]       = useState(true)
   const [isAdmin, setIsAdmin]       = useState(false)
-  const [ano, setAno] = useState<number>(() => getMesAnoRealAgora().ano)
-  const [mes, setMes] = useState<number>(() => getMesAnoRealAgora().mes)
-
-  useEffect(() => {
-    const { mes: m, ano: a } = getMesAnoCliente()
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com o cookie (sistema externo) no mount
-    setMes(m)
-    setAno(a)
-  }, [])
+  const { mes, ano } = useMesAno()
 
   useEffect(() => {
     const sb = createClient()

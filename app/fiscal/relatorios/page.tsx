@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Cliente, Tarefa } from '@/lib/types'
-import { getMesAnoRealAgora } from '@/lib/mes-atual'
-import { getMesAnoCliente } from '@/lib/mes-atual-cliente'
+import { useMesAno } from '@/lib/mes-atual-context'
 
 const TAREFAS: Record<string, string[]> = {
   normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
@@ -24,15 +23,7 @@ function progresso(cliente: Cliente, tarefas: Tarefa[]) {
 
 export default function RelatoriosPage() {
   const router = useRouter()
-  const [mes, setMes] = useState<number>(() => getMesAnoRealAgora().mes)
-  const [ano, setAno] = useState<number>(() => getMesAnoRealAgora().ano)
-
-  useEffect(() => {
-    const { mes: m, ano: a } = getMesAnoCliente()
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com o cookie (sistema externo) no mount
-    setMes(m)
-    setAno(a)
-  }, [])
+  const { mes, ano } = useMesAno()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [filtroResp, setFiltroResp] = useState('TODOS')
