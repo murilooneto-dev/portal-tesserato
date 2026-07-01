@@ -20,6 +20,7 @@ export interface Cliente {
   regime: string | null
   atividade: string | null
   responsavel: string | null
+  contato_chat: string | null
   grupo: string | null
   obs: string | null
   prioridade: number

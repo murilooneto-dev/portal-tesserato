@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.11] - 2026-07-01
+
+### Adicionado
+- Campo "Contato Chat" no modal de cadastro/edição de empresas (`EmpresaModal.tsx`) — nome de contato livre, sem validação especial
+- Ferramenta "Remover parcelamentos duplicados" em Parâmetros → Manutenção de Dados: analisa a tabela `parcelamentos` por empresa+CNPJ+seção, mostra prévia dos grupos duplicados e, ao confirmar, mescla os campos preenchidos de cada grupo numa única linha (nunca sobrescreve com vazio) e remove as demais
+
+### Corrigido
+- Removida a linha "X/Y tarefas" dos cards de mês em Histórico — o total ali vinha de uma contagem diferente (linhas da tabela `tarefas`, não do `tarefas_personalizadas` do cliente) e podia parecer incorreto; mantido só o percentual
+
+### Arquivos alterados
+- `components/fiscal/EmpresaModal.tsx`, `lib/types.ts` — campo `contato_chat`
+- `app/fiscal/parametros/actions.ts` — `analisarParcelamentosDuplicados`, `limparParcelamentosDuplicados`
+- `app/fiscal/parametros/ParametrosClient.tsx` — nova seção de deduplicação de parcelamentos
+- `app/fiscal/historico/page.tsx` — remove label de contagem de tarefas nos cards de mês
+
+---
+
 ## [v0.5.10] - 2026-07-01
 
 ### Corrigido

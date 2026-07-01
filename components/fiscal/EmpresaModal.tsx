@@ -32,6 +32,7 @@ interface FormData {
   municipio: string
   uf: string
   responsavel: string
+  contato_chat: string
   prioridade: number
   declaracao_anual: boolean
   envia_iss: boolean
@@ -52,7 +53,7 @@ interface Props {
 
 const emptyForm = (): FormData => ({
   cod: '', cnpj: '', nome: '', regime: '', atividade: '', grupo: '',
-  municipio: '', uf: '', responsavel: '', prioridade: 3,
+  municipio: '', uf: '', responsavel: '', contato_chat: '', prioridade: 3,
   declaracao_anual: false, envia_iss: false, confere_siga: false,
   login_iss: '', senha_iss: '', email_envio_iss: '',
   tarefas_personalizadas: [],
@@ -101,6 +102,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
         municipio: mitParts[0] ?? '',
         uf: mitParts[1] ?? '',
         responsavel: data.responsavel ?? '',
+        contato_chat: data.contato_chat ?? '',
         prioridade: data.prioridade ?? 3,
         declaracao_anual: data.declaracao_anual ?? false,
         envia_iss: data.envia_iss ?? false,
@@ -159,6 +161,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
       grupo:                  form.grupo || null,
       mit,
       responsavel:            form.responsavel || null,
+      contato_chat:           form.contato_chat || null,
       prioridade:             form.prioridade,
       declaracao_anual:       form.declaracao_anual,
       envia_iss:              form.envia_iss,
@@ -319,11 +322,18 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               </div>
             </div>
 
-            {/* Prioridade */}
-            <div className="w-1/2 pr-2">
-              <label className={labelCls}>Prioridade (0–5)</label>
-              <input className={inputCls} type="number" min={0} max={5} value={form.prioridade}
-                onChange={e => set('prioridade', Number(e.target.value))} disabled={readOnly} />
+            {/* Contato Chat + Prioridade */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Contato Chat</label>
+                <input className={inputCls} value={form.contato_chat}
+                  onChange={e => set('contato_chat', e.target.value)} disabled={readOnly} />
+              </div>
+              <div>
+                <label className={labelCls}>Prioridade (0–5)</label>
+                <input className={inputCls} type="number" min={0} max={5} value={form.prioridade}
+                  onChange={e => set('prioridade', Number(e.target.value))} disabled={readOnly} />
+              </div>
             </div>
 
             {/* Declaração Anual */}
