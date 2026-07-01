@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.10] - 2026-07-01
+
+### Corrigido
+- **Bug crítico de contagem de progresso:** as queries de `tarefas` filtradas só por mês/ano (sem filtro de cliente) em Dashboard, Clientes, Tarefas e Relatórios não paginavam — o Supabase/PostgREST limita cada requisição a um máximo de linhas por padrão (1000), e `.limit()` sozinho não sobrescreve esse teto do projeto. Com mais de 183 clientes, qualquer mês passou a ter mais de 1000 linhas de tarefas, então parte delas ficava de fora do cálculo silenciosamente — causando barras de progresso erradas para "alguns clientes" aleatoriamente, dependendo de quais linhas entravam nas primeiras 1000 retornadas. Esse era o bug antigo (não resolvido) documentado desde antes desta sessão.
+- Mesmo problema também corrigido em duas ferramentas administrativas que escaneavam a tabela `tarefas` inteira sem paginar: "Remover tarefas duplicadas" (Parâmetros) e a ferramenta de corrigir tarefas quebradas (Ferramentas)
+
+### Adicionado
+- `lib/tarefas-paginacao.ts` — helpers `buscarTodasTarefasDoMes()` e `buscarTodasTarefas()`, que buscam todas as linhas em blocos de 1000 via `.range()` em vez de uma única requisição
+
+### Arquivos alterados
+- `lib/tarefas-paginacao.ts` (novo)
+- `app/fiscal/dashboard/page.tsx`, `app/fiscal/clientes/page.tsx`, `app/fiscal/tarefas/page.tsx`, `app/fiscal/relatorios/page.tsx` — usam `buscarTodasTarefasDoMes()`
+- `app/fiscal/parametros/actions.ts` (`limparTarefasDuplicadas`), `components/fiscal/CorrigirTarefasClient.tsx` — usam `buscarTodasTarefas()`
+
+---
+
 ## [v0.5.9] - 2026-07-01
 
 ### Adicionado

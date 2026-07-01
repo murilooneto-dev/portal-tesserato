@@ -2,6 +2,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
+import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
+import type { Tarefa } from '@/lib/types'
 
 export const metadata = { title: 'Tarefas — Tesserato Fiscal' }
 
@@ -26,14 +28,10 @@ export default async function TarefasPage() {
     .select('id, nome, cod, grupo, responsavel')
     .order('nome')
 
-  const { data: tarefas } = await supabase
-    .from('tarefas')
-    .select('*')
-    .eq('mes', mes)
-    .eq('ano', ano)
+  const tarefas = await buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano)
 
   const tarefasPorCliente = new Map<string, typeof tarefas>()
-  tarefas?.forEach(t => {
+  tarefas.forEach(t => {
     if (!tarefasPorCliente.has(t.cliente_id)) tarefasPorCliente.set(t.cliente_id, [])
     tarefasPorCliente.get(t.cliente_id)!.push(t)
   })

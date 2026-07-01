@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Cliente, Tarefa } from '@/lib/types'
 import { useMesAno } from '@/lib/mes-atual-context'
+import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 
 const TAREFAS: Record<string, string[]> = {
   normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
@@ -47,10 +48,10 @@ export default function RelatoriosPage() {
 
         Promise.all([
           clientesQ,
-          sb.from('tarefas').select('*').eq('mes', mes).eq('ano', ano),
+          buscarTodasTarefasDoMes<Tarefa>(sb, mes, ano),
         ]).then(([c, t]) => {
           setClientes(c.data ?? [])
-          setTarefas(t.data ?? [])
+          setTarefas(t)
         })
       })
     })

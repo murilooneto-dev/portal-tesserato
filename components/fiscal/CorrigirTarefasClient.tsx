@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { buscarTodasTarefas } from '@/lib/tarefas-paginacao'
 
 // Todos os tipos de tarefa padrão conhecidos (ASCII — nunca quebram)
 const TIPOS_PADRAO = [
@@ -55,9 +56,9 @@ export default function CorrigirTarefasClient() {
 
     Promise.all([
       sb.from('clientes').select('id,nome,tarefas_personalizadas').not('tarefas_personalizadas', 'is', null),
-      sb.from('tarefas').select('id,cliente_id,tipo').order('tipo'),
+      buscarTodasTarefas<{ id: string; cliente_id: string; tipo: string }>(sb, 'id,cliente_id,tipo'),
       sb.from('clientes').select('nome').order('nome'), // só pra join de nomes
-    ]).then(([{ data: clientes }, { data: tarefas }]) => {
+    ]).then(([{ data: clientes }, tarefas]) => {
       const clienteMap: Record<string, string> = {}
       for (const c of clientes ?? []) clienteMap[c.id] = c.nome
 
