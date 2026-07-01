@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import ClientesLista from '@/components/fiscal/ClientesLista'
+import { getMesAno } from '@/lib/mes-atual-server'
 
 export const metadata = { title: 'Clientes — Tesserato Fiscal' }
 
@@ -12,9 +13,7 @@ export default async function ClientesPage() {
     : { data: null }
   const isAdmin = profile?.role === 'admin'
 
-  const hoje = new Date()
-  const mes = hoje.getMonth() + 1
-  const ano = hoje.getFullYear()
+  const { mes, ano } = await getMesAno()
 
   let clientesQ = supabase.from('clientes').select('*').order('nome')
   if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('responsavel', profile.nome)
