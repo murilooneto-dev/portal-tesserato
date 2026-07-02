@@ -9,16 +9,9 @@ export const metadata = { title: 'Clientes — Tesserato Fiscal' }
 export default async function ClientesPage() {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = user
-    ? await supabase.from('profiles').select('nome,role').eq('id', user.id).single()
-    : { data: null }
-  const isAdmin = profile?.role === 'admin'
-
   const { mes, ano } = await getMesAno()
 
-  let clientesQ = supabase.from('clientes').select('*').order('nome')
-  if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('responsavel', profile.nome)
+  const clientesQ = supabase.from('clientes').select('*').order('nome')
 
   const [{ data: clientes }, tarefas, { data: atividadeTemplates }] = await Promise.all([
     clientesQ,
