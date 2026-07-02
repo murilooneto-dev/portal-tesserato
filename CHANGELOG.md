@@ -5,6 +5,53 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.6.0] - 2026-07-02
+
+### Adicionado
+- Observações do cliente agora são por mês/ano (tabela `observacoes_clientes`) — trocar de mês no seletor global limpa o campo; o que foi escrito em cada mês fica preservado. O texto que já estava salvo virou a observação de Julho/2026 (mês em uso), sem perda de dado.
+- Botões "Editar" e "Excluir" na página de detalhe do cliente (`/fiscal/clientes/[id]`), reaproveitando o `EmpresaModal`. Botão "+ Novo Cliente" na lista de Clientes.
+- Confirmação de exclusão de cliente exige digitar o nome exato do cliente e a palavra "DELETAR" antes de liberar o botão.
+- Tarefas `ENTRADA` e `SAIDAS` agora têm 3 checkboxes (Recebido/Importado/Conferido) em vez de campo de data único — ao marcar os 3, a tarefa conclui e trava automaticamente, com a data de hoje. Desbloquear (mesmo fluxo de motivo já existente) reseta os 3 de volta.
+
+### Removido
+- Página `/fiscal/empresas` e o item "Empresas" do Sidebar — editar/excluir cliente agora fica na própria página de detalhe do cliente
+- Rotas órfãs `/fiscal/empresas/novo`, `/fiscal/empresas/[id]/editar` e `components/fiscal/EmpresaForm.tsx` (formulário antigo, não usado por nada desde a migração pro `EmpresaModal`)
+
+### Requer ação manual antes do deploy
+```sql
+-- Observações por mês
+create table observacoes_clientes (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null references clientes(id) on delete cascade,
+  mes int not null,
+  ano int not null,
+  texto text not null default '',
+  updated_at timestamptz not null default now(),
+  unique (cliente_id, mes, ano)
+);
+alter table observacoes_clientes enable row level security;
+create policy "Autenticados leem observacoes"
+  on observacoes_clientes for select using (auth.uid() is not null);
+insert into observacoes_clientes (cliente_id, mes, ano, texto)
+select id, 7, 2026, obs from clientes where obs is not null and obs <> '';
+
+-- Checkboxes Recebido/Importado/Conferido
+alter table tarefas
+  add column recebido boolean not null default false,
+  add column importado boolean not null default false,
+  add column conferido boolean not null default false;
+```
+
+### Arquivos alterados
+- `app/fiscal/clientes/actions.ts` — `salvarObs` (agora por mês/ano), `atualizarSubEtapa`, `excluirCliente`, `desbloquearTarefa` reseta sub-etapas
+- `app/fiscal/clientes/[id]/page.tsx` — busca observação do mês, dados pro `ClienteAcoes`
+- `app/fiscal/clientes/page.tsx` — busca `atividade_templates` pro modal de novo cliente
+- `components/fiscal/ClienteObs.tsx`, `ClienteAcoes.tsx` (novo), `ClientesLista.tsx`, `TarefaChecklist.tsx`, `Sidebar.tsx`
+- `lib/types.ts` — `Tarefa` ganha `recebido`/`importado`/`conferido`
+- Removidos: `app/fiscal/empresas/**`, `components/fiscal/EmpresaForm.tsx`
+
+---
+
 ## [v0.5.12] - 2026-07-01
 
 ### Adicionado

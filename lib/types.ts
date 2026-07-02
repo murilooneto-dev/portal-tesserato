@@ -46,6 +46,9 @@ export interface Tarefa {
   tipo: string
   concluida: boolean
   concluida_em: string | null
+  recebido: boolean
+  importado: boolean
+  conferido: boolean
   created_at: string
 }
 

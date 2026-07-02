@@ -30,7 +30,7 @@ export async function desbloquearTarefa(
 
   await supabase
     .from('tarefas')
-    .update({ concluida: false, concluida_em: null })
+    .update({ concluida: false, concluida_em: null, recebido: false, importado: false, conferido: false })
     .eq('id', tarefaId)
 
   await supabase.from('task_unlock_log').insert({
@@ -58,10 +58,12 @@ export async function salvarMIT(clienteId: string, valor: string) {
   await supabase.from('clientes').update({ mit: valor }).eq('id', clienteId)
 }
 
-export async function salvarObs(clienteId: string, obs: string) {
+export async function salvarObs(clienteId: string, mes: number, ano: number, texto: string) {
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
-  await supabase.from('clientes').update({ obs }).eq('id', clienteId)
+  await supabase
+    .from('observacoes_clientes')
+    .upsert({ cliente_id: clienteId, mes, ano, texto }, { onConflict: 'cliente_id,mes,ano' })
 }
 
 const TIPOS_PERMITIDOS = [
@@ -106,4 +108,56 @@ export async function excluirArquivo(arquivoId: string) {
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
   await supabase.from('client_files').delete().eq('id', arquivoId)
+}
+
+export async function atualizarSubEtapa(
+  clienteId: string,
+  mes: number,
+  ano: number,
+  tipo: string,
+  campo: 'recebido' | 'importado' | 'conferido',
+  valor: boolean,
+) {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return
+
+  const { data: existing } = await supabase
+    .from('tarefas')
+    .select('id, recebido, importado, conferido')
+    .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo)
+    .maybeSingle()
+
+  const atual = {
+    recebido: existing?.recebido ?? false,
+    importado: existing?.importado ?? false,
+    conferido: existing?.conferido ?? false,
+    [campo]: valor,
+  }
+  const todasMarcadas = atual.recebido && atual.importado && atual.conferido
+
+  const payload = {
+    ...atual,
+    concluida: todasMarcadas,
+    concluida_em: todasMarcadas ? new Date().toISOString() : null,
+  }
+
+  if (existing?.id) {
+    await supabase.from('tarefas').update(payload).eq('id', existing.id)
+  } else {
+    await supabase.from('tarefas').insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, ...payload })
+  }
+
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/dashboard')
+  revalidatePath('/fiscal/historico')
+  revalidatePath('/fiscal/relatorios')
+  revalidatePath('/fiscal/tarefas')
+}
+
+export async function excluirCliente(id: string) {
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) throw new Error('Não autorizado')
+  const { error } = await supabase.from('clientes').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath('/fiscal/clientes')
 }

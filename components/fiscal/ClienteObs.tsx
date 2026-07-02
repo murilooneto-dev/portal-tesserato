@@ -6,16 +6,18 @@ import { salvarObs } from '@/app/fiscal/clientes/actions'
 interface Props {
   clienteId: string
   obsInicial: string
+  mes: number
+  ano: number
 }
 
-export default function ClienteObs({ clienteId, obsInicial }: Props) {
+export default function ClienteObs({ clienteId, obsInicial, mes, ano }: Props) {
   const [obs, setObs] = useState(obsInicial)
   const [editando, setEditando] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   function salvar() {
     startTransition(async () => {
-      await salvarObs(clienteId, obs)
+      await salvarObs(clienteId, mes, ano, obs)
       setEditando(false)
     })
   }

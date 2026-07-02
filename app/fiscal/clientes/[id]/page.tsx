@@ -8,6 +8,7 @@ import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
 import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
+import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -45,6 +46,28 @@ export default async function ClienteDetalhePage({ params }: Props) {
   // Arquivos do cliente (inclui content_base64 para conferência)
   const { data: arquivos } = await supabase
     .from('client_files').select('id,name,size,uploaded_at,content_base64').eq('cliente_id', id).order('uploaded_at', { ascending: false })
+
+  // Observação do mês selecionado
+  const { data: observacao } = await supabase
+    .from('observacoes_clientes')
+    .select('texto')
+    .eq('cliente_id', id)
+    .eq('mes', mes)
+    .eq('ano', ano)
+    .maybeSingle()
+
+  // Dados pro EmpresaModal (editar cliente)
+  const [{ data: todosClientes }, { data: atividadeTemplates }] = await Promise.all([
+    supabase.from('clientes').select('responsavel'),
+    supabase.from('atividade_templates').select('atividade,tarefas'),
+  ])
+  const responsaveis = Array.from(new Set(
+    (todosClientes ?? []).map(c => c.responsavel ?? '').filter(Boolean)
+  )).sort()
+  const templatesMap: Record<string, string[]> = {}
+  for (const row of atividadeTemplates ?? []) {
+    templatesMap[row.atividade] = row.tarefas ?? []
+  }
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
     'use server'
@@ -101,9 +124,12 @@ export default async function ClienteDetalhePage({ params }: Props) {
                   {cliente.municipio && <span className="text-xs text-white/50 bg-white/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
                 </div>
               </div>
-              <span className="text-white font-medium text-sm">
-                {MESES_ABREV[mes-1]} / {ano}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-white font-medium text-sm">
+                  {MESES_ABREV[mes-1]} / {ano}
+                </span>
+                <ClienteAcoes cliente={cliente} responsaveis={responsaveis} templates={templatesMap} />
+              </div>
             </div>
           </div>
         </div>
@@ -124,7 +150,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
         onToggle={toggleTarefa}
       />
 
-      <ClienteObs clienteId={id} obsInicial={cliente.obs ?? ''} />
+      <ClienteObs clienteId={id} obsInicial={observacao?.texto ?? ''} mes={mes} ano={ano} />
 
       <ClienteArquivos clienteId={id} arquivosIniciais={arquivos ?? []} />
 
