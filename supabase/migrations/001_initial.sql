@@ -85,10 +85,14 @@ create table bot_eventos (
 );
 
 -- Trigger: criar perfil automaticamente ao criar usuário no auth
+-- search_path fixo é obrigatório aqui: o GoTrue executa essa função como a role
+-- supabase_auth_admin, cujo search_path não inclui "public" por padrão. Sem o
+-- "set search_path = public", "profiles" não resolve nesse contexto e a criação
+-- de usuário falha inteira com "Database error creating new user" (42P01).
 create or replace function handle_new_user()
 returns trigger as $$
 begin
-  insert into profiles (id, nome, role, setor, cor)
+  insert into public.profiles (id, nome, role, setor, cor)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'nome', new.email),
@@ -98,7 +102,7 @@ begin
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 create trigger on_auth_user_created
   after insert on auth.users
