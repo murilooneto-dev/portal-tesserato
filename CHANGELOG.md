@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.6.1] - 2026-07-02
+
+### Corrigido
+- Bug crítico: criação de novos usuários falhava com "Database error creating new user" (500) em toda tentativa, tanto pela ferramenta do site quanto direto pelo Supabase Dashboard. Causa raiz: a trigger `handle_new_user()` (executada automaticamente pelo GoTrue ao inserir em `auth.users`) fazia `insert into profiles` sem qualificar o schema e sem `search_path` fixo. Como o GoTrue executa essa função como a role `supabase_auth_admin` — cujo `search_path` não inclui `public` por padrão — a tabela `profiles` não era encontrada, a transação inteira sofria rollback, e o usuário nunca era criado. Testes manuais via SQL Editor não reproduziam o bug porque rodavam como `postgres`, cujo `search_path` já inclui `public`.
+
+### Arquivos alterados
+- `supabase/migrations/001_initial.sql` — `handle_new_user()` agora usa `insert into public.profiles` e `security definer set search_path = public`. Fix já aplicado direto em produção via SQL Editor; este commit sincroniza a migração no repo.
+
+---
+
 ## [v0.6.0] - 2026-07-02
 
 ### Adicionado
