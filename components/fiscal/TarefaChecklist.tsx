@@ -2,7 +2,14 @@
 
 import { useTransition, useState } from 'react'
 import type { Tarefa } from '@/lib/types'
-import { desbloquearTarefa, salvarMIT } from '@/app/fiscal/clientes/actions'
+import { desbloquearTarefa, salvarMIT, atualizarSubEtapa } from '@/app/fiscal/clientes/actions'
+
+const SUB_ETAPAS = ['recebido', 'importado', 'conferido'] as const
+const SUB_ETAPAS_LABEL: Record<typeof SUB_ETAPAS[number], string> = {
+  recebido: 'Recebido',
+  importado: 'Importado',
+  conferido: 'Conferido',
+}
 
 const TAREFAS_NORMAL  = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS']
 const TAREFAS_SIMPLES = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF']
@@ -181,20 +188,37 @@ export default function TarefaChecklist({
                   {tipo}
                 </span>
 
-                <input
-                  type="text"
-                  value={displayVal}
-                  onChange={e => handleTextChange(tipo, e.target.value)}
-                  onBlur={() => handleTextBlur(tipo)}
-                  disabled={isPending || isUnlocking}
-                  placeholder="DD/MM/AAAA"
-                  maxLength={10}
-                  className={`text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
-                    feito
-                      ? 'bg-[#00CCEB]/10 border-[#00CCEB]/30 text-[#00CCEB] focus:border-[#00CCEB]/60'
-                      : 'bg-white/5 border-white/10 text-white/60 focus:border-white/30 placeholder-white/20'
-                  }`}
-                />
+                {(tipo === 'ENTRADA' || tipo === 'SAIDAS') ? (
+                  <div className="flex items-center gap-3">
+                    {SUB_ETAPAS.map(campo => (
+                      <label key={campo} className="flex items-center gap-1.5 text-xs text-white/60 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={mapaTarefa.get(tipo)?.[campo] ?? false}
+                          disabled={feito || isPending || isUnlocking}
+                          onChange={e => startTransition(() => atualizarSubEtapa(clienteId, mes, ano, tipo, campo, e.target.checked))}
+                          className="w-3.5 h-3.5 accent-[#00CCEB]"
+                        />
+                        {SUB_ETAPAS_LABEL[campo]}
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={displayVal}
+                    onChange={e => handleTextChange(tipo, e.target.value)}
+                    onBlur={() => handleTextBlur(tipo)}
+                    disabled={isPending || isUnlocking}
+                    placeholder="DD/MM/AAAA"
+                    maxLength={10}
+                    className={`text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
+                      feito
+                        ? 'bg-[#00CCEB]/10 border-[#00CCEB]/30 text-[#00CCEB] focus:border-[#00CCEB]/60'
+                        : 'bg-white/5 border-white/10 text-white/60 focus:border-white/30 placeholder-white/20'
+                    }`}
+                  />
+                )}
 
                 {feito && (
                   <button

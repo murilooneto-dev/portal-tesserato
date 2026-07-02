@@ -7,7 +7,7 @@ import type { Profile } from '@/lib/types'
 import MesSeletor from './MesSeletor'
 import {
   Zap, LayoutGrid, Users, Calendar,
-  FileText, TrendingUp, Building2, CreditCard, Wrench, Settings, ShieldCheck,
+  FileText, TrendingUp, CreditCard, Wrench, Settings, ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -20,7 +20,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/fiscal/calendario',    label: 'Calendário',    icon: Calendar   },
   { href: '/fiscal/relatorios',    label: 'Relatórios',    icon: FileText   },
   { href: '/fiscal/historico',     label: 'Histórico',     icon: TrendingUp },
-  { href: '/fiscal/empresas',      label: 'Empresas',      icon: Building2  },
   { href: '/fiscal/parcelamentos', label: 'Parcelamentos', icon: CreditCard },
   { href: '/fiscal/ferramentas',   label: 'Ferramentas',   icon: Wrench     },
 ]

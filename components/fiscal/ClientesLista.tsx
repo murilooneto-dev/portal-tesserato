@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { Cliente } from '@/lib/types'
+import EmpresaModal from './EmpresaModal'
 
 const CORES_REGIME: Record<string, string> = {
   simples:   '#10b981',
@@ -36,16 +37,18 @@ interface Props {
   progressoMap: Record<string, { total: number; concluidas: number }>
   mes: number
   ano: number
+  templates: Record<string, string[]>
 }
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-export default function ClientesLista({ clientes, comPendencia, progressoMap, mes, ano }: Props) {
+export default function ClientesLista({ clientes, comPendencia, progressoMap, mes, ano, templates }: Props) {
   const [busca, setBusca] = useState('')
   const [filtroResponsavel, setFiltroResponsavel] = useState('TODOS')
   const [filtroGrupo, setFiltroGrupo] = useState('TODOS')
   const [filtroAtividade, setFiltroAtividade] = useState('TODOS')
   const [filtroPendencia, setFiltroPendencia] = useState(false)
+  const [modalNovoOpen, setModalNovoOpen] = useState(false)
 
   const responsaveis = useMemo(() => ['TODOS', ...Array.from(new Set(
     clientes.map(c => c.responsavel ?? '').filter(Boolean)
@@ -107,7 +110,21 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
           />
           <span className="text-sm text-white/70 whitespace-nowrap">Apenas pendentes</span>
         </label>
+        <button
+          onClick={() => setModalNovoOpen(true)}
+          className="px-4 py-2 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors whitespace-nowrap">
+          + Novo Cliente
+        </button>
       </div>
+
+      {modalNovoOpen && (
+        <EmpresaModal
+          clienteId={null}
+          responsaveis={responsaveis.slice(1)}
+          templates={templates}
+          onClose={() => setModalNovoOpen(false)}
+        />
+      )}
 
       {/* Contador */}
       <p className="text-white/30 text-xs mb-3">

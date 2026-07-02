@@ -20,10 +20,16 @@ export default async function ClientesPage() {
   let clientesQ = supabase.from('clientes').select('*').order('nome')
   if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('responsavel', profile.nome)
 
-  const [{ data: clientes }, tarefas] = await Promise.all([
+  const [{ data: clientes }, tarefas, { data: atividadeTemplates }] = await Promise.all([
     clientesQ,
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo'>>(supabase, mes, ano, 'cliente_id, concluida, tipo'),
+    supabase.from('atividade_templates').select('atividade,tarefas'),
   ])
+
+  const templatesMap: Record<string, string[]> = {}
+  for (const row of atividadeTemplates ?? []) {
+    templatesMap[row.atividade] = row.tarefas ?? []
+  }
 
   // Mapa de tipos por cliente
   const tiposMap: Record<string, Set<string>> = {}
@@ -56,6 +62,7 @@ export default async function ClientesPage() {
         progressoMap={progressoMap}
         mes={mes}
         ano={ano}
+        templates={templatesMap}
       />
     </div>
   )
