@@ -8,9 +8,10 @@ interface Props {
   obsInicial: string
   mes: number
   ano: number
+  podeEditar: boolean
 }
 
-export default function ClienteObs({ clienteId, obsInicial, mes, ano }: Props) {
+export default function ClienteObs({ clienteId, obsInicial, mes, ano, podeEditar }: Props) {
   const [obs, setObs] = useState(obsInicial)
   const [editando, setEditando] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -28,7 +29,7 @@ export default function ClienteObs({ clienteId, obsInicial, mes, ano }: Props) {
         <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">
           Observação
         </label>
-        {!editando && (
+        {!editando && podeEditar && (
           <button
             onClick={() => setEditando(true)}
             className="text-xs text-white/30 hover:text-white/70 px-2 py-1 rounded-lg border border-white/10 hover:border-white/20 transition-all"
