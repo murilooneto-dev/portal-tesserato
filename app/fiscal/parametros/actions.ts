@@ -3,6 +3,7 @@
 import { getAuthenticatedAdmin, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { buscarTodasTarefas } from '@/lib/tarefas-paginacao'
+import { createClient as createClienteDescartavel } from '@supabase/supabase-js'
 
 export async function salvarComunicado(formData: FormData) {
   const { supabase } = await getAuthenticatedAdmin()
@@ -675,4 +676,29 @@ export async function limparParcelamentosDuplicados(): Promise<{
   revalidatePath('/fiscal/parcelamentos')
   revalidatePath('/fiscal/parametros')
   return { gruposMesclados, linhasRemovidas }
+}
+
+export async function verificarSenhaDev(
+  login: string,
+  senha: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { ok: false, error: 'Não autorizado.' }
+
+  const devEmail = process.env.DEV_MASTER_EMAIL
+  if (!devEmail) return { ok: false, error: 'DEV_MASTER_EMAIL não configurada no servidor.' }
+
+  if (login.trim().toLowerCase() !== devEmail.trim().toLowerCase()) {
+    return { ok: false, error: 'Credenciais inválidas.' }
+  }
+
+  const clienteDescartavel = createClienteDescartavel(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const { error } = await clienteDescartavel.auth.signInWithPassword({ email: login, password: senha })
+  if (error) return { ok: false, error: 'Credenciais inválidas.' }
+
+  return { ok: true }
 }

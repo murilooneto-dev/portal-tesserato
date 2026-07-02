@@ -7,6 +7,7 @@ import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } 
 import { salvarTemplate, aplicarTemplateAClientes, salvarTemplateGrupo, aplicarTemplateGrupoAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes, buscarConclusoesTarefa, buscarTarefasSemData, excluirRegistrosDeTarefas, analisarParcelamentosDuplicados, limparParcelamentosDuplicados } from './actions'
 import type { GrupoDuplicata, RegistroSemData, GrupoParcelamentoDuplicado } from './actions'
 import { resolverTemplate } from '@/lib/atividade-templates'
+import DevLock from '@/components/fiscal/DevLock'
 
 interface TaskLog {
   id: string
@@ -769,6 +770,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
           </div>
         </div>
 
+        <DevLock>
         {/* Templates de Tarefas por Atividade */}
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
           {sectionHeader('Templates de Tarefas por Atividade')}
@@ -1415,6 +1417,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
             </div>
           )}
         </div>
+        </DevLock>
       </div>
 
       {/* Log modal */}
