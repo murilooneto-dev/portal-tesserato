@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.6.2] - 2026-07-02
+
+### Corrigido
+- Bug: criação de usuário passou a falhar com "duplicate key value violates unique constraint \"profiles_pkey\"" logo após o fix da v0.6.1 — regressão direta daquele fix. Com a trigger `handle_new_user()` funcionando de verdade, ela já cria a linha em `profiles` (com valores padrão) no momento do `auth.admin.createUser()`; o código de `criarUsuario()` ainda tentava fazer um `insert` na mesma linha logo em seguida, colidindo com a chave primária.
+
+### Arquivos alterados
+- `app/fiscal/parametros/actions.ts` — `criarUsuario()` agora faz `update` em `profiles` (a linha já existe, criada pela trigger) em vez de `insert`
+
+---
+
 ## [v0.6.1] - 2026-07-02
 
 ### Corrigido

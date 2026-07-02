@@ -61,14 +61,16 @@ export async function criarUsuario(payload: {
 
   const userId = authData.user.id
 
-  const { error: profErr } = await admin.from('profiles').insert({
-    id: userId,
+  // A trigger handle_new_user() já criou a linha em profiles (com valores
+  // padrão) como parte da mesma transação do createUser acima — por isso
+  // aqui é update, não insert.
+  const { error: profErr } = await admin.from('profiles').update({
     nome: payload.nome,
     role: payload.role,
     cor: payload.cor,
     setor: 'fiscal',
     abas_acesso: payload.abas,
-  })
+  }).eq('id', userId)
 
   if (profErr) {
     await admin.auth.admin.deleteUser(userId)
