@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useMesAno } from '@/lib/mes-atual-context'
 
@@ -71,10 +71,15 @@ export default function ParcelamentosPage() {
   const [saving, setSaving] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [userNome, setUserNome] = useState<string | null>(null)
+  const [clientesCadastrados, setClientesCadastrados] = useState<{ nome: string; cnpj: string | null; responsavel: string | null }[]>([])
 
   const { ano } = useMesAno()
 
   const sb = createClient()
+
+  const responsaveisCadastrados = useMemo(() => Array.from(new Set(
+    clientesCadastrados.map(c => c.responsavel ?? '').filter(Boolean)
+  )).sort(), [clientesCadastrados])
 
   async function load(admin: boolean, nome: string | null) {
     setLoading(true)
@@ -96,6 +101,9 @@ export default function ParcelamentosPage() {
         load(admin, nome)
       })
     })
+    sb.from('clientes').select('nome, cnpj, responsavel').order('nome').then(({ data }) => {
+      setClientesCadastrados(data ?? [])
+    })
   }, [])
 
   function toggleExpand(id: string) {
@@ -106,7 +114,8 @@ export default function ParcelamentosPage() {
   function openEdit(item: Parcelamento) {
     setEditItem(item)
     const { id, ...rest } = item
-    setForm(rest)
+    const empresaValida = clientesCadastrados.some(c => c.nome === rest.empresa)
+    setForm(empresaValida ? rest : { ...rest, empresa: '' })
     setModalOpen(true)
   }
 
@@ -417,7 +426,20 @@ export default function ParcelamentosPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Empresa</label>
-                  <input className={inputCls} value={form.empresa} onChange={e => setF('empresa', e.target.value)} />
+                  <select
+                    value={form.empresa}
+                    onChange={e => {
+                      const nomeSelecionado = e.target.value
+                      const cliente = clientesCadastrados.find(c => c.nome === nomeSelecionado)
+                      setF('empresa', nomeSelecionado)
+                      setF('cnpj', cliente?.cnpj ?? null)
+                    }}
+                    className={inputCls + ' bg-[#162444]'}>
+                    <option value="" className="bg-[#162444]">Selecionar...</option>
+                    {clientesCadastrados.map(c => (
+                      <option key={c.nome} value={c.nome} className="bg-[#162444]">{c.nome}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className={labelCls}>CNPJ</label>
@@ -433,7 +455,15 @@ export default function ParcelamentosPage() {
                 </div>
                 <div>
                   <label className={labelCls}>Responsável</label>
-                  <input className={inputCls} value={form.responsavel ?? ''} onChange={e => setF('responsavel', e.target.value || null)} />
+                  <select
+                    value={form.responsavel ?? ''}
+                    onChange={e => setF('responsavel', e.target.value || null)}
+                    className={inputCls + ' bg-[#162444]'}>
+                    <option value="" className="bg-[#162444]">Selecionar...</option>
+                    {responsaveisCadastrados.map(r => (
+                      <option key={r} value={r} className="bg-[#162444]">{r}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className={labelCls}>Local / Tipo</label>

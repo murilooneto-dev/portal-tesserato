@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.5.12] - 2026-07-01
+
+### Adicionado
+- Trava "Dev" (`DevLock`) em Parâmetros: as ferramentas "Templates de Tarefas por Atividade", "Templates de Tarefas por Grupo" e "Manutenção de Dados" agora exigem login + senha de um usuário Dev específico (verificado contra o Supabase Auth, sem afetar a sessão do admin logado) para ficarem visíveis. O desbloqueio vale só enquanto a página estiver aberta — recarregar tranca de novo.
+- No modal de cadastro de Parcelamentos, os campos Empresa e Responsável viraram dropdowns com os clientes/responsáveis já cadastrados no sistema; o CNPJ é preenchido automaticamente ao selecionar a empresa.
+
+### Requer ação manual antes do deploy
+- Criar o usuário "Dev" no Supabase Auth (email + senha à escolha) e configurar a variável de ambiente `DEV_MASTER_EMAIL` (local e no Vercel) com esse email.
+
+### Arquivos alterados
+- `app/fiscal/parametros/actions.ts` — `verificarSenhaDev`
+- `components/fiscal/DevLock.tsx` (novo)
+- `app/fiscal/parametros/ParametrosClient.tsx` — envolve as 3 ferramentas sensíveis com `DevLock`
+- `app/fiscal/parcelamentos/page.tsx` — dropdowns de Empresa/Responsável, auto-preenchimento de CNPJ
+
+---
+
 ## [v0.5.11] - 2026-07-01
 
 ### Adicionado
