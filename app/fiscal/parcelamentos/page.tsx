@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useMesAno } from '@/lib/mes-atual-context'
+import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 
 const SECOES = [
   'RECEITA FEDERAL - ECAC',
@@ -61,9 +62,9 @@ const labelCls = "block text-[10px] font-bold text-white/40 uppercase tracking-w
 export default function ParcelamentosPage() {
   const [items, setItems] = useState<Parcelamento[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [secaoFiltro, setSecaoFiltro] = useState('TODOS')
-  const [respFiltro, setRespFiltro] = useState('TODOS')
+  const [search, setSearch] = useFiltroPersistente('parcelamentos:busca', '')
+  const [secaoFiltro, setSecaoFiltro] = useFiltroPersistente('parcelamentos:secao', 'TODOS')
+  const [respFiltro, setRespFiltro] = useFiltroPersistente('parcelamentos:responsavel', 'TODOS')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editItem, setEditItem] = useState<Parcelamento | null>(null)
