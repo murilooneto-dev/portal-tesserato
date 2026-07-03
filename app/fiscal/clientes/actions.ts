@@ -1,21 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getAuthenticatedAdmin } from '@/lib/supabase/server'
-
-export async function toggleTarefa(tarefaId: string, concluida: boolean) {
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return
-  await supabase
-    .from('tarefas')
-    .update({ concluida, concluida_em: concluida ? new Date().toISOString() : null })
-    .eq('id', tarefaId)
-  revalidatePath('/fiscal/clientes')
-  revalidatePath('/fiscal/dashboard')
-  revalidatePath('/fiscal/historico')
-  revalidatePath('/fiscal/relatorios')
-  revalidatePath('/fiscal/tarefas')
-}
+import { getAuthenticatedAdmin, podeEditarCliente } from '@/lib/supabase/server'
 
 export async function desbloquearTarefa(
   tarefaId: string,
@@ -27,6 +13,9 @@ export async function desbloquearTarefa(
 ) {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
+
+  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id').eq('id', tarefaId).single()
+  if (!tarefa || !(await podeEditarCliente(tarefa.cliente_id))) return
 
   await supabase
     .from('tarefas')
@@ -53,12 +42,14 @@ export async function desbloquearTarefa(
 }
 
 export async function salvarMIT(clienteId: string, valor: string) {
+  if (!(await podeEditarCliente(clienteId))) return
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
   await supabase.from('clientes').update({ mit: valor }).eq('id', clienteId)
 }
 
 export async function salvarObs(clienteId: string, mes: number, ano: number, texto: string) {
+  if (!(await podeEditarCliente(clienteId))) return
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
   await supabase
@@ -77,6 +68,7 @@ const TIPOS_PERMITIDOS = [
 const TAMANHO_MAX = 10 * 1024 * 1024 // 10 MB
 
 export async function uploadArquivo(clienteId: string, formData: FormData) {
+  if (!(await podeEditarCliente(clienteId))) return { error: 'Não autorizado' }
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return { error: 'Não autorizado' }
 
@@ -107,6 +99,8 @@ export async function uploadArquivo(clienteId: string, formData: FormData) {
 export async function excluirArquivo(arquivoId: string) {
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
+  const { data: arquivo } = await supabase.from('client_files').select('cliente_id').eq('id', arquivoId).single()
+  if (!arquivo || !(await podeEditarCliente(arquivo.cliente_id))) return
   await supabase.from('client_files').delete().eq('id', arquivoId)
 }
 
@@ -118,6 +112,7 @@ export async function atualizarSubEtapa(
   campo: 'recebido' | 'importado' | 'conferido',
   valor: boolean,
 ) {
+  if (!(await podeEditarCliente(clienteId))) return
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
 
@@ -155,6 +150,7 @@ export async function atualizarSubEtapa(
 }
 
 export async function excluirCliente(id: string) {
+  if (!(await podeEditarCliente(id))) throw new Error('Não autorizado')
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) throw new Error('Não autorizado')
   const { error } = await supabase.from('clientes').delete().eq('id', id)

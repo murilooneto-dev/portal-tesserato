@@ -1,7 +1,7 @@
 ﻿import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
-import { createClient, getAuthenticatedAdmin } from '@/lib/supabase/server'
+import { createClient, getAuthenticatedAdmin, podeEditarCliente } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
@@ -29,8 +29,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const { data: cliente } = await supabase.from('clientes').select('*').eq('id', id).single()
   if (!cliente) notFound()
 
-  // Não-admins só podem ver seus próprios clientes
-  if (profile?.role !== 'admin' && cliente.responsavel?.toLowerCase() !== profile?.nome?.toLowerCase()) notFound()
+  const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
   const { mes, ano } = await getMesAno()
   const anoAtual = getMesAnoRealAgora().ano
@@ -71,6 +70,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
     'use server'
+    if (!(await podeEditarCliente(id))) return
     const { user, supabase } = await getAuthenticatedAdmin()
     if (!supabase) return
     const concluida_em = concluida
@@ -128,7 +128,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                 <span className="text-white font-medium text-sm">
                   {MESES_ABREV[mes-1]} / {ano}
                 </span>
-                <ClienteAcoes cliente={cliente} responsaveis={responsaveis} templates={templatesMap} />
+                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} templates={templatesMap} />}
               </div>
             </div>
           </div>
@@ -148,11 +148,12 @@ export default async function ClienteDetalhePage({ params }: Props) {
         usuarioNome={profile?.nome ?? user.email ?? ''}
         mitInicial={cliente.mit ?? ''}
         onToggle={toggleTarefa}
+        podeEditar={podeEditar}
       />
 
-      <ClienteObs clienteId={id} obsInicial={observacao?.texto ?? ''} mes={mes} ano={ano} />
+      <ClienteObs clienteId={id} obsInicial={observacao?.texto ?? ''} mes={mes} ano={ano} podeEditar={podeEditar} />
 
-      <ClienteArquivos clienteId={id} arquivosIniciais={arquivos ?? []} />
+      <ClienteArquivos clienteId={id} arquivosIniciais={arquivos ?? []} podeEditar={podeEditar} />
 
       <ClienteConferencia
         clienteNome={cliente.nome}

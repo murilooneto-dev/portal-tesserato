@@ -66,3 +66,19 @@ export async function getAuthenticatedAdmin() {
   )
   return { user, supabase }
 }
+
+// Verifica se o usuário logado pode editar um cliente específico:
+// é admin, ou o nome dele bate (case-insensitive) com o responsável do cliente.
+// Usa o client de sessão (respeita RLS) — select em profiles/clientes já é
+// liberado pra qualquer autenticado pelas policies existentes.
+export async function podeEditarCliente(clienteId: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data: profile } = await supabase.from('profiles').select('role,nome').eq('id', user.id).single()
+  if (profile?.role === 'admin') return true
+
+  const { data: cliente } = await supabase.from('clientes').select('responsavel').eq('id', clienteId).single()
+  return !!profile?.nome && !!cliente?.responsavel && profile.nome.toLowerCase() === cliente.responsavel.toLowerCase()
+}

@@ -5,6 +5,38 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.7.0] - 2026-07-03
+
+### Adicionado
+- Tela de Clientes: todo mundo autenticado passa a ver todos os clientes na lista e no detalhe (antes, não-admins só viam os clientes onde eram o `responsavel`). Edição continua restrita — cadastro (Editar/Excluir empresa), checklist de tarefas (incluindo sub-etapas Recebido/Importado/Conferido, desbloqueio e campo MIT), observação mensal e upload/exclusão de arquivos só ficam habilitados pra quem é admin ou o responsável pelo cliente. Quem não pode editar vê tudo em modo somente-leitura.
+- Filtros persistentes por sessão: os filtros de busca/responsável/grupo/atividade/pendência nas telas de Clientes, Relatórios, Parcelamentos, Conferência e Histórico (14 filtros no total) agora sobrevivem a troca de tela e a um F5 — só resetam se o usuário mudar o filtro de novo ou fechar a aba/navegador.
+
+### Segurança
+- As Server Actions que gravam dado de cliente (`salvarMIT`, `salvarObs`, `uploadArquivo`, `excluirArquivo`, `atualizarSubEtapa`, `desbloquearTarefa`, `excluirCliente`) passam a checar permissão (`podeEditarCliente`) antes de gravar — antes, a única proteção era a página ser inacessível pra quem não era responsável; abrir a visibilidade pra todo mundo exigia fechar essa brecha.
+- Nova policy de RLS (`Responsavel atualiza seu cliente`) permite que o responsável não-admin salve edições de cadastro pelo botão Editar — antes só admin conseguia gravar via esse caminho (que fala direto com o Supabase, sem passar pela service role).
+
+### Removido
+- `toggleTarefa` morto (exportado em `app/fiscal/clientes/actions.ts`, nunca importado por ninguém — o toggle real já era uma função local na página de detalhe do cliente).
+
+### Arquivos alterados
+- `lib/supabase/server.ts` — helper `podeEditarCliente`
+- `app/fiscal/clientes/page.tsx`, `app/fiscal/clientes/[id]/page.tsx`, `app/fiscal/clientes/actions.ts` — visibilidade total + permissão de edição
+- `components/fiscal/TarefaChecklist.tsx`, `ClienteObs.tsx`, `ClienteArquivos.tsx` — prop `podeEditar`
+- `supabase/migrations/001_initial.sql` — policy de RLS nova
+- `lib/use-filtro-persistente.ts` — hook novo
+- `components/fiscal/ClientesLista.tsx`, `app/fiscal/relatorios/page.tsx`, `app/fiscal/parcelamentos/page.tsx`, `app/fiscal/conferencia/page.tsx`, `app/fiscal/historico/page.tsx` — filtros persistentes
+
+### Requer ação manual antes do deploy
+- Rodar no SQL Editor do Supabase (produção) — **já aplicado nesta sessão, confirmar que também está em produção antes do merge**:
+```sql
+create policy "Responsavel atualiza seu cliente"
+  on clientes for update using (
+    exists (select 1 from profiles p where p.id = auth.uid() and lower(p.nome) = lower(clientes.responsavel))
+  );
+```
+
+---
+
 ## [v0.6.2] - 2026-07-02
 
 ### Corrigido

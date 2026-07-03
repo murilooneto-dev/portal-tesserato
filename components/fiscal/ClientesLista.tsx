@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { Cliente } from '@/lib/types'
 import EmpresaModal from './EmpresaModal'
+import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 
 const CORES_REGIME: Record<string, string> = {
   simples:   '#10b981',
@@ -43,11 +44,11 @@ interface Props {
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 export default function ClientesLista({ clientes, comPendencia, progressoMap, mes, ano, templates }: Props) {
-  const [busca, setBusca] = useState('')
-  const [filtroResponsavel, setFiltroResponsavel] = useState('TODOS')
-  const [filtroGrupo, setFiltroGrupo] = useState('TODOS')
-  const [filtroAtividade, setFiltroAtividade] = useState('TODOS')
-  const [filtroPendencia, setFiltroPendencia] = useState(false)
+  const [busca, setBusca] = useFiltroPersistente('clientes:busca', '')
+  const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes:responsavel', 'TODOS')
+  const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('clientes:grupo', 'TODOS')
+  const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('clientes:atividade', 'TODOS')
+  const [filtroPendencia, setFiltroPendencia] = useFiltroPersistente('clientes:pendencia', false)
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
 
   const responsaveis = useMemo(() => ['TODOS', ...Array.from(new Set(

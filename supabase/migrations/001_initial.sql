@@ -139,6 +139,11 @@ create policy "Admin gerencia clientes"
     exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')
   );
 
+create policy "Responsavel atualiza seu cliente"
+  on clientes for update using (
+    exists (select 1 from profiles p where p.id = auth.uid() and lower(p.nome) = lower(clientes.responsavel))
+  );
+
 -- Políticas: tarefas
 create policy "Autenticados leem tarefas"
   on tarefas for select using (auth.uid() is not null);

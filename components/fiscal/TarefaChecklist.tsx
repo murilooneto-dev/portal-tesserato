@@ -36,6 +36,7 @@ interface Props {
   mitInicial?: string
   onToggle: (tipo: string, concluida: boolean, data?: string) => Promise<void>
   onOptimisticUnlock?: (tipo: string) => void
+  podeEditar: boolean
 }
 
 function isoParaDisplay(iso: string): string {
@@ -76,6 +77,7 @@ export default function TarefaChecklist({
   mitInicial = '',
   onToggle,
   onOptimisticUnlock,
+  podeEditar,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [optimisticDates, setOptimisticDates] = useState<Record<string, string | null>>({})
@@ -195,7 +197,7 @@ export default function TarefaChecklist({
                         <input
                           type="checkbox"
                           checked={mapaTarefa.get(tipo)?.[campo] ?? false}
-                          disabled={feito || isPending || isUnlocking}
+                          disabled={!podeEditar || feito || isPending || isUnlocking}
                           onChange={e => startTransition(() => atualizarSubEtapa(clienteId, mes, ano, tipo, campo, e.target.checked))}
                           className="w-3.5 h-3.5 accent-[#00CCEB]"
                         />
@@ -209,7 +211,7 @@ export default function TarefaChecklist({
                     value={displayVal}
                     onChange={e => handleTextChange(tipo, e.target.value)}
                     onBlur={() => handleTextBlur(tipo)}
-                    disabled={isPending || isUnlocking}
+                    disabled={!podeEditar || isPending || isUnlocking}
                     placeholder="DD/MM/AAAA"
                     maxLength={10}
                     className={`text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
@@ -220,7 +222,7 @@ export default function TarefaChecklist({
                   />
                 )}
 
-                {feito && (
+                {feito && podeEditar && (
                   <button
                     onClick={() => setUnlockingTipo(isUnlocking ? null : tipo)}
                     className="text-xs text-white/30 hover:text-white/60 px-2 py-1 rounded-lg border border-white/8 hover:border-white/20 transition-all whitespace-nowrap"
@@ -264,8 +266,9 @@ export default function TarefaChecklist({
             value={mit}
             onChange={e => setMit(e.target.value)}
             onBlur={handleMITBlur}
+            disabled={!podeEditar}
             placeholder="Anotação MIT..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#00CCEB]/50 transition-colors"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#00CCEB]/50 transition-colors disabled:opacity-40"
           />
         </div>
       )}

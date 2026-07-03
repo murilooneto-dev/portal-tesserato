@@ -13,6 +13,7 @@ interface Arquivo {
 interface Props {
   clienteId: string
   arquivosIniciais: Arquivo[]
+  podeEditar: boolean
 }
 
 function formatBytes(bytes: number) {
@@ -21,7 +22,7 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function ClienteArquivos({ clienteId, arquivosIniciais }: Props) {
+export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEditar }: Props) {
   const [arquivos, setArquivos] = useState<Arquivo[]>(arquivosIniciais)
   const [isPending, startTransition] = useTransition()
   const [erro, setErro] = useState('')
@@ -72,22 +73,24 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais }: Props) 
         <h3 className="text-xs font-semibold text-white/40 uppercase tracking-widest">
           Planilhas Anexadas
         </h3>
-        <label className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
-          isPending
-            ? 'opacity-50 pointer-events-none'
-            : 'bg-[#00CCEB]/15 border-[#00CCEB]/40 text-[#00CCEB] hover:bg-[#00CCEB]/25'
-        }`}>
-          {isPending ? 'Enviando...' : '+ Anexar'}
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".xls,.xlsx,.csv"
-            multiple
-            className="hidden"
-            onChange={handleUpload}
-            disabled={isPending}
-          />
-        </label>
+        {podeEditar && (
+          <label className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
+            isPending
+              ? 'opacity-50 pointer-events-none'
+              : 'bg-[#00CCEB]/15 border-[#00CCEB]/40 text-[#00CCEB] hover:bg-[#00CCEB]/25'
+          }`}>
+            {isPending ? 'Enviando...' : '+ Anexar'}
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".xls,.xlsx,.csv"
+              multiple
+              className="hidden"
+              onChange={handleUpload}
+              disabled={isPending}
+            />
+          </label>
+        )}
       </div>
 
       {erro && <p className="text-red-400 text-xs mb-3">{erro}</p>}
@@ -105,13 +108,15 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais }: Props) 
                   {formatBytes(arq.size)} · {new Date(arq.uploaded_at).toLocaleDateString('pt-BR')}
                 </p>
               </div>
-              <button
-                onClick={() => handleExcluir(arq.id)}
-                disabled={isPending}
-                className="text-white/20 hover:text-red-400 text-sm px-2 py-1 rounded-lg border border-white/10 hover:border-red-400/30 transition-all opacity-0 group-hover:opacity-100"
-              >
-                ✕
-              </button>
+              {podeEditar && (
+                <button
+                  onClick={() => handleExcluir(arq.id)}
+                  disabled={isPending}
+                  className="text-white/20 hover:text-red-400 text-sm px-2 py-1 rounded-lg border border-white/10 hover:border-red-400/30 transition-all opacity-0 group-hover:opacity-100"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))}
         </div>
