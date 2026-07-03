@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Cliente, Tarefa } from '@/lib/types'
 import { useMesAno } from '@/lib/mes-atual-context'
+import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const MESES_ABR  = ['J','F','M','A','M','J','J','A','S','O','N','D']
@@ -17,7 +18,7 @@ interface MonthStat { total: number; concluidas: number; pct: number }
 export default function HistoricoPage() {
   const [clientes, setClientes]     = useState<Cliente[]>([])
   const [tarefas, setTarefas]       = useState<Tarefa[]>([])
-  const [selectedResp, setSelectedResp] = useState<string | null>(null)
+  const [selectedResp, setSelectedResp] = useFiltroPersistente<string | null>('historico:responsavel', null)
   const [loading, setLoading]       = useState(true)
   const [isAdmin, setIsAdmin]       = useState(false)
   const { mes, ano } = useMesAno()
