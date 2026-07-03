@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import type { Cliente } from '@/lib/types'
+import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 
 interface ClientFile { id: string; cliente_id: string; name: string; size: number; content_base64: string; uploaded_at: string }
 
@@ -50,7 +51,7 @@ async function lerXLSXFile(file: File): Promise<string[]> {
 
 export default function ConferenciaPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [busca, setBusca] = useState('')
+  const [busca, setBusca] = useFiltroPersistente('conferencia:busca', '')
   const [clienteSel, setClienteSel] = useState<Cliente | null>(null)
   const [arquivosDTE, setArquivosDTE] = useState<ClientFile[]>([])
   const [sistemFile, setSistemFile] = useState<File | null>(null)
