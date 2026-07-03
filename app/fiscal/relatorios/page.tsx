@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Cliente, Tarefa } from '@/lib/types'
 import { useMesAno } from '@/lib/mes-atual-context'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
+import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 
 const TAREFAS: Record<string, string[]> = {
   normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
@@ -27,10 +28,10 @@ export default function RelatoriosPage() {
   const { mes, ano } = useMesAno()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
-  const [filtroResp, setFiltroResp] = useState('TODOS')
-  const [filtroGrupo, setFiltroGrupo] = useState('TODOS')
-  const [filtroAtividade, setFiltroAtividade] = useState('TODAS')
-  const [apenasP, setApenasP] = useState(false)
+  const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios:responsavel', 'TODOS')
+  const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('relatorios:grupo', 'TODOS')
+  const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('relatorios:atividade', 'TODAS')
+  const [apenasP, setApenasP] = useFiltroPersistente('relatorios:pendencia', false)
   const [userNome, setUserNome] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
 
