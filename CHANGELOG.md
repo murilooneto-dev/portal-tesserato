@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.7.1] - 2026-07-08
+
+### Corrigido
+- Progresso de clientes na tela de Relatórios divergia do Dashboard e da tela de Clientes: `progresso()` contava todas as linhas de tarefa do banco para o cliente em vez de usar a lista `tarefas_personalizadas` do cliente como base do total e filtro de concluídas (mesmo critério já usado nas outras duas telas).
+
+### Arquivos alterados
+- `app/fiscal/relatorios/page.tsx` — cálculo de progresso alinhado com Dashboard/Clientes
+
+---
+
 ## [v0.7.0] - 2026-07-03
 
 ### Adicionado
