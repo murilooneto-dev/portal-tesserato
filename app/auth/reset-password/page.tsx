@@ -44,10 +44,10 @@ export default function ResetPasswordPage() {
     setTimeout(() => router.push('/login'), 2500)
   }
 
-  const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#00CCEB] transition-colors text-sm"
+  const inputCls = "w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-3 text-[var(--fg)] placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)] transition-colors text-sm"
 
   return (
-    <div className="min-h-screen bg-[#111e3a] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-8">
           <svg width="56" height="56" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
@@ -68,25 +68,25 @@ export default function ResetPasswordPage() {
           </svg>
         </div>
 
-        <div className="bg-white/3 border border-white/8 rounded-2xl p-8">
+        <div className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-8">
           {ok ? (
             <div className="flex flex-col items-center gap-3 text-center">
               <div className="w-12 h-12 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center text-green-400 text-xl">✓</div>
-              <p className="text-white font-semibold">Senha redefinida com sucesso!</p>
-              <p className="text-white/40 text-sm">Redirecionando para o login...</p>
+              <p className="text-[var(--fg)] font-semibold">Senha redefinida com sucesso!</p>
+              <p className="text-[var(--fg)]/40 text-sm">Redirecionando para o login...</p>
             </div>
           ) : !pronto ? (
             <div className="text-center">
-              <p className="text-white/40 text-sm">Verificando link...</p>
+              <p className="text-[var(--fg)]/40 text-sm">Verificando link...</p>
             </div>
           ) : (
             <>
-              <h1 className="text-xl font-bold text-white mb-1">Nova senha</h1>
-              <p className="text-white/40 text-sm mb-6">Escolha uma nova senha para sua conta.</p>
+              <h1 className="text-xl font-bold text-[var(--fg)] mb-1">Nova senha</h1>
+              <p className="text-[var(--fg)]/40 text-sm mb-6">Escolha uma nova senha para sua conta.</p>
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm text-white/60">Nova senha</label>
+                  <label className="text-sm text-[var(--fg)]/60">Nova senha</label>
                   <div className="relative">
                     <input
                       type={mostrar ? 'text' : 'password'}
@@ -97,7 +97,7 @@ export default function ResetPasswordPage() {
                       className={`${inputCls} pr-11`}
                     />
                     <button type="button" onClick={() => setMostrar(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors p-1">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fg)]/30 hover:text-[var(--fg)]/70 transition-colors p-1">
                       {mostrar ? (
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
@@ -115,7 +115,7 @@ export default function ResetPasswordPage() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm text-white/60">Confirmar senha</label>
+                  <label className="text-sm text-[var(--fg)]/60">Confirmar senha</label>
                   <input
                     type={mostrar ? 'text' : 'password'}
                     value={confirmar}
@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
                 {erro && <p className="text-red-400 text-sm">{erro}</p>}
 
                 <button type="submit" disabled={salvando}
-                  className="mt-1 py-3 rounded-xl bg-[#00CCEB] text-white font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
+                  className="mt-1 py-3 rounded-xl bg-[var(--accent)] text-[var(--fg)] font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                   {salvando ? 'Salvando...' : 'Salvar nova senha'}
                 </button>
               </form>

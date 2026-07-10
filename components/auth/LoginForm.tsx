@@ -67,7 +67,7 @@ export default function LoginForm() {
     }
   }
 
-  const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#00CCEB] transition-colors text-sm"
+  const inputCls = "w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-3 text-[var(--fg)] placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)] transition-colors text-sm"
 
   /* ---- Tela de redefinição enviada ---- */
   if (view === 'forgot_sent') {
@@ -75,11 +75,11 @@ export default function LoginForm() {
       <div className="flex flex-col items-center gap-4 text-center">
         <div className="w-12 h-12 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center text-green-400 text-xl">✓</div>
         <div>
-          <p className="text-white font-semibold">E-mail enviado!</p>
-          <p className="text-white/40 text-sm mt-1">Verifique sua caixa de entrada em <span className="text-white/70">{emailReset}</span> e siga as instruções para redefinir sua senha.</p>
+          <p className="text-[var(--fg)] font-semibold">E-mail enviado!</p>
+          <p className="text-[var(--fg)]/40 text-sm mt-1">Verifique sua caixa de entrada em <span className="text-[var(--fg)]/70">{emailReset}</span> e siga as instruções para redefinir sua senha.</p>
         </div>
         <button onClick={() => { setView('login'); setEmailReset('') }}
-          className="text-[#00CCEB] text-sm hover:underline mt-2">
+          className="text-[var(--accent)] text-sm hover:underline mt-2">
           Voltar ao login
         </button>
       </div>
@@ -91,12 +91,12 @@ export default function LoginForm() {
     return (
       <form onSubmit={handleEsqueciSenha} className="flex flex-col gap-4">
         <div>
-          <p className="text-white font-semibold text-sm mb-1">Redefinir senha</p>
-          <p className="text-white/40 text-xs">Digite seu e-mail e enviaremos um link para criar uma nova senha.</p>
+          <p className="text-[var(--fg)] font-semibold text-sm mb-1">Redefinir senha</p>
+          <p className="text-[var(--fg)]/40 text-xs">Digite seu e-mail e enviaremos um link para criar uma nova senha.</p>
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm text-white/60">E-mail</label>
+          <label className="text-sm text-[var(--fg)]/60">E-mail</label>
           <input
             type="email"
             value={emailReset}
@@ -111,12 +111,12 @@ export default function LoginForm() {
         {erroReset && <p className="text-red-400 text-sm">{erroReset}</p>}
 
         <button type="submit" disabled={enviandoReset}
-          className="py-3 rounded-xl bg-[#00CCEB] text-white font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
+          className="py-3 rounded-xl bg-[var(--accent)] text-[var(--fg)] font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
           {enviandoReset ? 'Enviando...' : 'Enviar link de redefinição'}
         </button>
 
         <button type="button" onClick={() => setView('login')}
-          className="text-white/40 text-sm hover:text-white/70 transition-colors">
+          className="text-[var(--fg)]/40 text-sm hover:text-[var(--fg)]/70 transition-colors">
           ← Voltar ao login
         </button>
       </form>
@@ -127,7 +127,7 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <label htmlFor="email" className="text-sm text-white/60">E-mail</label>
+        <label htmlFor="email" className="text-sm text-[var(--fg)]/60">E-mail</label>
         <input
           id="email"
           type="email"
@@ -140,7 +140,7 @@ export default function LoginForm() {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="senha" className="text-sm text-white/60">Senha</label>
+        <label htmlFor="senha" className="text-sm text-[var(--fg)]/60">Senha</label>
         <div className="relative">
           <input
             id="senha"
@@ -154,7 +154,7 @@ export default function LoginForm() {
           <button
             type="button"
             onClick={() => setMostrarSenha(v => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors p-1"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fg)]/30 hover:text-[var(--fg)]/70 transition-colors p-1"
             aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
           >
             {mostrarSenha ? (
@@ -180,7 +180,7 @@ export default function LoginForm() {
         <label className="flex items-center gap-2 cursor-pointer select-none group">
           <div
             onClick={() => setLembrar(v => !v)}
-            className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${lembrar ? 'bg-[#00CCEB] border-[#00CCEB]' : 'border-white/20 bg-transparent'}`}
+            className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${lembrar ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--fg)]/20 bg-transparent'}`}
           >
             {lembrar && (
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -188,11 +188,11 @@ export default function LoginForm() {
               </svg>
             )}
           </div>
-          <span className="text-white/50 text-xs group-hover:text-white/70 transition-colors">Permanecer conectado</span>
+          <span className="text-[var(--fg)]/50 text-xs group-hover:text-[var(--fg)]/70 transition-colors">Permanecer conectado</span>
         </label>
 
         <button type="button" onClick={() => { setView('forgot'); setEmailReset(email) }}
-          className="text-xs text-white/40 hover:text-[#00CCEB] transition-colors">
+          className="text-xs text-[var(--fg)]/40 hover:text-[var(--accent)] transition-colors">
           Esqueci minha senha
         </button>
       </div>
@@ -202,7 +202,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={carregando}
-        className="mt-1 py-3 rounded-xl bg-[#00CCEB] text-white font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="mt-1 py-3 rounded-xl bg-[var(--accent)] text-[var(--fg)] font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {carregando ? 'Entrando...' : 'Entrar'}
       </button>
