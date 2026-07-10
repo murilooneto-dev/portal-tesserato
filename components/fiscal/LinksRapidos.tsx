@@ -13,7 +13,7 @@ export default function LinksRapidos({ links }: Props) {
 
   return (
     <div>
-      <h2 className="text-xs font-bold text-[#00CCEB] uppercase tracking-widest mb-4">
+      <h2 className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-4">
         Links Úteis
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -25,9 +25,9 @@ export default function LinksRapidos({ links }: Props) {
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 p-4 rounded-xl bg-white/4 border border-white/8 hover:bg-white/7 hover:border-white/15 transition-all group"
+              className="flex items-center gap-3 p-4 rounded-xl bg-[var(--fg)]/4 border border-[var(--fg)]/8 hover:bg-[var(--fg)]/7 hover:border-[var(--fg)]/15 transition-all group"
             >
-              <div className="w-10 h-10 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-10 h-10 rounded-xl bg-[var(--fg)]/8 border border-[var(--fg)]/10 flex items-center justify-center shrink-0 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
@@ -38,12 +38,12 @@ export default function LinksRapidos({ links }: Props) {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium leading-tight truncate group-hover:text-[#00CCEB] transition-colors">
+                <p className="text-[var(--fg)] text-sm font-medium leading-tight truncate group-hover:text-[var(--accent)] transition-colors">
                   {link.titulo}
                 </p>
-                <p className="text-white/30 text-xs truncate mt-0.5">{domain}</p>
+                <p className="text-[var(--fg)]/30 text-xs truncate mt-0.5">{domain}</p>
               </div>
-              <svg className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-3.5 h-3.5 text-[var(--fg)]/20 group-hover:text-[var(--fg)]/50 shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </a>

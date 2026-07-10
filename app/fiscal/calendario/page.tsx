@@ -28,32 +28,32 @@ const FLUXO = [
 function diffCard(diff: number): { badgeText: string; badgeCls: string; cardCls: string; dotCls: string } {
   if (diff < 0) return {
     badgeText: `${Math.abs(diff)}d atraso`,
-    badgeCls: 'bg-red-600 text-white',
+    badgeCls: 'bg-red-600 text-[var(--fg)]',
     cardCls: 'bg-red-900/40 border-red-700/60',
     dotCls: 'bg-red-500',
   }
   if (diff === 0) return {
     badgeText: 'Vence hoje',
-    badgeCls: 'bg-orange-500 text-white',
+    badgeCls: 'bg-orange-500 text-[var(--fg)]',
     cardCls: 'bg-orange-900/30 border-orange-600/50',
     dotCls: 'bg-orange-400',
   }
   if (diff <= 5) return {
     badgeText: `${diff}d`,
-    badgeCls: 'bg-orange-500/80 text-white',
+    badgeCls: 'bg-orange-500/80 text-[var(--fg)]',
     cardCls: 'bg-orange-900/20 border-orange-600/40',
     dotCls: 'bg-orange-400',
   }
   if (diff <= 10) return {
     badgeText: `${diff}d`,
-    badgeCls: 'bg-blue-600/80 text-white',
+    badgeCls: 'bg-blue-600/80 text-[var(--fg)]',
     cardCls: 'bg-blue-900/20 border-blue-600/40',
     dotCls: 'bg-blue-400',
   }
   return {
     badgeText: `${diff}d`,
-    badgeCls: 'bg-white/10 text-white/60',
-    cardCls: 'bg-white/3 border-white/10',
+    badgeCls: 'bg-[var(--fg)]/10 text-[var(--fg)]/60',
+    cardCls: 'bg-[var(--fg)]/3 border-[var(--fg)]/10',
     dotCls: 'bg-green-500',
   }
 }
@@ -84,13 +84,13 @@ export default function CalendarioPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">Calendário Fiscal — Prazos {ano}</h1>
-          <p className="text-sm text-white/40 mt-1">Prazos internos do escritório para a competência selecionada.</p>
+          <h1 className="text-2xl font-bold text-[var(--fg)]">Calendário Fiscal — Prazos {ano}</h1>
+          <p className="text-sm text-[var(--fg)]/40 mt-1">Prazos internos do escritório para a competência selecionada.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={prev} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all flex items-center justify-center">‹</button>
-          <span className="text-white font-medium text-sm min-w-[110px] text-center">{MESES_PT[mes - 1]} {ano}</span>
-          <button onClick={next} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all flex items-center justify-center">›</button>
+          <button onClick={prev} className="w-8 h-8 rounded-lg bg-[var(--fg)]/5 hover:bg-[var(--fg)]/10 text-[var(--fg)]/60 hover:text-[var(--fg)] transition-all flex items-center justify-center">‹</button>
+          <span className="text-[var(--fg)] font-medium text-sm min-w-[110px] text-center">{MESES_PT[mes - 1]} {ano}</span>
+          <button onClick={next} className="w-8 h-8 rounded-lg bg-[var(--fg)]/5 hover:bg-[var(--fg)]/10 text-[var(--fg)]/60 hover:text-[var(--fg)] transition-all flex items-center justify-center">›</button>
         </div>
       </div>
 
@@ -106,7 +106,7 @@ export default function CalendarioPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotCls}`} />
-                  <span className="text-white font-semibold text-sm">{ob.nome}</span>
+                  <span className="text-[var(--fg)] font-semibold text-sm">{ob.nome}</span>
                 </div>
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${badgeCls}`}>
                   {diaLabel} ({badgeText})
@@ -114,12 +114,12 @@ export default function CalendarioPage() {
               </div>
 
               {/* Descrição */}
-              <p className="text-white/50 text-xs leading-relaxed mb-3">{ob.desc}</p>
+              <p className="text-[var(--fg)]/50 text-xs leading-relaxed mb-3">{ob.desc}</p>
 
               {/* Regimes */}
               <div className="flex flex-wrap gap-1.5">
                 {ob.regimes.map(r => (
-                  <span key={r} className="text-[10px] font-medium px-2 py-0.5 rounded border border-white/15 text-white/50 bg-white/5">
+                  <span key={r} className="text-[10px] font-medium px-2 py-0.5 rounded border border-[var(--fg)]/15 text-[var(--fg)]/50 bg-[var(--fg)]/5">
                     {r}
                   </span>
                 ))}
@@ -135,23 +135,23 @@ export default function CalendarioPage() {
       </div>
 
       {/* Ordem obrigatória */}
-      <div className="rounded-xl bg-white/3 border border-white/10 p-5">
-        <p className="text-white font-semibold text-sm mb-4">⚡ Ordem obrigatória das obrigações mensais</p>
+      <div className="rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/10 p-5">
+        <p className="text-[var(--fg)] font-semibold text-sm mb-4">⚡ Ordem obrigatória das obrigações mensais</p>
         <div className="flex flex-wrap items-center gap-2">
           {FLUXO.map((item, i) => (
             <div key={item.label} className="flex items-center gap-2">
               <div className="rounded-xl px-4 py-2.5 text-center border"
                 style={{ borderColor: item.cor + '60', backgroundColor: item.cor + '15' }}>
-                <p className="text-white text-xs font-semibold">{item.label}</p>
+                <p className="text-[var(--fg)] text-xs font-semibold">{item.label}</p>
                 <p className="text-[10px] mt-0.5" style={{ color: item.cor }}>{item.dia}</p>
               </div>
               {i < FLUXO.length - 1 && (
-                <span className="text-white/25 text-lg">→</span>
+                <span className="text-[var(--fg)]/25 text-lg">→</span>
               )}
             </div>
           ))}
         </div>
-        <p className="text-white/30 text-xs mt-4">Qualquer atraso nessa cadeia trava as declarações seguintes e gera multa automática.</p>
+        <p className="text-[var(--fg)]/30 text-xs mt-4">Qualquer atraso nessa cadeia trava as declarações seguintes e gera multa automática.</p>
       </div>
     </div>
   )
