@@ -251,16 +251,16 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
   if (!arquivosDTE.length) return null
 
   return (
-    <div className="mt-6 pt-5 border-t border-white/8">
-      <h3 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">
+    <div className="mt-6 pt-5 border-t border-[var(--fg)]/8">
+      <h3 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-4">
         Conferência de DTEs
       </h3>
 
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <label className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all text-sm ${
           sistemFile
-            ? 'bg-[#00CCEB]/10 border-[#00CCEB]/40 text-[#00CCEB]'
-            : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/80'
+            ? 'bg-[var(--accent)]/10 border-[var(--accent)]/40 text-[var(--accent)]'
+            : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/50 hover:border-[var(--fg)]/20 hover:text-[var(--fg)]/80'
         }`}>
           <span>📂</span>
           <span className="max-w-[200px] truncate">{sistemFile ? sistemFile.name : 'Planilha do sistema (.xls/.xlsx)'}</span>
@@ -276,7 +276,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
         <button
           onClick={comparar}
           disabled={comparando || !sistemFile}
-          className="px-4 py-2 rounded-xl bg-[#00CCEB] text-white text-sm font-medium hover:bg-[#00b3d4] transition-all disabled:opacity-40"
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-40"
         >
           {comparando ? '⏳ Comparando...' : '🔍 Comparar'}
         </button>
@@ -285,20 +285,20 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
           <>
             <button
               onClick={exportarXLSX}
-              className="px-4 py-2 rounded-xl border border-white/15 text-white/50 text-sm hover:border-green-400/50 hover:text-green-400 transition-all"
+              className="px-4 py-2 rounded-xl border border-[var(--fg)]/15 text-[var(--fg)]/50 text-sm hover:border-green-400/50 hover:text-green-400 transition-all"
             >
               ⬇ Exportar XLSX
             </button>
             <button
               onClick={exportarPDF}
-              className="px-4 py-2 rounded-xl border border-white/15 text-white/50 text-sm hover:border-red-400/50 hover:text-red-400 transition-all"
+              className="px-4 py-2 rounded-xl border border-[var(--fg)]/15 text-[var(--fg)]/50 text-sm hover:border-red-400/50 hover:text-red-400 transition-all"
             >
               ⬇ Exportar PDF
             </button>
           </>
         )}
 
-        <span className="text-white/25 text-xs">{arquivosDTE.length} planilha(s) DTE armazenada(s)</span>
+        <span className="text-[var(--fg)]/25 text-xs">{arquivosDTE.length} planilha(s) DTE armazenada(s)</span>
       </div>
 
       {erro && (
@@ -309,13 +309,13 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
         <div>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
-              { label: 'Chaves DTE',    val: resultado.dte,                  cor: '#00CCEB' },
+              { label: 'Chaves DTE',    val: resultado.dte,                  cor: 'var(--accent)' },
               { label: 'Chaves SISTEMA', val: resultado.sistema,              cor: '#10b981' },
               { label: 'Divergências',   val: resultado.divergencias.length,  cor: resultado.divergencias.length > 0 ? '#ef4444' : '#10b981' },
             ].map(s => (
-              <div key={s.label} className="p-3 rounded-xl bg-white/3 border border-white/8 text-center">
+              <div key={s.label} className="p-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 text-center">
                 <p className="text-xl font-bold" style={{ color: s.cor }}>{s.val}</p>
-                <p className="text-white/40 text-xs mt-0.5">{s.label}</p>
+                <p className="text-[var(--fg)]/40 text-xs mt-0.5">{s.label}</p>
               </div>
             ))}
           </div>
@@ -326,33 +326,33 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
               <p className="text-green-400/50 text-xs mt-1">Todas as chaves DTE estão presentes no SISTEMA</p>
             </div>
           ) : (
-            <div className="rounded-xl border border-white/8 overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-white/8 bg-white/3">
-                <p className="text-xs font-semibold text-white">Chaves DTE não encontradas no SISTEMA</p>
+            <div className="rounded-xl border border-[var(--fg)]/8 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-[var(--fg)]/8 bg-[var(--fg)]/3">
+                <p className="text-xs font-semibold text-[var(--fg)]">Chaves DTE não encontradas no SISTEMA</p>
               </div>
               <div className="overflow-x-auto max-h-80 overflow-y-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-white/8 sticky top-0 bg-[#162444]">
-                      <th className="text-left text-white/30 uppercase px-3 py-2">#</th>
-                      <th className="text-left text-white/30 uppercase px-3 py-2">UF</th>
-                      <th className="text-left text-white/30 uppercase px-3 py-2">Nº NF</th>
-                      <th className="text-left text-white/30 uppercase px-3 py-2">Data</th>
-                      <th className="text-left text-white/30 uppercase px-3 py-2">Fornecedor</th>
-                      <th className="text-left text-white/30 uppercase px-3 py-2">Valor</th>
-                      <th className="text-left text-white/30 uppercase px-3 py-2">Chave</th>
+                    <tr className="border-b border-[var(--fg)]/8 sticky top-0 bg-[var(--bg-surface)]">
+                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">#</th>
+                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">UF</th>
+                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Nº NF</th>
+                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Data</th>
+                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Fornecedor</th>
+                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Valor</th>
+                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Chave</th>
                     </tr>
                   </thead>
                   <tbody>
                     {resultado.divergencias.slice(0, 300).map((e, i) => (
-                      <tr key={e.chave} className="border-b border-white/5 hover:bg-white/3 transition-colors">
-                        <td className="px-3 py-1.5 text-white/30">{i + 1}</td>
-                        <td className="px-3 py-1.5 text-[#00CCEB] font-bold">{e.uf}</td>
-                        <td className="px-3 py-1.5 text-white/70">{e.numero || '—'}</td>
-                        <td className="px-3 py-1.5 text-white/60">{e.data || '—'}</td>
-                        <td className="px-3 py-1.5 text-white/70 max-w-[180px] truncate">{e.fornecedor || '—'}</td>
-                        <td className="px-3 py-1.5 text-white/70 whitespace-nowrap">{e.valor || '—'}</td>
-                        <td className="px-3 py-1.5 text-white/30 font-mono">{e.chave}</td>
+                      <tr key={e.chave} className="border-b border-[var(--fg)]/5 hover:bg-[var(--fg)]/3 transition-colors">
+                        <td className="px-3 py-1.5 text-[var(--fg)]/30">{i + 1}</td>
+                        <td className="px-3 py-1.5 text-[var(--accent)] font-bold">{e.uf}</td>
+                        <td className="px-3 py-1.5 text-[var(--fg)]/70">{e.numero || '—'}</td>
+                        <td className="px-3 py-1.5 text-[var(--fg)]/60">{e.data || '—'}</td>
+                        <td className="px-3 py-1.5 text-[var(--fg)]/70 max-w-[180px] truncate">{e.fornecedor || '—'}</td>
+                        <td className="px-3 py-1.5 text-[var(--fg)]/70 whitespace-nowrap">{e.valor || '—'}</td>
+                        <td className="px-3 py-1.5 text-[var(--fg)]/30 font-mono">{e.chave}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -68,16 +68,16 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
   }
 
   return (
-    <div className="mt-8 pt-6 border-t border-white/8">
+    <div className="mt-8 pt-6 border-t border-[var(--fg)]/8">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs font-semibold text-white/40 uppercase tracking-widest">
+        <h3 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest">
           Planilhas Anexadas
         </h3>
         {podeEditar && (
           <label className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
             isPending
               ? 'opacity-50 pointer-events-none'
-              : 'bg-[#00CCEB]/15 border-[#00CCEB]/40 text-[#00CCEB] hover:bg-[#00CCEB]/25'
+              : 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/25'
           }`}>
             {isPending ? 'Enviando...' : '+ Anexar'}
             <input
@@ -96,15 +96,15 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
       {erro && <p className="text-red-400 text-xs mb-3">{erro}</p>}
 
       {arquivos.length === 0 ? (
-        <p className="text-white/20 text-sm">Nenhuma planilha anexada.</p>
+        <p className="text-[var(--fg)]/20 text-sm">Nenhuma planilha anexada.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {arquivos.map(arq => (
-            <div key={arq.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/8 group">
+            <div key={arq.id} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 group">
               <span className="text-green-400 text-lg flex-shrink-0">📊</span>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm truncate">{arq.name}</p>
-                <p className="text-white/30 text-xs">
+                <p className="text-[var(--fg)] text-sm truncate">{arq.name}</p>
+                <p className="text-[var(--fg)]/30 text-xs">
                   {formatBytes(arq.size)} · {new Date(arq.uploaded_at).toLocaleDateString('pt-BR')}
                 </p>
               </div>
@@ -112,7 +112,7 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
                 <button
                   onClick={() => handleExcluir(arq.id)}
                   disabled={isPending}
-                  className="text-white/20 hover:text-red-400 text-sm px-2 py-1 rounded-lg border border-white/10 hover:border-red-400/30 transition-all opacity-0 group-hover:opacity-100"
+                  className="text-[var(--fg)]/20 hover:text-red-400 text-sm px-2 py-1 rounded-lg border border-[var(--fg)]/10 hover:border-red-400/30 transition-all opacity-0 group-hover:opacity-100"
                 >
                   ✕
                 </button>
