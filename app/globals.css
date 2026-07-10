@@ -1,10 +1,24 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
-  --background: #111e3a;
+  --bg-page: #111e3a;
+  --bg-surface: #162444;
+  --bg-surface-2: #0b1019;
+  --fg: #ffffff;
+  --accent: #00CCEB;
+  --accent-hover: #00b3d4;
+}
+
+:root.light {
+  --bg-page: #f4f6fb;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #eef1f7;
+  --fg: #111e3a;
+  --accent: #00A8C4;
+  --accent-hover: #008fac;
 }
 
 body {
-  background: var(--background);
-  color: white;
+  background: var(--bg-page);
+  color: var(--fg);
 }
