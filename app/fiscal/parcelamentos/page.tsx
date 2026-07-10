@@ -56,8 +56,8 @@ function badgeColor(val: string | null): { bg: string; text: string; label: stri
   return { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'ENVIADO' }
 }
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50"
-const labelCls = "block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5"
+const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50"
+const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
 export default function ParcelamentosPage() {
   const [items, setItems] = useState<Parcelamento[]>([])
@@ -250,35 +250,35 @@ export default function ParcelamentosPage() {
   return (
     <div className="min-h-screen">
       {/* Top bar */}
-      <div className="flex items-center gap-3 px-8 py-4 bg-[#0b1019] border-b border-white/8 sticky top-0 z-10">
-        <h1 className="text-lg font-bold text-white whitespace-nowrap">Parcelamentos {ano}</h1>
+      <div className="flex items-center gap-3 px-8 py-4 bg-[var(--bg-surface-2)] border-b border-[var(--fg)]/8 sticky top-0 z-10">
+        <h1 className="text-lg font-bold text-[var(--fg)] whitespace-nowrap">Parcelamentos {ano}</h1>
         <input type="text" placeholder="Buscar empresa, CNPJ ou responsável..."
           value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/25 text-sm focus:outline-none focus:border-[#00CCEB]/40" />
+          className="flex-1 px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/40" />
         <select value={secaoFiltro} onChange={e => setSecaoFiltro(e.target.value)}
-          className="px-4 py-2 rounded-xl bg-[#162444] border border-white/10 text-white/70 text-sm focus:outline-none min-w-[180px]">
+          className="px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm focus:outline-none min-w-[180px]">
           <option value="TODOS">Todas as seções</option>
-          {SECOES.map(s => <option key={s} value={s} className="bg-[#162444]">{s}</option>)}
+          {SECOES.map(s => <option key={s} value={s} className="bg-[var(--bg-surface)]">{s}</option>)}
         </select>
         {isAdmin && (
           <select value={respFiltro} onChange={e => setRespFiltro(e.target.value)}
-            className="px-4 py-2 rounded-xl bg-[#162444] border border-white/10 text-white/70 text-sm focus:outline-none min-w-[150px]">
+            className="px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm focus:outline-none min-w-[150px]">
             <option value="TODOS">Todos os responsáveis</option>
-            {responsaveis.map(r => <option key={r} value={r} className="bg-[#162444]">{r}</option>)}
+            {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
           </select>
         )}
         <button onClick={imprimir}
-          className="px-4 py-2 rounded-xl bg-white/8 border border-white/12 text-white/70 text-sm hover:bg-white/12 transition-colors whitespace-nowrap">
+          className="px-4 py-2 rounded-xl bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-[var(--fg)]/70 text-sm hover:bg-[var(--fg)]/12 transition-colors whitespace-nowrap">
           Relatório
         </button>
         <button onClick={openCreate}
-          className="px-4 py-2 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors whitespace-nowrap">
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
           + Novo Parcelamento
         </button>
       </div>
 
       <div className="p-8 space-y-6">
-        {loading && <p className="text-white/30 text-sm">Carregando...</p>}
+        {loading && <p className="text-[var(--fg)]/30 text-sm">Carregando...</p>}
 
         {!loading && secoesMostrar.map(secao => {
           const rows = filtered.filter(p => p.secao === secao)
@@ -286,26 +286,26 @@ export default function ParcelamentosPage() {
           return (
             <div key={secao}>
               {/* Seção header */}
-              <div className="flex items-center gap-3 pl-4 border-l-4 border-[#00CCEB] mb-3">
+              <div className="flex items-center gap-3 pl-4 border-l-4 border-[var(--accent)] mb-3">
                 <div>
-                  <p className="text-white font-bold text-sm">{secao}</p>
-                  <p className="text-white/35 text-xs">{rows.length} parcelamento{rows.length !== 1 ? 's' : ''}</p>
+                  <p className="text-[var(--fg)] font-bold text-sm">{secao}</p>
+                  <p className="text-[var(--fg)]/35 text-xs">{rows.length} parcelamento{rows.length !== 1 ? 's' : ''}</p>
                 </div>
               </div>
 
               {/* Tabela */}
-              <div className="rounded-xl border border-white/8 overflow-hidden">
+              <div className="rounded-xl border border-[var(--fg)]/8 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-white/8 bg-white/2">
-                        <th className="text-left px-4 py-3 text-white/40 font-semibold uppercase tracking-wider whitespace-nowrap">Empresa</th>
-                        <th className="text-left px-3 py-3 text-white/40 font-semibold uppercase tracking-wider whitespace-nowrap">CNPJ</th>
-                        <th className="text-left px-3 py-3 text-white/40 font-semibold uppercase tracking-wider">Regime</th>
-                        <th className="text-left px-3 py-3 text-white/40 font-semibold uppercase tracking-wider">Responsável</th>
-                        <th className="text-left px-3 py-3 text-white/40 font-semibold uppercase tracking-wider whitespace-nowrap">Local / Tipo</th>
+                      <tr className="border-b border-[var(--fg)]/8 bg-[var(--fg)]/2">
+                        <th className="text-left px-4 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider whitespace-nowrap">Empresa</th>
+                        <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider whitespace-nowrap">CNPJ</th>
+                        <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider">Regime</th>
+                        <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider">Responsável</th>
+                        <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider whitespace-nowrap">Local / Tipo</th>
                         {MESES_ABREV.map(m => (
-                          <th key={m} className="text-center px-1.5 py-3 text-white/40 font-semibold uppercase tracking-wider w-[72px]">{m}</th>
+                          <th key={m} className="text-center px-1.5 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider w-[72px]">{m}</th>
                         ))}
                       </tr>
                     </thead>
@@ -317,12 +317,12 @@ export default function ParcelamentosPage() {
                           <React.Fragment key={item.id}>
                             <tr
                               onClick={() => toggleExpand(item.id)}
-                              className={`border-b border-white/5 cursor-pointer transition-colors ${isExp ? 'bg-white/5' : 'hover:bg-white/2'}`}>
-                              <td className="px-4 py-3 text-white font-semibold whitespace-nowrap">{item.empresa}</td>
-                              <td className="px-3 py-3 text-white/45 font-mono whitespace-nowrap">{item.cnpj ?? '—'}</td>
-                              <td className="px-3 py-3 text-white/50">{item.regime ?? '—'}</td>
+                              className={`border-b border-[var(--fg)]/5 cursor-pointer transition-colors ${isExp ? 'bg-[var(--fg)]/5' : 'hover:bg-[var(--fg)]/2'}`}>
+                              <td className="px-4 py-3 text-[var(--fg)] font-semibold whitespace-nowrap">{item.empresa}</td>
+                              <td className="px-3 py-3 text-[var(--fg)]/45 font-mono whitespace-nowrap">{item.cnpj ?? '—'}</td>
+                              <td className="px-3 py-3 text-[var(--fg)]/50">{item.regime ?? '—'}</td>
                               <td className="px-3 py-3 font-semibold" style={{ color: cor }}>{item.responsavel ?? '—'}</td>
-                              <td className="px-3 py-3 text-white/50 max-w-[140px] truncate">{item.local_tipo ?? '—'}</td>
+                              <td className="px-3 py-3 text-[var(--fg)]/50 max-w-[140px] truncate">{item.local_tipo ?? '—'}</td>
                               {MESES_COLS.map(mes => {
                                 const val = (item as any)[mes] as string | null
                                 const { bg, text, label } = badgeColor(val)
@@ -330,11 +330,11 @@ export default function ParcelamentosPage() {
                                   <td key={mes} className="px-1.5 py-2 text-center">
                                     {val ? (
                                       <div className="flex flex-col items-center gap-0.5">
-                                        <span className="text-white/70 text-[10px] font-mono leading-none">{val}</span>
+                                        <span className="text-[var(--fg)]/70 text-[10px] font-mono leading-none">{val}</span>
                                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${bg} ${text}`}>{label}</span>
                                       </div>
                                     ) : (
-                                      <span className="text-white/15">—</span>
+                                      <span className="text-[var(--fg)]/15">—</span>
                                     )}
                                   </td>
                                 )
@@ -343,19 +343,19 @@ export default function ParcelamentosPage() {
 
                             {/* Linha expandida */}
                             {isExp && (
-                              <tr key={`${item.id}-exp`} className="border-b border-white/8">
-                                <td colSpan={17} className="px-4 py-3 bg-[#0b1019]">
+                              <tr key={`${item.id}-exp`} className="border-b border-[var(--fg)]/8">
+                                <td colSpan={17} className="px-4 py-3 bg-[var(--bg-surface-2)]">
                                   {/* Botões + Info numa linha */}
                                   <div className="flex items-center gap-6 mb-3">
                                     <button onClick={e => { e.stopPropagation(); openEdit(item) }}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors shrink-0">
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-[var(--fg)] text-xs font-semibold transition-colors shrink-0">
                                       ✏ Editar
                                     </button>
                                     <button onClick={e => { e.stopPropagation(); handleDelete(item.id, item.empresa) }}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-500 text-white text-xs font-semibold transition-colors shrink-0">
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-500 text-[var(--fg)] text-xs font-semibold transition-colors shrink-0">
                                       🗑 Excluir
                                     </button>
-                                    <div className="h-4 w-px bg-white/10" />
+                                    <div className="h-4 w-px bg-[var(--fg)]/10" />
                                     {[
                                       { label: 'Empresa', val: item.empresa },
                                       { label: 'CNPJ', val: item.cnpj ?? '—' },
@@ -364,22 +364,22 @@ export default function ParcelamentosPage() {
                                       { label: 'Local / Tipo', val: item.local_tipo ?? '—' },
                                     ].map(f => (
                                       <div key={f.label} className="min-w-0">
-                                        <p className="text-white/30 text-[9px] uppercase tracking-wider">{f.label}</p>
+                                        <p className="text-[var(--fg)]/30 text-[9px] uppercase tracking-wider">{f.label}</p>
                                         <p className="text-xs font-semibold truncate" style={f.cor ? { color: f.cor } : { color: 'white' }}>{f.val}</p>
                                       </div>
                                     ))}
                                   </div>
 
                                   {/* Parcelas mensais — compactas */}
-                                  <p className="text-[9px] font-bold text-white/25 uppercase tracking-widest mb-2">Parcelas Mensais</p>
+                                  <p className="text-[9px] font-bold text-[var(--fg)]/25 uppercase tracking-widest mb-2">Parcelas Mensais</p>
                                   <div className="grid grid-cols-12 gap-1.5">
                                     {MESES_COLS.map((mes, i) => {
                                       const val = (item as any)[mes] as string | null
                                       const { bg, text } = badgeColor(val)
                                       return (
-                                        <div key={mes} className={`rounded-lg border px-2 py-1.5 ${val ? `${bg} border-transparent` : 'border-white/8 bg-white/2'}`}>
-                                          <p className={`text-[9px] font-bold uppercase ${val ? text : 'text-white/20'}`}>{MESES_NOME[i]}</p>
-                                          <p className={`text-sm font-bold mt-0.5 ${val ? 'text-white' : 'text-white/15'}`}>{val ?? '—'}</p>
+                                        <div key={mes} className={`rounded-lg border px-2 py-1.5 ${val ? `${bg} border-transparent` : 'border-[var(--fg)]/8 bg-[var(--fg)]/2'}`}>
+                                          <p className={`text-[9px] font-bold uppercase ${val ? text : 'text-[var(--fg)]/20'}`}>{MESES_NOME[i]}</p>
+                                          <p className={`text-sm font-bold mt-0.5 ${val ? 'text-[var(--fg)]' : 'text-[var(--fg)]/15'}`}>{val ?? '—'}</p>
                                         </div>
                                       )
                                     })}
@@ -399,7 +399,7 @@ export default function ParcelamentosPage() {
         })}
 
         {!loading && filtered.length === 0 && (
-          <p className="text-center text-white/20 text-sm py-16">Nenhum parcelamento encontrado.</p>
+          <p className="text-center text-[var(--fg)]/20 text-sm py-16">Nenhum parcelamento encontrado.</p>
         )}
       </div>
 
@@ -407,10 +407,10 @@ export default function ParcelamentosPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
           onClick={e => e.target === e.currentTarget && setModalOpen(false)}>
-          <div className="bg-[#162444] border border-white/12 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 shrink-0">
-              <h2 className="text-white font-bold text-base">{editItem ? 'Editar Parcelamento' : 'Novo Parcelamento'}</h2>
-              <button onClick={() => setModalOpen(false)} className="text-white/30 hover:text-white text-xl">×</button>
+          <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
+              <h2 className="text-[var(--fg)] font-bold text-base">{editItem ? 'Editar Parcelamento' : 'Novo Parcelamento'}</h2>
+              <button onClick={() => setModalOpen(false)} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl">×</button>
             </div>
 
             <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
@@ -418,8 +418,8 @@ export default function ParcelamentosPage() {
               <div>
                 <label className={labelCls}>Seção</label>
                 <select value={form.secao} onChange={e => setF('secao', e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#162444] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50">
-                  {SECOES.map(s => <option key={s} value={s} className="bg-[#162444]">{s}</option>)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50">
+                  {SECOES.map(s => <option key={s} value={s} className="bg-[var(--bg-surface)]">{s}</option>)}
                 </select>
               </div>
 
@@ -435,10 +435,10 @@ export default function ParcelamentosPage() {
                       setF('empresa', nomeSelecionado)
                       setF('cnpj', cliente?.cnpj ?? null)
                     }}
-                    className={inputCls + ' bg-[#162444]'}>
-                    <option value="" className="bg-[#162444]">Selecionar...</option>
+                    className={inputCls + ' bg-[var(--bg-surface)]'}>
+                    <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
                     {clientesCadastrados.map(c => (
-                      <option key={c.nome} value={c.nome} className="bg-[#162444]">{c.nome}</option>
+                      <option key={c.nome} value={c.nome} className="bg-[var(--bg-surface)]">{c.nome}</option>
                     ))}
                   </select>
                 </div>
@@ -459,10 +459,10 @@ export default function ParcelamentosPage() {
                   <select
                     value={form.responsavel ?? ''}
                     onChange={e => setF('responsavel', e.target.value || null)}
-                    className={inputCls + ' bg-[#162444]'}>
-                    <option value="" className="bg-[#162444]">Selecionar...</option>
+                    className={inputCls + ' bg-[var(--bg-surface)]'}>
+                    <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
                     {responsaveisCadastrados.map(r => (
-                      <option key={r} value={r} className="bg-[#162444]">{r}</option>
+                      <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>
                     ))}
                   </select>
                 </div>
@@ -484,12 +484,12 @@ export default function ParcelamentosPage() {
                 <div className="grid grid-cols-6 gap-2">
                   {MESES_COLS.map((mes, i) => (
                     <div key={mes}>
-                      <p className="text-white/30 text-[10px] text-center mb-1">{MESES_ABREV[i]}</p>
+                      <p className="text-[var(--fg)]/30 text-[10px] text-center mb-1">{MESES_ABREV[i]}</p>
                       <input
                         value={(form as any)[mes] ?? ''}
                         onChange={e => setF(mes as any, e.target.value || null)}
                         placeholder="—"
-                        className="w-full px-2 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs text-center focus:outline-none focus:border-[#00CCEB]/50" />
+                        className="w-full px-2 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs text-center focus:outline-none focus:border-[var(--accent)]/50" />
                     </div>
                   ))}
                 </div>
@@ -503,13 +503,13 @@ export default function ParcelamentosPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-white/8 shrink-0">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
               <button onClick={() => setModalOpen(false)}
-                className="px-5 py-2.5 rounded-xl border border-white/12 text-white/50 hover:text-white text-sm transition-colors">
+                className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
                 Cancelar
               </button>
               <button onClick={handleSave} disabled={saving || !form.empresa.trim()}
-                className="px-6 py-2.5 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
+                className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
