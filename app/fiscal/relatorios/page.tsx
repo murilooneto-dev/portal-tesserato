@@ -33,6 +33,7 @@ export default function RelatoriosPage() {
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('relatorios:grupo', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('relatorios:atividade', 'TODAS')
+  const [filtroTarefa, setFiltroTarefa] = useFiltroPersistente('relatorios:tarefa', 'TODAS')
   const [apenasP, setApenasP] = useFiltroPersistente('relatorios:pendencia', false)
   const [userNome, setUserNome] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -65,11 +66,13 @@ export default function RelatoriosPage() {
     : []
 
   const atividades = Array.from(new Set(clientes.map(c => c.atividade).filter(Boolean) as string[])).sort()
+  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => c.tarefas_personalizadas ?? []))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
     .filter(c => filtroGrupo === 'TODOS' || c.grupo === filtroGrupo)
     .filter(c => filtroAtividade === 'TODAS' || c.atividade === filtroAtividade)
+    .filter(c => filtroTarefa === 'TODAS' || (c.tarefas_personalizadas ?? []).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas) }))
     .filter(r => !apenasP || r.pct < 100)
     .sort((a, b) => a.pct - b.pct)
@@ -165,6 +168,12 @@ export default function RelatoriosPage() {
           className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
           <option value="TODAS" className="bg-[var(--bg-surface)]">Todas as atividades</option>
           {atividades.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
+        </select>
+
+        <select value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)}
+          className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
+          <option value="TODAS" className="bg-[var(--bg-surface)]">Todas as tarefas</option>
+          {tarefasDisponiveis.map(t => <option key={t} value={t} className="bg-[var(--bg-surface)]">{t}</option>)}
         </select>
 
         <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer hover:border-[var(--fg)]/20 transition-colors">
