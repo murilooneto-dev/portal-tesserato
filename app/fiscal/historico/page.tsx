@@ -105,7 +105,7 @@ export default function HistoricoPage() {
                       className="w-full rounded-sm transition-all"
                       style={{
                         height: `${barH}px`,
-                        backgroundColor: isCur ? 'var(--accent)' : s.total > 0 ? '#3b82f6' : 'rgba(255,255,255,0.12)',
+                        backgroundColor: isCur ? 'var(--accent)' : s.total > 0 ? '#3b82f6' : 'color-mix(in srgb, var(--fg) 12%, transparent)',
                       }}
                     />
                   </div>
@@ -132,8 +132,8 @@ export default function HistoricoPage() {
                   onClick={() => setSelectedResp(isSel ? null : resp)}
                   className="rounded-2xl border p-4 cursor-pointer transition-all select-none"
                   style={{
-                    borderColor: isSel ? cor : 'rgba(255,255,255,0.08)',
-                    backgroundColor: isSel ? `${cor}12` : 'rgba(255,255,255,0.02)',
+                    borderColor: isSel ? cor : 'color-mix(in srgb, var(--fg) 8%, transparent)',
+                    backgroundColor: isSel ? `${cor}12` : 'color-mix(in srgb, var(--fg) 2%, transparent)',
                   }}>
                   {/* Header do card */}
                   <div className="flex items-center justify-between mb-3">
@@ -215,17 +215,17 @@ export default function HistoricoPage() {
             const respIdx = selectedResp ? responsaveis.indexOf(selectedResp) : -1
             const cor = respIdx >= 0 ? CORES_RESP[respIdx % CORES_RESP.length] : 'var(--accent)'
 
-            const pctColor = s.pct === 100 ? '#10b981' : s.pct > 0 ? '#f59e0b' : 'rgba(255,255,255,0.25)'
+            const pctColor = s.pct === 100 ? '#10b981' : s.pct > 0 ? '#f59e0b' : 'color-mix(in srgb, var(--fg) 25%, transparent)'
 
             return (
               <div key={nome}
                 className="rounded-xl border p-4 transition-all"
                 style={{
-                  borderColor: isCur ? cor : 'rgba(255,255,255,0.08)',
-                  backgroundColor: isCur ? `${cor}25` : 'rgba(255,255,255,0.02)',
+                  borderColor: isCur ? cor : 'color-mix(in srgb, var(--fg) 8%, transparent)',
+                  backgroundColor: isCur ? `${cor}25` : 'color-mix(in srgb, var(--fg) 2%, transparent)',
                 }}>
-                <p className="text-sm font-semibold" style={{ color: isCur ? '#fff' : 'rgba(255,255,255,0.7)' }}>{nome}</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: isCur ? '#fff' : pctColor }}>
+                <p className="text-sm font-semibold" style={{ color: isCur ? 'var(--fg)' : 'color-mix(in srgb, var(--fg) 70%, transparent)' }}>{nome}</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: isCur ? 'var(--fg)' : pctColor }}>
                   {s.pct}%
                 </p>
               </div>

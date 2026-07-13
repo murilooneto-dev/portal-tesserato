@@ -178,8 +178,8 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
               onClick={() => toggleCard(tipo)}
               className="text-left rounded-2xl border p-6 transition-all cursor-pointer"
               style={{
-                borderColor: ativo ? meta.cor : 'rgba(255,255,255,0.08)',
-                backgroundColor: ativo ? `${meta.cor}15` : 'rgba(255,255,255,0.02)',
+                borderColor: ativo ? meta.cor : 'color-mix(in srgb, var(--fg) 8%, transparent)',
+                backgroundColor: ativo ? `${meta.cor}15` : 'color-mix(in srgb, var(--fg) 2%, transparent)',
               }}
             >
               <div className="flex items-start justify-between mb-3">

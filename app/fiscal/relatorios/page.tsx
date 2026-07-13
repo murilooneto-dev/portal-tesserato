@@ -183,7 +183,7 @@ export default function RelatoriosPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Clientes', val: stats.total, cor: 'white' },
+          { label: 'Total Clientes', val: stats.total, cor: 'var(--fg)' },
           { label: '100% Concluídos', val: stats.cem, cor: '#10b981' },
           { label: 'Em Andamento', val: stats.andamento, cor: '#f59e0b' },
           { label: 'Não Iniciados', val: stats.zero, cor: '#ef4444' },

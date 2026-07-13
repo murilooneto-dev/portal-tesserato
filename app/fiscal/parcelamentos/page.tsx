@@ -365,7 +365,7 @@ export default function ParcelamentosPage() {
                                     ].map(f => (
                                       <div key={f.label} className="min-w-0">
                                         <p className="text-[var(--fg)]/30 text-[9px] uppercase tracking-wider">{f.label}</p>
-                                        <p className="text-xs font-semibold truncate" style={f.cor ? { color: f.cor } : { color: 'white' }}>{f.val}</p>
+                                        <p className="text-xs font-semibold truncate" style={f.cor ? { color: f.cor } : { color: 'var(--fg)' }}>{f.val}</p>
                                       </div>
                                     ))}
                                   </div>
