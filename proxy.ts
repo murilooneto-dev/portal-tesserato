@@ -54,8 +54,9 @@ export async function proxy(request: NextRequest) {
     const podeAcessar = profile?.role === 'admin' || (profile?.setores ?? []).includes(setorDaRota)
 
     if (!podeAcessar) {
-      const primeiroSetor = (profile?.setores?.[0] ?? 'fiscal') as UserSetor
-      return NextResponse.redirect(new URL(SETOR_HOME[primeiroSetor], request.url))
+      const primeiroSetor = profile?.setores?.[0] as UserSetor | undefined
+      const destino = primeiroSetor ? SETOR_HOME[primeiroSetor] : '/intranet'
+      return NextResponse.redirect(new URL(destino, request.url))
     }
   }
 
