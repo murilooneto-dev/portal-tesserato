@@ -52,6 +52,7 @@ export interface Cliente {
   email_envio_iss: string | null
   declaracao_anual: string | null
   tarefas_personalizadas: string[] | null
+  setores: UserSetor[]
   created_at: string
 }
 
