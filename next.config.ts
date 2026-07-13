@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  async redirects() {
+    return [
+      { source: '/fiscal/intranet', destination: '/intranet', permanent: true },
+      { source: '/fiscal/ferramentas', destination: '/ferramentas', permanent: true },
+    ]
+  },
 }
 
 export default nextConfig;
