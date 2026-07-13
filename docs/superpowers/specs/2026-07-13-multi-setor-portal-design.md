@@ -58,12 +58,12 @@ O middleware (`proxy.ts`) hoje só checa autenticação. Passa a também checar 
 
 ## 4. Administração de usuários
 
-Nova seção dentro da página `/fiscal/admin` já existente (ao lado da listagem atual de `AdminUsuarios`), para criar e editar usuário:
+**Correção em relação ao levantamento inicial:** já existe um fluxo funcional de criação/edição de usuário — não em `/fiscal/admin` (que só lista perfis, read-only), mas em `/fiscal/parametros` (`ParametrosClient.tsx` + `actions.ts`, função `criarUsuario`). Hoje ele cria o usuário via `supabase.auth.admin.createUser` (service role, já usando `createAdminClient()` de `lib/supabase/server.ts`) e grava `setor: 'fiscal'` **fixo** no `profiles.update` pós-criação (`actions.ts:71`) — daí o aviso na tela, "Usuários criados aqui têm acesso apenas ao setor fiscal." Este spec **estende esse fluxo existente** em vez de criar um novo:
 
-- Campos: nome, e-mail, senha (só na criação), role (admin/operador), setores (multi-select entre os 5 valores do enum).
-- Criação de usuário precisa de uma Server Action rodando com a service role key do Supabase (`supabase.auth.admin.createUser`), já que isso não pode ser feito com a chave anônima do client. A action cria o usuário de autenticação com `user_metadata.setores` e o trigger populam a linha em `profiles`.
-- Edição de usuário existente: atualiza `profiles.setores` e `profiles.role` diretamente (não mexe em autenticação/senha nesta v1 — reset de senha continua fora de escopo, mesmo fluxo de hoje).
-- Isso substitui a necessidade de abrir o painel do Supabase para cadastrar gente nova.
+- Formulário "Novo Usuário" (`ParametrosClient.tsx`) ganha um multi-select de setores (5 opções do enum) no lugar do `setor: 'fiscal'` fixo.
+- `criarUsuario` (`actions.ts`) passa a receber `setores: string[]` em vez de setor único, e grava em `profiles.setores` (array).
+- O painel "Usuários Cadastrados" (edição inline, mesmo arquivo) ganha o mesmo multi-select de setores, além dos campos que já edita hoje (nome, role, cor) — via `atualizarPerfil`.
+- O campo `abas_acesso` (checkboxes "Acesso às Abas": Intranet, Dashboard, Clientes, etc.) é uma configuração legada e não-lida em lugar nenhum do código hoje (gravada mas nunca consultada para gating) — fica como está, fora de escopo.
 
 ## 5. Placeholders dos novos setores
 
