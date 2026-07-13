@@ -3,11 +3,29 @@ export type UserSetor = 'fiscal' | 'contabil' | 'pessoal' | 'societario' | 'fina
 export type BotTipo = 'iss' | 'siga' | 'mei'
 export type BotStatus = 'processado' | 'erro'
 
+export const SETORES: UserSetor[] = ['fiscal', 'contabil', 'pessoal', 'societario', 'financeiro']
+
+export const SETOR_LABEL: Record<UserSetor, string> = {
+  fiscal: 'Fiscal',
+  contabil: 'Contábil',
+  pessoal: 'Pessoal',
+  societario: 'Societário',
+  financeiro: 'Financeiro',
+}
+
+export const SETOR_HOME: Record<UserSetor, string> = {
+  fiscal: '/fiscal/dashboard',
+  contabil: '/contabil',
+  pessoal: '/pessoal',
+  societario: '/societario',
+  financeiro: '/financeiro',
+}
+
 export interface Profile {
   id: string
   nome: string
   role: UserRole
-  setor: UserSetor
+  setores: UserSetor[]
   cor: string
   created_at: string
 }
