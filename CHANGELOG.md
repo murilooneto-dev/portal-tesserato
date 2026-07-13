@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.7.2] - 2026-07-13
+
+### Corrigido
+- Filtro "Apenas pendências" combinado com o filtro de tarefa específica não considerava a situação real daquela tarefa: um cliente que já tinha concluído a tarefa filtrada continuava aparecendo na lista por ter outras pendências não relacionadas. Agora, quando uma tarefa específica está selecionada, o filtro de pendências verifica se aquela tarefa está pendente para o cliente, em vez do progresso geral.
+
+### Arquivos alterados
+- `app/fiscal/relatorios/page.tsx` — filtro de pendências passa a considerar a tarefa selecionada quando houver uma
+
+---
+
 ## [v0.7.1] - 2026-07-08
 
 ### Corrigido
