@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
+import { SETORES, SETOR_LABEL } from '@/lib/types'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
 import { salvarTemplate, aplicarTemplateAClientes, salvarTemplateGrupo, aplicarTemplateGrupoAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes, buscarConclusoesTarefa, buscarTarefasSemData, excluirRegistrosDeTarefas, analisarParcelamentosDuplicados, limparParcelamentosDuplicados } from './actions'
 import type { GrupoDuplicata, RegistroSemData, GrupoParcelamentoDuplicado } from './actions'
@@ -108,6 +109,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [novoPerfil, setNovoPerfil] = useState('operador')
   const [novoCor, setNovoCor] = useState('#6366f1')
   const [novoAbas, setNovoAbas] = useState<string[]>([...ABAS])
+  const [novoSetores, setNovoSetores] = useState<string[]>(['fiscal'])
   const [criandoUser, setCriandoUser] = useState(false)
   const [novoUserErr, setNovoUserErr] = useState('')
   const [novoUserOk, setNovoUserOk] = useState(false)
@@ -362,6 +364,8 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
     fd.set('nome', edits.nome ?? profile.nome)
     fd.set('role', edits.role ?? profile.role)
     fd.set('cor',  edits.cor  ?? profile.cor)
+    const setores = edits.setores ?? profile.setores
+    for (const s of setores) fd.append('setores', s)
     await atualizarPerfil(id, fd)
     setSavingProfile(null)
     setEditingProfile(null)
@@ -406,6 +410,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       role: novoPerfil,
       cor: novoCor,
       abas: novoAbas,
+      setores: novoSetores,
     })
     setCriandoUser(false)
     if (result.error) {
@@ -418,6 +423,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       setNovoPerfil('operador')
       setNovoCor('#6366f1')
       setNovoAbas([...ABAS])
+      setNovoSetores(['fiscal'])
       router.refresh()
       setTimeout(() => setNovoUserOk(false), 3000)
     }
@@ -425,6 +431,10 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
 
   function toggleAba(aba: string) {
     setNovoAbas(prev => prev.includes(aba) ? prev.filter(a => a !== aba) : [...prev, aba])
+  }
+
+  function toggleSetor(setor: string) {
+    setNovoSetores(prev => prev.includes(setor) ? prev.filter(s => s !== setor) : [...prev, setor])
   }
 
   async function handleSalvarTemplate(base: string) {
@@ -684,6 +694,19 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                 </div>
               </div>
 
+              <div>
+                <label className={labelCls}>Setores</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {SETORES.map(setor => (
+                    <label key={setor} className="flex items-center gap-2 cursor-pointer select-none">
+                      <input type="checkbox" checked={novoSetores.includes(setor)} onChange={() => toggleSetor(setor)}
+                        className="w-3.5 h-3.5 accent-[var(--accent)]" />
+                      <span className="text-[var(--fg)]/60 text-xs">{SETOR_LABEL[setor]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {novoUserErr && <p className="text-red-400 text-sm">{novoUserErr}</p>}
               {novoUserOk && <p className="text-green-400 text-sm">Usuário criado com sucesso!</p>}
 
@@ -691,7 +714,6 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                 className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                 {criandoUser ? 'Criando...' : 'Criar usuário'}
               </button>
-              <p className="text-[var(--fg)]/20 text-xs text-center">Usuários criados aqui têm acesso apenas ao setor fiscal.</p>
             </div>
           </div>
 
@@ -736,6 +758,23 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                             className="w-9 h-9 rounded-lg cursor-pointer bg-transparent border-0"
                           />
                         </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {SETORES.map(setor => (
+                            <label key={setor} className="flex items-center gap-2 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={(edits.setores ?? p.setores).includes(setor)}
+                                onChange={() => {
+                                  const atual = edits.setores ?? p.setores
+                                  const novo = atual.includes(setor) ? atual.filter(s => s !== setor) : [...atual, setor]
+                                  setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], setores: novo } }))
+                                }}
+                                className="w-3.5 h-3.5 accent-[var(--accent)]"
+                              />
+                              <span className="text-[var(--fg)]/60 text-xs">{SETOR_LABEL[setor]}</span>
+                            </label>
+                          ))}
+                        </div>
                         <div className="flex gap-2">
                           <button onClick={() => handleSaveProfile(p.id)} disabled={savingProfile === p.id}
                             className="flex-1 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--fg)] text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
@@ -755,7 +794,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[var(--fg)] font-semibold text-sm truncate">{p.nome}</p>
-                          <p className="text-[var(--fg)]/35 text-xs mt-0.5">{p.setor ?? 'fiscal'} · {p.role}</p>
+                          <p className="text-[var(--fg)]/35 text-xs mt-0.5">{p.setores.map(s => SETOR_LABEL[s]).join(', ')} · {p.role}</p>
                         </div>
                         <button onClick={() => setEditingProfile(p.id)}
                           className="px-3 py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/8 text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/10 text-xs transition-colors">

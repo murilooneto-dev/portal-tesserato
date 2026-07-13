@@ -20,12 +20,15 @@ export async function atualizarPerfil(id: string, formData: FormData) {
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') throw new Error('Acesso negado.')
 
+  const setores = formData.getAll('setores') as string[]
+
   const { error } = await supabase
     .from('profiles')
     .update({
       nome: formData.get('nome') as string,
       role: formData.get('role') as string,
       cor:  formData.get('cor')  as string,
+      setores: setores.length > 0 ? setores : ['fiscal'],
     })
     .eq('id', id)
 
@@ -40,6 +43,7 @@ export async function criarUsuario(payload: {
   role: string
   cor: string
   abas: string[]
+  setores: string[]
 }): Promise<{ error?: string }> {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
@@ -68,7 +72,7 @@ export async function criarUsuario(payload: {
     nome: payload.nome,
     role: payload.role,
     cor: payload.cor,
-    setor: 'fiscal',
+    setores: payload.setores.length > 0 ? payload.setores : ['fiscal'],
     abas_acesso: payload.abas,
   }).eq('id', userId)
 

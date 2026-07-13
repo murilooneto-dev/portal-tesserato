@@ -1,4 +1,5 @@
 import type { Profile } from '@/lib/types'
+import { SETOR_LABEL } from '@/lib/types'
 
 interface Props {
   profiles: Profile[]
@@ -23,7 +24,7 @@ export default function AdminUsuarios({ profiles }: Props) {
             </div>
             <div className="flex-1">
               <p className="text-[var(--fg)] font-medium text-sm">{p.nome}</p>
-              <p className="text-[var(--fg)]/30 text-xs capitalize mt-0.5">{p.setor}</p>
+              <p className="text-[var(--fg)]/30 text-xs capitalize mt-0.5">{p.setores.map(s => SETOR_LABEL[s]).join(', ')}</p>
             </div>
             <span
               className="text-xs px-2.5 py-1 rounded-full font-medium capitalize"
