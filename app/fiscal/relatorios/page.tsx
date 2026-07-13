@@ -74,7 +74,7 @@ export default function RelatoriosPage() {
     .filter(c => filtroAtividade === 'TODAS' || c.atividade === filtroAtividade)
     .filter(c => filtroTarefa === 'TODAS' || (c.tarefas_personalizadas ?? []).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas) }))
-    .filter(r => !apenasP || r.pct < 100)
+    .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
     .sort((a, b) => a.pct - b.pct)
 
   const stats = {
