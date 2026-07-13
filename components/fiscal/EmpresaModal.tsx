@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { resolverTemplate } from '@/lib/atividade-templates'
+import { buscarCnpj } from '@/lib/buscar-cnpj'
 
 const GRUPOS = [
   { value: 'normal',  label: 'Regime Normal' },
@@ -117,20 +118,17 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
   }, [clienteId])
 
   async function fetchCnpj(raw: string) {
-    const digits = raw.replace(/\D/g, '')
-    if (digits.length !== 14) return
     setLoadingCnpj(true)
-    try {
-      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`)
-      if (!res.ok) return
-      const data = await res.json()
+    const resultado = await buscarCnpj(raw)
+    if (resultado) {
       setForm(p => ({
         ...p,
-        nome: data.razao_social || p.nome,
-        municipio: data.municipio || p.municipio,
-        uf: data.uf || p.uf,
+        nome: resultado.nome || p.nome,
+        municipio: resultado.municipio || p.municipio,
+        uf: resultado.uf || p.uf,
       }))
-    } catch { /* silent */ } finally { setLoadingCnpj(false) }
+    }
+    setLoadingCnpj(false)
   }
 
   function set<K extends keyof FormData>(k: K, v: FormData[K]) {
