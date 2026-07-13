@@ -49,7 +49,7 @@ Um único modal (`components/geral/ClienteGeralModal.tsx`) cobre os dois modos (
 - Contato (`contato_chat`)
 - Setores (multi-select em checkboxes, mesmo componente visual usado no formulário de usuário em Parâmetros — todos os 5 setores aparecem, sem restrição)
 
-**Bloco condicional Fiscal:** quando "Fiscal" está marcado nos Setores, aparece embutido o bloco com os campos específicos do Fiscal — Regime, Atividade (com preenchimento automático de tarefas por template), Grupo, Envia ISS? (com credenciais condicionais), Confere SIGA?, Declaração Anual, Prioridade, Tarefas personalizadas. Esses são exatamente os campos que `components/fiscal/EmpresaModal.tsx` já pede hoje.
+**Bloco condicional Fiscal:** quando "Fiscal" está marcado nos Setores, aparece embutido o bloco com os campos específicos do Fiscal — Código, Regime, Atividade (com preenchimento automático de tarefas por template), Grupo, Responsável, Envia ISS? (com credenciais condicionais), Confere SIGA?, Declaração Anual, Prioridade, Tarefas personalizadas. Esses são exatamente os campos que `components/fiscal/EmpresaModal.tsx` já pede hoje (incluindo Código e Responsável, que também saem do corpo atual do modal — Responsável em particular é intencionalmente de fora dos campos base, já que cada setor tem o seu próprio, como decidido antes).
 
 **Outros 4 setores:** ao marcar qualquer um deles, nenhum campo extra aparece — só fica registrado no array `setores`. Quando cada setor for especificado num spec futuro, seu bloco de campos entra aqui do mesmo jeito que o do Fiscal.
 
