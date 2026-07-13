@@ -1,28 +1,20 @@
-﻿'use client'
+'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile } from '@/lib/types'
+import { SETORES, SETOR_LABEL, SETOR_HOME, type Profile, type UserSetor } from '@/lib/types'
+import { SETOR_ATIVO_COOKIE } from '@/lib/setor-ativo'
 
-const NAV_ITEMS = [
-  { href: '/fiscal/intranet',      label: 'Intranet'      },
-  { href: '/fiscal/dashboard',     label: 'Dashboard'     },
-  { href: '/fiscal/clientes',      label: 'Clientes'      },
-  { href: '/fiscal/calendario',    label: 'Calendário'    },
-  { href: '/fiscal/relatorios',    label: 'Relatórios'    },
-  { href: '/fiscal/historico',     label: 'Histórico'     },
-  { href: '/fiscal/empresas',      label: 'Empresas'      },
-  { href: '/fiscal/parcelamentos', label: 'Parcelamentos' },
-  { href: '/fiscal/ferramentas',   label: 'Ferramentas'   },
-]
+interface Props {
+  profile: Profile
+  setorAtivo: UserSetor
+}
 
-interface Props { profile: Profile }
-
-export default function TopNav({ profile }: Props) {
-  const pathname = usePathname()
+export default function TopNav({ profile, setorAtivo }: Props) {
   const router = useRouter()
+
+  const setoresVisiveis = profile.role === 'admin' ? SETORES : profile.setores
 
   async function handleLogout() {
     const supabase = createClient()
@@ -31,57 +23,34 @@ export default function TopNav({ profile }: Props) {
     router.refresh()
   }
 
+  function trocarSetor(setor: UserSetor) {
+    document.cookie = `${SETOR_ATIVO_COOKIE}=${setor}; path=/; max-age=${60 * 60 * 24 * 365}`
+    router.push(SETOR_HOME[setor])
+  }
+
   return (
-    <header className="bg-[#0a0f1a] border-b border-[var(--fg)]/8 flex items-center gap-0 h-14 px-4 shrink-0 sticky top-0 z-40">
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 pr-5 border-r border-[var(--fg)]/8 shrink-0">
-        <Image
-          src="/logo.ico"
-          alt="Tesserato"
-          width={30}
-          height={30}
-          className="rounded-md"
-        />
-        <div className="leading-tight">
-          <p className="text-[var(--fg)] text-xs font-bold tracking-wide">Setor Fiscal</p>
-          <p className="text-[var(--fg)]/30 text-[10px]">Tesserato Contabilidade</p>
-        </div>
+    <header className="bg-[var(--bg-surface-2)] border-b border-[var(--fg)]/8 flex items-center gap-0 h-12 px-4 shrink-0 z-40">
+      <div className="flex items-center gap-2 pr-4 border-r border-[var(--fg)]/8 shrink-0">
+        <Image src="/logo.ico" alt="Tesserato" width={24} height={24} className="rounded-md" />
+        <p className="text-[var(--fg)] text-xs font-bold tracking-wide">Tesserato</p>
       </div>
 
-      {/* Nav */}
-      <nav className="flex items-center gap-0.5 px-3 overflow-x-auto flex-1 scrollbar-hide">
-        {NAV_ITEMS.map(item => {
-          const active = pathname.startsWith(item.href)
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-[var(--accent)] text-[var(--fg)]'
-                  : 'text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/6'
-              }`}
-            >
-              {item.label}
-            </Link>
-          )
-        })}
-
-        {profile.role === 'admin' && (
-          <Link
-            href="/fiscal/parametros"
-            className={`shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              pathname.startsWith('/fiscal/parametros')
+      <nav className="flex items-center gap-1 px-3 flex-1 overflow-x-auto">
+        {setoresVisiveis.map(setor => (
+          <button
+            key={setor}
+            onClick={() => trocarSetor(setor)}
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              setor === setorAtivo
                 ? 'bg-[var(--accent)] text-[var(--fg)]'
                 : 'text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/6'
             }`}
           >
-            Parâmetros
-          </Link>
-        )}
+            {SETOR_LABEL[setor]}
+          </button>
+        ))}
       </nav>
 
-      {/* Usuário */}
       <div className="flex items-center gap-3 pl-4 border-l border-[var(--fg)]/8 shrink-0">
         <div className="flex items-center gap-2">
           <div
