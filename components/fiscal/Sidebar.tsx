@@ -48,7 +48,7 @@ export default function Sidebar({ profile, mes, ano }: Props) {
     <aside
       className="w-56 h-screen shrink-0 border-r border-[var(--fg)]/7 flex flex-col overflow-y-auto"
       style={{
-        backgroundImage: 'linear-gradient(180deg, var(--bg-surface) 0%, #111e3c 100%), radial-gradient(circle, rgba(0,204,235,0.045) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-page) 100%), radial-gradient(circle, rgba(0,204,235,0.045) 1px, transparent 1px)',
         backgroundSize: 'auto, 18px 18px',
       }}
     >

@@ -206,7 +206,7 @@ export default function AgendaPessoal() {
           {/* Dias da semana */}
           {DIAS_SEMANA.map(d => (
             <div key={d} className="text-center text-xs font-semibold py-3 border-b border-[var(--fg)]/8"
-              style={{ color: d === 'Dom' || d === 'Sáb' ? '#ffffff50' : '#ffffff70' }}>
+              style={{ color: d === 'Dom' || d === 'Sáb' ? 'color-mix(in srgb, var(--fg) 31%, transparent)' : 'color-mix(in srgb, var(--fg) 44%, transparent)' }}>
               {d}
             </div>
           ))}
