@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile, UserSetor } from '@/lib/types'
+import { SETOR_LABEL, type Profile, type UserSetor } from '@/lib/types'
 import { useTheme } from '@/lib/theme'
 import MesSeletor from './MesSeletor'
 import {
@@ -91,7 +91,7 @@ export default function Sidebar({ profile, mes, ano, setorAtivo }: Props) {
 
         <div className="my-2 border-t border-[var(--fg)]/8" />
         <p className="px-3 text-[var(--fg)]/20 text-[10px] uppercase tracking-wider mb-1">
-          {setorAtivo === 'fiscal' ? 'Fiscal' : setorAtivo}
+          {SETOR_LABEL[setorAtivo]}
         </p>
         {ITENS_POR_SETOR[setorAtivo].map(item => (
           <NavLink key={item.href} item={item} active={pathname.startsWith(item.href)} />
