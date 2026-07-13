@@ -79,17 +79,17 @@ export default function HistoricoPage() {
     : todosIds
   const filtroStats = selectedResp ? calcStats(filtroIds) : globalStats
 
-  if (loading) return <div className="p-8 text-white/30 text-sm">Carregando...</div>
+  if (loading) return <div className="p-8 text-[var(--fg)]/30 text-sm">Carregando...</div>
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-10">
 
       {/* Título + gráfico global */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Histórico Anual — {ano}</h1>
-        <p className="text-sm text-white/40 mt-1">Progresso de cada mês do ano</p>
+        <h1 className="text-2xl font-bold text-[var(--fg)]">Histórico Anual — {ano}</h1>
+        <p className="text-sm text-[var(--fg)]/40 mt-1">Progresso de cada mês do ano</p>
 
-        <div className="mt-5 rounded-2xl border border-white/8 bg-white/2 px-6 pt-5 pb-4">
+        <div className="mt-5 rounded-2xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 px-6 pt-5 pb-4">
           <div className="flex items-end gap-0" style={{ height: '140px' }}>
             {globalStats.map((s, i) => {
               const m = i + 1
@@ -97,7 +97,7 @@ export default function HistoricoPage() {
               const isCur = m === mes
               return (
                 <div key={m} className="flex flex-col items-center flex-1 gap-1">
-                  <span className="text-[10px] text-white/40 h-4 leading-4">
+                  <span className="text-[10px] text-[var(--fg)]/40 h-4 leading-4">
                     {s.pct > 0 ? `${s.pct}%` : ''}
                   </span>
                   <div className="flex-1 w-full flex items-end">
@@ -105,11 +105,11 @@ export default function HistoricoPage() {
                       className="w-full rounded-sm transition-all"
                       style={{
                         height: `${barH}px`,
-                        backgroundColor: isCur ? '#00CCEB' : s.total > 0 ? '#3b82f6' : 'rgba(255,255,255,0.12)',
+                        backgroundColor: isCur ? 'var(--accent)' : s.total > 0 ? '#3b82f6' : 'color-mix(in srgb, var(--fg) 12%, transparent)',
                       }}
                     />
                   </div>
-                  <span className="text-[10px] text-white/35 h-4 leading-4">{MESES_ABR3[i]}</span>
+                  <span className="text-[10px] text-[var(--fg)]/35 h-4 leading-4">{MESES_ABR3[i]}</span>
                 </div>
               )
             })}
@@ -120,7 +120,7 @@ export default function HistoricoPage() {
       {/* Cards dos responsáveis — somente admin */}
       {isAdmin && responsaveis.length > 0 && (
         <div>
-          <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">Progresso por responsável</h2>
+          <h2 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-4">Progresso por responsável</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {responsaveis.map((resp, ri) => {
               const cor = CORES_RESP[ri % CORES_RESP.length]
@@ -132,14 +132,14 @@ export default function HistoricoPage() {
                   onClick={() => setSelectedResp(isSel ? null : resp)}
                   className="rounded-2xl border p-4 cursor-pointer transition-all select-none"
                   style={{
-                    borderColor: isSel ? cor : 'rgba(255,255,255,0.08)',
-                    backgroundColor: isSel ? `${cor}12` : 'rgba(255,255,255,0.02)',
+                    borderColor: isSel ? cor : 'color-mix(in srgb, var(--fg) 8%, transparent)',
+                    backgroundColor: isSel ? `${cor}12` : 'color-mix(in srgb, var(--fg) 2%, transparent)',
                   }}>
                   {/* Header do card */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cor }} />
-                      <span className="text-white text-sm font-semibold">{resp}</span>
+                      <span className="text-[var(--fg)] text-sm font-semibold">{resp}</span>
                     </div>
                     {isSel && (
                       <span className="text-[10px] font-bold" style={{ color: cor }}>Selecionado</span>
@@ -157,7 +157,7 @@ export default function HistoricoPage() {
                             <div className="w-full rounded-sm"
                               style={{ height: `${h}px`, backgroundColor: isCur ? cor : `${cor}60` }} />
                           ) : (
-                            <div className="w-full border-b border-dashed border-white/15" style={{ height: '1px', marginBottom: '4px' }} />
+                            <div className="w-full border-b border-dashed border-[var(--fg)]/15" style={{ height: '1px', marginBottom: '4px' }} />
                           )}
                         </div>
                       )
@@ -167,7 +167,7 @@ export default function HistoricoPage() {
                   {/* Labels J F M A M J J A S O N D */}
                   <div className="flex mt-1">
                     {MESES_ABR.map((a, i) => (
-                      <div key={i} className="flex-1 text-center text-[9px] text-white/25">{a}</div>
+                      <div key={i} className="flex-1 text-center text-[9px] text-[var(--fg)]/25">{a}</div>
                     ))}
                   </div>
 
@@ -192,7 +192,7 @@ export default function HistoricoPage() {
       <div>
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest">Selecionar mês para detalhar</h2>
+            <h2 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest">Selecionar mês para detalhar</h2>
             {selectedResp && (
               <p className="text-xs mt-0.5" style={{ color: CORES_RESP[responsaveis.indexOf(selectedResp) % CORES_RESP.length] }}>
                 Responsável: {selectedResp}
@@ -202,7 +202,7 @@ export default function HistoricoPage() {
           {selectedResp && (
             <button
               onClick={() => setSelectedResp(null)}
-              className="text-xs bg-white/8 border border-white/12 text-white/60 hover:text-white px-4 py-2 rounded-xl transition-all">
+              className="text-xs bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-[var(--fg)]/60 hover:text-[var(--fg)] px-4 py-2 rounded-xl transition-all">
               Ver todos
             </button>
           )}
@@ -213,19 +213,19 @@ export default function HistoricoPage() {
             const s = filtroStats[i]
             const isCur = i + 1 === mes
             const respIdx = selectedResp ? responsaveis.indexOf(selectedResp) : -1
-            const cor = respIdx >= 0 ? CORES_RESP[respIdx % CORES_RESP.length] : '#00CCEB'
+            const cor = respIdx >= 0 ? CORES_RESP[respIdx % CORES_RESP.length] : 'var(--accent)'
 
-            const pctColor = s.pct === 100 ? '#10b981' : s.pct > 0 ? '#f59e0b' : 'rgba(255,255,255,0.25)'
+            const pctColor = s.pct === 100 ? '#10b981' : s.pct > 0 ? '#f59e0b' : 'color-mix(in srgb, var(--fg) 25%, transparent)'
 
             return (
               <div key={nome}
                 className="rounded-xl border p-4 transition-all"
                 style={{
-                  borderColor: isCur ? cor : 'rgba(255,255,255,0.08)',
-                  backgroundColor: isCur ? `${cor}25` : 'rgba(255,255,255,0.02)',
+                  borderColor: isCur ? cor : 'color-mix(in srgb, var(--fg) 8%, transparent)',
+                  backgroundColor: isCur ? `${cor}25` : 'color-mix(in srgb, var(--fg) 2%, transparent)',
                 }}>
-                <p className="text-sm font-semibold" style={{ color: isCur ? '#fff' : 'rgba(255,255,255,0.7)' }}>{nome}</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: isCur ? '#fff' : pctColor }}>
+                <p className="text-sm font-semibold" style={{ color: isCur ? 'var(--fg)' : 'color-mix(in srgb, var(--fg) 70%, transparent)' }}>{nome}</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: isCur ? 'var(--fg)' : pctColor }}>
                   {s.pct}%
                 </p>
               </div>

@@ -45,8 +45,8 @@ export default async function TarefasPage() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Tarefas</h1>
-        <p className="text-white/40 mt-1 text-sm">
+        <h1 className="text-2xl font-bold text-[var(--fg)]">Tarefas</h1>
+        <p className="text-[var(--fg)]/40 mt-1 text-sm">
           Visão geral — {MESES[mes - 1]}/{ano}
         </p>
       </div>
@@ -62,20 +62,20 @@ export default async function TarefasPage() {
             <Link
               key={cliente.id}
               href={`/fiscal/clientes/${cliente.id}`}
-              className="flex items-center gap-4 p-4 rounded-xl bg-white/3 border border-white/6 hover:bg-white/6 transition-all"
+              className="flex items-center gap-4 p-4 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/6 hover:bg-[var(--fg)]/6 transition-all"
             >
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate">{cliente.nome}</p>
-                <p className="text-white/30 text-xs mt-0.5">{cliente.responsavel ?? '—'}</p>
+                <p className="text-[var(--fg)] text-sm font-medium truncate">{cliente.nome}</p>
+                <p className="text-[var(--fg)]/30 text-xs mt-0.5">{cliente.responsavel ?? '—'}</p>
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
-                <div className="w-24 h-1.5 bg-white/8 rounded-full">
+                <div className="w-24 h-1.5 bg-[var(--fg)]/8 rounded-full">
                   <div
-                    className="h-full bg-[#00CCEB] rounded-full transition-all"
+                    className="h-full bg-[var(--accent)] rounded-full transition-all"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="text-xs text-white/40 w-12 text-right">
+                <span className="text-xs text-[var(--fg)]/40 w-12 text-right">
                   {total > 0 ? `${concluidas}/${total}` : '—'}
                 </span>
               </div>
@@ -84,7 +84,7 @@ export default async function TarefasPage() {
         })}
 
         {clientesFiltrados.length === 0 && (
-          <p className="text-center text-white/20 py-12 text-sm">Nenhum cliente encontrado.</p>
+          <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
         )}
       </div>
     </div>

@@ -22,7 +22,7 @@ const CARD_META: Record<Ferramenta, { titulo: string; descricao: string; cor: st
   ISS: {
     titulo: 'ISS',
     descricao: 'Clientes com envio de ISS habilitado',
-    cor: '#00CCEB',
+    cor: 'var(--accent)',
     icon: '📋',
   },
   MEI: {
@@ -142,10 +142,10 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
       {/* Cabeçalho */}
       <div className="flex items-start justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Ferramentas</h1>
-          <p className="text-white/40 mt-1 text-sm">
+          <h1 className="text-2xl font-bold text-[var(--fg)]">Ferramentas</h1>
+          <p className="text-[var(--fg)]/40 mt-1 text-sm">
             Acesso rápido às ferramentas do setor fiscal
-            {!isAdmin && userNome && <span className="text-white/25"> · {userNome}</span>}
+            {!isAdmin && userNome && <span className="text-[var(--fg)]/25"> · {userNome}</span>}
           </p>
         </div>
 
@@ -154,7 +154,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
           href="https://tesshub.com.br/login"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors shrink-0"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[var(--fg)] text-sm font-semibold transition-colors shrink-0"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -178,8 +178,8 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
               onClick={() => toggleCard(tipo)}
               className="text-left rounded-2xl border p-6 transition-all cursor-pointer"
               style={{
-                borderColor: ativo ? meta.cor : 'rgba(255,255,255,0.08)',
-                backgroundColor: ativo ? `${meta.cor}15` : 'rgba(255,255,255,0.02)',
+                borderColor: ativo ? meta.cor : 'color-mix(in srgb, var(--fg) 8%, transparent)',
+                backgroundColor: ativo ? `${meta.cor}15` : 'color-mix(in srgb, var(--fg) 2%, transparent)',
               }}
             >
               <div className="flex items-start justify-between mb-3">
@@ -191,8 +191,8 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
                   {total} cliente{total !== 1 ? 's' : ''}
                 </span>
               </div>
-              <p className="text-white font-bold text-xl mb-1">{meta.titulo}</p>
-              <p className="text-white/40 text-xs leading-relaxed">{meta.descricao}</p>
+              <p className="text-[var(--fg)] font-bold text-xl mb-1">{meta.titulo}</p>
+              <p className="text-[var(--fg)]/40 text-xs leading-relaxed">{meta.descricao}</p>
               <div className="mt-4 flex items-center gap-1.5" style={{ color: meta.cor }}>
                 <span className="text-xs font-semibold">{ativo ? 'Fechar lista' : 'Ver lista'}</span>
                 <span className="text-xs">{ativo ? '▲' : '▼'}</span>
@@ -204,14 +204,14 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
 
       {/* Painel expandido */}
       {aberto && (
-        <div className="rounded-2xl border border-white/8 bg-white/2 overflow-hidden">
+        <div className="rounded-2xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 overflow-hidden">
           {/* Header do painel */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8">
             <div className="flex items-center gap-3">
               <span className="text-xl">{CARD_META[aberto].icon}</span>
               <div>
-                <p className="text-white font-semibold">{CARD_META[aberto].titulo}</p>
-                <p className="text-white/35 text-xs">{listaFiltrada.length} resultado{listaFiltrada.length !== 1 ? 's' : ''}</p>
+                <p className="text-[var(--fg)] font-semibold">{CARD_META[aberto].titulo}</p>
+                <p className="text-[var(--fg)]/35 text-xs">{listaFiltrada.length} resultado{listaFiltrada.length !== 1 ? 's' : ''}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -220,12 +220,12 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
                 placeholder="Buscar por nome ou CNPJ..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#00CCEB]/50 w-56"
+                className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/20 text-sm focus:outline-none focus:border-[var(--accent)]/50 w-56"
               />
               <button
                 onClick={() => exportarPlanilha(listaFiltrada, aberto)}
                 disabled={listaFiltrada.length === 0}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600/80 hover:bg-green-600 text-white text-sm font-semibold transition-colors disabled:opacity-40"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600/80 hover:bg-green-600 text-[var(--fg)] text-sm font-semibold transition-colors disabled:opacity-40"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -241,49 +241,49 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/6">
-                  <th className="text-left text-xs font-semibold text-white/30 uppercase tracking-widest px-6 py-3">#</th>
-                  <th className="text-left text-xs font-semibold text-white/30 uppercase tracking-widest px-4 py-3">Razão Social</th>
-                  <th className="text-left text-xs font-semibold text-white/30 uppercase tracking-widest px-4 py-3">CNPJ</th>
+                <tr className="border-b border-[var(--fg)]/6">
+                  <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-6 py-3">#</th>
+                  <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Razão Social</th>
+                  <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">CNPJ</th>
                   {aberto === 'ISS' && (
                     <>
-                      <th className="text-left text-xs font-semibold text-white/30 uppercase tracking-widest px-4 py-3">Município</th>
-                      <th className="text-left text-xs font-semibold text-white/30 uppercase tracking-widest px-4 py-3">Login ISS</th>
-                      <th className="text-left text-xs font-semibold text-white/30 uppercase tracking-widest px-4 py-3">Senha ISS</th>
+                      <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Município</th>
+                      <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Login ISS</th>
+                      <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Senha ISS</th>
                     </>
                   )}
                   {isAdmin && (
-                    <th className="text-left text-xs font-semibold text-white/30 uppercase tracking-widest px-4 py-3">Responsável</th>
+                    <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Responsável</th>
                   )}
                 </tr>
               </thead>
               <tbody>
                 {listaFiltrada.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-6 py-10 text-center text-white/20 text-sm">
+                    <td colSpan={10} className="px-6 py-10 text-center text-[var(--fg)]/20 text-sm">
                       Nenhum cliente encontrado.
                     </td>
                   </tr>
                 )}
                 {listaFiltrada.map((c, i) => (
-                  <tr key={c.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
-                    <td className="px-6 py-3 text-white/25 text-xs">{i + 1}</td>
-                    <td className="px-4 py-3 text-white font-medium">{c.nome}</td>
-                    <td className="px-4 py-3 text-white/45 font-mono text-xs">{c.cnpj ?? '—'}</td>
+                  <tr key={c.id} className="border-b border-[var(--fg)]/5 hover:bg-[var(--fg)]/2 transition-colors">
+                    <td className="px-6 py-3 text-[var(--fg)]/25 text-xs">{i + 1}</td>
+                    <td className="px-4 py-3 text-[var(--fg)] font-medium">{c.nome}</td>
+                    <td className="px-4 py-3 text-[var(--fg)]/45 font-mono text-xs">{c.cnpj ?? '—'}</td>
                     {aberto === 'ISS' && (
                       <>
-                        <td className="px-4 py-3 text-white/60 text-xs">
+                        <td className="px-4 py-3 text-[var(--fg)]/60 text-xs">
                           {c.municipio ?? c.mit ?? '—'}
-                          {c.uf ? <span className="text-white/30"> / {c.uf}</span> : ''}
+                          {c.uf ? <span className="text-[var(--fg)]/30"> / {c.uf}</span> : ''}
                         </td>
-                        <td className="px-4 py-3 text-white/60 text-xs font-mono">{c.login_iss ?? '—'}</td>
+                        <td className="px-4 py-3 text-[var(--fg)]/60 text-xs font-mono">{c.login_iss ?? '—'}</td>
                         <td className="px-4 py-3">
                           <SenhaCell senha={c.senha_iss} />
                         </td>
                       </>
                     )}
                     {isAdmin && (
-                      <td className="px-4 py-3 text-white/40 text-xs">{c.responsavel ?? '—'}</td>
+                      <td className="px-4 py-3 text-[var(--fg)]/40 text-xs">{c.responsavel ?? '—'}</td>
                     )}
                   </tr>
                 ))}
@@ -294,9 +294,9 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
       )}
 
       {/* Nota sobre TessHub */}
-      <div className="mt-8 p-4 rounded-xl bg-white/2 border border-white/6">
-        <p className="text-white/30 text-xs leading-relaxed">
-          <span className="text-white/50 font-semibold">TessHub:</span> o botão acima abre o site em uma nova aba. Por razões de segurança dos navegadores, não é possível preencher automaticamente o login e senha de outro site. Você precisará inserir suas credenciais manualmente no TessHub — as mesmas usadas no Portal Fiscal.
+      <div className="mt-8 p-4 rounded-xl bg-[var(--fg)]/2 border border-[var(--fg)]/6">
+        <p className="text-[var(--fg)]/30 text-xs leading-relaxed">
+          <span className="text-[var(--fg)]/50 font-semibold">TessHub:</span> o botão acima abre o site em uma nova aba. Por razões de segurança dos navegadores, não é possível preencher automaticamente o login e senha de outro site. Você precisará inserir suas credenciais manualmente no TessHub — as mesmas usadas no Portal Fiscal.
         </p>
       </div>
     </div>
@@ -306,15 +306,15 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
 // Componente para mostrar/ocultar senha ISS na tabela
 function SenhaCell({ senha }: { senha: string | null }) {
   const [visivel, setVisivel] = useState(false)
-  if (!senha) return <span className="text-white/25 text-xs">—</span>
+  if (!senha) return <span className="text-[var(--fg)]/25 text-xs">—</span>
   return (
     <div className="flex items-center gap-2">
-      <span className="text-white/60 text-xs font-mono">
+      <span className="text-[var(--fg)]/60 text-xs font-mono">
         {visivel ? senha : '••••••••'}
       </span>
       <button
         onClick={() => setVisivel(v => !v)}
-        className="text-white/25 hover:text-white/60 transition-colors"
+        className="text-[var(--fg)]/25 hover:text-[var(--fg)]/60 transition-colors"
         title={visivel ? 'Ocultar' : 'Mostrar'}
       >
         {visivel ? (

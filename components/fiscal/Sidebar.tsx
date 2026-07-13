@@ -4,10 +4,12 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
+import { useTheme } from '@/lib/theme'
 import MesSeletor from './MesSeletor'
 import {
   Zap, LayoutGrid, Users, Calendar,
   FileText, TrendingUp, CreditCard, Wrench, Settings, ShieldCheck,
+  Sun, Moon,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -33,6 +35,7 @@ interface Props {
 export default function Sidebar({ profile, mes, ano }: Props) {
   const pathname = usePathname()
   const router = useRouter()
+  const { theme, toggleTheme } = useTheme()
 
   async function handleLogout() {
     const supabase = createClient()
@@ -43,13 +46,13 @@ export default function Sidebar({ profile, mes, ano }: Props) {
 
   return (
     <aside
-      className="w-56 h-screen shrink-0 border-r border-white/7 flex flex-col overflow-y-auto"
+      className="w-56 h-screen shrink-0 border-r border-[var(--fg)]/7 flex flex-col overflow-y-auto"
       style={{
-        backgroundImage: 'linear-gradient(180deg, #162444 0%, #111e3c 100%), radial-gradient(circle, rgba(0,204,235,0.045) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-page) 100%), radial-gradient(circle, rgba(0,204,235,0.045) 1px, transparent 1px)',
         backgroundSize: 'auto, 18px 18px',
       }}
     >
-      <div className="px-4 py-4 border-b border-white/7">
+      <div className="px-4 py-4 border-b border-[var(--fg)]/7">
         <div className="flex items-center gap-2.5 mb-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -60,8 +63,8 @@ export default function Sidebar({ profile, mes, ano }: Props) {
             className="rounded-lg shrink-0"
           />
           <div>
-            <p className="text-white text-xs font-bold tracking-wide leading-tight">Tesserato</p>
-            <p className="text-white/30 text-[10px] leading-tight">Setor Fiscal</p>
+            <p className="text-[var(--fg)] text-xs font-bold tracking-wide leading-tight">Tesserato</p>
+            <p className="text-[var(--fg)]/30 text-[10px] leading-tight">Setor Fiscal</p>
           </div>
         </div>
         <MesSeletor mes={mes} ano={ano} />
@@ -76,8 +79,8 @@ export default function Sidebar({ profile, mes, ano }: Props) {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                 active
-                  ? 'bg-[#00CCEB]/15 text-[#00CCEB] font-medium'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
+                  ? 'bg-[var(--accent)]/15 text-[var(--accent)] font-medium'
+                  : 'text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/5'
               }`}
             >
               <item.icon size={15} strokeWidth={1.75} />
@@ -88,14 +91,14 @@ export default function Sidebar({ profile, mes, ano }: Props) {
 
         {profile.role === 'admin' && (
           <>
-            <div className="my-2 border-t border-white/8" />
-            <p className="px-3 text-white/20 text-[10px] uppercase tracking-wider mb-1">Admin</p>
+            <div className="my-2 border-t border-[var(--fg)]/8" />
+            <p className="px-3 text-[var(--fg)]/20 text-[10px] uppercase tracking-wider mb-1">Admin</p>
             <Link
               href="/fiscal/parametros"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                 pathname.startsWith('/fiscal/parametros')
-                  ? 'bg-[#00CCEB]/15 text-[#00CCEB] font-medium'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
+                  ? 'bg-[var(--accent)]/15 text-[var(--accent)] font-medium'
+                  : 'text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/5'
               }`}
             >
               <Settings size={15} strokeWidth={1.75} />
@@ -105,8 +108,8 @@ export default function Sidebar({ profile, mes, ano }: Props) {
               href="/fiscal/admin"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                 pathname.startsWith('/fiscal/admin')
-                  ? 'bg-[#00CCEB]/15 text-[#00CCEB] font-medium'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
+                  ? 'bg-[var(--accent)]/15 text-[var(--accent)] font-medium'
+                  : 'text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/5'
               }`}
             >
               <ShieldCheck size={15} strokeWidth={1.75} />
@@ -116,22 +119,29 @@ export default function Sidebar({ profile, mes, ano }: Props) {
         )}
       </nav>
 
-      <div className="px-4 py-4 border-t border-white/8">
+      <div className="px-4 py-4 border-t border-[var(--fg)]/8">
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-2 text-left text-[var(--fg)]/40 hover:text-[var(--fg)]/70 text-xs transition-colors px-1 py-1.5 mb-2"
+        >
+          {theme === 'light' ? <Moon size={13} strokeWidth={1.75} /> : <Sun size={13} strokeWidth={1.75} />}
+          {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+        </button>
         <div className="flex items-center gap-3 mb-3">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--fg)] text-xs font-bold"
             style={{ backgroundColor: profile.cor }}
           >
             {(profile.nome ?? 'U').charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{profile.nome}</p>
-            <p className="text-white/30 text-xs capitalize">{profile.role}</p>
+            <p className="text-[var(--fg)] text-sm font-medium truncate">{profile.nome}</p>
+            <p className="text-[var(--fg)]/30 text-xs capitalize">{profile.role}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full text-left text-white/30 text-xs hover:text-white/60 transition-colors px-1"
+          className="w-full text-left text-[var(--fg)]/30 text-xs hover:text-[var(--fg)]/60 transition-colors px-1"
         >
           Sair →
         </button>

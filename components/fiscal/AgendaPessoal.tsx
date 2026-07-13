@@ -19,7 +19,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const STATUS_COR: Record<string, string> = {
-  pendente:  '#00CCEB',
+  pendente:  'var(--accent)',
   concluido: '#10b981',
   cancelado: '#6b7280',
 }
@@ -159,7 +159,7 @@ export default function AgendaPessoal() {
 
   return (
     <div>
-      <h2 className="text-xs font-bold text-[#00CCEB] uppercase tracking-widest mb-5">Minha Agenda</h2>
+      <h2 className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-5">Minha Agenda</h2>
 
       {/* Lembretes próximos 3 dias */}
       {lembretes.length > 0 && (
@@ -172,11 +172,11 @@ export default function AgendaPessoal() {
             {lembretes.map(it => (
               <div key={it.id} className="flex items-center gap-3 rounded-lg bg-black/20 px-3 py-2">
                 <span className="w-2 h-2 rounded-full shrink-0 bg-amber-400" />
-                <span className="text-white text-sm font-medium flex-1">{it.titulo}</span>
+                <span className="text-[var(--fg)] text-sm font-medium flex-1">{it.titulo}</span>
                 {it.hora_compromisso && (
                   <span className="text-amber-400/80 text-xs font-mono">{it.hora_compromisso}</span>
                 )}
-                <span className="text-white/50 text-xs ml-2">{labelDia(it.data_compromisso)}</span>
+                <span className="text-[var(--fg)]/50 text-xs ml-2">{labelDia(it.data_compromisso)}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                   Pendente
                 </span>
@@ -187,26 +187,26 @@ export default function AgendaPessoal() {
       )}
 
       {/* Calendário */}
-      <div className="rounded-2xl border border-white/10 bg-white/2">
+      <div className="rounded-2xl border border-[var(--fg)]/10 bg-[var(--fg)]/2">
         {/* Cabeçalho navegação */}
         <div className="flex items-center justify-between px-6 py-4">
           <button onClick={() => navMes(-1)}
-            className="w-8 h-8 rounded-lg bg-white/8 hover:bg-white/12 text-white/60 hover:text-white transition-all flex items-center justify-center text-sm font-bold">
+            className="w-8 h-8 rounded-lg bg-[var(--fg)]/8 hover:bg-[var(--fg)]/12 text-[var(--fg)]/60 hover:text-[var(--fg)] transition-all flex items-center justify-center text-sm font-bold">
             ‹
           </button>
-          <span className="text-white font-bold text-lg">{MESES[mes]} {ano}</span>
+          <span className="text-[var(--fg)] font-bold text-lg">{MESES[mes]} {ano}</span>
           <button onClick={() => navMes(1)}
-            className="w-8 h-8 rounded-lg bg-white/8 hover:bg-white/12 text-white/60 hover:text-white transition-all flex items-center justify-center text-sm font-bold">
+            className="w-8 h-8 rounded-lg bg-[var(--fg)]/8 hover:bg-[var(--fg)]/12 text-[var(--fg)]/60 hover:text-[var(--fg)] transition-all flex items-center justify-center text-sm font-bold">
             ›
           </button>
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-7 border-t border-white/8">
+        <div className="grid grid-cols-7 border-t border-[var(--fg)]/8">
           {/* Dias da semana */}
           {DIAS_SEMANA.map(d => (
-            <div key={d} className="text-center text-xs font-semibold py-3 border-b border-white/8"
-              style={{ color: d === 'Dom' || d === 'Sáb' ? '#ffffff50' : '#ffffff70' }}>
+            <div key={d} className="text-center text-xs font-semibold py-3 border-b border-[var(--fg)]/8"
+              style={{ color: d === 'Dom' || d === 'Sáb' ? 'color-mix(in srgb, var(--fg) 31%, transparent)' : 'color-mix(in srgb, var(--fg) 44%, transparent)' }}>
               {d}
             </div>
           ))}
@@ -220,14 +220,14 @@ export default function AgendaPessoal() {
             return (
               <div key={i}
                 onClick={() => dia && abrirDia(dia)}
-                className={`min-h-[72px] p-2 border-b border-r border-white/5 transition-colors ${
-                  dia ? 'cursor-pointer hover:bg-white/4' : ''
-                } ${isSel ? 'bg-white/6' : ''}`}
+                className={`min-h-[72px] p-2 border-b border-r border-[var(--fg)]/5 transition-colors ${
+                  dia ? 'cursor-pointer hover:bg-[var(--fg)]/4' : ''
+                } ${isSel ? 'bg-[var(--fg)]/6' : ''}`}
               >
                 {dia && (
                   <>
                     <div className={`w-7 h-7 flex items-center justify-center rounded-full mx-auto text-sm font-medium mb-1 ${
-                      isHoje ? 'bg-[#00CCEB] text-white font-bold' : 'text-white/50'
+                      isHoje ? 'bg-[var(--accent)] text-[var(--fg)] font-bold' : 'text-[var(--fg)]/50'
                     }`}>
                       {dia}
                     </div>
@@ -256,7 +256,7 @@ export default function AgendaPessoal() {
         ].map(l => (
           <div key={l.label} className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: l.cor }} />
-            <span className="text-white/40 text-xs">{l.label}</span>
+            <span className="text-[var(--fg)]/40 text-xs">{l.label}</span>
           </div>
         ))}
       </div>
@@ -265,59 +265,59 @@ export default function AgendaPessoal() {
       {diaSel && !modalForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setDiaSel(null)}>
-          <div className="bg-[#0f1623] border border-white/12 rounded-2xl w-full max-w-xl shadow-2xl"
+          <div className="bg-[#0f1623] border border-[var(--fg)]/12 rounded-2xl w-full max-w-xl shadow-2xl"
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-              <p className="text-white font-semibold">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--fg)]/8">
+              <p className="text-[var(--fg)] font-semibold">
                 {diaSel} de {MESES[mes]} {ano}
               </p>
               <div className="flex gap-2">
                 <button onClick={() => abrirFormNovo()}
-                  className="text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1.5 rounded-lg hover:bg-[#00CCEB]/30 transition-all">
+                  className="text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] px-3 py-1.5 rounded-lg hover:bg-[var(--accent)]/30 transition-all">
                   + Novo
                 </button>
                 <button onClick={() => setDiaSel(null)}
-                  className="text-white/30 hover:text-white/70 text-lg px-1 transition-all">×</button>
+                  className="text-[var(--fg)]/30 hover:text-[var(--fg)]/70 text-lg px-1 transition-all">×</button>
               </div>
             </div>
 
             <div className="p-5 max-h-[32rem] overflow-y-auto">
               {itensDiaSel.length === 0 ? (
-                <p className="text-white/25 text-sm text-center py-6">Nenhum compromisso neste dia.</p>
+                <p className="text-[var(--fg)]/25 text-sm text-center py-6">Nenhum compromisso neste dia.</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {itensDiaSel.map(it => {
                     const aberto = expandedId === it.id
                     return (
-                      <div key={it.id} className="rounded-xl bg-white/5 border border-white/8 transition-all"
+                      <div key={it.id} className="rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/8 transition-all"
                         style={{ borderColor: aberto ? corDot(it) + '60' : undefined }}>
                         <div className="p-3 flex items-start gap-3">
                           <span className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: corDot(it) }} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-medium">{it.titulo}</p>
-                            {it.hora_compromisso && <p className="text-white/40 text-xs">{it.hora_compromisso}</p>}
+                            <p className="text-[var(--fg)] text-sm font-medium">{it.titulo}</p>
+                            {it.hora_compromisso && <p className="text-[var(--fg)]/40 text-xs">{it.hora_compromisso}</p>}
                             {!aberto && it.descricao && (
-                              <p className="text-white/40 text-xs mt-0.5 line-clamp-2 leading-relaxed">{it.descricao}</p>
+                              <p className="text-[var(--fg)]/40 text-xs mt-0.5 line-clamp-2 leading-relaxed">{it.descricao}</p>
                             )}
                           </div>
                           <div className="flex gap-1 shrink-0">
                             <button onClick={() => abrirFormEditar(it)}
-                              className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 transition-all">✏</button>
+                              className="text-[var(--fg)]/30 hover:text-[var(--fg)]/70 text-xs px-1.5 py-1 rounded border border-[var(--fg)]/10 transition-all">✏</button>
                             <button onClick={() => excluir(it.id)}
-                              className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 transition-all">✕</button>
+                              className="text-[var(--fg)]/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-[var(--fg)]/10 transition-all">✕</button>
                           </div>
                         </div>
                         {aberto && (
                           <div className="px-3 pb-3 ml-8 overflow-hidden">
                             {it.descricao
-                              ? <p className="text-white/70 text-xs whitespace-pre-wrap break-words leading-relaxed">{it.descricao}</p>
-                              : <p className="text-white/25 text-xs italic">Sem descrição.</p>
+                              ? <p className="text-[var(--fg)]/70 text-xs whitespace-pre-wrap break-words leading-relaxed">{it.descricao}</p>
+                              : <p className="text-[var(--fg)]/25 text-xs italic">Sem descrição.</p>
                             }
                           </div>
                         )}
                         <button
                           onClick={() => setExpandedId(aberto ? null : it.id)}
-                          className="w-full flex items-center justify-center gap-1 py-1.5 border-t border-white/8 text-white/40 hover:text-white/70 hover:bg-white/5 transition-all text-xs rounded-b-xl"
+                          className="w-full flex items-center justify-center gap-1 py-1.5 border-t border-[var(--fg)]/8 text-[var(--fg)]/40 hover:text-[var(--fg)]/70 hover:bg-[var(--fg)]/5 transition-all text-xs rounded-b-xl"
                         >
                           <ChevronDown size={11} className={`transition-transform duration-200 ${aberto ? 'rotate-180' : ''}`} />
                           {aberto ? 'Fechar' : 'Ver descrição'}
@@ -336,43 +336,43 @@ export default function AgendaPessoal() {
       {modalForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setModalForm(false)}>
-          <div className="bg-[#0f1623] border border-white/12 rounded-2xl w-full max-w-xl shadow-2xl"
+          <div className="bg-[#0f1623] border border-[var(--fg)]/12 rounded-2xl w-full max-w-xl shadow-2xl"
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-              <p className="text-white font-semibold">{editId ? 'Editar Compromisso' : 'Novo Compromisso'}</p>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--fg)]/8">
+              <p className="text-[var(--fg)] font-semibold">{editId ? 'Editar Compromisso' : 'Novo Compromisso'}</p>
               <button onClick={() => setModalForm(false)}
-                className="text-white/30 hover:text-white/70 text-lg px-1 transition-all">×</button>
+                className="text-[var(--fg)]/30 hover:text-[var(--fg)]/70 text-lg px-1 transition-all">×</button>
             </div>
 
             <div className="px-6 py-6 flex flex-col gap-5">
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">Título *</label>
+                <label className="text-xs text-[var(--fg)]/40 mb-1.5 block">Título *</label>
                 <textarea value={form.titulo} onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))}
-                  rows={1} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 resize-none leading-relaxed" />
+                  rows={1} className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 resize-none leading-relaxed" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-white/40 mb-1.5 block">Data *</label>
+                  <label className="text-xs text-[var(--fg)]/40 mb-1.5 block">Data *</label>
                   <input type="date" value={form.data_compromisso}
                     onChange={e => setForm(p => ({ ...p, data_compromisso: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
+                    className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 mb-1.5 block">Horário</label>
+                  <label className="text-xs text-[var(--fg)]/40 mb-1.5 block">Horário</label>
                   <input type="time" value={form.hora_compromisso ?? ''}
                     onChange={e => setForm(p => ({ ...p, hora_compromisso: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
+                    className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50" />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">Descrição</label>
+                <label className="text-xs text-[var(--fg)]/40 mb-1.5 block">Descrição</label>
                 <textarea value={form.descricao ?? ''} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))}
-                  rows={8} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 resize-none leading-relaxed" />
+                  rows={8} className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 resize-none leading-relaxed" />
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Status</label>
+                <label className="text-xs text-[var(--fg)]/40 mb-1 block">Status</label>
                 <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as AgendaItem['status'] }))}
-                  className="w-full bg-[#162444] border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50">
+                  className="w-full bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50">
                   <option value="pendente">Pendente</option>
                   <option value="concluido">Concluído</option>
                   <option value="cancelado">Cancelado</option>
@@ -381,18 +381,18 @@ export default function AgendaPessoal() {
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" checked={form.lembrete_3_dias}
                   onChange={e => setForm(p => ({ ...p, lembrete_3_dias: e.target.checked }))}
-                  className="w-4 h-4 accent-[#00CCEB]" />
-                <span className="text-sm text-white/60">Lembrete 3 dias antes</span>
+                  className="w-4 h-4 accent-[var(--accent)]" />
+                <span className="text-sm text-[var(--fg)]/60">Lembrete 3 dias antes</span>
               </label>
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-5 border-t border-white/8">
+            <div className="flex justify-end gap-3 px-6 py-5 border-t border-[var(--fg)]/8">
               <button onClick={() => setModalForm(false)}
-                className="text-sm text-white/40 hover:text-white px-4 py-2 rounded-xl border border-white/10 transition-all">
+                className="text-sm text-[var(--fg)]/40 hover:text-[var(--fg)] px-4 py-2 rounded-xl border border-[var(--fg)]/10 transition-all">
                 Cancelar
               </button>
               <button onClick={salvar} disabled={salvando || !form.titulo || !form.data_compromisso}
-                className="text-sm bg-[#00CCEB] text-white px-5 py-2 rounded-xl hover:bg-[#00b3d4] transition-all disabled:opacity-50">
+                className="text-sm bg-[var(--accent)] text-[var(--fg)] px-5 py-2 rounded-xl hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50">
                 {salvando ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

@@ -130,21 +130,21 @@ export default function ConferenciaPage() {
   return (
     <div className="p-8 max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Conferência</h1>
-        <p className="text-white/40 text-sm mt-1">Compara chaves dos DTEs armazenados contra a planilha SISTEMA</p>
+        <h1 className="text-2xl font-bold text-[var(--fg)]">Conferência</h1>
+        <p className="text-[var(--fg)]/40 text-sm mt-1">Compara chaves dos DTEs armazenados contra a planilha SISTEMA</p>
       </div>
 
       {/* Client selector */}
       <div className="mb-8 relative">
-        <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Empresa</label>
+        <label className="text-xs text-[var(--fg)]/40 uppercase tracking-widest mb-2 block">Empresa</label>
         <input value={busca} onChange={e => { setBusca(e.target.value); if (!e.target.value) setClienteSel(null) }}
           placeholder="Buscar empresa..."
-          className="w-full max-w-sm bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
+          className="w-full max-w-sm bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50" />
         {sugestoes.length > 0 && (
-          <div className="absolute top-full mt-1 w-full max-w-sm bg-[#161b22] border border-white/10 rounded-xl overflow-hidden z-10 shadow-lg">
+          <div className="absolute top-full mt-1 w-full max-w-sm bg-[#161b22] border border-[var(--fg)]/10 rounded-xl overflow-hidden z-10 shadow-lg">
             {sugestoes.map(c => (
-              <button key={c.id} onClick={() => selecionarCliente(c)} className="w-full text-left px-4 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors">
-                {c.nome} {c.cnpj && <span className="text-white/30">— {c.cnpj}</span>}
+              <button key={c.id} onClick={() => selecionarCliente(c)} className="w-full text-left px-4 py-2.5 text-sm text-[var(--fg)]/70 hover:bg-[var(--fg)]/5 hover:text-[var(--fg)] transition-colors">
+                {c.nome} {c.cnpj && <span className="text-[var(--fg)]/30">— {c.cnpj}</span>}
               </button>
             ))}
           </div>
@@ -154,26 +154,26 @@ export default function ConferenciaPage() {
       {clienteSel && (
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* DTE files */}
-          <div className="p-5 rounded-xl bg-white/3 border border-white/8">
+          <div className="p-5 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white/60 uppercase tracking-widest">Planilhas DTE</h3>
+              <h3 className="text-sm font-semibold text-[var(--fg)]/60 uppercase tracking-widest">Planilhas DTE</h3>
               <button onClick={() => uploadRef.current?.click()} disabled={uploading}
-                className="text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1 rounded-lg hover:bg-[#00CCEB]/30 transition-all disabled:opacity-50">
+                className="text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] px-3 py-1 rounded-lg hover:bg-[var(--accent)]/30 transition-all disabled:opacity-50">
                 {uploading ? 'Enviando...' : '+ Upload'}
               </button>
               <input ref={uploadRef} type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={uploadDTE} className="hidden" />
             </div>
             {arquivosDTE.length === 0 ? (
-              <p className="text-white/20 text-sm">Nenhum arquivo armazenado.</p>
+              <p className="text-[var(--fg)]/20 text-sm">Nenhum arquivo armazenado.</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {arquivosDTE.map(f => (
-                  <div key={f.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-white/3 border border-white/5">
+                  <div key={f.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-[var(--fg)]/3 border border-[var(--fg)]/5">
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-xs font-medium truncate">{f.name}</p>
-                      <p className="text-white/30 text-xs">{(f.size / 1024).toFixed(1)} KB · {new Date(f.uploaded_at).toLocaleDateString('pt-BR')}</p>
+                      <p className="text-[var(--fg)] text-xs font-medium truncate">{f.name}</p>
+                      <p className="text-[var(--fg)]/30 text-xs">{(f.size / 1024).toFixed(1)} KB · {new Date(f.uploaded_at).toLocaleDateString('pt-BR')}</p>
                     </div>
-                    <button onClick={() => excluirArquivo(f.id)} className="text-white/30 hover:text-red-400 text-xs transition-colors">✕</button>
+                    <button onClick={() => excluirArquivo(f.id)} className="text-[var(--fg)]/30 hover:text-red-400 text-xs transition-colors">✕</button>
                   </div>
                 ))}
               </div>
@@ -181,15 +181,15 @@ export default function ConferenciaPage() {
           </div>
 
           {/* SISTEMA file */}
-          <div className="p-5 rounded-xl bg-white/3 border border-white/8">
-            <h3 className="text-sm font-semibold text-white/60 uppercase tracking-widest mb-4">Planilha SISTEMA</h3>
-            <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-[#00CCEB]/30 transition-all">
+          <div className="p-5 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8">
+            <h3 className="text-sm font-semibold text-[var(--fg)]/60 uppercase tracking-widest mb-4">Planilha SISTEMA</h3>
+            <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-[var(--fg)]/10 rounded-xl cursor-pointer hover:border-[var(--accent)]/30 transition-all">
               <span className="text-2xl">📂</span>
-              <span className="text-sm text-white/50">{sistemFile ? sistemFile.name : 'Clique para selecionar .xls/.xlsx'}</span>
+              <span className="text-sm text-[var(--fg)]/50">{sistemFile ? sistemFile.name : 'Clique para selecionar .xls/.xlsx'}</span>
               <input type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e => setSistemFile(e.target.files?.[0] ?? null)} className="hidden" />
             </label>
             {sistemFile && (
-              <p className="text-xs text-white/30 mt-2 text-center">{(sistemFile.size / 1024).toFixed(1)} KB</p>
+              <p className="text-xs text-[var(--fg)]/30 mt-2 text-center">{(sistemFile.size / 1024).toFixed(1)} KB</p>
             )}
           </div>
         </div>
@@ -198,11 +198,11 @@ export default function ConferenciaPage() {
       {clienteSel && (
         <div className="flex gap-3 mb-8">
           <button onClick={comparar} disabled={comparando || !arquivosDTE.length || !sistemFile}
-            className="bg-[#00CCEB] text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-[#00b3d4] transition-all disabled:opacity-40">
+            className="bg-[var(--accent)] text-[var(--fg)] text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-[var(--accent-hover)] transition-all disabled:opacity-40">
             {comparando ? '⏳ Comparando...' : '🔍 Comparar'}
           </button>
           {resultado && (
-            <button onClick={exportarCSV} className="text-sm text-white/60 border border-white/10 px-4 py-2.5 rounded-xl hover:border-white/20 hover:text-white transition-all">
+            <button onClick={exportarCSV} className="text-sm text-[var(--fg)]/60 border border-[var(--fg)]/10 px-4 py-2.5 rounded-xl hover:border-[var(--fg)]/20 hover:text-[var(--fg)] transition-all">
               ⬇ Exportar CSV
             </button>
           )}
@@ -215,35 +215,35 @@ export default function ConferenciaPage() {
         <div>
           <div className="grid grid-cols-3 gap-4 mb-6">
             {[
-              { label: 'Chaves DTE', val: resultado.dte, cor: '#00CCEB' },
+              { label: 'Chaves DTE', val: resultado.dte, cor: 'var(--accent)' },
               { label: 'Chaves SISTEMA', val: resultado.sistema, cor: '#10b981' },
               { label: 'Divergências', val: resultado.divergencias.length, cor: resultado.divergencias.length > 0 ? '#ef4444' : '#10b981' },
             ].map(s => (
-              <div key={s.label} className="p-4 rounded-xl bg-white/3 border border-white/8 text-center">
+              <div key={s.label} className="p-4 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 text-center">
                 <p className="text-2xl font-bold" style={{ color: s.cor }}>{s.val}</p>
-                <p className="text-white/40 text-xs mt-1">{s.label}</p>
+                <p className="text-[var(--fg)]/40 text-xs mt-1">{s.label}</p>
               </div>
             ))}
           </div>
 
           {resultado.divergencias.length > 0 && (
-            <div className="rounded-xl border border-white/8 overflow-hidden">
-              <div className="px-4 py-3 border-b border-white/8 bg-white/3">
-                <p className="text-sm font-medium text-white">Chaves DTE não encontradas no SISTEMA</p>
+            <div className="rounded-xl border border-[var(--fg)]/8 overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--fg)]/8 bg-[var(--fg)]/3">
+                <p className="text-sm font-medium text-[var(--fg)]">Chaves DTE não encontradas no SISTEMA</p>
               </div>
               <div className="overflow-x-auto max-h-96 overflow-y-auto">
                 <table className="w-full">
-                  <thead><tr className="border-b border-white/8 sticky top-0 bg-[#111e3a]">
-                    <th className="text-left text-xs text-white/40 uppercase px-4 py-2">#</th>
-                    <th className="text-left text-xs text-white/40 uppercase px-4 py-2">UF</th>
-                    <th className="text-left text-xs text-white/40 uppercase px-4 py-2">Chave (44 dígitos)</th>
+                  <thead><tr className="border-b border-[var(--fg)]/8 sticky top-0 bg-[var(--bg-page)]">
+                    <th className="text-left text-xs text-[var(--fg)]/40 uppercase px-4 py-2">#</th>
+                    <th className="text-left text-xs text-[var(--fg)]/40 uppercase px-4 py-2">UF</th>
+                    <th className="text-left text-xs text-[var(--fg)]/40 uppercase px-4 py-2">Chave (44 dígitos)</th>
                   </tr></thead>
                   <tbody>
                     {resultado.divergencias.slice(0, 300).map((k, i) => (
-                      <tr key={k} className="border-b border-white/5">
-                        <td className="px-4 py-2 text-white/30 text-xs">{i+1}</td>
-                        <td className="px-4 py-2 text-[#00CCEB] text-xs font-bold">{UF[k.slice(0,2)] ?? k.slice(0,2)}</td>
-                        <td className="px-4 py-2 text-white/60 text-xs font-mono break-all">{k}</td>
+                      <tr key={k} className="border-b border-[var(--fg)]/5">
+                        <td className="px-4 py-2 text-[var(--fg)]/30 text-xs">{i+1}</td>
+                        <td className="px-4 py-2 text-[var(--accent)] text-xs font-bold">{UF[k.slice(0,2)] ?? k.slice(0,2)}</td>
+                        <td className="px-4 py-2 text-[var(--fg)]/60 text-xs font-mono break-all">{k}</td>
                       </tr>
                     ))}
                   </tbody>

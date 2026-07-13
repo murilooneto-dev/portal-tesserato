@@ -45,29 +45,29 @@ function BotCard({ bot, config, onSave }: {
   }
 
   return (
-    <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-      <h3 className="text-white font-semibold mb-4">{BOT_LABELS[bot]}</h3>
+    <div className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-6">
+      <h3 className="text-[var(--fg)] font-semibold mb-4">{BOT_LABELS[bot]}</h3>
       <div className="flex flex-col gap-3">
         <div>
-          <label className="text-xs text-white/40 mb-1 block">Pasta de downloads</label>
+          <label className="text-xs text-[var(--fg)]/40 mb-1 block">Pasta de downloads</label>
           <input value={pasta} onChange={e => setPasta(e.target.value)}
             placeholder="C:\Users\...\Downloads"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#00CCEB] transition-colors" />
+            className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-2.5 text-[var(--fg)] text-sm placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)] transition-colors" />
         </div>
         <div>
-          <label className="text-xs text-white/40 mb-1 block">Email remetente</label>
+          <label className="text-xs text-[var(--fg)]/40 mb-1 block">Email remetente</label>
           <input type="email" value={emailRem} onChange={e => setEmailRem(e.target.value)}
             placeholder="remetente@email.com"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#00CCEB] transition-colors" />
+            className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-2.5 text-[var(--fg)] text-sm placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)] transition-colors" />
         </div>
         <div>
-          <label className="text-xs text-white/40 mb-1 block">Email destinatário</label>
+          <label className="text-xs text-[var(--fg)]/40 mb-1 block">Email destinatário</label>
           <input type="email" value={emailDest} onChange={e => setEmailDest(e.target.value)}
             placeholder="destinatario@email.com"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#00CCEB] transition-colors" />
+            className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-2.5 text-[var(--fg)] text-sm placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)] transition-colors" />
         </div>
         <button onClick={handleSave} disabled={salvando}
-          className="self-end mt-1 px-5 py-2 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
+          className="self-end mt-1 px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
           {sucesso ? '✓ Salvo' : salvando ? 'Salvando...' : 'Salvar'}
         </button>
       </div>

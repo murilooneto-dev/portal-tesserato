@@ -18,7 +18,7 @@ function AgendaCard({ item, onEditar, onExcluir }: AgendaCardProps) {
   const cor = STATUS_COR_CARD[item.status] ?? '#6b7280'
   return (
     <div
-      className="rounded-xl bg-white/5 border border-white/8 transition-all"
+      className="rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/8 transition-all"
       style={{ borderColor: aberto ? cor + '60' : undefined }}
     >
       {/* Header — sempre visível */}
@@ -26,21 +26,21 @@ function AgendaCard({ item, onEditar, onExcluir }: AgendaCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cor }} />
-            <p className="text-white text-sm font-semibold leading-snug">{item.titulo}</p>
+            <p className="text-[var(--fg)] text-sm font-semibold leading-snug">{item.titulo}</p>
           </div>
           {item.hora_compromisso && (
-            <p className="text-white/40 text-xs mt-0.5 ml-4">{item.hora_compromisso}</p>
+            <p className="text-[var(--fg)]/40 text-xs mt-0.5 ml-4">{item.hora_compromisso}</p>
           )}
           {!aberto && item.descricao && (
-            <p className="text-white/45 text-xs mt-1.5 ml-4 leading-relaxed"
+            <p className="text-[var(--fg)]/45 text-xs mt-1.5 ml-4 leading-relaxed"
               style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
               {item.descricao}
             </p>
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={onEditar} className="text-white/30 hover:text-white/70 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-white/20 transition-all">✏</button>
-          <button onClick={onExcluir} className="text-white/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-white/10 hover:border-red-400/30 transition-all">✕</button>
+          <button onClick={onEditar} className="text-[var(--fg)]/30 hover:text-[var(--fg)]/70 text-xs px-1.5 py-1 rounded border border-[var(--fg)]/10 hover:border-[var(--fg)]/20 transition-all">✏</button>
+          <button onClick={onExcluir} className="text-[var(--fg)]/30 hover:text-red-400 text-xs px-1.5 py-1 rounded border border-[var(--fg)]/10 hover:border-red-400/30 transition-all">✕</button>
         </div>
       </div>
 
@@ -48,8 +48,8 @@ function AgendaCard({ item, onEditar, onExcluir }: AgendaCardProps) {
       {aberto && (
         <div className="px-3 pb-3 ml-4">
           {item.descricao
-            ? <p className="text-white/70 text-sm whitespace-pre-wrap leading-relaxed">{item.descricao}</p>
-            : <p className="text-white/25 text-xs italic">Sem descrição.</p>
+            ? <p className="text-[var(--fg)]/70 text-sm whitespace-pre-wrap leading-relaxed">{item.descricao}</p>
+            : <p className="text-[var(--fg)]/25 text-xs italic">Sem descrição.</p>
           }
         </div>
       )}
@@ -57,7 +57,7 @@ function AgendaCard({ item, onEditar, onExcluir }: AgendaCardProps) {
       {/* Botão expandir — sempre visível */}
       <button
         onClick={() => setAberto(v => !v)}
-        className="w-full flex items-center justify-center gap-1 py-1.5 border-t border-white/8 text-white/40 hover:text-white/70 hover:bg-white/5 transition-all text-xs"
+        className="w-full flex items-center justify-center gap-1 py-1.5 border-t border-[var(--fg)]/8 text-[var(--fg)]/40 hover:text-[var(--fg)]/70 hover:bg-[var(--fg)]/5 transition-all text-xs"
       >
         <ChevronDown size={13} className={`transition-transform duration-200 ${aberto ? 'rotate-180' : ''}`} />
         {aberto ? 'Fechar' : 'Ver descrição'}
@@ -173,8 +173,8 @@ export default function AgendaPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Agenda</h1>
-        <p className="text-white/40 text-sm mt-1">Minha agenda pessoal</p>
+        <h1 className="text-2xl font-bold text-[var(--fg)]">Agenda</h1>
+        <p className="text-[var(--fg)]/40 text-sm mt-1">Minha agenda pessoal</p>
       </div>
 
       {lembretes.length > 0 && (
@@ -182,7 +182,7 @@ export default function AgendaPage() {
           <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-2">🔔 Lembretes — próximos 3 dias</p>
           <div className="flex flex-col gap-1">
             {lembretes.map(l => (
-              <p key={l.id} className="text-sm text-white/80">{l.data_compromisso} {l.hora_compromisso && `às ${l.hora_compromisso}`} — {l.titulo}</p>
+              <p key={l.id} className="text-sm text-[var(--fg)]/80">{l.data_compromisso} {l.hora_compromisso && `às ${l.hora_compromisso}`} — {l.titulo}</p>
             ))}
           </div>
         </div>
@@ -192,17 +192,17 @@ export default function AgendaPage() {
         {/* Calendar */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => navMes(-1)} className="text-white/50 hover:text-white px-3 py-1 rounded-lg border border-white/10 hover:border-white/20 transition-all">←</button>
-            <h2 className="text-white font-semibold">{MESES[mes]} {ano}</h2>
+            <button onClick={() => navMes(-1)} className="text-[var(--fg)]/50 hover:text-[var(--fg)] px-3 py-1 rounded-lg border border-[var(--fg)]/10 hover:border-[var(--fg)]/20 transition-all">←</button>
+            <h2 className="text-[var(--fg)] font-semibold">{MESES[mes]} {ano}</h2>
             <div className="flex gap-2">
-              <button onClick={() => navMes(1)} className="text-white/50 hover:text-white px-3 py-1 rounded-lg border border-white/10 hover:border-white/20 transition-all">→</button>
-              <button onClick={() => abrirNovo()} className="text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1 rounded-lg hover:bg-[#00CCEB]/30 transition-all">+ Novo</button>
+              <button onClick={() => navMes(1)} className="text-[var(--fg)]/50 hover:text-[var(--fg)] px-3 py-1 rounded-lg border border-[var(--fg)]/10 hover:border-[var(--fg)]/20 transition-all">→</button>
+              <button onClick={() => abrirNovo()} className="text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] px-3 py-1 rounded-lg hover:bg-[var(--accent)]/30 transition-all">+ Novo</button>
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-px bg-white/5 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-7 gap-px bg-[var(--fg)]/5 rounded-xl overflow-hidden">
             {DIAS_SEMANA.map(d => (
-              <div key={d} className="bg-[#111e3a] text-center text-xs text-white/30 py-2 font-medium">{d}</div>
+              <div key={d} className="bg-[var(--bg-page)] text-center text-xs text-[var(--fg)]/30 py-2 font-medium">{d}</div>
             ))}
             {celulas.map((dia, i) => {
               const isHoje = dia === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear()
@@ -211,11 +211,11 @@ export default function AgendaPage() {
                 <div
                   key={i}
                   onClick={() => dia && setDiaSelecionado(dia === diaSelecionado ? null : dia)}
-                  className={`bg-[#111e3a] min-h-[60px] p-1.5 cursor-pointer transition-colors ${dia ? 'hover:bg-white/5' : ''} ${dia === diaSelecionado ? 'bg-white/5' : ''}`}
+                  className={`bg-[var(--bg-page)] min-h-[60px] p-1.5 cursor-pointer transition-colors ${dia ? 'hover:bg-[var(--fg)]/5' : ''} ${dia === diaSelecionado ? 'bg-[var(--fg)]/5' : ''}`}
                 >
                   {dia && (
                     <>
-                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isHoje ? 'bg-[#00CCEB] text-white' : 'text-white/50'}`}>{dia}</span>
+                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isHoje ? 'bg-[var(--accent)] text-[var(--fg)]' : 'text-[var(--fg)]/50'}`}>{dia}</span>
                       <div className="flex flex-wrap gap-0.5 mt-1">
                         {itsDia.map(it => (
                           <span key={it.id} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: STATUS_COR[it.status] }} />
@@ -234,13 +234,13 @@ export default function AgendaPage() {
           {diaSelecionado ? (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white font-semibold">
+                <h3 className="text-[var(--fg)] font-semibold">
                   {diaSelecionado} de {MESES[mes]}
                 </h3>
-                <button onClick={() => abrirNovo(diaSelecionado)} className="text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1 rounded-lg hover:bg-[#00CCEB]/30 transition-all">+ Novo</button>
+                <button onClick={() => abrirNovo(diaSelecionado)} className="text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] px-3 py-1 rounded-lg hover:bg-[var(--accent)]/30 transition-all">+ Novo</button>
               </div>
               {itensDia.length === 0 ? (
-                <p className="text-white/30 text-sm">Nenhum compromisso neste dia.</p>
+                <p className="text-[var(--fg)]/30 text-sm">Nenhum compromisso neste dia.</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {itensDia.map(it => (
@@ -255,7 +255,7 @@ export default function AgendaPage() {
               )}
             </div>
           ) : (
-            <div className="text-white/20 text-sm text-center mt-8">
+            <div className="text-[var(--fg)]/20 text-sm text-center mt-8">
               Clique em um dia para ver os compromissos
             </div>
           )}
@@ -265,35 +265,35 @@ export default function AgendaPage() {
       {/* Modal */}
       {modalAberto && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#161b22] border border-white/10 rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-white font-semibold mb-5">{editando.id ? 'Editar Compromisso' : 'Novo Compromisso'}</h3>
+          <div className="bg-[#161b22] border border-[var(--fg)]/10 rounded-2xl p-6 w-full max-w-md">
+            <h3 className="text-[var(--fg)] font-semibold mb-5">{editando.id ? 'Editar Compromisso' : 'Novo Compromisso'}</h3>
             <div className="flex flex-col gap-4">
               <div>
-                <label className="text-xs text-white/50 mb-1 block">Título *</label>
+                <label className="text-xs text-[var(--fg)]/50 mb-1 block">Título *</label>
                 <input value={editando.titulo} onChange={e => setEditando(p => ({ ...p, titulo: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
+                  className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">Data *</label>
+                  <label className="text-xs text-[var(--fg)]/50 mb-1 block">Data *</label>
                   <input type="date" value={editando.data_compromisso} onChange={e => setEditando(p => ({ ...p, data_compromisso: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
+                    className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">Horário</label>
+                  <label className="text-xs text-[var(--fg)]/50 mb-1 block">Horário</label>
                   <input type="time" value={editando.hora_compromisso ?? ''} onChange={e => setEditando(p => ({ ...p, hora_compromisso: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50" />
+                    className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50" />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/50 mb-1 block">Descrição</label>
+                <label className="text-xs text-[var(--fg)]/50 mb-1 block">Descrição</label>
                 <textarea value={editando.descricao ?? ''} onChange={e => setEditando(p => ({ ...p, descricao: e.target.value }))} rows={2}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50 resize-none" />
+                  className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 resize-none" />
               </div>
               <div>
-                <label className="text-xs text-white/50 mb-1 block">Status</label>
+                <label className="text-xs text-[var(--fg)]/50 mb-1 block">Status</label>
                 <select value={editando.status} onChange={e => setEditando(p => ({ ...p, status: e.target.value as AgendaItem['status'] }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CCEB]/50">
+                  className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50">
                   <option value="pendente">Pendente</option>
                   <option value="concluido">Concluído</option>
                   <option value="cancelado">Cancelado</option>
@@ -301,14 +301,14 @@ export default function AgendaPage() {
               </div>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" checked={editando.lembrete_3_dias} onChange={e => setEditando(p => ({ ...p, lembrete_3_dias: e.target.checked }))}
-                  className="w-4 h-4 accent-[#00CCEB]" />
-                <span className="text-sm text-white/70">Lembrete 3 dias antes</span>
+                  className="w-4 h-4 accent-[var(--accent)]" />
+                <span className="text-sm text-[var(--fg)]/70">Lembrete 3 dias antes</span>
               </label>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setModalAberto(false)} className="text-sm text-white/50 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:border-white/20 transition-all">Cancelar</button>
+              <button onClick={() => setModalAberto(false)} className="text-sm text-[var(--fg)]/50 hover:text-[var(--fg)] px-4 py-2 rounded-xl border border-[var(--fg)]/10 hover:border-[var(--fg)]/20 transition-all">Cancelar</button>
               <button onClick={salvar} disabled={salvando || !editando.titulo || !editando.data_compromisso}
-                className="text-sm bg-[#00CCEB] text-white px-5 py-2 rounded-xl hover:bg-[#00b3d4] transition-all disabled:opacity-50">
+                className="text-sm bg-[var(--accent)] text-[var(--fg)] px-5 py-2 rounded-xl hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50">
                 {salvando ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

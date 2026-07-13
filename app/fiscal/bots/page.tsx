@@ -31,8 +31,8 @@ export default async function BotsPage() {
   return (
     <div className="p-8 max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Configuração dos Bots</h1>
-        <p className="text-white/40 mt-1 text-sm">Configure as pastas e emails para cada bot</p>
+        <h1 className="text-2xl font-bold text-[var(--fg)]">Configuração dos Bots</h1>
+        <p className="text-[var(--fg)]/40 mt-1 text-sm">Configure as pastas e emails para cada bot</p>
       </div>
       <BotsConfigForm configs={configs ?? []} onSave={salvarConfig} />
     </div>

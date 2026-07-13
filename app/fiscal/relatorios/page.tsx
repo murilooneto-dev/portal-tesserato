@@ -145,46 +145,46 @@ export default function RelatoriosPage() {
     <div className="p-8 max-w-7xl mx-auto">
       {/* Barra de filtros + título + botão — tudo em uma linha */}
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-2xl font-bold text-white mr-2">
-          Relatório <span className="text-white/40 font-normal text-lg">{String(mes).padStart(2,'0')}/{ano}</span>
+        <h1 className="text-2xl font-bold text-[var(--fg)] mr-2">
+          Relatório <span className="text-[var(--fg)]/40 font-normal text-lg">{String(mes).padStart(2,'0')}/{ano}</span>
         </h1>
 
         {isAdmin && (
           <select value={filtroResp} onChange={e => setFiltroResp(e.target.value)}
-            className="bg-[#162444] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00CCEB]/50">
-            {responsaveis.map(r => <option key={r} value={r} className="bg-[#162444]">{r}</option>)}
+            className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
+            {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
           </select>
         )}
 
         <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)}
-          className="bg-[#162444] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00CCEB]/50">
-          <option value="TODOS" className="bg-[#162444]">Todos</option>
-          <option value="normal" className="bg-[#162444]">Regime Normal</option>
-          <option value="simples" className="bg-[#162444]">Simples Nacional</option>
-          <option value="mei" className="bg-[#162444]">MEI</option>
+          className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
+          <option value="TODOS" className="bg-[var(--bg-surface)]">Todos</option>
+          <option value="normal" className="bg-[var(--bg-surface)]">Regime Normal</option>
+          <option value="simples" className="bg-[var(--bg-surface)]">Simples Nacional</option>
+          <option value="mei" className="bg-[var(--bg-surface)]">MEI</option>
         </select>
 
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)}
-          className="bg-[#162444] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00CCEB]/50">
-          <option value="TODAS" className="bg-[#162444]">Todas as atividades</option>
-          {atividades.map(a => <option key={a} value={a} className="bg-[#162444]">{a}</option>)}
+          className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
+          <option value="TODAS" className="bg-[var(--bg-surface)]">Todas as atividades</option>
+          {atividades.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
         </select>
 
         <select value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)}
-          className="bg-[#162444] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00CCEB]/50">
-          <option value="TODAS" className="bg-[#162444]">Todas as tarefas</option>
-          {tarefasDisponiveis.map(t => <option key={t} value={t} className="bg-[#162444]">{t}</option>)}
+          className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
+          <option value="TODAS" className="bg-[var(--bg-surface)]">Todas as tarefas</option>
+          {tarefasDisponiveis.map(t => <option key={t} value={t} className="bg-[var(--bg-surface)]">{t}</option>)}
         </select>
 
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-[#162444] cursor-pointer hover:border-white/20 transition-colors">
-          <input type="checkbox" checked={apenasP} onChange={e => setApenasP(e.target.checked)} className="w-4 h-4 accent-[#00CCEB]" />
-          <span className="text-sm text-white/70 whitespace-nowrap">Apenas pendências</span>
+        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer hover:border-[var(--fg)]/20 transition-colors">
+          <input type="checkbox" checked={apenasP} onChange={e => setApenasP(e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" />
+          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Apenas pendências</span>
         </label>
 
         <div className="flex-1" />
 
         <button onClick={imprimir}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all whitespace-nowrap">
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--fg)] text-sm font-semibold px-5 py-2.5 rounded-xl transition-all whitespace-nowrap">
           🖨 Imprimir / Salvar PDF
         </button>
       </div>
@@ -192,25 +192,25 @@ export default function RelatoriosPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Clientes', val: stats.total, cor: 'white' },
+          { label: 'Total Clientes', val: stats.total, cor: 'var(--fg)' },
           { label: '100% Concluídos', val: stats.cem, cor: '#10b981' },
           { label: 'Em Andamento', val: stats.andamento, cor: '#f59e0b' },
           { label: 'Não Iniciados', val: stats.zero, cor: '#ef4444' },
         ].map(s => (
-          <div key={s.label} className="p-4 rounded-xl bg-white/6 border border-white/12">
+          <div key={s.label} className="p-4 rounded-xl bg-[var(--fg)]/6 border border-[var(--fg)]/12">
             <p className="text-2xl font-bold" style={{ color: s.cor }}>{s.val}</p>
-            <p className="text-white/60 text-xs mt-1">{s.label}</p>
+            <p className="text-[var(--fg)]/60 text-xs mt-1">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-white/12">
+      <div className="overflow-x-auto rounded-xl border border-[var(--fg)]/12">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/12">
+            <tr className="border-b border-[var(--fg)]/12">
               {['#','Cliente','CNPJ','Regime','Responsável','Progresso','Tarefas Pendentes','MIT'].map(h => (
-                <th key={h} className="text-left text-xs font-semibold text-white/60 uppercase tracking-widest px-4 py-3">{h}</th>
+                <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">{h}</th>
               ))}
             </tr>
           </thead>
@@ -219,11 +219,11 @@ export default function RelatoriosPage() {
               <tr
                 key={r.cliente.id}
                 onClick={() => router.push(`/fiscal/clientes/${r.cliente.id}`)}
-                className="border-b border-white/8 hover:bg-white/6 cursor-pointer transition-colors"
+                className="border-b border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 cursor-pointer transition-colors"
               >
-                <td className="px-4 py-3 text-white/40 text-xs">{i+1}</td>
-                <td className="px-4 py-3 text-white text-sm font-medium">{r.cliente.nome}</td>
-                <td className="px-4 py-3 text-white/50 text-xs font-mono">{r.cliente.cnpj ?? '—'}</td>
+                <td className="px-4 py-3 text-[var(--fg)]/40 text-xs">{i+1}</td>
+                <td className="px-4 py-3 text-[var(--fg)] text-sm font-medium">{r.cliente.nome}</td>
+                <td className="px-4 py-3 text-[var(--fg)]/50 text-xs font-mono">{r.cliente.cnpj ?? '—'}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     r.cliente.grupo === 'simples' ? 'bg-green-500/15 text-green-400' :
@@ -231,28 +231,28 @@ export default function RelatoriosPage() {
                     'bg-blue-500/15 text-blue-400'
                   }`}>{r.cliente.regime ?? r.cliente.grupo ?? '—'}</span>
                 </td>
-                <td className="px-4 py-3 text-white/60 text-xs">{r.cliente.responsavel ?? '—'}</td>
+                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs">{r.cliente.responsavel ?? '—'}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-20 h-1.5 bg-white/15 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#00CCEB] rounded-full" style={{ width: `${r.pct}%` }} />
+                    <div className="w-20 h-1.5 bg-[var(--fg)]/15 rounded-full overflow-hidden">
+                      <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${r.pct}%` }} />
                     </div>
-                    <span className="text-xs text-white/70">{r.pct}%</span>
+                    <span className="text-xs text-[var(--fg)]/70">{r.pct}%</span>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm max-w-[260px]">
                   {r.pct === 100
                     ? <span className="text-green-400 text-xs font-medium">✓ Concluído</span>
-                    : <span className="text-white/60 text-xs leading-relaxed">{r.pendentes.join(' · ')}</span>
+                    : <span className="text-[var(--fg)]/60 text-xs leading-relaxed">{r.pendentes.join(' · ')}</span>
                   }
                 </td>
-                <td className="px-4 py-3 text-white/50 text-xs">{r.cliente.mit ?? '—'}</td>
+                <td className="px-4 py-3 text-[var(--fg)]/50 text-xs">{r.cliente.mit ?? '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
         {filtrados.length === 0 && (
-          <p className="text-center text-white/30 py-12 text-sm">Nenhum cliente encontrado.</p>
+          <p className="text-center text-[var(--fg)]/30 py-12 text-sm">Nenhum cliente encontrado.</p>
         )}
       </div>
     </div>

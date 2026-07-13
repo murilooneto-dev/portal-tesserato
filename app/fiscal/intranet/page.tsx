@@ -23,7 +23,7 @@ export default async function IntranetPage() {
         </div>
       )}
       <AgendaPessoal />
-      <div className="mt-10 pt-8 border-t border-white/8">
+      <div className="mt-10 pt-8 border-t border-[var(--fg)]/8">
         <LinksRapidos links={links ?? []} />
       </div>
     </div>

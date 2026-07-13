@@ -29,7 +29,7 @@ export default async function FiscalLayout({ children }: { children: React.React
 
   return (
     <MesAnoProvider mes={mes} ano={ano}>
-      <div className="flex h-screen overflow-hidden bg-[#111e3a]">
+      <div className="flex h-screen overflow-hidden bg-[var(--bg-page)]">
         <Sidebar profile={safeProfile} mes={mes} ano={ano} />
         <main className="flex-1 overflow-y-auto">
           {children}

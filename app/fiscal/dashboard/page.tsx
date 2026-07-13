@@ -91,8 +91,8 @@ export default async function DashboardPage() {
 
       {/* Cabeçalho */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-sm text-white/40 mt-1">{MESES_PT[mes - 1]} {ano}</p>
+        <h1 className="text-2xl font-bold text-[var(--fg)]">Dashboard</h1>
+        <p className="text-sm text-[var(--fg)]/40 mt-1">{MESES_PT[mes - 1]} {ano}</p>
       </div>
 
       {/* Alertas */}
@@ -103,8 +103,8 @@ export default async function DashboardPage() {
               const lbl = alertaLabel(a.diff)
               return (
                 <div key={a.nome} className={`rounded-full border px-3 py-1.5 flex items-center gap-2.5 ${alertaColor(a.diff)}`}>
-                  <span className="text-white text-xs font-semibold">{a.nome}</span>
-                  <span className="text-white/25 text-xs">·</span>
+                  <span className="text-[var(--fg)] text-xs font-semibold">{a.nome}</span>
+                  <span className="text-[var(--fg)]/25 text-xs">·</span>
                   <span className={`text-xs font-bold ${lbl.cls}`}>{lbl.text}</span>
                 </div>
               )
@@ -115,30 +115,30 @@ export default async function DashboardPage() {
 
       {/* Linha 1: Progresso Geral + Clientes */}
       <section className="grid grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
-          <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Progresso Geral</p>
-          <p className="text-3xl font-bold text-white">{pct}%</p>
-          <div className="w-full h-2 bg-white/8 rounded-full mt-3 mb-2">
-            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00CCEB, #0066cc)' }} />
+        <div className="rounded-2xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 p-5">
+          <p className="text-xs text-[var(--fg)]/40 uppercase tracking-wider mb-2">Progresso Geral</p>
+          <p className="text-3xl font-bold text-[var(--fg)]">{pct}%</p>
+          <div className="w-full h-2 bg-[var(--fg)]/8 rounded-full mt-3 mb-2">
+            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, var(--accent), #0066cc)' }} />
           </div>
-          <p className="text-sm text-white/35">{concluidasTarefas}/{totalTarefas} tarefas concluídas</p>
+          <p className="text-sm text-[var(--fg)]/35">{concluidasTarefas}/{totalTarefas} tarefas concluídas</p>
         </div>
 
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
-          <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Total de Clientes</p>
-          <p className="text-3xl font-bold text-white">{cs.length}</p>
+        <div className="rounded-2xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 p-5">
+          <p className="text-xs text-[var(--fg)]/40 uppercase tracking-wider mb-2">Total de Clientes</p>
+          <p className="text-3xl font-bold text-[var(--fg)]">{cs.length}</p>
           <div className="flex gap-4 mt-3">
             <div>
-              <p className="text-xs text-white/30 uppercase tracking-wide">Normal</p>
-              <p className="text-sm font-semibold text-white/60">{normal}</p>
+              <p className="text-xs text-[var(--fg)]/30 uppercase tracking-wide">Normal</p>
+              <p className="text-sm font-semibold text-[var(--fg)]/60">{normal}</p>
             </div>
             <div>
-              <p className="text-xs text-white/30 uppercase tracking-wide">Simples</p>
-              <p className="text-sm font-semibold text-white/60">{simples}</p>
+              <p className="text-xs text-[var(--fg)]/30 uppercase tracking-wide">Simples</p>
+              <p className="text-sm font-semibold text-[var(--fg)]/60">{simples}</p>
             </div>
             <div>
-              <p className="text-xs text-white/30 uppercase tracking-wide">MEI</p>
-              <p className="text-sm font-semibold text-white/60">{mei}</p>
+              <p className="text-xs text-[var(--fg)]/30 uppercase tracking-wide">MEI</p>
+              <p className="text-sm font-semibold text-[var(--fg)]/60">{mei}</p>
             </div>
           </div>
         </div>
@@ -147,30 +147,30 @@ export default async function DashboardPage() {
       {/* Progresso por responsável */}
       {responsaveis.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">Progresso por Responsável</h2>
+          <h2 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-4">Progresso por Responsável</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {responsaveis.map(nome => {
               const perfil      = ps.find(p => p.nome?.toUpperCase() === nome.toUpperCase())
-              const cor         = perfil?.cor || '#00CCEB'
+              const cor         = perfil?.cor || 'var(--accent)'
               const opClientes  = cs.filter(c => c.responsavel?.toUpperCase() === nome.toUpperCase())
               const opTarefas   = ts.filter(t => opClientes.some(c => c.id === t.cliente_id))
               const opConcluidas = opTarefas.filter(t => t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)).length
               const opTotal     = opClientes.reduce((sum, c) => sum + (c.tarefas_personalizadas?.length ?? 0), 0)
               const opPct       = opTotal > 0 ? Math.round((opConcluidas / opTotal) * 100) : 0
               return (
-                <div key={nome} className="rounded-2xl bg-white/2 border border-white/7 p-5">
+                <div key={nome} className="rounded-2xl bg-[var(--fg)]/2 border border-[var(--fg)]/7 p-5">
                   <div className="flex items-center gap-2.5 mb-3">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--fg)] text-xs font-bold shrink-0"
                       style={{ backgroundColor: cor }}>
                       {nome.charAt(0).toUpperCase()}
                     </div>
-                    <p className="text-sm text-white/70 font-medium truncate">{nome}</p>
+                    <p className="text-sm text-[var(--fg)]/70 font-medium truncate">{nome}</p>
                   </div>
-                  <p className="text-3xl font-bold text-white">{opPct}%</p>
-                  <div className="w-full h-2 bg-white/8 rounded-full mt-3 mb-2">
+                  <p className="text-3xl font-bold text-[var(--fg)]">{opPct}%</p>
+                  <div className="w-full h-2 bg-[var(--fg)]/8 rounded-full mt-3 mb-2">
                     <div className="h-full rounded-full transition-all" style={{ width: `${opPct}%`, backgroundColor: cor }} />
                   </div>
-                  <p className="text-sm text-white/35">{opConcluidas}/{opTotal} · {opClientes.length} clientes</p>
+                  <p className="text-sm text-[var(--fg)]/35">{opConcluidas}/{opTotal} · {opClientes.length} clientes</p>
                 </div>
               )
             })}
@@ -181,16 +181,16 @@ export default async function DashboardPage() {
       {/* Clientes com observações */}
       {clientesObs.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">Clientes com Observações</h2>
+          <h2 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-4">Clientes com Observações</h2>
           <div className="flex flex-col gap-2">
             {clientesObs.map(c => (
               <Link key={c.id} href={`/fiscal/clientes/${c.id}`}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl bg-white/3 border border-white/8 hover:bg-white/6 transition-all">
+                className="flex items-center gap-4 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 transition-all">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white font-medium truncate">{c.nome}</p>
+                  <p className="text-sm text-[var(--fg)] font-medium truncate">{c.nome}</p>
                   <p className="text-xs text-yellow-400/60 mt-0.5 truncate">{c.obs}</p>
                 </div>
-                <span className="text-white/20 text-sm shrink-0">→</span>
+                <span className="text-[var(--fg)]/20 text-sm shrink-0">→</span>
               </Link>
             ))}
           </div>

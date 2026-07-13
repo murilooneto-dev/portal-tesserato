@@ -35,10 +35,10 @@ export default function CalendarioFiscal({ mes, ano }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-white/40 uppercase tracking-widest">
+        <h2 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">
           Calendário Fiscal
         </h2>
-        <span className="text-white/60 text-sm">{MESES[mes - 1]} {ano}</span>
+        <span className="text-[var(--fg)]/60 text-sm">{MESES[mes - 1]} {ano}</span>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -54,10 +54,10 @@ export default function CalendarioFiscal({ mes, ano }: Props) {
               key={ob.id}
               className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                 hojeFlag
-                  ? 'bg-white/8 border-[#00CCEB]/40'
+                  ? 'bg-[var(--fg)]/8 border-[var(--accent)]/40'
                   : passado
-                  ? 'bg-white/2 border-white/5 opacity-50'
-                  : 'bg-white/4 border-white/8'
+                  ? 'bg-[var(--fg)]/2 border-[var(--fg)]/5 opacity-50'
+                  : 'bg-[var(--fg)]/4 border-[var(--fg)]/8'
               }`}
             >
               <div
@@ -67,11 +67,11 @@ export default function CalendarioFiscal({ mes, ano }: Props) {
                 <span style={{ color: ob.cor }}>{diaNum}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium">{ob.nome}</p>
-                <p className="text-white/40 text-xs truncate">{ob.desc}</p>
+                <p className="text-[var(--fg)] text-sm font-medium">{ob.nome}</p>
+                <p className="text-[var(--fg)]/40 text-xs truncate">{ob.desc}</p>
               </div>
               {hojeFlag && (
-                <span className="text-[10px] text-[#00CCEB] font-semibold uppercase tracking-wide">hoje</span>
+                <span className="text-[10px] text-[var(--accent)] font-semibold uppercase tracking-wide">hoje</span>
               )}
             </div>
           )

@@ -28,24 +28,24 @@ export default async function AdminPage() {
     <div className="p-8 max-w-4xl space-y-10">
       <div>
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">Administração</h1>
-          <p className="text-white/40 mt-1 text-sm">Usuários cadastrados no portal</p>
+          <h1 className="text-2xl font-bold text-[var(--fg)]">Administração</h1>
+          <p className="text-[var(--fg)]/40 mt-1 text-sm">Usuários cadastrados no portal</p>
         </div>
         <AdminUsuarios profiles={profiles ?? []} />
       </div>
 
       <div>
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-white">Corrigir Encoding de Atividades</h2>
-          <p className="text-white/40 mt-1 text-sm">Detecta e corrige valores de atividade com caracteres quebrados (ç, ã, é, etc.) no cadastro de empresas.</p>
+          <h2 className="text-lg font-bold text-[var(--fg)]">Corrigir Encoding de Atividades</h2>
+          <p className="text-[var(--fg)]/40 mt-1 text-sm">Detecta e corrige valores de atividade com caracteres quebrados (ç, ã, é, etc.) no cadastro de empresas.</p>
         </div>
         <CorrigirAtividadesClient />
       </div>
 
       <div>
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-white">Corrigir Encoding de Tarefas</h2>
-          <p className="text-white/40 mt-1 text-sm">Detecta e corrige tipos de tarefa quebrados nos templates de clientes e nos registros de tarefas. Valores sem sugestão automática podem ser corrigidos manualmente.</p>
+          <h2 className="text-lg font-bold text-[var(--fg)]">Corrigir Encoding de Tarefas</h2>
+          <p className="text-[var(--fg)]/40 mt-1 text-sm">Detecta e corrige tipos de tarefa quebrados nos templates de clientes e nos registros de tarefas. Valores sem sugestão automática podem ser corrigidos manualmente.</p>
         </div>
         <CorrigirTarefasClient />
       </div>

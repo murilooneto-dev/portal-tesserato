@@ -76,7 +76,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     return true
   }), [clientes, busca, filtroResponsavel, filtroGrupo, filtroAtividade, filtroPendencia, comPendencia])
 
-  const selectClass = "bg-[#162444] border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-[#00CCEB]/50 transition-colors"
+  const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
   return (
     <div>
@@ -87,33 +87,33 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
           placeholder="Buscar cliente ou CNPJ..."
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[#162444] border border-white/10 text-white placeholder-white/25 text-sm focus:outline-none focus:border-[#00CCEB]/50 transition-colors"
+          className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
         />
         <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} className={selectClass}>
-          {responsaveis.map(r => <option key={r} value={r} className="bg-[#162444]">{r === 'TODOS' ? 'TODOS' : r}</option>)}
+          {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r === 'TODOS' ? 'TODOS' : r}</option>)}
         </select>
         <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[#162444]">Todos</option>
-          <option value="normal" className="bg-[#162444]">Regime Normal</option>
-          <option value="simples" className="bg-[#162444]">Simples Nacional</option>
-          <option value="mei" className="bg-[#162444]">MEI</option>
+          <option value="TODOS" className="bg-[var(--bg-surface)]">Todos</option>
+          <option value="normal" className="bg-[var(--bg-surface)]">Regime Normal</option>
+          <option value="simples" className="bg-[var(--bg-surface)]">Simples Nacional</option>
+          <option value="mei" className="bg-[var(--bg-surface)]">MEI</option>
         </select>
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[#162444]">Todas as atividades</option>
-          {atividades.slice(1).map(a => <option key={a} value={a} className="bg-[#162444]">{a}</option>)}
+          <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as atividades</option>
+          {atividades.slice(1).map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
         </select>
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-[#162444] cursor-pointer select-none hover:border-white/20 transition-colors">
+        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
           <input
             type="checkbox"
             checked={filtroPendencia}
             onChange={e => setFiltroPendencia(e.target.checked)}
-            className="w-4 h-4 accent-[#00CCEB]"
+            className="w-4 h-4 accent-[var(--accent)]"
           />
-          <span className="text-sm text-white/70 whitespace-nowrap">Apenas pendentes</span>
+          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Apenas pendentes</span>
         </label>
         <button
           onClick={() => setModalNovoOpen(true)}
-          className="px-4 py-2 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors whitespace-nowrap">
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
           + Novo Cliente
         </button>
       </div>
@@ -128,14 +128,14 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
       )}
 
       {/* Contador */}
-      <p className="text-white/30 text-xs mb-3">
+      <p className="text-[var(--fg)]/30 text-xs mb-3">
         {filtrados.length} clientes · {MESES[mes - 1]}/{ano}
       </p>
 
       {/* Lista */}
       <div className="flex flex-col gap-1.5">
         {filtrados.length === 0 && (
-          <p className="text-center text-white/20 py-12 text-sm">Nenhum cliente encontrado.</p>
+          <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
         )}
 
         {filtrados.map(cliente => {
@@ -150,7 +150,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
             <Link
               key={cliente.id}
               href={`/fiscal/clientes/${cliente.id}`}
-              className="flex items-center gap-4 px-4 py-3 rounded-xl bg-white/3 border border-white/8 hover:bg-white/6 hover:border-white/15 transition-all group"
+              className="flex items-center gap-4 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 hover:border-[var(--fg)]/15 transition-all group"
             >
               {/* Prioridade */}
               {cliente.prioridade && cliente.prioridade > 0 ? (
@@ -163,15 +163,15 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
 
               {/* Nome + CNPJ */}
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-semibold truncate">
+                <p className="text-[var(--fg)] text-sm font-semibold truncate">
                   {cliente.cnpj && (
-                    <span className="text-white/40 font-normal mr-1.5">
+                    <span className="text-[var(--fg)]/40 font-normal mr-1.5">
                       {cliente.cnpj.replace(/^(\d{2})\.?(\d{3})\.?(\d{3}).*/, '$1.$2.$3')}
                     </span>
                   )}
                   {cliente.nome}
                 </p>
-                <p className="text-white/25 text-xs mt-0.5">{cliente.cnpj ?? '—'}</p>
+                <p className="text-[var(--fg)]/25 text-xs mt-0.5">{cliente.cnpj ?? '—'}</p>
               </div>
 
               {/* Badges */}
@@ -183,7 +183,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
                   </span>
                 )}
                 {cliente.atividade && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#00CCEB]/15 text-[#00CCEB] border border-[#00CCEB]/30">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
                     {cliente.atividade}
                   </span>
                 )}
@@ -198,14 +198,14 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
               {/* Progresso */}
               {total > 0 && (
                 <div className="w-20 shrink-0 text-right">
-                  <p className={`text-sm font-bold ${pct === 100 ? 'text-[#10b981]' : pendente ? 'text-amber-400' : 'text-white'}`}>
+                  <p className={`text-sm font-bold ${pct === 100 ? 'text-[#10b981]' : pendente ? 'text-amber-400' : 'text-[var(--fg)]'}`}>
                     {pct}%
                   </p>
-                  <div className="w-full h-1 bg-white/10 rounded-full mt-1">
+                  <div className="w-full h-1 bg-[var(--fg)]/10 rounded-full mt-1">
                     <div className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : pendente ? '#f59e0b' : '#00CCEB' }} />
+                      style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : pendente ? '#f59e0b' : 'var(--accent)' }} />
                   </div>
-                  <p className="text-white/25 text-[10px] mt-0.5">{concluidas}/{total}</p>
+                  <p className="text-[var(--fg)]/25 text-[10px] mt-0.5">{concluidas}/{total}</p>
                 </div>
               )}
 

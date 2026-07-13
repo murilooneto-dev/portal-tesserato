@@ -127,7 +127,7 @@ export default function CorrigirAtividadesClient() {
     setItens(prev => prev.map(i => ({ ...i, selecionado: v && i.correcaoManual.trim().length > 0 })))
   }
 
-  if (loading) return <p className="text-white/30 text-sm">Verificando valores...</p>
+  if (loading) return <p className="text-[var(--fg)]/30 text-sm">Verificando valores...</p>
 
   if (concluido && itens.length === 0)
     return (
@@ -138,7 +138,7 @@ export default function CorrigirAtividadesClient() {
 
   if (itens.length === 0)
     return (
-      <div className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/40 text-sm">
+      <div className="px-4 py-3 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/40 text-sm">
         Nenhum valor de atividade fora do padrão encontrado.
       </div>
     )
@@ -148,45 +148,45 @@ export default function CorrigirAtividadesClient() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-white/50 text-sm">
+        <p className="text-[var(--fg)]/50 text-sm">
           {itens.length} valor{itens.length !== 1 ? 'es' : ''} fora do padrão.
           {semSugestao > 0 && (
             <span className="text-amber-400 ml-2">{semSugestao} sem sugestão automática — preencha manualmente.</span>
           )}
         </p>
         <div className="flex items-center gap-2">
-          <button onClick={() => toggleTodos(true)} className="text-xs text-white/40 hover:text-white/70 transition-colors">Selecionar todos</button>
-          <span className="text-white/20">·</span>
-          <button onClick={() => toggleTodos(false)} className="text-xs text-white/40 hover:text-white/70 transition-colors">Desmarcar todos</button>
+          <button onClick={() => toggleTodos(true)} className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]/70 transition-colors">Selecionar todos</button>
+          <span className="text-[var(--fg)]/20">·</span>
+          <button onClick={() => toggleTodos(false)} className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]/70 transition-colors">Desmarcar todos</button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/8 overflow-hidden">
+      <div className="rounded-xl border border-[var(--fg)]/8 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/8">
+            <tr className="border-b border-[var(--fg)]/8">
               <th className="w-10 px-4 py-2.5">
                 <input type="checkbox"
                   checked={itens.length > 0 && itens.every(i => i.selecionado)}
                   onChange={e => toggleTodos(e.target.checked)}
-                  className="w-4 h-4 accent-[#00CCEB]" />
+                  className="w-4 h-4 accent-[var(--accent)]" />
               </th>
-              <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Empresa</th>
-              <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Valor atual</th>
-              <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Corrigir para</th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest px-4 py-2.5">Empresa</th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest px-4 py-2.5">Valor atual</th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest px-4 py-2.5">Corrigir para</th>
             </tr>
           </thead>
           <tbody>
             {itens.map(item => (
               <tr key={item.id}
-                className={`border-b border-white/5 transition-colors cursor-pointer ${item.selecionado ? 'bg-white/2' : 'opacity-50'}`}
+                className={`border-b border-[var(--fg)]/5 transition-colors cursor-pointer ${item.selecionado ? 'bg-[var(--fg)]/2' : 'opacity-50'}`}
                 onClick={() => setItens(prev => prev.map(i => i.id === item.id ? { ...i, selecionado: !i.selecionado && i.correcaoManual.trim().length > 0 } : i))}>
                 <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
                   <input type="checkbox" checked={item.selecionado}
                     onChange={e => setItens(prev => prev.map(i => i.id === item.id ? { ...i, selecionado: e.target.checked } : i))}
-                    className="w-4 h-4 accent-[#00CCEB]" />
+                    className="w-4 h-4 accent-[var(--accent)]" />
                 </td>
-                <td className="px-4 py-2.5 text-white font-medium text-sm">{item.nome}</td>
+                <td className="px-4 py-2.5 text-[var(--fg)] font-medium text-sm">{item.nome}</td>
                 <td className="px-4 py-2.5 text-red-400 font-mono text-xs">{item.atividade}</td>
                 <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
                   {item.sugestao ? (
@@ -195,9 +195,9 @@ export default function CorrigirAtividadesClient() {
                     <select
                       value={item.correcaoManual}
                       onChange={e => setManual(item.id, e.target.value)}
-                      className="w-full px-2 py-1 rounded-lg bg-[#162444] border border-white/15 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50">
+                      className="w-full px-2 py-1 rounded-lg bg-[var(--bg-surface)] border border-[var(--fg)]/15 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50">
                       <option value="">Selecionar correção...</option>
-                      {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[#162444]">{a}</option>)}
+                      {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
                     </select>
                   )}
                 </td>
@@ -209,7 +209,7 @@ export default function CorrigirAtividadesClient() {
 
       <div className="flex justify-end">
         <button onClick={corrigir} disabled={salvando || selecionados.length === 0}
-          className="px-5 py-2.5 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
+          className="px-5 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
           {salvando ? 'Corrigindo...' : `Corrigir ${selecionados.length} registro${selecionados.length !== 1 ? 's' : ''}`}
         </button>
       </div>

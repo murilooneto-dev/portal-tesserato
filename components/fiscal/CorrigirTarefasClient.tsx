@@ -169,7 +169,7 @@ export default function CorrigirTarefasClient() {
     setItens(prev => prev.filter(i => !i.selecionado))
   }
 
-  if (loading) return <p className="text-white/30 text-sm">Verificando tarefas...</p>
+  if (loading) return <p className="text-[var(--fg)]/30 text-sm">Verificando tarefas...</p>
 
   if (concluido && itens.length === 0)
     return (
@@ -180,7 +180,7 @@ export default function CorrigirTarefasClient() {
 
   if (itens.length === 0)
     return (
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/40 text-sm">
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/40 text-sm">
         Nenhum valor de tarefa quebrado encontrado.
       </div>
     )
@@ -190,43 +190,43 @@ export default function CorrigirTarefasClient() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-white/50 text-sm">
+        <p className="text-[var(--fg)]/50 text-sm">
           {itens.length} valor{itens.length > 1 ? 'es' : ''} quebrado{itens.length > 1 ? 's' : ''} detectado{itens.length > 1 ? 's' : ''}.
           {semSugestao.length > 0 && (
             <span className="text-amber-400 ml-2">{semSugestao.length} sem sugestão automática — preencha manualmente.</span>
           )}
         </p>
         <div className="flex items-center gap-2">
-          <button onClick={() => toggleTodos(true)} className="text-xs text-white/40 hover:text-white/70 transition-colors">Selecionar todos</button>
-          <span className="text-white/20">·</span>
-          <button onClick={() => toggleTodos(false)} className="text-xs text-white/40 hover:text-white/70 transition-colors">Desmarcar todos</button>
+          <button onClick={() => toggleTodos(true)} className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]/70 transition-colors">Selecionar todos</button>
+          <span className="text-[var(--fg)]/20">·</span>
+          <button onClick={() => toggleTodos(false)} className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]/70 transition-colors">Desmarcar todos</button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/8 overflow-hidden">
+      <div className="rounded-xl border border-[var(--fg)]/8 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/8">
+            <tr className="border-b border-[var(--fg)]/8">
               <th className="w-10 px-4 py-2.5">
                 <input type="checkbox"
                   checked={itens.length > 0 && itens.every(i => i.selecionado)}
                   onChange={e => toggleTodos(e.target.checked)}
-                  className="w-4 h-4 accent-[#00CCEB]" />
+                  className="w-4 h-4 accent-[var(--accent)]" />
               </th>
-              <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Origem</th>
-              <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Empresa</th>
-              <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Valor quebrado</th>
-              <th className="text-left text-xs font-semibold text-white/40 uppercase tracking-widest px-4 py-2.5">Corrigir para</th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest px-4 py-2.5">Origem</th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest px-4 py-2.5">Empresa</th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest px-4 py-2.5">Valor quebrado</th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest px-4 py-2.5">Corrigir para</th>
             </tr>
           </thead>
           <tbody>
             {itens.map((item, idx) => (
               <tr key={idx}
-                className={`border-b border-white/5 transition-colors ${item.selecionado ? 'bg-white/2' : 'opacity-40'}`}>
+                className={`border-b border-[var(--fg)]/5 transition-colors ${item.selecionado ? 'bg-[var(--fg)]/2' : 'opacity-40'}`}>
                 <td className="px-4 py-2.5">
                   <input type="checkbox" checked={item.selecionado}
                     onChange={() => toggleSelecionado(idx)}
-                    className="w-4 h-4 accent-[#00CCEB]" />
+                    className="w-4 h-4 accent-[var(--accent)]" />
                 </td>
                 <td className="px-4 py-2.5">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
@@ -237,7 +237,7 @@ export default function CorrigirTarefasClient() {
                     {item.tipo === 'personalizada' ? 'Template' : `${(item as ItemTarefa).tarefaIds.length}x Tarefa`}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-white font-medium text-xs">{item.clienteNome}</td>
+                <td className="px-4 py-2.5 text-[var(--fg)] font-medium text-xs">{item.clienteNome}</td>
                 <td className="px-4 py-2.5 text-red-400 font-mono text-xs">{item.valorQuebrado}</td>
                 <td className="px-4 py-2.5">
                   {item.correcao ? (
@@ -247,7 +247,7 @@ export default function CorrigirTarefasClient() {
                       value={item.correcaoManual}
                       onChange={e => setCorrecaoManual(idx, e.target.value)}
                       placeholder="Digite o valor correto..."
-                      className="w-full px-2 py-1 rounded-lg bg-white/5 border border-white/15 text-white text-xs focus:outline-none focus:border-[#00CCEB]/50"
+                      className="w-full px-2 py-1 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/15 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50"
                     />
                   )}
                 </td>
@@ -259,7 +259,7 @@ export default function CorrigirTarefasClient() {
 
       <div className="flex justify-end">
         <button onClick={corrigir} disabled={salvando || selecionados.length === 0}
-          className="px-5 py-2.5 rounded-xl bg-[#00CCEB] text-white text-sm font-semibold hover:bg-[#00b3d4] transition-colors disabled:opacity-50">
+          className="px-5 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
           {salvando ? 'Corrigindo...' : `Corrigir ${selecionados.length} registro${selecionados.length !== 1 ? 's' : ''}`}
         </button>
       </div>

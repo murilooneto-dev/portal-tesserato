@@ -32,9 +32,9 @@ export default function TopNav({ profile }: Props) {
   }
 
   return (
-    <header className="bg-[#0a0f1a] border-b border-white/8 flex items-center gap-0 h-14 px-4 shrink-0 sticky top-0 z-40">
+    <header className="bg-[#0a0f1a] border-b border-[var(--fg)]/8 flex items-center gap-0 h-14 px-4 shrink-0 sticky top-0 z-40">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 pr-5 border-r border-white/8 shrink-0">
+      <div className="flex items-center gap-2.5 pr-5 border-r border-[var(--fg)]/8 shrink-0">
         <Image
           src="/logo.ico"
           alt="Tesserato"
@@ -43,8 +43,8 @@ export default function TopNav({ profile }: Props) {
           className="rounded-md"
         />
         <div className="leading-tight">
-          <p className="text-white text-xs font-bold tracking-wide">Setor Fiscal</p>
-          <p className="text-white/30 text-[10px]">Tesserato Contabilidade</p>
+          <p className="text-[var(--fg)] text-xs font-bold tracking-wide">Setor Fiscal</p>
+          <p className="text-[var(--fg)]/30 text-[10px]">Tesserato Contabilidade</p>
         </div>
       </div>
 
@@ -58,8 +58,8 @@ export default function TopNav({ profile }: Props) {
               href={item.href}
               className={`shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-[#00CCEB] text-white'
-                  : 'text-white/50 hover:text-white hover:bg-white/6'
+                  ? 'bg-[var(--accent)] text-[var(--fg)]'
+                  : 'text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/6'
               }`}
             >
               {item.label}
@@ -72,8 +72,8 @@ export default function TopNav({ profile }: Props) {
             href="/fiscal/parametros"
             className={`shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               pathname.startsWith('/fiscal/parametros')
-                ? 'bg-[#00CCEB] text-white'
-                : 'text-white/50 hover:text-white hover:bg-white/6'
+                ? 'bg-[var(--accent)] text-[var(--fg)]'
+                : 'text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/6'
             }`}
           >
             Parâmetros
@@ -82,19 +82,19 @@ export default function TopNav({ profile }: Props) {
       </nav>
 
       {/* Usuário */}
-      <div className="flex items-center gap-3 pl-4 border-l border-white/8 shrink-0">
+      <div className="flex items-center gap-3 pl-4 border-l border-[var(--fg)]/8 shrink-0">
         <div className="flex items-center gap-2">
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+            className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--fg)] text-[10px] font-bold"
             style={{ backgroundColor: profile.cor }}
           >
             {(profile.nome ?? 'U').charAt(0).toUpperCase()}
           </div>
-          <span className="text-white/70 text-sm">{profile.nome}</span>
+          <span className="text-[var(--fg)]/70 text-sm">{profile.nome}</span>
         </div>
         <button
           onClick={handleLogout}
-          className="text-xs text-white/30 hover:text-white/70 px-2.5 py-1.5 rounded-lg border border-white/10 hover:border-white/20 transition-all"
+          className="text-xs text-[var(--fg)]/30 hover:text-[var(--fg)]/70 px-2.5 py-1.5 rounded-lg border border-[var(--fg)]/10 hover:border-[var(--fg)]/20 transition-all"
         >
           Sair
         </button>

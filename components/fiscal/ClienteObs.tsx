@@ -24,15 +24,15 @@ export default function ClienteObs({ clienteId, obsInicial, mes, ano, podeEditar
   }
 
   return (
-    <div className="mt-6 pt-5 border-t border-white/8">
+    <div className="mt-6 pt-5 border-t border-[var(--fg)]/8">
       <div className="flex items-center justify-between mb-2">
-        <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">
+        <label className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest">
           Observação
         </label>
         {!editando && podeEditar && (
           <button
             onClick={() => setEditando(true)}
-            className="text-xs text-white/30 hover:text-white/70 px-2 py-1 rounded-lg border border-white/10 hover:border-white/20 transition-all"
+            className="text-xs text-[var(--fg)]/30 hover:text-[var(--fg)]/70 px-2 py-1 rounded-lg border border-[var(--fg)]/10 hover:border-[var(--fg)]/20 transition-all"
           >
             ✏ Editar
           </button>
@@ -46,26 +46,26 @@ export default function ClienteObs({ clienteId, obsInicial, mes, ano, podeEditar
             onChange={e => setObs(e.target.value)}
             rows={3}
             placeholder="Observações sobre este cliente..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 resize-none focus:outline-none focus:border-[#00CCEB]/50 transition-colors"
+            className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-2.5 text-sm text-[var(--fg)] placeholder-[var(--fg)]/20 resize-none focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
           />
           <div className="flex gap-2 justify-end">
             <button
               onClick={() => { setObs(obsInicial); setEditando(false) }}
-              className="text-xs text-white/40 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 transition-all"
+              className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)] px-3 py-1.5 rounded-lg border border-[var(--fg)]/10 transition-all"
             >
               Cancelar
             </button>
             <button
               onClick={salvar}
               disabled={isPending}
-              className="text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1.5 rounded-lg hover:bg-[#00CCEB]/30 transition-all disabled:opacity-50"
+              className="text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] px-3 py-1.5 rounded-lg hover:bg-[var(--accent)]/30 transition-all disabled:opacity-50"
             >
               {isPending ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </div>
       ) : (
-        <p className={`text-sm ${obs ? 'text-yellow-400/80' : 'text-white/20'}`}>
+        <p className={`text-sm ${obs ? 'text-yellow-400/80' : 'text-[var(--fg)]/20'}`}>
           {obs || 'Nenhuma observação.'}
         </p>
       )}

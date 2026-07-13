@@ -157,15 +157,15 @@ export default function TarefaChecklist({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-white/40 uppercase tracking-widest">
+        <h3 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">
           Tarefas — {MESES[mes - 1]}/{ano}
         </h3>
-        <span className="text-xs text-white/40">{concluidas}/{total}</span>
+        <span className="text-xs text-[var(--fg)]/40">{concluidas}/{total}</span>
       </div>
 
-      <div className="w-full h-1.5 bg-white/8 rounded-full mb-5">
+      <div className="w-full h-1.5 bg-[var(--fg)]/8 rounded-full mb-5">
         <div
-          className="h-full bg-[#00CCEB] rounded-full transition-all duration-300"
+          className="h-full bg-[var(--accent)] rounded-full transition-all duration-300"
           style={{ width: `${total > 0 ? (concluidas / total) * 100 : 0}%` }}
         />
       </div>
@@ -181,25 +181,25 @@ export default function TarefaChecklist({
             <div key={tipo} className="flex flex-col gap-0">
               <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
                 feito
-                  ? 'bg-[#00CCEB]/8 border-[#00CCEB]/25'
-                  : 'bg-white/3 border-white/8'
+                  ? 'bg-[var(--accent)]/8 border-[var(--accent)]/25'
+                  : 'bg-[var(--fg)]/3 border-[var(--fg)]/8'
               }`}>
-                <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[#00CCEB]' : 'bg-white/15'}`} />
+                <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[var(--accent)]' : 'bg-[var(--fg)]/15'}`} />
 
-                <span className={`text-sm flex-1 transition-colors ${feito ? 'text-white/50 line-through' : 'text-white'}`}>
+                <span className={`text-sm flex-1 transition-colors ${feito ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]'}`}>
                   {tipo}
                 </span>
 
                 {(tipo === 'ENTRADA' || tipo === 'SAIDAS') ? (
                   <div className="flex items-center gap-3">
                     {SUB_ETAPAS.map(campo => (
-                      <label key={campo} className="flex items-center gap-1.5 text-xs text-white/60 cursor-pointer select-none">
+                      <label key={campo} className="flex items-center gap-1.5 text-xs text-[var(--fg)]/60 cursor-pointer select-none">
                         <input
                           type="checkbox"
                           checked={mapaTarefa.get(tipo)?.[campo] ?? false}
                           disabled={!podeEditar || feito || isPending || isUnlocking}
                           onChange={e => startTransition(() => atualizarSubEtapa(clienteId, mes, ano, tipo, campo, e.target.checked))}
-                          className="w-3.5 h-3.5 accent-[#00CCEB]"
+                          className="w-3.5 h-3.5 accent-[var(--accent)]"
                         />
                         {SUB_ETAPAS_LABEL[campo]}
                       </label>
@@ -216,8 +216,8 @@ export default function TarefaChecklist({
                     maxLength={10}
                     className={`text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
                       feito
-                        ? 'bg-[#00CCEB]/10 border-[#00CCEB]/30 text-[#00CCEB] focus:border-[#00CCEB]/60'
-                        : 'bg-white/5 border-white/10 text-white/60 focus:border-white/30 placeholder-white/20'
+                        ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] focus:border-[var(--accent)]/60'
+                        : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60 focus:border-[var(--fg)]/30 placeholder-[var(--fg)]/20'
                     }`}
                   />
                 )}
@@ -225,7 +225,7 @@ export default function TarefaChecklist({
                 {feito && podeEditar && (
                   <button
                     onClick={() => setUnlockingTipo(isUnlocking ? null : tipo)}
-                    className="text-xs text-white/30 hover:text-white/60 px-2 py-1 rounded-lg border border-white/8 hover:border-white/20 transition-all whitespace-nowrap"
+                    className="text-xs text-[var(--fg)]/30 hover:text-[var(--fg)]/60 px-2 py-1 rounded-lg border border-[var(--fg)]/8 hover:border-[var(--fg)]/20 transition-all whitespace-nowrap"
                   >
                     {isUnlocking ? 'Cancelar' : 'Desbloquear'}
                   </button>
@@ -233,19 +233,19 @@ export default function TarefaChecklist({
               </div>
 
               {isUnlocking && (
-                <div className="mt-1 ml-5 p-3 bg-white/3 border border-white/10 rounded-xl flex flex-col gap-2">
-                  <p className="text-xs text-white/50">Informe o motivo para desbloquear esta tarefa:</p>
+                <div className="mt-1 ml-5 p-3 bg-[var(--fg)]/3 border border-[var(--fg)]/10 rounded-xl flex flex-col gap-2">
+                  <p className="text-xs text-[var(--fg)]/50">Informe o motivo para desbloquear esta tarefa:</p>
                   <textarea
                     value={motivoMap[tipo] ?? ''}
                     onChange={e => setMotivoMap(prev => ({ ...prev, [tipo]: e.target.value }))}
                     placeholder="Motivo obrigatório..."
                     rows={2}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 resize-none focus:outline-none focus:border-[#00CCEB]/50"
+                    className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder-[var(--fg)]/20 resize-none focus:outline-none focus:border-[var(--accent)]/50"
                   />
                   <button
                     onClick={() => handleUnlock(tipo)}
                     disabled={!(motivoMap[tipo]?.trim()) || unlockPending}
-                    className="self-end text-xs bg-[#00CCEB]/20 border border-[#00CCEB]/40 text-[#00CCEB] px-3 py-1.5 rounded-lg hover:bg-[#00CCEB]/30 transition-all disabled:opacity-40"
+                    className="self-end text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] px-3 py-1.5 rounded-lg hover:bg-[var(--accent)]/30 transition-all disabled:opacity-40"
                   >
                     {unlockPending ? 'Aguarde...' : 'Confirmar desbloqueio'}
                   </button>
@@ -257,8 +257,8 @@ export default function TarefaChecklist({
       </div>
 
       {grupo === 'normal' && (
-        <div className="mt-6 pt-5 border-t border-white/8">
-          <label className="block text-xs font-semibold text-white/40 uppercase tracking-widest mb-2">
+        <div className="mt-6 pt-5 border-t border-[var(--fg)]/8">
+          <label className="block text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-2">
             MIT
           </label>
           <input
@@ -268,7 +268,7 @@ export default function TarefaChecklist({
             onBlur={handleMITBlur}
             disabled={!podeEditar}
             placeholder="Anotação MIT..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#00CCEB]/50 transition-colors disabled:opacity-40"
+            className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-2.5 text-sm text-[var(--fg)] placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-40"
           />
         </div>
       )}

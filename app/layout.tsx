@@ -7,11 +7,22 @@ export const metadata: Metadata = {
   icons: { icon: '/logo.ico' },
 };
 
+const TEMA_SCRIPT = `
+  try {
+    if (localStorage.getItem('tesserato-theme') === 'light') {
+      document.documentElement.classList.add('light');
+    }
+  } catch (e) {}
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: TEMA_SCRIPT }} />
+      </head>
       <body>{children}</body>
     </html>
   );
