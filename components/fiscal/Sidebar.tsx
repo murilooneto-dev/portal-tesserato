@@ -17,6 +17,7 @@ interface NavItem { href: string; label: string; icon: LucideIcon }
 
 const ITENS_COMUNS: NavItem[] = [
   { href: '/intranet',   label: 'Intranet',   icon: Zap   },
+  { href: '/clientes',   label: 'Clientes',   icon: Users },
   { href: '/ferramentas', label: 'Ferramentas', icon: Wrench },
 ]
 
