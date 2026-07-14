@@ -213,7 +213,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
                 <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">Dados do Fiscal</p>
                 <CamposFiscais
                   form={form}
-                  set={set as (k: keyof CamposFiscaisData, v: any) => void}
+                  set={set as <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void}
                   responsaveis={responsaveis}
                   templates={templates}
                   isEdit={isEdit}
