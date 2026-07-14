@@ -119,7 +119,7 @@ export async function atualizarSubEtapa(
   const { data: existing } = await supabase
     .from('tarefas')
     .select('id, recebido, importado, conferido')
-    .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo)
+    .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'fiscal')
     .maybeSingle()
 
   const atual = {
@@ -139,7 +139,7 @@ export async function atualizarSubEtapa(
   if (existing?.id) {
     await supabase.from('tarefas').update(payload).eq('id', existing.id)
   } else {
-    await supabase.from('tarefas').insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, ...payload })
+    await supabase.from('tarefas').insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, setor: 'fiscal', ...payload })
   }
 
   revalidatePath('/fiscal/clientes')

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient, getAuthenticatedAdmin, podeEditarCliente } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
+import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
@@ -26,8 +27,9 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   const { data: profile } = await supabase.from('profiles').select('nome,role').eq('id', user.id).single()
 
-  const { data: cliente } = await supabase.from('clientes').select('*').eq('id', id).single()
-  if (!cliente) notFound()
+  const { data: clienteRaw } = await supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('id', id).single()
+  if (!clienteRaw) notFound()
+  const cliente = flattenClienteFiscal(clienteRaw)
 
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
@@ -36,11 +38,11 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   // Tarefas do mês selecionado
   const { data: tarefas } = await supabase
-    .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano)
+    .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
 
   // Todas as tarefas do ano para o histórico
   const { data: tarefasAno } = await supabase
-    .from('tarefas').select('mes,concluida').eq('cliente_id', id).eq('ano', ano)
+    .from('tarefas').select('mes,concluida').eq('cliente_id', id).eq('ano', ano).eq('setor', 'fiscal')
 
   // Arquivos do cliente (inclui content_base64 para conferência)
   const { data: arquivos } = await supabase
@@ -57,7 +59,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   // Dados pro EmpresaModal (editar cliente)
   const [{ data: todosClientes }, { data: atividadeTemplates }] = await Promise.all([
-    supabase.from('clientes').select('responsavel'),
+    supabase.from('clientes_fiscal').select('responsavel'),
     supabase.from('atividade_templates').select('atividade,tarefas'),
   ])
   const responsaveis = Array.from(new Set(
@@ -78,7 +80,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
       : null
     const { data: existing } = await supabase
       .from('tarefas').select('id')
-      .eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('tipo', tipo)
+      .eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'fiscal')
       .maybeSingle()
     if (existing?.id) {
       await supabase.from('tarefas')
@@ -86,7 +88,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
         .eq('id', existing.id)
     } else {
       await supabase.from('tarefas')
-        .insert({ cliente_id: id, usuario_id: user!.id, mes, ano, tipo, concluida, concluida_em })
+        .insert({ cliente_id: id, usuario_id: user!.id, mes, ano, tipo, setor: 'fiscal', concluida, concluida_em })
     }
     revalidatePath(`/fiscal/clientes/${id}`)
     revalidatePath('/fiscal/clientes')
