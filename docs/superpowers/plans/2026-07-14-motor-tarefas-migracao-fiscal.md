@@ -834,17 +834,20 @@ git commit -m "fix: historico do Fiscal usa join com clientes_fiscal"
 
 ---
 
-### Task 9: `app/fiscal/ferramentas/page.tsx`
+### Task 9: `app/(comum)/ferramentas/page.tsx`
+
+**Correção de path:** a spec original desta task apontava `app/fiscal/ferramentas/*`, mas essa rota foi movida para `app/(comum)/ferramentas/` numa branch anterior (fundação multi-setor) — confirmado por busca no filesystem: `app/fiscal/ferramentas/` não existe mais, `app/(comum)/ferramentas/page.tsx` e `app/(comum)/ferramentas/FerramentasClient.tsx` são os caminhos reais. Isso também bate com o relatório de `tsc` da Task 2, que já apontou erros em `app/(comum)/ferramentas/FerramentasClient.tsx`.
 
 **Files:**
-- Modify: `app/fiscal/ferramentas/page.tsx`
+- Modify: `app/(comum)/ferramentas/page.tsx`
+- Modify: `app/(comum)/ferramentas/FerramentasClient.tsx`
 
 **Interfaces:**
 - Consumes (Task 2): `SELECT_CLIENTE_FISCAL`, `flattenClienteFiscal`.
 
 - [ ] **Step 1: Ler o arquivo**
 
-Ler `app/fiscal/ferramentas/page.tsx` por completo. A query relevante (confirmada por busca anterior) é:
+Ler `app/(comum)/ferramentas/page.tsx` por completo. A query relevante (confirmada por busca anterior) é:
 
 ```ts
 let q = supabase.from('clientes').select('*').order('nome'); if (!isAdmin && profile?.nome) q = q.ilike('responsavel', profile.nome)
@@ -862,7 +865,7 @@ E onde o resultado da query é usado (passado como prop `clientes` para `Ferrame
 
 - [ ] **Step 3: Verificar o tipo da prop em `FerramentasClient.tsx`**
 
-Ler `app/fiscal/ferramentas/FerramentasClient.tsx`. Se a prop `clientes` estiver tipada como `Cliente[]`, trocar para `ClienteComFiscal[]` (importar de `@/lib/clientes-fiscal`). Nenhuma outra linha do componente muda — ele só lê propriedades (`c.confere_siga`, `c.envia_iss`, `c.grupo`, `c.login_iss`, `c.senha_iss`, `c.responsavel`), que continuam existindo no objeto achatado.
+Ler `app/(comum)/ferramentas/FerramentasClient.tsx`. Se a prop `clientes` estiver tipada como `Cliente[]`, trocar para `ClienteComFiscal[]` (importar de `@/lib/clientes-fiscal`). Nenhuma outra linha do componente muda — ele só lê propriedades (`c.confere_siga`, `c.envia_iss`, `c.grupo`, `c.login_iss`, `c.senha_iss`, `c.responsavel`), que continuam existindo no objeto achatado.
 
 - [ ] **Step 4: Verificar compilação**
 
@@ -872,8 +875,8 @@ Expected: sem erros nestes dois arquivos.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/fiscal/ferramentas/page.tsx app/fiscal/ferramentas/FerramentasClient.tsx
-git commit -m "fix: ferramentas do Fiscal usa join com clientes_fiscal"
+git add "app/(comum)/ferramentas/page.tsx" "app/(comum)/ferramentas/FerramentasClient.tsx"
+git commit -m "fix: ferramentas usa join com clientes_fiscal"
 ```
 
 ---
