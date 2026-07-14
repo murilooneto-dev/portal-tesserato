@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { Cliente, Tarefa } from '@/lib/types'
+import type { Tarefa } from '@/lib/types'
+import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, type ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { useMesAno } from '@/lib/mes-atual-context'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
@@ -15,7 +16,7 @@ const TAREFAS: Record<string, string[]> = {
 }
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
-function progresso(cliente: Cliente, tarefas: Tarefa[]) {
+function progresso(cliente: ClienteComFiscal, tarefas: Tarefa[]) {
   const tipos = new Set(cliente.tarefas_personalizadas ?? [])
   const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.has(t.tipo))
   const total = tipos.size
@@ -28,7 +29,7 @@ function progresso(cliente: Cliente, tarefas: Tarefa[]) {
 export default function RelatoriosPage() {
   const router = useRouter()
   const { mes, ano } = useMesAno()
-  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [clientes, setClientes] = useState<ClienteComFiscal[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('relatorios:grupo', 'TODOS')
@@ -47,14 +48,14 @@ export default function RelatoriosPage() {
         setIsAdmin(admin)
         setUserNome(p?.nome ?? null)
 
-        let clientesQ = sb.from('clientes').select('*').order('nome')
-        if (!admin && p?.nome) clientesQ = (clientesQ as any).ilike('responsavel', p.nome)
+        let clientesQ = sb.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
+        if (!admin && p?.nome) clientesQ = clientesQ.ilike('clientes_fiscal.responsavel', p.nome)
 
         Promise.all([
           clientesQ,
           buscarTodasTarefasDoMes<Tarefa>(sb, mes, ano),
         ]).then(([c, t]) => {
-          setClientes(c.data ?? [])
+          setClientes((c.data ?? []).map(flattenClienteFiscal))
           setTarefas(t)
         })
       })
