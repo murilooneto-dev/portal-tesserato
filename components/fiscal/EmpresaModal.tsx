@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
+import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import CamposFiscais, { type CamposFiscaisData } from './CamposFiscais'
 
 interface FormData {
@@ -61,10 +62,11 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
   useEffect(() => {
     if (!clienteId) return
     Promise.all([
-      sb.from('clientes').select('*').eq('id', clienteId).single(),
-      sb.from('tarefas').select('tipo').eq('cliente_id', clienteId),
-    ]).then(([{ data }, { data: tarefasDB }]) => {
-      if (!data) return
+      sb.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('id', clienteId).single(),
+      sb.from('tarefas').select('tipo').eq('cliente_id', clienteId).eq('setor', 'fiscal'),
+    ]).then(([{ data: raw }, { data: tarefasDB }]) => {
+      if (!raw) return
+      const data = flattenClienteFiscal(raw)
       const mitParts = (data.mit ?? '').split('/')
       // Tipos únicos já existentes no banco para esse cliente (da tabela tarefas)
       const tiposExistentes = Array.from(new Set(
@@ -132,16 +134,18 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
       ? `${form.municipio}/${form.uf}`
       : form.municipio || null
 
-    const payload = {
+    const clientePayload = {
+      nome:         form.nome,
+      cnpj:         form.cnpj || null,
+      mit,
+      contato_chat: form.contato_chat || null,
+    }
+    const fiscalPayload = {
       cod:                    form.cod || null,
-      nome:                   form.nome,
-      cnpj:                   form.cnpj || null,
       regime:                 form.regime || null,
       atividade:              form.atividade || null,
       grupo:                  form.grupo || null,
-      mit,
       responsavel:            form.responsavel || null,
-      contato_chat:           form.contato_chat || null,
       prioridade:             form.prioridade,
       declaracao_anual:       form.declaracao_anual,
       envia_iss:              form.envia_iss,
@@ -152,15 +156,19 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
       tarefas_personalizadas: form.tarefas_personalizadas,
     }
 
-    const { error } = isEdit
-      ? await sb.from('clientes').update(payload).eq('id', clienteId)
-      : await sb.from('clientes').insert(payload)
+    if (isEdit) {
+      const { error: errCliente } = await sb.from('clientes').update(clientePayload).eq('id', clienteId)
+      if (errCliente) { setSaving(false); setErro(errCliente.message); return }
+      const { error: errFiscal } = await sb.from('clientes_fiscal').update(fiscalPayload).eq('cliente_id', clienteId)
+      if (errFiscal) { setSaving(false); setErro(errFiscal.message); return }
+    } else {
+      const { data: novoCliente, error: errCliente } = await sb.from('clientes').insert(clientePayload).select('id').single()
+      if (errCliente || !novoCliente) { setSaving(false); setErro(errCliente?.message ?? 'Falha ao criar cliente'); return }
+      const { error: errFiscal } = await sb.from('clientes_fiscal').insert({ cliente_id: novoCliente.id, ...fiscalPayload })
+      if (errFiscal) { setSaving(false); setErro(errFiscal.message); return }
+    }
 
     setSaving(false)
-    if (error) {
-      setErro(error.message)
-      return
-    }
     router.refresh()
     onClose()
   }
