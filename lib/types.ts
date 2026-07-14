@@ -32,34 +32,39 @@ export interface Profile {
 
 export interface Cliente {
   id: string
-  cod: string | null
   nome: string
   cnpj: string | null
-  regime: string | null
-  atividade: string | null
-  responsavel: string | null
-  contato_chat: string | null
-  grupo: string | null
-  obs: string | null
-  prioridade: number
   mit: string | null
   municipio: string | null
   uf: string | null
-  envia_iss: boolean | null
-  confere_siga: boolean | null
+  contato_chat: string | null
+  setores: UserSetor[]
+  created_at: string
+}
+
+export interface ClienteFiscal {
+  cliente_id: string
+  cod: string | null
+  regime: string | null
+  atividade: string | null
+  responsavel: string | null
+  grupo: string | null
+  obs: string | null
+  prioridade: number
+  envia_iss: boolean
+  confere_siga: boolean
   login_iss: string | null
   senha_iss: string | null
   email_envio_iss: string | null
-  declaracao_anual: string | null
-  tarefas_personalizadas: string[] | null
-  setores: UserSetor[]
-  created_at: string
+  declaracao_anual: boolean
+  tarefas_personalizadas: string[]
 }
 
 export interface Tarefa {
   id: string
   cliente_id: string
   usuario_id: string | null
+  setor: UserSetor
   mes: number
   ano: number
   tipo: string

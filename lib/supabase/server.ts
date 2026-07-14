@@ -79,6 +79,6 @@ export async function podeEditarCliente(clienteId: string): Promise<boolean> {
   const { data: profile } = await supabase.from('profiles').select('role,nome').eq('id', user.id).single()
   if (profile?.role === 'admin') return true
 
-  const { data: cliente } = await supabase.from('clientes').select('responsavel').eq('id', clienteId).single()
+  const { data: cliente } = await supabase.from('clientes_fiscal').select('responsavel').eq('cliente_id', clienteId).single()
   return !!profile?.nome && !!cliente?.responsavel && profile.nome.toLowerCase() === cliente.responsavel.toLowerCase()
 }
