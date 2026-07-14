@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import ClientesLista from '@/components/fiscal/ClientesLista'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
+import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import type { Tarefa } from '@/lib/types'
 
 export const metadata = { title: 'Clientes — Tesserato Fiscal' }
@@ -11,13 +12,14 @@ export default async function ClientesPage() {
 
   const { mes, ano } = await getMesAno()
 
-  const clientesQ = supabase.from('clientes').select('*').order('nome')
+  const clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
 
-  const [{ data: clientes }, tarefas, { data: atividadeTemplates }] = await Promise.all([
+  const [{ data: clientesRaw }, tarefas, { data: atividadeTemplates }] = await Promise.all([
     clientesQ,
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo'>>(supabase, mes, ano, 'cliente_id, concluida, tipo'),
     supabase.from('atividade_templates').select('atividade,tarefas'),
   ])
+  const clientes = (clientesRaw ?? []).map(flattenClienteFiscal)
 
   const templatesMap: Record<string, string[]> = {}
   for (const row of atividadeTemplates ?? []) {
@@ -26,7 +28,7 @@ export default async function ClientesPage() {
 
   // Mapa de tipos por cliente
   const tiposMap: Record<string, Set<string>> = {}
-  for (const c of clientes ?? []) {
+  for (const c of clientes) {
     tiposMap[c.id] = new Set(c.tarefas_personalizadas ?? [])
   }
 
@@ -50,7 +52,7 @@ export default async function ClientesPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <ClientesLista
-        clientes={clientes ?? []}
+        clientes={clientes}
         comPendencia={comPendencia}
         progressoMap={progressoMap}
         mes={mes}

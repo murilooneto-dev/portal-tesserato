@@ -3,8 +3,9 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { Cliente } from '@/lib/types'
-import EmpresaModal from './EmpresaModal'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
+import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
+import EmpresaModal from './EmpresaModal'
 
 const CORES_REGIME: Record<string, string> = {
   simples:   '#10b981',
@@ -33,7 +34,7 @@ function corResponsavel(nome: string): string {
 }
 
 interface Props {
-  clientes: Cliente[]
+  clientes: ClienteComFiscal[]
   comPendencia: Set<string>
   progressoMap: Record<string, { total: number; concluidas: number }>
   mes: number
