@@ -127,19 +127,25 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
       mit,
       contato_chat:           form.contato_chat || null,
       setores:                form.setores.length > 0 ? form.setores : ['fiscal'],
-      cod:                    form.cod || null,
-      regime:                 form.regime || null,
-      atividade:              form.atividade || null,
-      grupo:                  form.grupo || null,
-      responsavel:            form.responsavel || null,
-      prioridade:             form.prioridade,
-      declaracao_anual:       form.declaracao_anual,
-      envia_iss:              form.envia_iss,
-      confere_siga:           form.confere_siga,
-      login_iss:              form.envia_iss ? form.login_iss || null : null,
-      senha_iss:              form.envia_iss ? form.senha_iss || null : null,
-      email_envio_iss:        form.envia_iss ? form.email_envio_iss || null : null,
-      tarefas_personalizadas: form.tarefas_personalizadas,
+      // Campos do bloco Fiscal: só entram no payload na criação. Ao editar um
+      // cliente existente esse bloco é somente-leitura (edição fica exclusiva
+      // de /fiscal/clientes), então omitimos essas colunas do update para não
+      // sobrescrever com o snapshot carregado quando o modal abriu.
+      ...(isEdit ? {} : {
+        cod:                    form.cod || null,
+        regime:                 form.regime || null,
+        atividade:              form.atividade || null,
+        grupo:                  form.grupo || null,
+        responsavel:            form.responsavel || null,
+        prioridade:             form.prioridade,
+        declaracao_anual:       form.declaracao_anual,
+        envia_iss:              form.envia_iss,
+        confere_siga:           form.confere_siga,
+        login_iss:              form.envia_iss ? form.login_iss || null : null,
+        senha_iss:              form.envia_iss ? form.senha_iss || null : null,
+        email_envio_iss:        form.envia_iss ? form.email_envio_iss || null : null,
+        tarefas_personalizadas: form.tarefas_personalizadas,
+      }),
     }
 
     const { error } = isEdit
