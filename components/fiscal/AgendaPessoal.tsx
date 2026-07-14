@@ -265,7 +265,7 @@ export default function AgendaPessoal() {
       {diaSel && !modalForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setDiaSel(null)}>
-          <div className="bg-[#0f1623] border border-[var(--fg)]/12 rounded-2xl w-full max-w-xl shadow-2xl"
+          <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-xl shadow-2xl"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--fg)]/8">
               <p className="text-[var(--fg)] font-semibold">
@@ -336,7 +336,7 @@ export default function AgendaPessoal() {
       {modalForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setModalForm(false)}>
-          <div className="bg-[#0f1623] border border-[var(--fg)]/12 rounded-2xl w-full max-w-xl shadow-2xl"
+          <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-xl shadow-2xl"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--fg)]/8">
               <p className="text-[var(--fg)] font-semibold">{editId ? 'Editar Compromisso' : 'Novo Compromisso'}</p>
