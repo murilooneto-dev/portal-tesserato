@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
 import CamposFiscais, { type CamposFiscaisData } from '@/components/fiscal/CamposFiscais'
+import SectorSection from '@/components/geral/SectorSection'
 import { SETORES, SETOR_LABEL, type UserSetor } from '@/lib/types'
 
 interface FormData extends CamposFiscaisData {
@@ -213,7 +214,23 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
               </div>
             </div>
 
-            {mostraFiscal && (
+            {mostraFiscal && isEdit && (
+              <SectorSection title="Dados do Fiscal" note="Somente leitura — edite em Fiscal → Clientes" defaultOpen={false}>
+                <CamposFiscais
+                  form={form}
+                  set={set as <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void}
+                  responsaveis={responsaveis}
+                  templates={templates}
+                  isEdit={isEdit}
+                  readOnly={true}
+                  novaTarefa={novaTarefa}
+                  setNovaTarefa={setNovaTarefa}
+                  addTarefa={addTarefa}
+                />
+              </SectorSection>
+            )}
+
+            {mostraFiscal && !isEdit && (
               <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/3 p-4 space-y-5">
                 <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">Dados do Fiscal</p>
                 <CamposFiscais
