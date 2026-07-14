@@ -114,11 +114,16 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
     setSaving(true)
     setErro(null)
 
+    const mit = form.municipio && form.uf
+      ? `${form.municipio}/${form.uf}`
+      : form.municipio || null
+
     const payload = {
       nome:                   form.nome,
       cnpj:                   form.cnpj || null,
       municipio:              form.municipio || null,
       uf:                     form.uf || null,
+      mit,
       contato_chat:           form.contato_chat || null,
       setores:                form.setores.length > 0 ? form.setores : ['fiscal'],
       cod:                    form.cod || null,
