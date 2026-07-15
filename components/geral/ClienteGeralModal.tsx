@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
 import CamposFiscais, { type CamposFiscaisData } from '@/components/fiscal/CamposFiscais'
 import SectorSection from '@/components/geral/SectorSection'
+import { flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import { SETORES, SETOR_LABEL, type UserSetor } from '@/lib/types'
 
 interface FormData extends CamposFiscaisData {
@@ -50,8 +51,11 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
 
   useEffect(() => {
     if (!clienteId) return
-    sb.from('clientes').select('*').eq('id', clienteId).single().then(({ data }) => {
-      if (!data) return
+    // Left join (não !inner): um cliente pode não ter setor Fiscal marcado e,
+    // nesse caso, legitimamente não tem linha em clientes_fiscal.
+    sb.from('clientes').select('*, clientes_fiscal(*)').eq('id', clienteId).single().then(({ data: raw }) => {
+      if (!raw) return
+      const data = flattenClienteFiscal(raw)
       const mitParts = (data.mit ?? '').split('/')
       setForm({
         nome: data.nome ?? '',
@@ -119,44 +123,58 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
       ? `${form.municipio}/${form.uf}`
       : form.municipio || null
 
-    const payload = {
-      nome:                   form.nome,
-      cnpj:                   form.cnpj || null,
-      municipio:              form.municipio || null,
-      uf:                     form.uf || null,
+    const clientePayload = {
+      nome:         form.nome,
+      cnpj:         form.cnpj || null,
+      municipio:    form.municipio || null,
+      uf:           form.uf || null,
       mit,
-      contato_chat:           form.contato_chat || null,
-      setores:                form.setores.length > 0 ? form.setores : ['fiscal'],
-      // Campos do bloco Fiscal: só entram no payload na criação. Ao editar um
-      // cliente existente esse bloco é somente-leitura (edição fica exclusiva
-      // de /fiscal/clientes), então omitimos essas colunas do update para não
-      // sobrescrever com o snapshot carregado quando o modal abriu.
-      ...(isEdit ? {} : {
-        cod:                    form.cod || null,
-        regime:                 form.regime || null,
-        atividade:              form.atividade || null,
-        grupo:                  form.grupo || null,
-        responsavel:            form.responsavel || null,
-        prioridade:             form.prioridade,
-        declaracao_anual:       form.declaracao_anual,
-        envia_iss:              form.envia_iss,
-        confere_siga:           form.confere_siga,
-        login_iss:              form.envia_iss ? form.login_iss || null : null,
-        senha_iss:              form.envia_iss ? form.senha_iss || null : null,
-        email_envio_iss:        form.envia_iss ? form.email_envio_iss || null : null,
-        tarefas_personalizadas: form.tarefas_personalizadas,
-      }),
+      contato_chat: form.contato_chat || null,
+      setores:      form.setores.length > 0 ? form.setores : ['fiscal'],
     }
 
-    const { error } = isEdit
-      ? await sb.from('clientes').update(payload).eq('id', clienteId)
-      : await sb.from('clientes').insert(payload)
-
-    setSaving(false)
-    if (error) {
-      setErro(error.message)
-      return
+    if (isEdit) {
+      // O bloco Fiscal é somente-leitura ao editar (edição fica exclusiva de
+      // /fiscal/clientes), então clientes_fiscal nunca é escrito aqui.
+      const { error } = await sb.from('clientes').update(clientePayload).eq('id', clienteId)
+      setSaving(false)
+      if (error) {
+        setErro(error.message)
+        return
+      }
+    } else {
+      const { data: novoCliente, error: errCliente } = await sb.from('clientes').insert(clientePayload).select('id').single()
+      if (errCliente || !novoCliente) {
+        setSaving(false)
+        setErro(errCliente?.message ?? 'Falha ao criar cliente')
+        return
+      }
+      if (form.setores.includes('fiscal')) {
+        const { error: errFiscal } = await sb.from('clientes_fiscal').insert({
+          cliente_id:             novoCliente.id,
+          cod:                    form.cod || null,
+          regime:                 form.regime || null,
+          atividade:              form.atividade || null,
+          grupo:                  form.grupo || null,
+          responsavel:            form.responsavel || null,
+          prioridade:             form.prioridade,
+          declaracao_anual:       form.declaracao_anual,
+          envia_iss:              form.envia_iss,
+          confere_siga:           form.confere_siga,
+          login_iss:              form.envia_iss ? form.login_iss || null : null,
+          senha_iss:              form.envia_iss ? form.senha_iss || null : null,
+          email_envio_iss:        form.envia_iss ? form.email_envio_iss || null : null,
+          tarefas_personalizadas: form.tarefas_personalizadas,
+        })
+        if (errFiscal) {
+          setSaving(false)
+          setErro(errFiscal.message)
+          return
+        }
+      }
+      setSaving(false)
     }
+
     router.refresh()
     onClose()
   }
