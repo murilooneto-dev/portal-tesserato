@@ -102,3 +102,29 @@ export interface BotEvento {
   mensagem: string | null
   processado_em: string
 }
+
+export interface ClienteContabil {
+  cliente_id: string
+  atividade: string | null
+  responsavel: string | null
+  prioridade: number
+  obs: string | null
+  tarefas_personalizadas: string[]
+}
+
+export interface TarefaTipo {
+  id: string
+  setor: UserSetor
+  nome: string
+  etapas: string[] | null
+  ativo: boolean
+}
+
+export interface TarefaEtapa {
+  id: string
+  tarefa_id: string
+  nome: string
+  concluida: boolean
+  concluida_em: string | null
+  ordem: number
+}
