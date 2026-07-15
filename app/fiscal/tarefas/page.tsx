@@ -25,8 +25,17 @@ export default async function TarefasPage() {
 
   const { data: clientes } = await supabase
     .from('clientes')
-    .select('id, nome, cod, grupo, responsavel')
+    .select('id, nome, clientes_fiscal!inner(cod, grupo, responsavel)')
     .order('nome')
+
+  const clientesFlat = (clientes ?? []).map(row => {
+    const c = row as unknown as {
+      id: string
+      nome: string
+      clientes_fiscal: { cod: string | null; grupo: string | null; responsavel: string | null }
+    }
+    return { id: c.id, nome: c.nome, ...c.clientes_fiscal }
+  })
 
   const tarefas = await buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano)
 
@@ -37,8 +46,8 @@ export default async function TarefasPage() {
   })
 
   const clientesFiltrados = profile?.role === 'admin'
-    ? (clientes ?? [])
-    : (clientes ?? []).filter(c =>
+    ? clientesFlat
+    : clientesFlat.filter(c =>
         c.responsavel?.toUpperCase() === profile?.nome?.toUpperCase()
       )
 
