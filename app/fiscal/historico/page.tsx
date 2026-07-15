@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Cliente, Tarefa } from '@/lib/types'
+import { Tarefa } from '@/lib/types'
+import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, type ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { useMesAno } from '@/lib/mes-atual-context'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 
@@ -16,7 +17,7 @@ const CORES_RESP = ['#ec4899','#3b82f6','#10b981','#eab308','#f97316','#8b5cf6',
 interface MonthStat { total: number; concluidas: number; pct: number }
 
 export default function HistoricoPage() {
-  const [clientes, setClientes]     = useState<Cliente[]>([])
+  const [clientes, setClientes]     = useState<ClienteComFiscal[]>([])
   const [tarefas, setTarefas]       = useState<Tarefa[]>([])
   const [selectedResp, setSelectedResp] = useFiltroPersistente<string | null>('historico:responsavel', null)
   const [loading, setLoading]       = useState(true)
@@ -31,23 +32,25 @@ export default function HistoricoPage() {
         const admin = p?.role === 'admin'
         setIsAdmin(admin)
 
-        let clientesQ = sb.from('clientes').select('*').order('nome')
-        if (!admin && p?.nome) clientesQ = (clientesQ as any).ilike('responsavel', p.nome)
+        let clientesQ = sb.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
+        if (!admin && p?.nome) clientesQ = clientesQ.ilike('clientes_fiscal.responsavel', p.nome)
 
         clientesQ.then(async ({ data: cs }) => {
-          const ids = (cs ?? []).map((c: any) => c.id)
-          let ts: any[] = []
+          const clientesFlat = (cs ?? []).map(flattenClienteFiscal)
+          const ids = clientesFlat.map(c => c.id)
+          let ts: Tarefa[] = []
           if (ids.length > 0) {
             const { data } = await sb
               .from('tarefas')
               .select('*')
               .eq('ano', ano)
+              .eq('setor', 'fiscal')
               .in('cliente_id', ids)
               .limit(10000)
-            ts = data ?? []
+            ts = (data ?? []) as Tarefa[]
           }
-          setClientes((cs ?? []) as Cliente[])
-          setTarefas(ts as Tarefa[])
+          setClientes(clientesFlat)
+          setTarefas(ts)
           setLoading(false)
         })
       })
