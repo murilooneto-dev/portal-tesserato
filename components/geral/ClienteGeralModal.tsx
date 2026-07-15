@@ -133,15 +133,48 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
       setores:      form.setores.length > 0 ? form.setores : ['fiscal'],
     }
 
+    const fiscalPayload = {
+      cod:                    form.cod || null,
+      regime:                 form.regime || null,
+      atividade:              form.atividade || null,
+      grupo:                  form.grupo || null,
+      responsavel:            form.responsavel || null,
+      prioridade:             form.prioridade,
+      declaracao_anual:       form.declaracao_anual,
+      envia_iss:              form.envia_iss,
+      confere_siga:           form.confere_siga,
+      login_iss:              form.envia_iss ? form.login_iss || null : null,
+      senha_iss:              form.envia_iss ? form.senha_iss || null : null,
+      email_envio_iss:        form.envia_iss ? form.email_envio_iss || null : null,
+      tarefas_personalizadas: form.tarefas_personalizadas,
+    }
+
     if (isEdit) {
       // O bloco Fiscal é somente-leitura ao editar (edição fica exclusiva de
-      // /fiscal/clientes), então clientes_fiscal nunca é escrito aqui.
+      // /fiscal/clientes) — não sobrescrevemos uma linha clientes_fiscal
+      // já existente. Mas se o setor Fiscal acabou de ser marcado num
+      // cliente que nunca teve linha em clientes_fiscal, provisionamos uma
+      // com os valores atuais do form (defaults, já que o bloco nunca foi
+      // editável aqui) — sem isso o cliente fica invisível em toda tela do
+      // Fiscal, que só lista quem tem clientes_fiscal.
       const { error } = await sb.from('clientes').update(clientePayload).eq('id', clienteId)
-      setSaving(false)
       if (error) {
+        setSaving(false)
         setErro(error.message)
         return
       }
+      if (form.setores.includes('fiscal')) {
+        const { data: existente } = await sb.from('clientes_fiscal').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
+        if (!existente) {
+          const { error: errFiscal } = await sb.from('clientes_fiscal').insert({ cliente_id: clienteId, ...fiscalPayload })
+          if (errFiscal) {
+            setSaving(false)
+            setErro(errFiscal.message)
+            return
+          }
+        }
+      }
+      setSaving(false)
     } else {
       const { data: novoCliente, error: errCliente } = await sb.from('clientes').insert(clientePayload).select('id').single()
       if (errCliente || !novoCliente) {
@@ -150,22 +183,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
         return
       }
       if (form.setores.includes('fiscal')) {
-        const { error: errFiscal } = await sb.from('clientes_fiscal').insert({
-          cliente_id:             novoCliente.id,
-          cod:                    form.cod || null,
-          regime:                 form.regime || null,
-          atividade:              form.atividade || null,
-          grupo:                  form.grupo || null,
-          responsavel:            form.responsavel || null,
-          prioridade:             form.prioridade,
-          declaracao_anual:       form.declaracao_anual,
-          envia_iss:              form.envia_iss,
-          confere_siga:           form.confere_siga,
-          login_iss:              form.envia_iss ? form.login_iss || null : null,
-          senha_iss:              form.envia_iss ? form.senha_iss || null : null,
-          email_envio_iss:        form.envia_iss ? form.email_envio_iss || null : null,
-          tarefas_personalizadas: form.tarefas_personalizadas,
-        })
+        const { error: errFiscal } = await sb.from('clientes_fiscal').insert({ cliente_id: novoCliente.id, ...fiscalPayload })
         if (errFiscal) {
           setSaving(false)
           setErro(errFiscal.message)
