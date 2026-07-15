@@ -31,7 +31,10 @@ const ITENS_POR_SETOR: Record<UserSetor, NavItem[]> = {
     { href: '/fiscal/parcelamentos', label: 'Parcelamentos', icon: CreditCard     },
     { href: '/fiscal/conferencia',   label: 'Conferência',   icon: ClipboardCheck },
   ],
-  contabil:   [{ href: '/contabil',   label: 'Em construção', icon: Wrench }],
+  contabil: [
+    { href: '/contabil',          label: 'Em construção', icon: Wrench },
+    { href: '/contabil/clientes', label: 'Clientes',      icon: Users  },
+  ],
   pessoal:    [{ href: '/pessoal',    label: 'Em construção', icon: Wrench }],
   societario: [{ href: '/societario', label: 'Em construção', icon: Wrench }],
   financeiro: [{ href: '/financeiro', label: 'Em construção', icon: Wrench }],
