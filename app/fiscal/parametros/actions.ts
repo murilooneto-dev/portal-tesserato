@@ -133,8 +133,8 @@ export async function aplicarTemplateAClientes(
   if (tarefasBase.length === 0) return { atualizados: 0 }
 
   const { data: clientes } = await supabase
-    .from('clientes')
-    .select('id, atividade, tarefas_personalizadas')
+    .from('clientes_fiscal')
+    .select('cliente_id, atividade, tarefas_personalizadas')
 
   let atualizados = 0
   for (const c of clientes ?? []) {
@@ -145,9 +145,9 @@ export async function aplicarTemplateAClientes(
     if (novas.length === 0) continue
 
     await supabase
-      .from('clientes')
+      .from('clientes_fiscal')
       .update({ tarefas_personalizadas: [...existentes, ...novas] })
-      .eq('id', c.id)
+      .eq('cliente_id', c.cliente_id)
 
     atualizados++
   }
@@ -195,8 +195,8 @@ export async function aplicarTemplateGrupoAClientes(
   if (tarefasBase.length === 0) return { atualizados: 0 }
 
   const { data: clientes } = await supabase
-    .from('clientes')
-    .select('id, grupo, tarefas_personalizadas')
+    .from('clientes_fiscal')
+    .select('cliente_id, grupo, tarefas_personalizadas')
 
   let atualizados = 0
   for (const c of clientes ?? []) {
@@ -207,9 +207,9 @@ export async function aplicarTemplateGrupoAClientes(
     if (novas.length === 0) continue
 
     await supabase
-      .from('clientes')
+      .from('clientes_fiscal')
       .update({ tarefas_personalizadas: [...existentes, ...novas] })
-      .eq('id', c.id)
+      .eq('cliente_id', c.cliente_id)
 
     atualizados++
   }
@@ -228,12 +228,12 @@ export async function buscarDadosParaAlteracao(): Promise<{
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', todasTarefas: [], clientes: [] }
 
-  const { data: rows, error } = await supabase.from('clientes').select('id, nome, tarefas_personalizadas')
+  const { data: rows, error } = await supabase.from('clientes').select('id, nome, clientes_fiscal!inner(tarefas_personalizadas)')
   if (error) return { error: error.message, todasTarefas: [], clientes: [] }
 
   const todasSet = new Set<string>()
   const clientes = (rows ?? []).map(c => {
-    const tarefas: string[] = c.tarefas_personalizadas ?? []
+    const tarefas: string[] = (c.clientes_fiscal as unknown as { tarefas_personalizadas: string[] })?.tarefas_personalizadas ?? []
     for (const t of tarefas) todasSet.add(t)
     return { id: c.id as string, nome: c.nome as string, tarefas }
   })
@@ -255,7 +255,7 @@ export async function renomearTarefaEmClientes(
   if (!destino) return { error: 'Nome de destino não pode ser vazio.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
   if (clienteIds.length === 0) return { error: 'Nenhum cliente selecionado.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
 
-  const { data: clientes } = await supabase.from('clientes').select('id, tarefas_personalizadas').in('id', clienteIds)
+  const { data: clientes } = await supabase.from('clientes_fiscal').select('cliente_id, tarefas_personalizadas').in('cliente_id', clienteIds)
   let clientesAtualizados = 0
 
   for (const c of clientes ?? []) {
@@ -265,7 +265,7 @@ export async function renomearTarefaEmClientes(
     // Se destino já existia na lista, remove a duplicata gerada pelo rename
     const seen = new Set<string>()
     const deduped = renamed.filter(t => { if (seen.has(t)) return false; seen.add(t); return true })
-    await supabase.from('clientes').update({ tarefas_personalizadas: deduped }).eq('id', c.id)
+    await supabase.from('clientes_fiscal').update({ tarefas_personalizadas: deduped }).eq('cliente_id', c.cliente_id)
     clientesAtualizados++
   }
 
@@ -274,6 +274,7 @@ export async function renomearTarefaEmClientes(
     .from('tarefas')
     .select('id')
     .eq('tipo', tarefaOrigem)
+    .eq('setor', 'fiscal')
     .in('cliente_id', clienteIds)
 
   let tarefasCorrigidas = 0
@@ -282,6 +283,7 @@ export async function renomearTarefaEmClientes(
       .from('tarefas')
       .update({ tipo: destino })
       .eq('tipo', tarefaOrigem)
+      .eq('setor', 'fiscal')
       .in('cliente_id', clienteIds)
     tarefasCorrigidas = registros!.length
   }
@@ -301,20 +303,20 @@ export async function excluirTarefaDeClientes(
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', clientesAtualizados: 0, registrosExcluidos: 0 }
   if (clienteIds.length === 0) return { error: 'Nenhum cliente selecionado.', clientesAtualizados: 0, registrosExcluidos: 0 }
 
-  const { data: clientes } = await supabase.from('clientes').select('id, tarefas_personalizadas').in('id', clienteIds)
+  const { data: clientes } = await supabase.from('clientes_fiscal').select('cliente_id, tarefas_personalizadas').in('cliente_id', clienteIds)
   let clientesAtualizados = 0
 
   for (const c of clientes ?? []) {
     const original: string[] = c.tarefas_personalizadas ?? []
     if (!original.includes(tarefaTipo)) continue
-    await supabase.from('clientes').update({ tarefas_personalizadas: original.filter(t => t !== tarefaTipo) }).eq('id', c.id)
+    await supabase.from('clientes_fiscal').update({ tarefas_personalizadas: original.filter(t => t !== tarefaTipo) }).eq('cliente_id', c.cliente_id)
     clientesAtualizados++
   }
 
-  const { data: registros } = await supabase.from('tarefas').select('id').eq('tipo', tarefaTipo).in('cliente_id', clienteIds)
+  const { data: registros } = await supabase.from('tarefas').select('id').eq('tipo', tarefaTipo).eq('setor', 'fiscal').in('cliente_id', clienteIds)
   let registrosExcluidos = 0
   if ((registros ?? []).length > 0) {
-    await supabase.from('tarefas').delete().eq('tipo', tarefaTipo).in('cliente_id', clienteIds)
+    await supabase.from('tarefas').delete().eq('tipo', tarefaTipo).eq('setor', 'fiscal').in('cliente_id', clienteIds)
     registrosExcluidos = registros!.length
   }
 
@@ -339,8 +341,8 @@ export async function preencherDataEmClientes(
   let registrosAtualizados = 0
   for (const clienteId of clienteIds) {
     await supabase.from('tarefas').upsert(
-      { tipo: tarefaTipo, cliente_id: clienteId, mes, ano, concluida: true, concluida_em: dataISO },
-      { onConflict: 'tipo,cliente_id,mes,ano' }
+      { tipo: tarefaTipo, cliente_id: clienteId, mes, ano, setor: 'fiscal', concluida: true, concluida_em: dataISO },
+      { onConflict: 'tipo,cliente_id,mes,ano,setor' }
     )
     registrosAtualizados++
   }
@@ -365,6 +367,7 @@ export async function buscarConclusoesTarefa(
     .eq('tipo', tarefaTipo)
     .eq('mes', mes)
     .eq('ano', ano)
+    .eq('setor', 'fiscal')
     .eq('concluida', true)
 
   if (error) return { error: error.message, clienteIdsConcluidos: [] }
@@ -395,11 +398,15 @@ export async function buscarTarefasSemData(mes?: number, ano?: number): Promise<
   const anoEfetivo = ano ?? new Date().getFullYear()
 
   // 1. Todos os clientes com suas listas de tarefas
-  const { data: clientesRows, error: errClientes } = await supabase
+  const { data: clientesRowsRaw, error: errClientes } = await supabase
     .from('clientes')
-    .select('id, nome, tarefas_personalizadas')
+    .select('id, nome, clientes_fiscal!inner(tarefas_personalizadas)')
     .order('nome')
   if (errClientes) return { error: errClientes.message, registros: [], totalRegistros: 0 }
+  const clientesRows = (clientesRowsRaw ?? []).map(c => ({
+    id: c.id, nome: c.nome,
+    tarefas_personalizadas: (c.clientes_fiscal as unknown as { tarefas_personalizadas: string[] })?.tarefas_personalizadas ?? [],
+  }))
 
   // 2. Todos os registros em tarefas para o mês/ano selecionado
   const { data: tarefasRows, error: errTarefas } = await supabase
@@ -407,6 +414,7 @@ export async function buscarTarefasSemData(mes?: number, ano?: number): Promise<
     .select('id, tipo, cliente_id, concluida_em')
     .eq('mes', mesEfetivo)
     .eq('ano', anoEfetivo)
+    .eq('setor', 'fiscal')
   if (errTarefas) return { error: errTarefas.message, registros: [], totalRegistros: 0 }
 
   // Mapas de lookup por clienteId||tipo
@@ -490,7 +498,7 @@ export async function analisarTarefasDuplicadas(): Promise<{
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', grupos: [], todasTarefas: [] }
 
-  const { data: clientes } = await supabase.from('clientes').select('id, tarefas_personalizadas')
+  const { data: clientes } = await supabase.from('clientes_fiscal').select('cliente_id, tarefas_personalizadas')
 
   const gruposMap: Record<string, { versoes: Set<string>; afetados: Set<string> }> = {}
   const todasSet = new Set<string>()
@@ -509,7 +517,7 @@ export async function analisarTarefasDuplicadas(): Promise<{
     }
     // Marca clientes que têm 2+ variantes da mesma tarefa
     for (const [key, versoes] of Object.entries(vistasNessaCliente)) {
-      if (versoes.length > 1) gruposMap[key].afetados.add(c.id)
+      if (versoes.length > 1) gruposMap[key].afetados.add(c.cliente_id)
     }
   }
 
@@ -537,7 +545,7 @@ export async function limparTarefasDuplicadas(
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', clientesAtualizados: 0, tarefasCorrigidas: 0 }
 
-  const { data: clientes } = await supabase.from('clientes').select('id, tarefas_personalizadas')
+  const { data: clientes } = await supabase.from('clientes_fiscal').select('cliente_id, tarefas_personalizadas')
   let clientesAtualizados = 0
 
   for (const c of clientes ?? []) {
@@ -554,13 +562,13 @@ export async function limparTarefasDuplicadas(
     }
     const mudou = deduped.length !== original.length || deduped.some((t, i) => t !== original[i])
     if (!mudou) continue
-    await supabase.from('clientes').update({ tarefas_personalizadas: deduped }).eq('id', c.id)
+    await supabase.from('clientes_fiscal').update({ tarefas_personalizadas: deduped }).eq('cliente_id', c.cliente_id)
     clientesAtualizados++
   }
 
   // Corrige registros na tabela tarefas — busca todas as linhas uma única vez (paginado,
   // pois o Supabase limita cada requisição a um máximo de linhas) e corrige em memória
-  const todosRegistros = await buscarTodasTarefas<{ id: string; tipo: string }>(supabase, 'id, tipo')
+  const todosRegistros = await buscarTodasTarefas<{ id: string; tipo: string }>(supabase, 'id, tipo', 'fiscal')
 
   let tarefasCorrigidas = 0
   for (const [normalizado, canonico] of Object.entries(mapeamento)) {
