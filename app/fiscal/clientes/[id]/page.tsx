@@ -5,6 +5,7 @@ import { createClient, getAuthenticatedAdmin, podeEditarCliente } from '@/lib/su
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
+import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
@@ -39,6 +40,10 @@ export default async function ClienteDetalhePage({ params }: Props) {
   // Tarefas do mês selecionado
   const { data: tarefas } = await supabase
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
+
+  const vinculos = await buscarVinculosDoCliente(
+    supabase, id, cliente.tarefas_vinculadas_ativas ?? [], 'fiscal', mes, ano
+  )
 
   // Todas as tarefas do ano para o histórico
   const { data: tarefasAno } = await supabase
@@ -144,6 +149,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
         grupo={cliente.grupo ?? 'normal'}
         tarefasPersonalizadas={cliente.tarefas_personalizadas ?? []}
         tarefas={tarefas ?? []}
+        vinculos={vinculos}
         mes={mes}
         ano={ano}
         usuarioId={user.id}

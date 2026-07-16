@@ -2,6 +2,7 @@
 
 import { useTransition, useState } from 'react'
 import type { Tarefa } from '@/lib/types'
+import type { VinculoStatus } from '@/lib/vinculos'
 import { desbloquearTarefa, salvarMIT, atualizarSubEtapa } from '@/app/fiscal/clientes/actions'
 
 const SUB_ETAPAS = ['recebido', 'importado', 'conferido'] as const
@@ -29,6 +30,7 @@ interface Props {
   grupo: string
   tarefasPersonalizadas?: string[]
   tarefas: Tarefa[]
+  vinculos?: Record<string, VinculoStatus>
   mes: number
   ano: number
   usuarioId: string
@@ -71,6 +73,7 @@ export default function TarefaChecklist({
   grupo,
   tarefasPersonalizadas = [],
   tarefas,
+  vinculos = {},
   mes,
   ano,
   usuarioNome,
@@ -188,6 +191,17 @@ export default function TarefaChecklist({
 
                 <span className={`text-sm flex-1 transition-colors ${feito ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]'}`}>
                   {tipo}
+                  {vinculos[tipo] && (
+                    <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                      vinculos[tipo].liberada
+                        ? 'bg-green-500/15 text-green-400'
+                        : 'bg-orange-500/15 text-orange-400'
+                    }`}>
+                      {vinculos[tipo].liberada
+                        ? `✓ Liberada por ${vinculos[tipo].setorOrigemLabel}`
+                        : `⏳ Aguardando ${vinculos[tipo].setorOrigemLabel}`}
+                    </span>
+                  )}
                 </span>
 
                 {(tipo === 'ENTRADA' || tipo === 'SAIDAS') ? (
