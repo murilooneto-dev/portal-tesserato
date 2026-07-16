@@ -6,7 +6,9 @@ import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import TarefaChecklistContabil from '@/components/contabil/TarefaChecklistContabil'
 import ClienteContabilAcoes from '@/components/contabil/ClienteContabilAcoes'
+import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { toggleTarefaContabil, atualizarEtapa } from '../actions'
+import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import type { Tarefa, TarefaEtapa } from '@/lib/types'
 
 interface Props {
@@ -35,6 +37,8 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
     supabase.from('clientes_contabil').select('responsavel'),
     supabase.from('tarefa_tipos').select('nome, etapas').eq('setor', 'contabil'),
   ])
+
+  const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'contabil', mes, ano)
 
   const vinculos = await buscarVinculosDoCliente(
     supabase, id, cliente.tarefas_vinculadas_ativas ?? [], 'contabil', mes, ano
@@ -99,6 +103,8 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
         onAtualizarEtapa={onAtualizarEtapa}
         podeEditar={podeEditar}
       />
+
+      <EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} />
     </div>
   )
 }
