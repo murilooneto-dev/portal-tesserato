@@ -19,6 +19,7 @@ Com o Contábil (e futuramente Pessoal/Societário/Financeiro) ganhando seus pr�
 
 ## Fora de escopo
 
+- **Recursos da página atual `/fiscal/calendario` que não têm equivalente no modelo novo, descartados deliberadamente:** tags de regime (Regime Normal/Simples/MEI) por obrigação, obrigações trimestrais (o modelo só suporta recorrente mensal ou data única — **IRPJ/CSLL fica de fora do seed**, já que é trimestral e não se encaixa; pode ser cadastrado manualmente pelo Admin como eventos avulsos, ou vira um pedido futuro de suporte a recorrência trimestral), navegação de mês/ano (o calendário novo sempre mostra "a partir de hoje", sem revisitar meses passados/futuros), e o diagrama "Ordem obrigatória das obrigações mensais". Decisão explícita do usuário: simplificar em vez de replicar 100% — o modelo genérico (título + descrição + tipo de data) vale mais que a paridade total de recursos.
 - Peças B (Dashboard do Contábil) e C (Relatórios + Histórico do Contábil) — planos separados, não tocam o Calendário.
 - Migrar o cálculo de "dias faltando" que aparece no Dashboard do Fiscal para consumir a tabela nova — o Dashboard continua com seu array próprio por enquanto; só o Calendário em si migra nesta parte. (Reavaliar quando a Peça B for desenhada.)
 - Notificações, lembretes ou qualquer envio automático quando um evento fica vermelho/vencido.
@@ -90,9 +91,10 @@ Obrigações "último dia do mês" (caso da EFD-Contribuições) usam `dia_mes =
 
 ### 5. Rotas e navegação
 
-- `app/fiscal/calendario/page.tsx`: passa a renderizar só `<CalendarioSetor setor="fiscal" />`. `components/fiscal/CalendarioFiscal.tsx` é removido.
+- `app/fiscal/calendario/page.tsx` (existente — hoje é uma page rica e independente, com seu próprio array `OBRIGACOES` de 10 itens, tags de regime, lógica trimestral, navegação de mês/ano e o diagrama "Ordem obrigatória"): todo esse conteúdo é substituído por só `<CalendarioSetor setor="fiscal" />`. Os recursos descartados estão documentados em "Fora de escopo".
+- `components/fiscal/CalendarioFiscal.tsx` (componente separado, não usado pela rota atual, com sua própria cópia menor das mesmas 9 obrigações): removido nesta parte também, por estar duplicado/obsoleto.
 - `app/contabil/calendario/page.tsx` (novo): `<CalendarioSetor setor="contabil" />`.
-- Sidebar de cada setor já tem (ou ganha, no caso do Contábil) o item "Calendário" apontando pra rota correspondente — sem mudança estrutural na sidebar em si.
+- Sidebar do Contábil ganha o item "Calendário" (`components/fiscal/Sidebar.tsx`, `ITENS_POR_SETOR.contabil`) apontando pra `/contabil/calendario`. A do Fiscal já tem o item, sem mudança.
 
 ### 6. Seed das 9 obrigações fiscais
 
