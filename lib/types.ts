@@ -39,6 +39,7 @@ export interface Cliente {
   uf: string | null
   contato_chat: string | null
   setores: UserSetor[]
+  tarefas_vinculadas_ativas: string[]
   created_at: string
 }
 
@@ -141,4 +142,13 @@ export interface CalendarioEvento {
   data: string | null
   created_at: string
   created_by: string | null
+}
+
+export interface TarefaVinculo {
+  id: string
+  setor_origem: UserSetor
+  tipo_origem: string
+  setor_destino: UserSetor
+  tipo_destino: string
+  created_at: string
 }
