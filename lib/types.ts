@@ -128,3 +128,17 @@ export interface TarefaEtapa {
   concluida_em: string | null
   ordem: number
 }
+
+export type TipoDataEvento = 'recorrente' | 'unica'
+
+export interface CalendarioEvento {
+  id: string
+  setor: UserSetor
+  titulo: string
+  descricao: string | null
+  tipo_data: TipoDataEvento
+  dia_mes: number | null
+  data: string | null
+  created_at: string
+  created_by: string | null
+}
