@@ -7,7 +7,7 @@ import { buscarCnpj } from '@/lib/buscar-cnpj'
 import CamposFiscais, { type CamposFiscaisData } from '@/components/fiscal/CamposFiscais'
 import SectorSection from '@/components/geral/SectorSection'
 import { flattenClienteFiscal } from '@/lib/clientes-fiscal'
-import { SETORES, SETOR_LABEL, type UserSetor } from '@/lib/types'
+import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
 
 interface FormData extends CamposFiscaisData {
   nome: string
@@ -16,18 +16,21 @@ interface FormData extends CamposFiscaisData {
   uf: string
   contato_chat: string
   setores: UserSetor[]
+  vinculosAtivos: string[]
 }
 
 interface Props {
   clienteId: string | null
   responsaveis: string[]
   templates: Record<string, string[]>
+  vinculosCatalogo: TarefaVinculo[]
   onClose: () => void
   readOnly?: boolean
 }
 
 const emptyForm = (): FormData => ({
   nome: '', cnpj: '', municipio: '', uf: '', contato_chat: '', setores: ['fiscal'],
+  vinculosAtivos: [],
   cod: '', regime: '', atividade: '', grupo: '', responsavel: '', prioridade: 3,
   declaracao_anual: false, envia_iss: false, confere_siga: false,
   login_iss: '', senha_iss: '', email_envio_iss: '',
@@ -37,7 +40,7 @@ const emptyForm = (): FormData => ({
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
-export default function ClienteGeralModal({ clienteId, responsaveis, templates, onClose, readOnly = false }: Props) {
+export default function ClienteGeralModal({ clienteId, responsaveis, templates, vinculosCatalogo, onClose, readOnly = false }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
@@ -64,6 +67,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
         uf: data.uf ?? mitParts[1] ?? '',
         contato_chat: data.contato_chat ?? '',
         setores: (data.setores ?? ['fiscal']) as UserSetor[],
+        vinculosAtivos: data.tarefas_vinculadas_ativas ?? [],
         cod: data.cod ?? '',
         regime: data.regime ?? '',
         atividade: data.atividade ?? '',
@@ -131,6 +135,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
       mit,
       contato_chat: form.contato_chat || null,
       setores:      form.setores.length > 0 ? form.setores : ['fiscal'],
+      tarefas_vinculadas_ativas: form.vinculosAtivos,
     }
 
     const fiscalPayload = {
@@ -285,6 +290,38 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4">
+              <label className="flex items-center gap-2 cursor-pointer select-none mb-1">
+                <input type="checkbox" checked={form.vinculosAtivos.length > 0}
+                  onChange={e => set('vinculosAtivos', e.target.checked ? form.vinculosAtivos : [])}
+                  className="w-3.5 h-3.5 accent-[var(--accent)]" disabled={readOnly} />
+                <span className={labelCls + ' mb-0'}>Este cliente possui tarefas vinculadas entre setores?</span>
+              </label>
+
+              {form.vinculosAtivos.length > 0 && (
+                <div className="mt-3 flex flex-col gap-1.5">
+                  {vinculosCatalogo
+                    .filter(v => form.setores.includes(v.setor_origem) && form.setores.includes(v.setor_destino))
+                    .map(v => (
+                      <label key={v.id} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" checked={form.vinculosAtivos.includes(v.id)}
+                          onChange={() => set('vinculosAtivos',
+                            form.vinculosAtivos.includes(v.id)
+                              ? form.vinculosAtivos.filter(id => id !== v.id)
+                              : [...form.vinculosAtivos, v.id])}
+                          className="w-3.5 h-3.5 accent-[var(--accent)]" disabled={readOnly} />
+                        <span className="text-[var(--fg)]/70 text-xs">
+                          {v.tipo_origem} ({SETOR_LABEL[v.setor_origem]}) → {v.tipo_destino} ({SETOR_LABEL[v.setor_destino]})
+                        </span>
+                      </label>
+                    ))}
+                  {vinculosCatalogo.filter(v => form.setores.includes(v.setor_origem) && form.setores.includes(v.setor_destino)).length === 0 && (
+                    <p className="text-[var(--fg)]/30 text-xs">Nenhum vínculo do catálogo se aplica aos setores marcados acima.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {mostraFiscal && isEdit && (

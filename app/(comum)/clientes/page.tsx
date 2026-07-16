@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import ClientesGeralLista from '@/components/geral/ClientesGeralLista'
+import type { TarefaVinculo } from '@/lib/types'
 
 export const metadata = { title: 'Clientes — Tesserato' }
 
@@ -10,11 +11,12 @@ export default async function ClientesGeralPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: clientes }, { data: atividadeTemplates }, { data: fiscalResponsaveis }] = await Promise.all([
+  const [{ data: profile }, { data: clientes }, { data: atividadeTemplates }, { data: fiscalResponsaveis }, { data: vinculosCatalogo }] = await Promise.all([
     supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase.from('clientes').select('*').order('nome'),
     supabase.from('atividade_templates').select('atividade,tarefas'),
     supabase.from('clientes_fiscal').select('responsavel'),
+    supabase.from('tarefa_vinculos').select('*').order('created_at'),
   ])
 
   const isAdmin = profile?.role === 'admin'
@@ -35,6 +37,7 @@ export default async function ClientesGeralPage() {
         isAdmin={isAdmin}
         responsaveis={responsaveis}
         templates={templatesMap}
+        vinculosCatalogo={(vinculosCatalogo ?? []) as TarefaVinculo[]}
       />
     </div>
   )
