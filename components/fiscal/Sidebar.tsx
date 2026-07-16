@@ -9,7 +9,7 @@ import MesSeletor from './MesSeletor'
 import {
   Zap, LayoutGrid, Users, Calendar,
   FileText, TrendingUp, CreditCard, Wrench, Settings, ShieldCheck, ClipboardCheck,
-  Sun, Moon,
+  Sun, Moon, Link2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -110,6 +110,7 @@ export default function Sidebar({ profile, mes, ano, setorAtivo }: Props) {
             <p className="px-3 text-[var(--fg)]/20 text-[10px] uppercase tracking-wider mb-1">Admin</p>
             <NavLink item={{ href: '/fiscal/parametros', label: 'Parâmetros', icon: Settings }} active={pathname.startsWith('/fiscal/parametros')} />
             <NavLink item={{ href: '/fiscal/admin', label: 'Admin', icon: ShieldCheck }} active={pathname.startsWith('/fiscal/admin')} />
+            <NavLink item={{ href: '/vinculos', label: 'Vínculos', icon: Link2 }} active={pathname.startsWith('/vinculos')} />
           </>
         )}
       </nav>
