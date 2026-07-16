@@ -174,6 +174,25 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
           }
         }
       }
+      // Mesmo raciocínio do bloco Fiscal acima: se o setor Contábil acabou
+      // de ser marcado num cliente que nunca teve linha em clientes_contabil,
+      // provisiona uma com as tarefas padrão do setor — sem isso o cliente
+      // fica invisível em /contabil/clientes, que também usa inner join.
+      if (form.setores.includes('contabil')) {
+        const { data: existenteContabil } = await sb.from('clientes_contabil').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
+        if (!existenteContabil) {
+          const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').order('nome')
+          const { error: errContabil } = await sb.from('clientes_contabil').insert({
+            cliente_id: clienteId,
+            tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
+          })
+          if (errContabil) {
+            setSaving(false)
+            setErro(errContabil.message)
+            return
+          }
+        }
+      }
       setSaving(false)
     } else {
       const { data: novoCliente, error: errCliente } = await sb.from('clientes').insert(clientePayload).select('id').single()
@@ -187,6 +206,18 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
         if (errFiscal) {
           setSaving(false)
           setErro(errFiscal.message)
+          return
+        }
+      }
+      if (form.setores.includes('contabil')) {
+        const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').order('nome')
+        const { error: errContabil } = await sb.from('clientes_contabil').insert({
+          cliente_id: novoCliente.id,
+          tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
+        })
+        if (errContabil) {
+          setSaving(false)
+          setErro(errContabil.message)
           return
         }
       }
