@@ -11,6 +11,8 @@ import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
 import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
 import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
+import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
+import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -40,6 +42,8 @@ export default async function ClienteDetalhePage({ params }: Props) {
   // Tarefas do mês selecionado
   const { data: tarefas } = await supabase
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
+
+  const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'fiscal', mes, ano)
 
   const vinculos = await buscarVinculosDoCliente(
     supabase, id, cliente.tarefas_vinculadas_ativas ?? [], 'fiscal', mes, ano
@@ -158,6 +162,8 @@ export default async function ClienteDetalhePage({ params }: Props) {
         onToggle={toggleTarefa}
         podeEditar={podeEditar}
       />
+
+      <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} />
 
       <ClienteObs clienteId={id} obsInicial={observacao?.texto ?? ''} mes={mes} ano={ano} podeEditar={podeEditar} />
 
