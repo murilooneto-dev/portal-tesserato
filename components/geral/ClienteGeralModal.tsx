@@ -51,6 +51,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
   const [saving, setSaving] = useState(false)
   const [loadingCnpj, setLoadingCnpj] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [mostrarVinculos, setMostrarVinculos] = useState(false)
 
   useEffect(() => {
     if (!clienteId) return
@@ -82,6 +83,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
         email_envio_iss: data.email_envio_iss ?? '',
         tarefas_personalizadas: data.tarefas_personalizadas ?? [],
       })
+      setMostrarVinculos((data.tarefas_vinculadas_ativas ?? []).length > 0)
       setLoading(false)
     })
   }, [clienteId])
@@ -294,13 +296,13 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
 
             <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4">
               <label className="flex items-center gap-2 cursor-pointer select-none mb-1">
-                <input type="checkbox" checked={form.vinculosAtivos.length > 0}
-                  onChange={e => set('vinculosAtivos', e.target.checked ? form.vinculosAtivos : [])}
+                <input type="checkbox" checked={mostrarVinculos}
+                  onChange={e => { setMostrarVinculos(e.target.checked); if (!e.target.checked) set('vinculosAtivos', []) }}
                   className="w-3.5 h-3.5 accent-[var(--accent)]" disabled={readOnly} />
                 <span className={labelCls + ' mb-0'}>Este cliente possui tarefas vinculadas entre setores?</span>
               </label>
 
-              {form.vinculosAtivos.length > 0 && (
+              {mostrarVinculos && (
                 <div className="mt-3 flex flex-col gap-1.5">
                   {vinculosCatalogo
                     .filter(v => form.setores.includes(v.setor_origem) && form.setores.includes(v.setor_destino))
