@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
+import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import TarefaChecklistContabil from '@/components/contabil/TarefaChecklistContabil'
 import ClienteContabilAcoes from '@/components/contabil/ClienteContabilAcoes'
 import { toggleTarefaContabil, atualizarEtapa } from '../actions'
@@ -34,6 +35,10 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
     supabase.from('clientes_contabil').select('responsavel'),
     supabase.from('tarefa_tipos').select('nome, etapas').eq('setor', 'contabil'),
   ])
+
+  const vinculos = await buscarVinculosDoCliente(
+    supabase, id, cliente.tarefas_vinculadas_ativas ?? [], 'contabil', mes, ano
+  )
 
   const responsaveis = Array.from(new Set(
     (todosContabil ?? []).map(c => c.responsavel ?? '').filter(Boolean)
@@ -87,6 +92,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
         tarefaTipos={tarefaTipos}
         tarefas={(tarefas ?? []) as Tarefa[]}
         etapas={(etapas ?? []) as TarefaEtapa[]}
+        vinculos={vinculos}
         mes={mes}
         ano={ano}
         onToggleSimples={onToggleSimples}

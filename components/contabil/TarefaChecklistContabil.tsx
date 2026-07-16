@@ -2,6 +2,7 @@
 
 import { useTransition, useState } from 'react'
 import type { Tarefa, TarefaEtapa } from '@/lib/types'
+import type { VinculoStatus } from '@/lib/vinculos'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -10,6 +11,7 @@ interface Props {
   tarefaTipos: Record<string, string[] | null>
   tarefas: Tarefa[]
   etapas: TarefaEtapa[]
+  vinculos?: Record<string, VinculoStatus>
   mes: number
   ano: number
   onToggleSimples: (tipo: string, concluida: boolean, data?: string) => Promise<void>
@@ -48,6 +50,7 @@ export default function TarefaChecklistContabil({
   tarefaTipos,
   tarefas,
   etapas,
+  vinculos = {},
   mes,
   ano,
   onToggleSimples,
@@ -150,6 +153,17 @@ export default function TarefaChecklistContabil({
                 <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[var(--accent)]' : 'bg-[var(--fg)]/15'}`} />
                 <span className={`text-sm flex-1 transition-colors ${feito ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]'}`}>
                   {tipo}
+                  {vinculos[tipo] && (
+                    <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                      vinculos[tipo].liberada
+                        ? 'bg-green-500/15 text-green-400'
+                        : 'bg-orange-500/15 text-orange-400'
+                    }`}>
+                      {vinculos[tipo].liberada
+                        ? `✓ Liberada por ${vinculos[tipo].setorOrigemLabel}`
+                        : `⏳ Aguardando ${vinculos[tipo].setorOrigemLabel}`}
+                    </span>
+                  )}
                 </span>
 
                 {!etapasDefinidas && (
