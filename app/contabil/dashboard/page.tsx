@@ -41,7 +41,7 @@ export default async function DashboardContabilPage() {
   const concluidasTarefas = ts.filter(t => t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)).length
   const pct = totalTarefas > 0 ? Math.round((concluidasTarefas / totalTarefas) * 100) : 0
 
-  const hoje = new Date()
+  const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
   const alertas = ehMesAtual
     ? eventos
         .map(evento => {
