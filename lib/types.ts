@@ -113,11 +113,21 @@ export interface ClienteContabil {
   tarefas_personalizadas: string[]
 }
 
+export interface ClientePessoal {
+  cliente_id: string
+  atividade: string | null
+  responsavel: string | null
+  prioridade: number
+  obs: string | null
+  tarefas_personalizadas: string[]
+}
+
 export interface TarefaTipo {
   id: string
   setor: UserSetor
   nome: string
   etapas: string[] | null
+  meses_visiveis: number[] | null
   ativo: boolean
 }
 
@@ -150,5 +160,18 @@ export interface TarefaVinculo {
   tipo_origem: string
   setor_destino: UserSetor
   tipo_destino: string
+  created_at: string
+}
+
+export interface TarefaAvulsa {
+  id: string
+  cliente_id: string
+  setor: UserSetor
+  titulo: string
+  descricao: string | null
+  data: string
+  criado_por: string | null
+  concluida: boolean
+  concluida_em: string | null
   created_at: string
 }
