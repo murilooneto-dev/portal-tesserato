@@ -163,10 +163,11 @@ export async function salvarRespostaTexto(
     .from('tarefa_arquivos').select('id', { count: 'exact', head: true })
     .eq('tarefa_id', tarefaId)
 
-  const concluida = texto.trim() !== '' || (count ?? 0) > 0
+  const textoTrimado = texto.trim()
+  const concluida = textoTrimado !== '' || (count ?? 0) > 0
 
   await supabase.from('tarefas').update({
-    resposta_texto: texto,
+    resposta_texto: textoTrimado,
     concluida,
     concluida_em: concluida ? new Date().toISOString() : null,
   }).eq('id', tarefaId)

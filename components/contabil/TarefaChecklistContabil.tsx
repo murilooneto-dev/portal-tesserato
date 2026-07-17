@@ -16,7 +16,7 @@ interface Props {
   tarefaTipos: Record<string, TipoInfo>
   tarefas: Tarefa[]
   etapas: TarefaEtapa[]
-  arquivos: TarefaArquivo[]
+  arquivos: Omit<TarefaArquivo, 'content_base64'>[]
   vinculos?: Record<string, VinculoStatus>
   mes: number
   ano: number
@@ -92,7 +92,7 @@ export default function TarefaChecklistContabil({
     return etapas.filter(e => e.tarefa_id === tarefaId)
   }
 
-  function arquivosDaTarefa(tipo: string): TarefaArquivo[] {
+  function arquivosDaTarefa(tipo: string): Omit<TarefaArquivo, 'content_base64'>[] {
     const tarefaId = mapaTarefa.get(tipo)?.id
     if (!tarefaId) return []
     return arquivos.filter(a => a.tarefa_id === tarefaId)
@@ -165,13 +165,16 @@ export default function TarefaChecklistContabil({
     if (!files || files.length === 0) return
     setUploadingTipo(tipo)
     setErroUpload(prev => { const n = { ...prev }; delete n[tipo]; return n })
-    for (const file of Array.from(files)) {
-      const formData = new FormData()
-      formData.append('arquivo', file)
-      const result = await onUploadArquivo(tipo, formData)
-      if (result.error) setErroUpload(prev => ({ ...prev, [tipo]: result.error! }))
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append('arquivo', file)
+        const result = await onUploadArquivo(tipo, formData)
+        if (result.error) setErroUpload(prev => ({ ...prev, [tipo]: result.error! }))
+      }
+    } finally {
+      setUploadingTipo(null)
     }
-    setUploadingTipo(null)
   }
 
   function handleExcluirArquivo(arquivoId: string) {
@@ -267,7 +270,7 @@ export default function TarefaChecklistContabil({
                 </div>
               )}
 
-              {tipoResposta === 'texto' && (
+              {tipoResposta === 'texto' && !etapasDefinidas && (
                 <div className="ml-5 mt-1 flex flex-col gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
                   <textarea
                     value={getRespostaTexto(tipo)}

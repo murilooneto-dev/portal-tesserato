@@ -62,8 +62,8 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
     ? await supabase.from('tarefa_etapas').select('*').in('tarefa_id', tarefaIds)
     : { data: [] as TarefaEtapa[] }
   const { data: arquivos } = tarefaIds.length > 0
-    ? await supabase.from('tarefa_arquivos').select('*').in('tarefa_id', tarefaIds)
-    : { data: [] as TarefaArquivo[] }
+    ? await supabase.from('tarefa_arquivos').select('id, tarefa_id, name, size, uploaded_at').in('tarefa_id', tarefaIds)
+    : { data: [] as Omit<TarefaArquivo, 'content_base64'>[] }
 
   async function onToggleSimples(tipo: string, concluida: boolean, data?: string) {
     'use server'
@@ -117,7 +117,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
         tarefaTipos={tarefaTipos}
         tarefas={(tarefas ?? []) as Tarefa[]}
         etapas={(etapas ?? []) as TarefaEtapa[]}
-        arquivos={(arquivos ?? []) as TarefaArquivo[]}
+        arquivos={(arquivos ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}
         vinculos={vinculos}
         mes={mes}
         ano={ano}
