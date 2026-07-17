@@ -97,3 +97,17 @@ export async function podeEditarClienteContabil(clienteId: string): Promise<bool
   const { data: cliente } = await supabase.from('clientes_contabil').select('responsavel').eq('cliente_id', clienteId).single()
   return !!profile?.nome && !!cliente?.responsavel && profile.nome.toLowerCase() === cliente.responsavel.toLowerCase()
 }
+
+// Mesma lógica de podeEditarClienteContabil, mas pro setor Pessoal
+// (consulta clientes_pessoal em vez de clientes_contabil).
+export async function podeEditarClientePessoal(clienteId: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data: profile } = await supabase.from('profiles').select('role,nome').eq('id', user.id).single()
+  if (profile?.role === 'admin') return true
+
+  const { data: cliente } = await supabase.from('clientes_pessoal').select('responsavel').eq('cliente_id', clienteId).single()
+  return !!profile?.nome && !!cliente?.responsavel && profile.nome.toLowerCase() === cliente.responsavel.toLowerCase()
+}
