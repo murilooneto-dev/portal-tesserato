@@ -7,9 +7,9 @@ import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import TarefaChecklistContabil from '@/components/contabil/TarefaChecklistContabil'
 import ClienteContabilAcoes from '@/components/contabil/ClienteContabilAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
-import { toggleTarefaContabil, atualizarEtapa } from '../actions'
+import { toggleTarefaContabil, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa } from '../actions'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
-import type { Tarefa, TarefaEtapa } from '@/lib/types'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -35,7 +35,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   const [{ data: tarefas }, { data: todosContabil }, { data: tiposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
     supabase.from('clientes_contabil').select('responsavel'),
-    supabase.from('tarefa_tipos').select('nome, etapas').eq('setor', 'contabil'),
+    supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'contabil'),
   ])
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'contabil', mes, ano)
@@ -48,9 +48,12 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
     (todosContabil ?? []).map(c => c.responsavel ?? '').filter(Boolean)
   )).sort()
 
-  const tarefaTipos: Record<string, string[] | null> = {}
+  const tarefaTipos: Record<string, { etapas: string[] | null; tipoResposta: TipoResposta }> = {}
   for (const t of tiposRaw ?? []) {
-    tarefaTipos[t.nome as string] = t.etapas as string[] | null
+    tarefaTipos[t.nome as string] = {
+      etapas: t.etapas as string[] | null,
+      tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
+    }
   }
   const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
 
@@ -58,6 +61,9 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   const { data: etapas } = tarefaIds.length > 0
     ? await supabase.from('tarefa_etapas').select('*').in('tarefa_id', tarefaIds)
     : { data: [] as TarefaEtapa[] }
+  const { data: arquivos } = tarefaIds.length > 0
+    ? await supabase.from('tarefa_arquivos').select('*').in('tarefa_id', tarefaIds)
+    : { data: [] as TarefaArquivo[] }
 
   async function onToggleSimples(tipo: string, concluida: boolean, data?: string) {
     'use server'
@@ -67,6 +73,21 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   async function onAtualizarEtapa(tipo: string, etapaNome: string, concluida: boolean, data?: string) {
     'use server'
     await atualizarEtapa(id, mes, ano, tipo, etapaNome, concluida, data)
+  }
+
+  async function onSalvarTexto(tipo: string, texto: string) {
+    'use server'
+    await salvarRespostaTexto(id, tipo, mes, ano, texto)
+  }
+
+  async function onUploadArquivo(tipo: string, formData: FormData) {
+    'use server'
+    return await uploadArquivoTarefa(id, tipo, mes, ano, formData)
+  }
+
+  async function onExcluirArquivo(arquivoId: string) {
+    'use server'
+    await excluirArquivoTarefa(arquivoId)
   }
 
   return (
@@ -96,11 +117,15 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
         tarefaTipos={tarefaTipos}
         tarefas={(tarefas ?? []) as Tarefa[]}
         etapas={(etapas ?? []) as TarefaEtapa[]}
+        arquivos={(arquivos ?? []) as TarefaArquivo[]}
         vinculos={vinculos}
         mes={mes}
         ano={ano}
         onToggleSimples={onToggleSimples}
         onAtualizarEtapa={onAtualizarEtapa}
+        onSalvarTexto={onSalvarTexto}
+        onUploadArquivo={onUploadArquivo}
+        onExcluirArquivo={onExcluirArquivo}
         podeEditar={podeEditar}
       />
 
