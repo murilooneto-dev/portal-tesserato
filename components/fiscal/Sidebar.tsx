@@ -38,7 +38,13 @@ const ITENS_POR_SETOR: Record<UserSetor, NavItem[]> = {
     { href: '/contabil/historico', label: 'Histórico',     icon: TrendingUp },
     { href: '/contabil/calendario',label: 'Calendário',    icon: Calendar },
   ],
-  pessoal:    [{ href: '/pessoal',    label: 'Em construção', icon: Wrench }],
+  pessoal: [
+    { href: '/pessoal/dashboard',  label: 'Dashboard',  icon: LayoutGrid },
+    { href: '/pessoal/clientes',   label: 'Clientes',   icon: Users    },
+    { href: '/pessoal/relatorios', label: 'Relatórios', icon: FileText },
+    { href: '/pessoal/historico',  label: 'Histórico',  icon: TrendingUp },
+    { href: '/pessoal/calendario', label: 'Calendário', icon: Calendar },
+  ],
   societario: [{ href: '/societario', label: 'Em construção', icon: Wrench }],
   financeiro: [{ href: '/financeiro', label: 'Em construção', icon: Wrench }],
 }

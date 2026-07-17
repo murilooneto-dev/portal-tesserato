@@ -15,8 +15,8 @@ export const SETOR_LABEL: Record<UserSetor, string> = {
 
 export const SETOR_HOME: Record<UserSetor, string> = {
   fiscal: '/fiscal/dashboard',
-  contabil: '/contabil',
-  pessoal: '/pessoal',
+  contabil: '/contabil/dashboard',
+  pessoal: '/pessoal/dashboard',
   societario: '/societario',
   financeiro: '/financeiro',
 }
