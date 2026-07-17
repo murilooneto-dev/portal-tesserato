@@ -71,6 +71,7 @@ export interface Tarefa {
   tipo: string
   concluida: boolean
   concluida_em: string | null
+  resposta_texto: string | null
   recebido: boolean
   importado: boolean
   conferido: boolean
@@ -128,6 +129,7 @@ export interface TarefaTipo {
   nome: string
   etapas: string[] | null
   meses_visiveis: number[] | null
+  tipo_resposta: TipoResposta
   ativo: boolean
 }
 
@@ -141,6 +143,8 @@ export interface TarefaEtapa {
 }
 
 export type TipoDataEvento = 'recorrente' | 'unica'
+
+export type TipoResposta = 'data' | 'texto'
 
 export interface CalendarioEvento {
   id: string
@@ -174,4 +178,13 @@ export interface TarefaAvulsa {
   concluida: boolean
   concluida_em: string | null
   created_at: string
+}
+
+export interface TarefaArquivo {
+  id: string
+  tarefa_id: string
+  name: string
+  size: number
+  content_base64: string
+  uploaded_at: string
 }
