@@ -1,7 +1,7 @@
 'use client'
 
 import { useTransition, useState } from 'react'
-import type { Tarefa, TarefaEtapa } from '@/lib/types'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { tarefaVisivelNoMes } from '@/lib/tarefa-tipos'
 
@@ -10,6 +10,7 @@ const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov'
 interface TipoInfo {
   etapas: string[] | null
   mesesVisiveis: number[] | null
+  tipoResposta: TipoResposta
 }
 
 interface Props {
@@ -17,11 +18,15 @@ interface Props {
   tarefaTipos: Record<string, TipoInfo>
   tarefas: Tarefa[]
   etapas: TarefaEtapa[]
+  arquivos: TarefaArquivo[]
   vinculos?: Record<string, VinculoStatus>
   mes: number
   ano: number
   onToggleSimples: (tipo: string, concluida: boolean, data?: string) => Promise<void>
   onAtualizarEtapa: (tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
+  onSalvarTexto: (tipo: string, texto: string) => Promise<void>
+  onUploadArquivo: (tipo: string, formData: FormData) => Promise<{ error: string | null }>
+  onExcluirArquivo: (arquivoId: string) => Promise<void>
   podeEditar: boolean
 }
 
@@ -51,20 +56,33 @@ function autoFormatarData(raw: string): string {
   return digits
 }
 
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export default function TarefaChecklistPessoal({
   tarefasPersonalizadas,
   tarefaTipos,
   tarefas,
   etapas,
+  arquivos,
   vinculos = {},
   mes,
   ano,
   onToggleSimples,
   onAtualizarEtapa,
+  onSalvarTexto,
+  onUploadArquivo,
+  onExcluirArquivo,
   podeEditar,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [localText, setLocalText] = useState<Record<string, string>>({})
+  const [localResposta, setLocalResposta] = useState<Record<string, string>>({})
+  const [uploadingTipo, setUploadingTipo] = useState<string | null>(null)
+  const [erroUpload, setErroUpload] = useState<Record<string, string>>({})
 
   const tarefasVisiveis = tarefasPersonalizadas.filter(tipo => tarefaVisivelNoMes(tarefaTipos[tipo]?.mesesVisiveis, mes))
 
@@ -76,6 +94,12 @@ export default function TarefaChecklistPessoal({
     const tarefaId = mapaTarefa.get(tipo)?.id
     if (!tarefaId) return []
     return etapas.filter(e => e.tarefa_id === tarefaId)
+  }
+
+  function arquivosDaTarefa(tipo: string): TarefaArquivo[] {
+    const tarefaId = mapaTarefa.get(tipo)?.id
+    if (!tarefaId) return []
+    return arquivos.filter(a => a.tarefa_id === tarefaId)
   }
 
   function keyLocal(tipo: string, etapaNome?: string) {
@@ -125,6 +149,39 @@ export default function TarefaChecklistPessoal({
     setLocalText(prev => { const n = { ...prev }; delete n[key]; return n })
   }
 
+  function getRespostaTexto(tipo: string): string {
+    if (tipo in localResposta) return localResposta[tipo]
+    return mapaTarefa.get(tipo)?.resposta_texto ?? ''
+  }
+
+  function handleRespostaTextoChange(tipo: string, valor: string) {
+    setLocalResposta(prev => ({ ...prev, [tipo]: valor }))
+  }
+
+  function handleRespostaTextoBlur(tipo: string) {
+    const valor = localResposta[tipo]
+    if (valor === undefined) return
+    startTransition(() => { onSalvarTexto(tipo, valor) })
+    setLocalResposta(prev => { const n = { ...prev }; delete n[tipo]; return n })
+  }
+
+  async function handleUploadArquivo(tipo: string, files: FileList | null) {
+    if (!files || files.length === 0) return
+    setUploadingTipo(tipo)
+    setErroUpload(prev => { const n = { ...prev }; delete n[tipo]; return n })
+    for (const file of Array.from(files)) {
+      const formData = new FormData()
+      formData.append('arquivo', file)
+      const result = await onUploadArquivo(tipo, formData)
+      if (result.error) setErroUpload(prev => ({ ...prev, [tipo]: result.error! }))
+    }
+    setUploadingTipo(null)
+  }
+
+  function handleExcluirArquivo(arquivoId: string) {
+    startTransition(() => { onExcluirArquivo(arquivoId) })
+  }
+
   const inputCls = (feito: boolean) => `text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
     feito
       ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] focus:border-[var(--accent)]/60'
@@ -149,7 +206,9 @@ export default function TarefaChecklistPessoal({
 
       <div className="flex flex-col gap-2">
         {tarefasVisiveis.map(tipo => {
-          const etapasDefinidas = tarefaTipos[tipo]?.etapas ?? null
+          const info = tarefaTipos[tipo]
+          const etapasDefinidas = info?.etapas ?? null
+          const tipoResposta: TipoResposta = info?.tipoResposta ?? 'data'
           const feito = !!mapaTarefa.get(tipo)?.concluida
           const displayVal = getDisplayValue(tipo)
 
@@ -174,7 +233,7 @@ export default function TarefaChecklistPessoal({
                   )}
                 </span>
 
-                {!etapasDefinidas && (
+                {tipoResposta === 'data' && !etapasDefinidas && (
                   <input
                     type="text"
                     value={displayVal}
@@ -209,6 +268,49 @@ export default function TarefaChecklistPessoal({
                       </div>
                     )
                   })}
+                </div>
+              )}
+
+              {tipoResposta === 'texto' && (
+                <div className="ml-5 mt-1 flex flex-col gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
+                  <textarea
+                    value={getRespostaTexto(tipo)}
+                    onChange={e => handleRespostaTextoChange(tipo, e.target.value)}
+                    onBlur={() => handleRespostaTextoBlur(tipo)}
+                    disabled={!podeEditar || isPending}
+                    placeholder="Digite a resposta..."
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50 disabled:opacity-40"
+                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {podeEditar && (
+                      <label className={`text-[10px] px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
+                        uploadingTipo === tipo
+                          ? 'opacity-50 pointer-events-none'
+                          : 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/25'
+                      }`}>
+                        {uploadingTipo === tipo ? 'Enviando...' : '+ Anexar'}
+                        <input
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
+                          multiple
+                          className="hidden"
+                          onChange={e => handleUploadArquivo(tipo, e.target.files)}
+                          disabled={isPending}
+                        />
+                      </label>
+                    )}
+                    {arquivosDaTarefa(tipo).map(arq => (
+                      <span key={arq.id} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
+                        📎 {arq.name} · {formatBytes(arq.size)}
+                        {podeEditar && (
+                          <button type="button" onClick={() => handleExcluirArquivo(arq.id)}
+                            className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  {erroUpload[tipo] && <p className="text-red-400 text-[10px]">{erroUpload[tipo]}</p>}
                 </div>
               )}
             </div>

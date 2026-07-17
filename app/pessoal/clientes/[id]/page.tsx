@@ -8,8 +8,8 @@ import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import TarefaChecklistPessoal from '@/components/pessoal/TarefaChecklistPessoal'
 import ClientePessoalAcoes from '@/components/pessoal/ClientePessoalAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
-import { toggleTarefaPessoal, atualizarEtapa } from '../actions'
-import type { Tarefa, TarefaEtapa } from '@/lib/types'
+import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa } from '../actions'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -35,7 +35,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   const [{ data: tarefas }, { data: todosPessoal }, { data: tiposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'pessoal'),
     supabase.from('clientes_pessoal').select('responsavel'),
-    supabase.from('tarefa_tipos').select('nome, etapas, meses_visiveis').eq('setor', 'pessoal'),
+    supabase.from('tarefa_tipos').select('nome, etapas, meses_visiveis, tipo_resposta').eq('setor', 'pessoal'),
   ])
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'pessoal', mes, ano)
@@ -48,11 +48,12 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
     (todosPessoal ?? []).map(c => c.responsavel ?? '').filter(Boolean)
   )).sort()
 
-  const tarefaTipos: Record<string, { etapas: string[] | null; mesesVisiveis: number[] | null }> = {}
+  const tarefaTipos: Record<string, { etapas: string[] | null; mesesVisiveis: number[] | null; tipoResposta: TipoResposta }> = {}
   for (const t of tiposRaw ?? []) {
     tarefaTipos[t.nome as string] = {
       etapas: t.etapas as string[] | null,
       mesesVisiveis: t.meses_visiveis as number[] | null,
+      tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
     }
   }
   const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
@@ -61,6 +62,9 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   const { data: etapas } = tarefaIds.length > 0
     ? await supabase.from('tarefa_etapas').select('*').in('tarefa_id', tarefaIds)
     : { data: [] as TarefaEtapa[] }
+  const { data: arquivos } = tarefaIds.length > 0
+    ? await supabase.from('tarefa_arquivos').select('*').in('tarefa_id', tarefaIds)
+    : { data: [] as TarefaArquivo[] }
 
   async function onToggleSimples(tipo: string, concluida: boolean, data?: string) {
     'use server'
@@ -70,6 +74,21 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   async function onAtualizarEtapa(tipo: string, etapaNome: string, concluida: boolean, data?: string) {
     'use server'
     await atualizarEtapa(id, mes, ano, tipo, etapaNome, concluida, data)
+  }
+
+  async function onSalvarTexto(tipo: string, texto: string) {
+    'use server'
+    await salvarRespostaTexto(id, tipo, mes, ano, texto)
+  }
+
+  async function onUploadArquivo(tipo: string, formData: FormData) {
+    'use server'
+    return await uploadArquivoTarefa(id, tipo, mes, ano, formData)
+  }
+
+  async function onExcluirArquivo(arquivoId: string) {
+    'use server'
+    await excluirArquivoTarefa(arquivoId)
   }
 
   return (
@@ -99,11 +118,15 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
         tarefaTipos={tarefaTipos}
         tarefas={(tarefas ?? []) as Tarefa[]}
         etapas={(etapas ?? []) as TarefaEtapa[]}
+        arquivos={(arquivos ?? []) as TarefaArquivo[]}
         vinculos={vinculos}
         mes={mes}
         ano={ano}
         onToggleSimples={onToggleSimples}
         onAtualizarEtapa={onAtualizarEtapa}
+        onSalvarTexto={onSalvarTexto}
+        onUploadArquivo={onUploadArquivo}
+        onExcluirArquivo={onExcluirArquivo}
         podeEditar={podeEditar}
       />
 
