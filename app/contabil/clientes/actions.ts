@@ -129,3 +129,142 @@ export async function excluirClienteContabil(clienteId: string) {
 
   revalidatePath('/contabil/clientes')
 }
+
+const TIPOS_PERMITIDOS_TAREFA = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/vnd.ms-excel', // .xls
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+]
+const TAMANHO_MAX_ARQUIVO_TAREFA = 10 * 1024 * 1024 // 10 MB
+
+export async function salvarRespostaTexto(
+  clienteId: string,
+  tipo: string,
+  mes: number,
+  ano: number,
+  texto: string,
+) {
+  if (!(await podeEditarClienteContabil(clienteId))) return
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return
+
+  const { data: existing } = await supabase
+    .from('tarefas').select('id')
+    .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'contabil')
+    .maybeSingle()
+
+  let tarefaId = existing?.id as string | undefined
+  if (!tarefaId) {
+    const { data: nova } = await supabase
+      .from('tarefas')
+      .insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, setor: 'contabil', concluida: false })
+      .select('id')
+      .single()
+    tarefaId = nova?.id
+  }
+  if (!tarefaId) return
+
+  const { count } = await supabase
+    .from('tarefa_arquivos').select('id', { count: 'exact', head: true })
+    .eq('tarefa_id', tarefaId)
+
+  const concluida = texto.trim() !== '' || (count ?? 0) > 0
+
+  await supabase.from('tarefas').update({
+    resposta_texto: texto,
+    concluida,
+    concluida_em: concluida ? new Date().toISOString() : null,
+  }).eq('id', tarefaId)
+
+  revalidatePath(`/contabil/clientes/${clienteId}`)
+  revalidatePath('/contabil/clientes')
+}
+
+export async function uploadArquivoTarefa(
+  clienteId: string,
+  tipo: string,
+  mes: number,
+  ano: number,
+  formData: FormData,
+) {
+  if (!(await podeEditarClienteContabil(clienteId))) return { error: 'Não autorizado' }
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado' }
+
+  const arquivo = formData.get('arquivo') as File | null
+  if (!arquivo) return { error: 'Nenhum arquivo' }
+  if (!TIPOS_PERMITIDOS_TAREFA.includes(arquivo.type)) {
+    return { error: 'Tipo de arquivo não permitido. Use PDF, PNG, JPG, XLSX ou DOCX.' }
+  }
+  if (arquivo.size > TAMANHO_MAX_ARQUIVO_TAREFA) {
+    return { error: 'Arquivo muito grande. Máximo permitido: 10 MB.' }
+  }
+
+  const { data: existing } = await supabase
+    .from('tarefas').select('id')
+    .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'contabil')
+    .maybeSingle()
+
+  let tarefaId = existing?.id as string | undefined
+  if (!tarefaId) {
+    const { data: nova } = await supabase
+      .from('tarefas')
+      .insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, setor: 'contabil', concluida: false })
+      .select('id')
+      .single()
+    tarefaId = nova?.id
+  }
+  if (!tarefaId) return { error: 'Falha ao criar tarefa' }
+
+  const bytes = await arquivo.arrayBuffer()
+  const base64 = Buffer.from(bytes).toString('base64')
+
+  const { error } = await supabase.from('tarefa_arquivos').insert({
+    tarefa_id: tarefaId,
+    name: arquivo.name,
+    size: arquivo.size,
+    content_base64: base64,
+    uploaded_at: new Date().toISOString(),
+  })
+  if (error) return { error: error.message }
+
+  await supabase.from('tarefas').update({
+    concluida: true,
+    concluida_em: new Date().toISOString(),
+  }).eq('id', tarefaId)
+
+  revalidatePath(`/contabil/clientes/${clienteId}`)
+  revalidatePath('/contabil/clientes')
+  return { error: null }
+}
+
+export async function excluirArquivoTarefa(arquivoId: string) {
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return
+
+  const { data: arquivo } = await supabase.from('tarefa_arquivos').select('tarefa_id').eq('id', arquivoId).single()
+  if (!arquivo) return
+
+  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, resposta_texto').eq('id', arquivo.tarefa_id).single()
+  if (!tarefa || !(await podeEditarClienteContabil(tarefa.cliente_id))) return
+
+  await supabase.from('tarefa_arquivos').delete().eq('id', arquivoId)
+
+  const { count } = await supabase
+    .from('tarefa_arquivos').select('id', { count: 'exact', head: true })
+    .eq('tarefa_id', arquivo.tarefa_id)
+
+  const concluida = !!tarefa.resposta_texto?.trim() || (count ?? 0) > 0
+
+  await supabase.from('tarefas').update({
+    concluida,
+    concluida_em: concluida ? new Date().toISOString() : null,
+  }).eq('id', arquivo.tarefa_id)
+
+  revalidatePath(`/contabil/clientes/${tarefa.cliente_id}`)
+  revalidatePath('/contabil/clientes')
+}
