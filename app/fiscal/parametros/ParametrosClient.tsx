@@ -95,7 +95,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   ])
   const [savingEmail, setSavingEmail] = useState(false)
   const [emailMsg, setEmailMsg] = useState('')
-  const [enviandoRelatorioTeste, setEnviandoRelatorioTeste] = useState(false)
+  const [enviandoRelatorio, setEnviandoRelatorio] = useState(false)
   const [enviandoLogTeste, setEnviandoLogTeste] = useState(false)
 
   // Usuários
@@ -394,26 +394,15 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
     setTimeout(() => setEmailMsg(''), 3000)
   }
 
-  async function handleTestarRelatorio() {
-    if (!emailDest.trim()) {
-      setEmailMsg('Erro: preencha o e-mail destinatário antes de testar.')
-      setTimeout(() => setEmailMsg(''), 3000)
-      return
-    }
-    setEnviandoRelatorioTeste(true)
-    const res = await fetch('/api/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        para: emailDest,
-        assunto: 'Teste — Relatório Automático (Tesserato Fiscal)',
-        corpo: 'Este é um e-mail de teste da rotina de envio de relatórios automáticos do Portal Tesserato.',
-      }),
-    })
+  async function handleEnviarRelatorios() {
+    setEnviandoRelatorio(true)
+    const res = await fetch('/api/relatorios/fiscal', { method: 'POST' })
     const data = await res.json()
-    setEnviandoRelatorioTeste(false)
-    setEmailMsg(res.ok ? 'Relatório de teste enviado!' : `Erro: ${data.error ?? 'falha ao enviar'}`)
-    setTimeout(() => setEmailMsg(''), 3000)
+    setEnviandoRelatorio(false)
+    setEmailMsg(res.ok
+      ? `${data.enviados} relatório(s) enviado(s): ${data.responsaveis.join(', ')}`
+      : `Erro: ${data.error ?? 'falha ao enviar'}`)
+    setTimeout(() => setEmailMsg(''), 5000)
   }
 
   async function handleTestarLog() {
@@ -668,9 +657,9 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
               className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
               {savingEmail ? 'Salvando...' : 'Salvar configuração'}
             </button>
-            <button onClick={handleTestarRelatorio} disabled={enviandoRelatorioTeste}
+            <button onClick={handleEnviarRelatorios} disabled={enviandoRelatorio}
               className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm hover:bg-[var(--fg)]/10 transition-colors disabled:opacity-50">
-              {enviandoRelatorioTeste ? 'Enviando...' : 'Enviar relatórios agora (teste)'}
+              {enviandoRelatorio ? 'Enviando...' : 'Enviar relatórios agora'}
             </button>
             <button onClick={handleTestarLog} disabled={enviandoLogTeste}
               className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm hover:bg-[var(--fg)]/10 transition-colors disabled:opacity-50">
