@@ -3,7 +3,7 @@
 **Data:** 2026-07-17
 **Branch:** `feat/motor-tarefas-setor` (local, dev-only)
 
-> **Nota:** este spec foi escrito em modo assíncrono (Auto Mode), sem resposta ao vivo do usuário à pergunta de escopo feita durante o brainstorming. As decisões abaixo seguem a opção mais conservadora que eu tinha recomendado, documentadas explicitamente pra confirmação na segunda-feira. Nenhuma implementação começa até esse spec ser revisado e aprovado.
+> **Aprovado em 2026-07-20.** Escrito inicialmente em modo assíncrono (Auto Mode) em 17/07, com as 3 perguntas abaixo confirmadas pelo usuário nesta data — todas na opção recomendada, sem alteração de escopo.
 
 ## Contexto
 
@@ -73,8 +73,8 @@ O Fiscal ganha as mesmas 4 funções que Contábil/Pessoal já têm — `atualiz
 - Um tipo de tarefa de teste (nome que não existe em nenhum cliente real) pode ser inserido no catálogo via SQL pontual (`insert into tarefa_tipos (setor, nome, etapas) values ('fiscal', 'Teste QA', array['Passo 1','Passo 2'])`) e, se um cliente de teste tiver esse nome exato em `tarefas_personalizadas`, a checklist renderiza o sub-checklist genérico — prova de que a máquina funciona, sem tocar em nenhum dado real.
 - `ENTRADA`/`SAIDAS` continuam funcionando bit-a-bit como hoje pra todo cliente real, incluindo `desbloquearTarefa` e o log em `task_unlock_log`.
 
-## Perguntas em aberto pra segunda-feira
+## Decisões confirmadas em 2026-07-20
 
-1. A estratégia de fases proposta (aditiva, zero migração de dados) é a que você quer, ou prefere já incluir a migração de `ENTRADA`/`SAIDAS` pro catálogo nesta mesma leva?
-2. Depois desta Fase 1 (a máquina existir), qual é o próximo passo real — migrar nomes de tarefa específicos pro catálogo aos poucos (um de cada vez, via SQL, como já fazemos pra Contábil/Pessoal), ou você já tem em mente um conjunto maior a converter de uma vez?
-3. Confirma que "Corrigir Tarefas" e os dois sistemas de template devem ficar intocados por enquanto?
+1. Estratégia aditiva confirmada — `ENTRADA`/`SAIDAS` ficam hard-coded e intocados, migração deles fica pra uma Fase 2 futura, com spec própria.
+2. Próximo passo depois desta fase: migrar tipos de tarefa reais pro catálogo um de cada vez, via migration SQL pontual — mesmo padrão já usado pra Contábil/Pessoal.
+3. "Corrigir Tarefas" e os dois sistemas de template (`atividade_templates`, `grupo_templates`) ficam intocados por enquanto.
