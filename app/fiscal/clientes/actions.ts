@@ -349,8 +349,8 @@ export async function excluirArquivoTarefa(arquivoId: string) {
   const { data: arquivo } = await supabase.from('tarefa_arquivos').select('tarefa_id').eq('id', arquivoId).single()
   if (!arquivo) return
 
-  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, resposta_texto').eq('id', arquivo.tarefa_id).single()
-  if (!tarefa || !(await podeEditarCliente(tarefa.cliente_id))) return
+  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, resposta_texto, setor').eq('id', arquivo.tarefa_id).single()
+  if (!tarefa || tarefa.setor !== 'fiscal' || !(await podeEditarCliente(tarefa.cliente_id))) return
 
   await supabase.from('tarefa_arquivos').delete().eq('id', arquivoId)
 
