@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { criarTipoTarefa } from '@/lib/tarefa-tipos'
+import { criarTipoTarefa } from '@/lib/tarefa-tipos-actions'
 import type { UserSetor, TipoResposta } from '@/lib/types'
 
 type Formato = 'data' | 'texto' | 'opcoes'
