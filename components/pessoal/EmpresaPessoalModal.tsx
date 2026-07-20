@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
+import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
+import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 
 interface FormData {
   cnpj: string
@@ -43,6 +45,8 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
 
   const [form, setForm] = useState<FormData>(emptyForm(tarefasPadrao))
   const [novaTarefa, setNovaTarefa] = useState('')
+  const [catalogoNomes, setCatalogoNomes] = useState<string[]>(tarefasPadrao)
+  const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [loadingCnpj, setLoadingCnpj] = useState(false)
@@ -90,8 +94,19 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
   function addTarefa() {
     const t = novaTarefa.trim()
     if (!t) return
-    set('tarefas_personalizadas', [...form.tarefas_personalizadas, t])
+    if (tarefaExisteNoCatalogo(catalogoNomes, t)) {
+      set('tarefas_personalizadas', [...form.tarefas_personalizadas, t])
+      setNovaTarefa('')
+    } else {
+      setNomeParaCriar(t)
+    }
+  }
+
+  function handleTipoCriado(nome: string) {
+    setCatalogoNomes(prev => [...prev, nome])
+    set('tarefas_personalizadas', [...form.tarefas_personalizadas, nome])
     setNovaTarefa('')
+    setNomeParaCriar(null)
   }
 
   async function handleSave() {
@@ -136,6 +151,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
@@ -260,5 +276,14 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
         </div>
       </div>
     </div>
+    {nomeParaCriar && (
+      <NovoTipoTarefaModal
+        nome={nomeParaCriar}
+        setor="pessoal"
+        onCancel={() => setNomeParaCriar(null)}
+        onCriado={handleTipoCriado}
+      />
+    )}
+    </>
   )
 }
