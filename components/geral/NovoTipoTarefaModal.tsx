@@ -42,10 +42,15 @@ export default function NovoTipoTarefaModal({ nome, setor, onCancel, onCriado }:
     setErro(null)
     const tipoResposta: TipoResposta = formato === 'texto' ? 'texto' : 'data'
     const etapasFinal = formato === 'opcoes' ? etapas : null
-    const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal)
-    setSalvando(false)
-    if (error) { setErro(error); return }
-    onCriado(nome)
+    try {
+      const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal)
+      if (error) { setErro(error); return }
+      onCriado(nome)
+    } catch {
+      setErro('Não foi possível criar o tipo. Tente novamente.')
+    } finally {
+      setSalvando(false)
+    }
   }
 
   return (
