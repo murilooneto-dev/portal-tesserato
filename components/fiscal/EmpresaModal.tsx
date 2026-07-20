@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import CamposFiscais, { type CamposFiscaisData } from './CamposFiscais'
+import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
+import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 
 interface FormData {
   cod: string
@@ -58,6 +60,8 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
   const [saving, setSaving] = useState(false)
   const [loadingCnpj, setLoadingCnpj] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [catalogoNomes, setCatalogoNomes] = useState<string[]>([])
+  const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
 
   useEffect(() => {
     if (!clienteId) return
@@ -101,6 +105,12 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
     })
   }, [clienteId])
 
+  useEffect(() => {
+    sb.from('tarefa_tipos').select('nome').eq('setor', 'fiscal').then(({ data }) => {
+      setCatalogoNomes((data ?? []).map(t => t.nome as string))
+    })
+  }, [])
+
   async function fetchCnpj(raw: string) {
     setLoadingCnpj(true)
     const resultado = await buscarCnpj(raw)
@@ -122,8 +132,19 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
   function addTarefa() {
     const t = novaTarefa.trim()
     if (!t) return
-    set('tarefas_personalizadas', [...form.tarefas_personalizadas, t])
+    if (tarefaExisteNoCatalogo(catalogoNomes, t)) {
+      set('tarefas_personalizadas', [...form.tarefas_personalizadas, t])
+      setNovaTarefa('')
+    } else {
+      setNomeParaCriar(t)
+    }
+  }
+
+  function handleTipoCriado(nome: string) {
+    setCatalogoNomes(prev => [...prev, nome])
+    set('tarefas_personalizadas', [...form.tarefas_personalizadas, nome])
     setNovaTarefa('')
+    setNomeParaCriar(null)
   }
 
   async function handleSave() {
@@ -174,6 +195,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
@@ -266,5 +288,14 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
         </div>
       </div>
     </div>
+    {nomeParaCriar && (
+      <NovoTipoTarefaModal
+        nome={nomeParaCriar}
+        setor="fiscal"
+        onCancel={() => setNomeParaCriar(null)}
+        onCriado={handleTipoCriado}
+      />
+    )}
+    </>
   )
 }
