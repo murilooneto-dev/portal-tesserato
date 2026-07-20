@@ -5,8 +5,10 @@ import { createClient, getAuthenticatedAdmin, podeEditarCliente } from '@/lib/su
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
+import type { TarefaArquivo, TarefaEtapa, TipoResposta } from '@/lib/types'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
+import { atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa } from '../actions'
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
 import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
@@ -42,6 +44,25 @@ export default async function ClienteDetalhePage({ params }: Props) {
   // Tarefas do mês selecionado
   const { data: tarefas } = await supabase
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
+
+  const { data: tiposRaw } = await supabase
+    .from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'fiscal')
+
+  const tarefaTipos: Record<string, { etapas: string[] | null; tipoResposta: TipoResposta }> = {}
+  for (const t of tiposRaw ?? []) {
+    tarefaTipos[t.nome as string] = {
+      etapas: t.etapas as string[] | null,
+      tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
+    }
+  }
+
+  const tarefaIds = (tarefas ?? []).map(t => t.id)
+  const { data: etapasCatalogo } = tarefaIds.length > 0
+    ? await supabase.from('tarefa_etapas').select('*').in('tarefa_id', tarefaIds)
+    : { data: [] as TarefaEtapa[] }
+  const { data: arquivosCatalogo } = tarefaIds.length > 0
+    ? await supabase.from('tarefa_arquivos').select('id, tarefa_id, name, size, uploaded_at').in('tarefa_id', tarefaIds)
+    : { data: [] as Omit<TarefaArquivo, 'content_base64'>[] }
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'fiscal', mes, ano)
 
@@ -107,6 +128,26 @@ export default async function ClienteDetalhePage({ params }: Props) {
     revalidatePath('/fiscal/tarefas')
   }
 
+  async function onAtualizarEtapa(tipo: string, etapaNome: string, concluida: boolean, data?: string) {
+    'use server'
+    await atualizarEtapa(id, mes, ano, tipo, etapaNome, concluida, data)
+  }
+
+  async function onSalvarTexto(tipo: string, texto: string) {
+    'use server'
+    await salvarRespostaTexto(id, tipo, mes, ano, texto)
+  }
+
+  async function onUploadArquivo(tipo: string, formData: FormData) {
+    'use server'
+    return await uploadArquivoTarefa(id, tipo, mes, ano, formData)
+  }
+
+  async function onExcluirArquivo(arquivoId: string) {
+    'use server'
+    await excluirArquivoTarefa(arquivoId)
+  }
+
   // Histórico por mês
   const tiposDoCliente = cliente.tarefas_personalizadas ?? []
   const historicoMeses = Array.from({ length: 12 }, (_, i) => {
@@ -161,6 +202,13 @@ export default async function ClienteDetalhePage({ params }: Props) {
         mitInicial={cliente.mit ?? ''}
         onToggle={toggleTarefa}
         podeEditar={podeEditar}
+        tarefaTipos={tarefaTipos}
+        etapas={(etapasCatalogo ?? []) as TarefaEtapa[]}
+        arquivos={(arquivosCatalogo ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}
+        onAtualizarEtapa={onAtualizarEtapa}
+        onSalvarTexto={onSalvarTexto}
+        onUploadArquivo={onUploadArquivo}
+        onExcluirArquivo={onExcluirArquivo}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} />
