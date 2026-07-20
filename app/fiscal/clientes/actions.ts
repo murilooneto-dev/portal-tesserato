@@ -93,6 +93,8 @@ export async function uploadArquivo(clienteId: string, formData: FormData) {
     uploaded_at: new Date().toISOString(),
   })
 
+  if (!error) revalidatePath(`/fiscal/clientes/${clienteId}`)
+
   return { error: error?.message ?? null }
 }
 
@@ -102,6 +104,7 @@ export async function excluirArquivo(arquivoId: string) {
   const { data: arquivo } = await supabase.from('client_files').select('cliente_id').eq('id', arquivoId).single()
   if (!arquivo || !(await podeEditarCliente(arquivo.cliente_id))) return
   await supabase.from('client_files').delete().eq('id', arquivoId)
+  revalidatePath(`/fiscal/clientes/${arquivo.cliente_id}`)
 }
 
 export async function atualizarSubEtapa(
