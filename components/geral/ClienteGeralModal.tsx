@@ -8,6 +8,8 @@ import CamposFiscais, { type CamposFiscaisData } from '@/components/fiscal/Campo
 import SectorSection from '@/components/geral/SectorSection'
 import { flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
+import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
+import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 
 interface FormData extends CamposFiscaisData {
   nome: string
@@ -52,6 +54,8 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
   const [loadingCnpj, setLoadingCnpj] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [mostrarVinculos, setMostrarVinculos] = useState(false)
+  const [catalogoNomes, setCatalogoNomes] = useState<string[]>([])
+  const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
 
   useEffect(() => {
     if (!clienteId) return
@@ -88,6 +92,12 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
     })
   }, [clienteId])
 
+  useEffect(() => {
+    sb.from('tarefa_tipos').select('nome').eq('setor', 'fiscal').then(({ data }) => {
+      setCatalogoNomes((data ?? []).map(t => t.nome as string))
+    })
+  }, [])
+
   async function fetchCnpj(raw: string) {
     setLoadingCnpj(true)
     const resultado = await buscarCnpj(raw)
@@ -116,8 +126,19 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
   function addTarefa() {
     const t = novaTarefa.trim()
     if (!t) return
-    set('tarefas_personalizadas', [...form.tarefas_personalizadas, t])
+    if (tarefaExisteNoCatalogo(catalogoNomes, t)) {
+      set('tarefas_personalizadas', [...form.tarefas_personalizadas, t])
+      setNovaTarefa('')
+    } else {
+      setNomeParaCriar(t)
+    }
+  }
+
+  function handleTipoCriado(nome: string) {
+    setCatalogoNomes(prev => [...prev, nome])
+    set('tarefas_personalizadas', [...form.tarefas_personalizadas, nome])
     setNovaTarefa('')
+    setNomeParaCriar(null)
   }
 
   async function handleSave() {
@@ -238,6 +259,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
   const mostraFiscal = form.setores.includes('fiscal')
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
@@ -387,5 +409,14 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
         </div>
       </div>
     </div>
+    {nomeParaCriar && (
+      <NovoTipoTarefaModal
+        nome={nomeParaCriar}
+        setor="fiscal"
+        onCancel={() => setNomeParaCriar(null)}
+        onCriado={handleTipoCriado}
+      />
+    )}
+    </>
   )
 }
