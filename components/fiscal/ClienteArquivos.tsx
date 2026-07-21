@@ -103,7 +103,10 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
             <div key={arq.id} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 group">
               <span className="text-green-400 text-lg flex-shrink-0">📊</span>
               <div className="flex-1 min-w-0">
-                <p className="text-[var(--fg)] text-sm truncate">{arq.name}</p>
+                <a href={`/api/arquivos/client/${arq.id}`} target="_blank" rel="noopener noreferrer"
+                  className="text-[var(--fg)] text-sm truncate block hover:underline">
+                  {arq.name}
+                </a>
                 <p className="text-[var(--fg)]/30 text-xs">
                   {formatBytes(arq.size)} · {new Date(arq.uploaded_at).toLocaleDateString('pt-BR')}
                 </p>
