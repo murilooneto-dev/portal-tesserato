@@ -93,6 +93,8 @@ export async function uploadArquivo(clienteId: string, formData: FormData) {
     uploaded_at: new Date().toISOString(),
   })
 
+  if (!error) revalidatePath(`/fiscal/clientes/${clienteId}`)
+
   return { error: error?.message ?? null }
 }
 
@@ -102,51 +104,7 @@ export async function excluirArquivo(arquivoId: string) {
   const { data: arquivo } = await supabase.from('client_files').select('cliente_id').eq('id', arquivoId).single()
   if (!arquivo || !(await podeEditarCliente(arquivo.cliente_id))) return
   await supabase.from('client_files').delete().eq('id', arquivoId)
-}
-
-export async function atualizarSubEtapa(
-  clienteId: string,
-  mes: number,
-  ano: number,
-  tipo: string,
-  campo: 'recebido' | 'importado' | 'conferido',
-  valor: boolean,
-) {
-  if (!(await podeEditarCliente(clienteId))) return
-  const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return
-
-  const { data: existing } = await supabase
-    .from('tarefas')
-    .select('id, recebido, importado, conferido')
-    .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'fiscal')
-    .maybeSingle()
-
-  const atual = {
-    recebido: existing?.recebido ?? false,
-    importado: existing?.importado ?? false,
-    conferido: existing?.conferido ?? false,
-    [campo]: valor,
-  }
-  const todasMarcadas = atual.recebido && atual.importado && atual.conferido
-
-  const payload = {
-    ...atual,
-    concluida: todasMarcadas,
-    concluida_em: todasMarcadas ? new Date().toISOString() : null,
-  }
-
-  if (existing?.id) {
-    await supabase.from('tarefas').update(payload).eq('id', existing.id)
-  } else {
-    await supabase.from('tarefas').insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, setor: 'fiscal', ...payload })
-  }
-
-  revalidatePath('/fiscal/clientes')
-  revalidatePath('/fiscal/dashboard')
-  revalidatePath('/fiscal/historico')
-  revalidatePath('/fiscal/relatorios')
-  revalidatePath('/fiscal/tarefas')
+  revalidatePath(`/fiscal/clientes/${arquivo.cliente_id}`)
 }
 
 export async function excluirCliente(id: string) {

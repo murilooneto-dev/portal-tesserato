@@ -3,14 +3,7 @@
 import { useTransition, useState } from 'react'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
-import { desbloquearTarefa, salvarMIT, atualizarSubEtapa } from '@/app/fiscal/clientes/actions'
-
-const SUB_ETAPAS = ['recebido', 'importado', 'conferido'] as const
-const SUB_ETAPAS_LABEL: Record<typeof SUB_ETAPAS[number], string> = {
-  recebido: 'Recebido',
-  importado: 'Importado',
-  conferido: 'Conferido',
-}
+import { desbloquearTarefa, salvarMIT } from '@/app/fiscal/clientes/actions'
 
 const TAREFAS_NORMAL  = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS']
 const TAREFAS_SIMPLES = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF']
@@ -292,9 +285,8 @@ export default function TarefaChecklist({
 
       <div className="flex flex-col gap-2">
         {tipos.map(tipo => {
-          const ehSubEtapaFixa = tipo === 'ENTRADA' || tipo === 'SAIDAS'
-          const etapasDefinidas = !ehSubEtapaFixa ? (tarefaTipos[tipo]?.etapas ?? null) : null
-          const tipoResposta: TipoResposta = !ehSubEtapaFixa ? (tarefaTipos[tipo]?.tipoResposta ?? 'data') : 'data'
+          const etapasDefinidas = tarefaTipos[tipo]?.etapas ?? null
+          const tipoResposta: TipoResposta = tarefaTipos[tipo]?.tipoResposta ?? 'data'
           const savedIso = getSavedIso(tipo)
           const feito = savedIso !== ''
           const isUnlocking = unlockingTipo === tipo
@@ -324,22 +316,7 @@ export default function TarefaChecklist({
                   )}
                 </span>
 
-                {ehSubEtapaFixa ? (
-                  <div className="flex items-center gap-3">
-                    {SUB_ETAPAS.map(campo => (
-                      <label key={campo} className="flex items-center gap-1.5 text-xs text-[var(--fg)]/60 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={mapaTarefa.get(tipo)?.[campo] ?? false}
-                          disabled={!podeEditar || feito || isPending || isUnlocking}
-                          onChange={e => startTransition(() => atualizarSubEtapa(clienteId, mes, ano, tipo, campo, e.target.checked))}
-                          className="w-3.5 h-3.5 accent-[var(--accent)]"
-                        />
-                        {SUB_ETAPAS_LABEL[campo]}
-                      </label>
-                    ))}
-                  </div>
-                ) : tipoResposta === 'data' && !etapasDefinidas ? (
+                {tipoResposta === 'data' && !etapasDefinidas ? (
                   <input
                     type="text"
                     value={displayVal}
