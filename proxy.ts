@@ -47,13 +47,20 @@ export async function proxy(request: NextRequest) {
   if (setorDaRota) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('setores, role')
+      .select('setores, role, paginas_acesso')
       .eq('id', user.id)
       .single()
 
-    const podeAcessar = profile?.role === 'admin' || (profile?.setores ?? []).includes(setorDaRota)
+    const podeAcessarSetor = profile?.role === 'admin' || (profile?.setores ?? []).includes(setorDaRota)
 
-    if (!podeAcessar) {
+    const resto = pathname.slice(`/${setorDaRota}`.length).replace(/^\//, '')
+    const pagina = resto.split('/')[0] || 'dashboard'
+    const podeAcessarPagina =
+      profile?.role === 'admin' ||
+      pagina === 'dashboard' ||
+      (profile?.paginas_acesso ?? []).includes(`${setorDaRota}:${pagina}`)
+
+    if (!podeAcessarSetor || !podeAcessarPagina) {
       const primeiroSetor = profile?.setores?.[0] as UserSetor | undefined
       const destino = primeiroSetor ? SETOR_HOME[primeiroSetor] : '/intranet'
       return NextResponse.redirect(new URL(destino, request.url))
