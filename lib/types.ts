@@ -28,6 +28,7 @@ export interface Profile {
   setores: UserSetor[]
   cor: string
   created_at: string
+  paginas_acesso: string[]
 }
 
 export interface Cliente {
