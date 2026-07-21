@@ -21,6 +21,7 @@ export async function atualizarPerfil(id: string, formData: FormData) {
   if (callerProfile?.role !== 'admin') throw new Error('Acesso negado.')
 
   const setores = formData.getAll('setores') as string[]
+  const paginasAcesso = formData.getAll('paginas_acesso') as string[]
 
   const { error } = await supabase
     .from('profiles')
@@ -29,6 +30,7 @@ export async function atualizarPerfil(id: string, formData: FormData) {
       role: formData.get('role') as string,
       cor:  formData.get('cor')  as string,
       setores: setores.length > 0 ? setores : ['fiscal'],
+      paginas_acesso: paginasAcesso,
     })
     .eq('id', id)
 
@@ -42,7 +44,7 @@ export async function criarUsuario(payload: {
   senha: string
   role: string
   cor: string
-  abas: string[]
+  paginasAcesso: string[]
   setores: string[]
 }): Promise<{ error?: string }> {
   const { user, supabase } = await getAuthenticatedAdmin()
@@ -73,7 +75,7 @@ export async function criarUsuario(payload: {
     role: payload.role,
     cor: payload.cor,
     setores: payload.setores.length > 0 ? payload.setores : ['fiscal'],
-    abas_acesso: payload.abas,
+    paginas_acesso: payload.paginasAcesso,
   }).eq('id', userId)
 
   if (profErr) {
