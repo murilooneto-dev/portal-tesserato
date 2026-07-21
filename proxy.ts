@@ -5,6 +5,15 @@ import { SETOR_HOME, type UserSetor } from '@/lib/types'
 
 const PREFIXOS_SETOR: UserSetor[] = ['fiscal', 'contabil', 'pessoal', 'societario', 'financeiro']
 
+// Páginas fora do sistema de permissão granular por página: sempre
+// liberadas pra qualquer usuário que tenha o setor (não aparecem no menu
+// nem na tela de permissões, mas continuam acessíveis por URL direta).
+// `dashboard` é a home de cada setor (nunca pode ser bloqueada, senão o
+// usuário fica sem destino de redirecionamento). agenda/bots/tarefas são
+// páginas operacionais por-usuário do Fiscal, que operadores já usam por
+// URL direta hoje — não são gerenciadas pela permissão por página.
+const PAGINAS_SEMPRE_LIBERADAS = ['dashboard', 'agenda', 'bots', 'tarefas']
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -57,7 +66,7 @@ export async function proxy(request: NextRequest) {
     const pagina = resto.split('/')[0] || 'dashboard'
     const podeAcessarPagina =
       profile?.role === 'admin' ||
-      pagina === 'dashboard' ||
+      PAGINAS_SEMPRE_LIBERADAS.includes(pagina) ||
       (profile?.paginas_acesso ?? []).includes(`${setorDaRota}:${pagina}`)
 
     if (!podeAcessarSetor || !podeAcessarPagina) {
