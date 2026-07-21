@@ -60,7 +60,7 @@ export default async function DashboardPessoalPage() {
 
   const clientesObs = cs.filter(c => c.obs && c.obs.trim() !== '')
   const responsaveis = Array.from(
-    new Set(cs.map(c => c.responsavel).filter(Boolean) as string[])
+    new Set(ps.filter(p => p.setores.includes('pessoal')).map(p => p.nome).filter(Boolean))
   ).sort()
 
   return (

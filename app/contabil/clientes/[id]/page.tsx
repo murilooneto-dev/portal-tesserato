@@ -32,9 +32,9 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
 
   const { mes, ano } = await getMesAno()
 
-  const [{ data: tarefas }, { data: todosContabil }, { data: tiposRaw }] = await Promise.all([
+  const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
-    supabase.from('clientes_contabil').select('responsavel'),
+    supabase.from('profiles').select('nome').contains('setores', ['contabil']),
     supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'contabil'),
   ])
 
@@ -45,7 +45,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   )
 
   const responsaveis = Array.from(new Set(
-    (todosContabil ?? []).map(c => c.responsavel ?? '').filter(Boolean)
+    (usuariosContabil ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
 
   const tarefaTipos: Record<string, { etapas: string[] | null; tipoResposta: TipoResposta }> = {}

@@ -11,18 +11,18 @@ export default async function ClientesGeralPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: clientes }, { data: atividadeTemplates }, { data: fiscalResponsaveis }, { data: vinculosCatalogo }] = await Promise.all([
+  const [{ data: profile }, { data: clientes }, { data: atividadeTemplates }, { data: usuariosFiscal }, { data: vinculosCatalogo }] = await Promise.all([
     supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase.from('clientes').select('*').order('nome'),
     supabase.from('atividade_templates').select('atividade,tarefas'),
-    supabase.from('clientes_fiscal').select('responsavel'),
+    supabase.from('profiles').select('nome').contains('setores', ['fiscal']),
     supabase.from('tarefa_vinculos').select('*').order('created_at'),
   ])
 
   const isAdmin = profile?.role === 'admin'
 
   const responsaveis = Array.from(new Set(
-    (fiscalResponsaveis ?? []).map(c => c.responsavel ?? '').filter(Boolean)
+    (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
 
   const templatesMap: Record<string, string[]> = {}

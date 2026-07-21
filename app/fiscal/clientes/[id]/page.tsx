@@ -88,12 +88,12 @@ export default async function ClienteDetalhePage({ params }: Props) {
     .maybeSingle()
 
   // Dados pro EmpresaModal (editar cliente)
-  const [{ data: todosClientes }, { data: atividadeTemplates }] = await Promise.all([
-    supabase.from('clientes_fiscal').select('responsavel'),
+  const [{ data: usuariosFiscal }, { data: atividadeTemplates }] = await Promise.all([
+    supabase.from('profiles').select('nome').contains('setores', ['fiscal']),
     supabase.from('atividade_templates').select('atividade,tarefas'),
   ])
   const responsaveis = Array.from(new Set(
-    (todosClientes ?? []).map(c => c.responsavel ?? '').filter(Boolean)
+    (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
   const templatesMap: Record<string, string[]> = {}
   for (const row of atividadeTemplates ?? []) {

@@ -32,9 +32,9 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
 
   const { mes, ano } = await getMesAno()
 
-  const [{ data: tarefas }, { data: todosPessoal }, { data: tiposRaw }] = await Promise.all([
+  const [{ data: tarefas }, { data: usuariosPessoal }, { data: tiposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'pessoal'),
-    supabase.from('clientes_pessoal').select('responsavel'),
+    supabase.from('profiles').select('nome').contains('setores', ['pessoal']),
     supabase.from('tarefa_tipos').select('nome, etapas, meses_visiveis, tipo_resposta').eq('setor', 'pessoal'),
   ])
 
@@ -45,7 +45,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   )
 
   const responsaveis = Array.from(new Set(
-    (todosPessoal ?? []).map(c => c.responsavel ?? '').filter(Boolean)
+    (usuariosPessoal ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
 
   const tarefaTipos: Record<string, { etapas: string[] | null; mesesVisiveis: number[] | null; tipoResposta: TipoResposta }> = {}

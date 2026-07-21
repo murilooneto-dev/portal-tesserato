@@ -55,7 +55,7 @@ export default async function DashboardContabilPage() {
 
   const clientesObs = cs.filter(c => c.obs && c.obs.trim() !== '')
   const responsaveis = Array.from(
-    new Set(cs.map(c => c.responsavel).filter(Boolean) as string[])
+    new Set(ps.filter(p => p.setores.includes('contabil')).map(p => p.nome).filter(Boolean))
   ).sort()
 
   return (
