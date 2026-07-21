@@ -56,6 +56,7 @@ export async function GET(
       'Content-Type': tipoContent(nome),
       'Content-Disposition': `inline; filename="${nomeAscii}"; filename*=UTF-8''${encodeURIComponent(nome)}`,
       'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
     },
   })
 }
