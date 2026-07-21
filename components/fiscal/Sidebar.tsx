@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { SETOR_LABEL, type Profile, type UserSetor } from '@/lib/types'
 import { useTheme } from '@/lib/theme'
+import { PAGINAS_POR_SETOR } from '@/lib/paginas-setor'
 import MesSeletor from './MesSeletor'
 import {
   Zap, LayoutGrid, Users, Calendar,
@@ -21,32 +22,34 @@ const ITENS_COMUNS: NavItem[] = [
   { href: '/ferramentas', label: 'Ferramentas', icon: Wrench },
 ]
 
+const ICONES_PAGINA: Record<string, LucideIcon> = {
+  dashboard: LayoutGrid,
+  clientes: Users,
+  calendario: Calendar,
+  relatorios: FileText,
+  historico: TrendingUp,
+  parcelamentos: CreditCard,
+  conferencia: ClipboardCheck,
+}
+
+function itensDoSetor(setor: UserSetor): NavItem[] {
+  const paginas = PAGINAS_POR_SETOR[setor]
+  if (paginas.length === 0) {
+    return [{ href: `/${setor}`, label: 'Em construção', icon: Wrench }]
+  }
+  return paginas.map(p => ({
+    href: `/${setor}/${p.slug}`,
+    label: p.label,
+    icon: ICONES_PAGINA[p.slug] ?? Wrench,
+  }))
+}
+
 const ITENS_POR_SETOR: Record<UserSetor, NavItem[]> = {
-  fiscal: [
-    { href: '/fiscal/dashboard',     label: 'Dashboard',     icon: LayoutGrid     },
-    { href: '/fiscal/clientes',      label: 'Clientes',      icon: Users          },
-    { href: '/fiscal/calendario',    label: 'Calendário',    icon: Calendar       },
-    { href: '/fiscal/relatorios',    label: 'Relatórios',    icon: FileText       },
-    { href: '/fiscal/historico',     label: 'Histórico',     icon: TrendingUp     },
-    { href: '/fiscal/parcelamentos', label: 'Parcelamentos', icon: CreditCard     },
-    { href: '/fiscal/conferencia',   label: 'Conferência',   icon: ClipboardCheck },
-  ],
-  contabil: [
-    { href: '/contabil/dashboard', label: 'Dashboard',     icon: LayoutGrid },
-    { href: '/contabil/clientes',  label: 'Clientes',      icon: Users    },
-    { href: '/contabil/relatorios',label: 'Relatórios',    icon: FileText },
-    { href: '/contabil/historico', label: 'Histórico',     icon: TrendingUp },
-    { href: '/contabil/calendario',label: 'Calendário',    icon: Calendar },
-  ],
-  pessoal: [
-    { href: '/pessoal/dashboard',  label: 'Dashboard',  icon: LayoutGrid },
-    { href: '/pessoal/clientes',   label: 'Clientes',   icon: Users    },
-    { href: '/pessoal/relatorios', label: 'Relatórios', icon: FileText },
-    { href: '/pessoal/historico',  label: 'Histórico',  icon: TrendingUp },
-    { href: '/pessoal/calendario', label: 'Calendário', icon: Calendar },
-  ],
-  societario: [{ href: '/societario', label: 'Em construção', icon: Wrench }],
-  financeiro: [{ href: '/financeiro', label: 'Em construção', icon: Wrench }],
+  fiscal: itensDoSetor('fiscal'),
+  contabil: itensDoSetor('contabil'),
+  pessoal: itensDoSetor('pessoal'),
+  societario: itensDoSetor('societario'),
+  financeiro: itensDoSetor('financeiro'),
 }
 
 interface Props {
