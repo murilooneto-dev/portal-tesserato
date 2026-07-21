@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
-import { SETORES, SETOR_LABEL } from '@/lib/types'
+import { SETORES, SETOR_LABEL, type UserSetor } from '@/lib/types'
+import { PAGINAS_POR_SETOR } from '@/lib/paginas-setor'
 import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
 import { salvarTemplate, aplicarTemplateAClientes, salvarTemplateGrupo, aplicarTemplateGrupoAClientes, analisarTarefasDuplicadas, limparTarefasDuplicadas, buscarDadosParaAlteracao, renomearTarefaEmClientes, excluirTarefaDeClientes, preencherDataEmClientes, buscarConclusoesTarefa, buscarTarefasSemData, excluirRegistrosDeTarefas, analisarParcelamentosDuplicados, limparParcelamentosDuplicados } from './actions'
 import type { GrupoDuplicata, RegistroSemData, GrupoParcelamentoDuplicado } from './actions'
@@ -45,11 +46,6 @@ function formatDate(s: string | null) {
   if (!s) return '—'
   return new Date(s).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
-
-const ABAS = [
-  'Intranet', 'Dashboard', 'Clientes', 'Calendários',
-  'Conferência', 'Relatórios', 'Histórico', 'Empresas', 'Parcelamentos',
-]
 
 const inputCls = "w-full px-4 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/8 text-[var(--fg)] text-sm placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 const labelCls = "block text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-1.5"
@@ -96,6 +92,8 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   ])
   const [savingEmail, setSavingEmail] = useState(false)
   const [emailMsg, setEmailMsg] = useState('')
+  const [enviandoRelatorio, setEnviandoRelatorio] = useState(false)
+  const [enviandoLogTeste, setEnviandoLogTeste] = useState(false)
 
   // Usuários
   const [editingProfile, setEditingProfile] = useState<string | null>(null)
@@ -108,7 +106,9 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [novoSenha, setNovoSenha] = useState('')
   const [novoPerfil, setNovoPerfil] = useState('operador')
   const [novoCor, setNovoCor] = useState('#6366f1')
-  const [novoAbas, setNovoAbas] = useState<string[]>([...ABAS])
+  const [novoPaginas, setNovoPaginas] = useState<string[]>(
+    PAGINAS_POR_SETOR.fiscal.filter(p => p.slug !== 'dashboard').map(p => `fiscal:${p.slug}`)
+  )
   const [novoSetores, setNovoSetores] = useState<string[]>(['fiscal'])
   const [criandoUser, setCriandoUser] = useState(false)
   const [novoUserErr, setNovoUserErr] = useState('')
@@ -366,6 +366,8 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
     fd.set('cor',  edits.cor  ?? profile.cor)
     const setores = edits.setores ?? profile.setores
     for (const s of setores) fd.append('setores', s)
+    const paginasAcesso = edits.paginas_acesso ?? profile.paginas_acesso ?? []
+    for (const c of paginasAcesso) fd.append('paginas_acesso', c)
     await atualizarPerfil(id, fd)
     setSavingProfile(null)
     setEditingProfile(null)
@@ -396,6 +398,39 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
     setTimeout(() => setEmailMsg(''), 3000)
   }
 
+  async function handleEnviarRelatorios() {
+    setEnviandoRelatorio(true)
+    const res = await fetch('/api/relatorios/fiscal', { method: 'POST' })
+    const data = await res.json()
+    setEnviandoRelatorio(false)
+    setEmailMsg(res.ok
+      ? `${data.enviados} relatório(s) enviado(s): ${data.responsaveis.join(', ')}`
+      : `Erro: ${data.error ?? 'falha ao enviar'}`)
+    setTimeout(() => setEmailMsg(''), 5000)
+  }
+
+  async function handleTestarLog() {
+    if (!emailDest.trim()) {
+      setEmailMsg('Erro: preencha o e-mail destinatário antes de testar.')
+      setTimeout(() => setEmailMsg(''), 3000)
+      return
+    }
+    setEnviandoLogTeste(true)
+    const res = await fetch('/api/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        para: emailDest,
+        assunto: 'Teste — Log de Rotinas (Tesserato Fiscal)',
+        corpo: 'Este é um e-mail de teste da rotina de envio de log do Portal Tesserato.',
+      }),
+    })
+    const data = await res.json()
+    setEnviandoLogTeste(false)
+    setEmailMsg(res.ok ? 'Log de teste enviado!' : `Erro: ${data.error ?? 'falha ao enviar'}`)
+    setTimeout(() => setEmailMsg(''), 3000)
+  }
+
   async function handleCriarUsuario() {
     if (!novoNome.trim() || !novoLogin.trim() || !novoSenha.trim()) {
       setNovoUserErr('Preencha nome, login e senha.')
@@ -409,7 +444,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       senha: novoSenha,
       role: novoPerfil,
       cor: novoCor,
-      abas: novoAbas,
+      paginasAcesso: novoPaginas,
       setores: novoSetores,
     })
     setCriandoUser(false)
@@ -422,19 +457,25 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       setNovoSenha('')
       setNovoPerfil('operador')
       setNovoCor('#6366f1')
-      setNovoAbas([...ABAS])
+      setNovoPaginas(PAGINAS_POR_SETOR.fiscal.filter(p => p.slug !== 'dashboard').map(p => `fiscal:${p.slug}`))
       setNovoSetores(['fiscal'])
       router.refresh()
       setTimeout(() => setNovoUserOk(false), 3000)
     }
   }
 
-  function toggleAba(aba: string) {
-    setNovoAbas(prev => prev.includes(aba) ? prev.filter(a => a !== aba) : [...prev, aba])
+  function togglePagina(chave: string) {
+    setNovoPaginas(prev => prev.includes(chave) ? prev.filter(c => c !== chave) : [...prev, chave])
   }
 
   function toggleSetor(setor: string) {
-    setNovoSetores(prev => prev.includes(setor) ? prev.filter(s => s !== setor) : [...prev, setor])
+    setNovoSetores(prev => {
+      const removendo = prev.includes(setor)
+      if (removendo) {
+        setNovoPaginas(p => p.filter(chave => !chave.startsWith(`${setor}:`)))
+      }
+      return removendo ? prev.filter(s => s !== setor) : [...prev, setor]
+    })
   }
 
   async function handleSalvarTemplate(base: string) {
@@ -632,11 +673,13 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
               className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
               {savingEmail ? 'Salvando...' : 'Salvar configuração'}
             </button>
-            <button className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm hover:bg-[var(--fg)]/10 transition-colors">
-              Enviar relatórios agora (teste)
+            <button onClick={handleEnviarRelatorios} disabled={enviandoRelatorio}
+              className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm hover:bg-[var(--fg)]/10 transition-colors disabled:opacity-50">
+              {enviandoRelatorio ? 'Enviando...' : 'Enviar relatórios agora'}
             </button>
-            <button className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm hover:bg-[var(--fg)]/10 transition-colors">
-              Enviar log agora (teste)
+            <button onClick={handleTestarLog} disabled={enviandoLogTeste}
+              className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm hover:bg-[var(--fg)]/10 transition-colors disabled:opacity-50">
+              {enviandoLogTeste ? 'Enviando...' : 'Enviar log agora (teste)'}
             </button>
             {emailMsg && (
               <span className={emailMsg.startsWith('Erro') ? 'text-red-400 text-sm' : 'text-green-400 text-sm'}>{emailMsg}</span>
@@ -682,19 +725,6 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
               </div>
 
               <div>
-                <label className={labelCls}>Acesso às Abas</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {ABAS.map(aba => (
-                    <label key={aba} className="flex items-center gap-2 cursor-pointer select-none">
-                      <input type="checkbox" checked={novoAbas.includes(aba)} onChange={() => toggleAba(aba)}
-                        className="w-3.5 h-3.5 accent-[var(--accent)]" />
-                      <span className="text-[var(--fg)]/60 text-xs">{aba}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
                 <label className={labelCls}>Setores</label>
                 <div className="grid grid-cols-2 gap-2">
                   {SETORES.map(setor => (
@@ -706,6 +736,24 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                   ))}
                 </div>
               </div>
+
+              {novoSetores.filter(s => PAGINAS_POR_SETOR[s as UserSetor].length > 0).map(setor => (
+                <div key={setor}>
+                  <label className={labelCls}>Páginas — {SETOR_LABEL[setor as UserSetor]}</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {PAGINAS_POR_SETOR[setor as UserSetor].filter(p => p.slug !== 'dashboard').map(p => {
+                      const chave = `${setor}:${p.slug}`
+                      return (
+                        <label key={chave} className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="checkbox" checked={novoPaginas.includes(chave)} onChange={() => togglePagina(chave)}
+                            className="w-3.5 h-3.5 accent-[var(--accent)]" />
+                          <span className="text-[var(--fg)]/60 text-xs">{p.label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
 
               {novoUserErr && <p className="text-red-400 text-sm">{novoUserErr}</p>}
               {novoUserOk && <p className="text-green-400 text-sm">Usuário criado com sucesso!</p>}
@@ -766,8 +814,13 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                                 checked={(edits.setores ?? p.setores).includes(setor)}
                                 onChange={() => {
                                   const atual = edits.setores ?? p.setores
-                                  const novo = atual.includes(setor) ? atual.filter(s => s !== setor) : [...atual, setor]
-                                  setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], setores: novo } }))
+                                  const removendo = atual.includes(setor)
+                                  const novo = removendo ? atual.filter(s => s !== setor) : [...atual, setor]
+                                  const paginasAtual = edits.paginas_acesso ?? p.paginas_acesso ?? []
+                                  const paginasNovo = removendo
+                                    ? paginasAtual.filter(c => !c.startsWith(`${setor}:`))
+                                    : paginasAtual
+                                  setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], setores: novo, paginas_acesso: paginasNovo } }))
                                 }}
                                 className="w-3.5 h-3.5 accent-[var(--accent)]"
                               />
@@ -775,6 +828,31 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                             </label>
                           ))}
                         </div>
+                        {(edits.setores ?? p.setores).filter(s => PAGINAS_POR_SETOR[s].length > 0).map(setor => (
+                          <div key={setor}>
+                            <p className="text-[var(--fg)]/40 text-[10px] uppercase tracking-widest mb-1">Páginas — {SETOR_LABEL[setor]}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {PAGINAS_POR_SETOR[setor].filter(pg => pg.slug !== 'dashboard').map(pg => {
+                                const chave = `${setor}:${pg.slug}`
+                                const atual = edits.paginas_acesso ?? p.paginas_acesso ?? []
+                                return (
+                                  <label key={chave} className="flex items-center gap-2 cursor-pointer select-none">
+                                    <input
+                                      type="checkbox"
+                                      checked={atual.includes(chave)}
+                                      onChange={() => {
+                                        const novo = atual.includes(chave) ? atual.filter(c => c !== chave) : [...atual, chave]
+                                        setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], paginas_acesso: novo } }))
+                                      }}
+                                      className="w-3.5 h-3.5 accent-[var(--accent)]"
+                                    />
+                                    <span className="text-[var(--fg)]/60 text-xs">{pg.label}</span>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))}
                         <div className="flex gap-2">
                           <button onClick={() => handleSaveProfile(p.id)} disabled={savingProfile === p.id}
                             className="flex-1 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--fg)] text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
