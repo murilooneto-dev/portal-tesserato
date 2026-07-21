@@ -441,7 +441,10 @@ export default function TarefaChecklist({
                     )}
                     {arquivosDaTarefa(tipo).map(arq => (
                       <span key={arq.id} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
-                        📎 {arq.name} · {formatBytes(arq.size)}
+                        <a href={`/api/arquivos/tarefa/${arq.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                          📎 {arq.name}
+                        </a>
+                        · {formatBytes(arq.size)}
                         {podeEditar && (
                           <button type="button" onClick={() => handleExcluirArquivo(arq.id)}
                             className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
