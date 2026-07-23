@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.7.4] - 2026-07-23
+
+### Adicionado
+- Modal de Parcelamentos: opção "Empresa Avulsa" — permite registrar parcelamentos de empresas não cadastradas no portal, digitando o nome livremente em vez de selecionar da lista de clientes.
+
+### Corrigido
+- Editar um parcelamento cujo campo "Empresa" não correspondia a nenhum cliente cadastrado zerava o nome da empresa ao reabrir o modal.
+
+### Arquivos alterados
+- `app/fiscal/parcelamentos/page.tsx` — campo Empresa Avulsa + fix de reabertura do modal
+- `supabase/migrations/006_empresa_avulsa_parcelamentos.sql` — nova coluna `empresa_avulsa`
+
+### Requer ação manual antes do deploy
+Rodar no SQL Editor do Supabase (produção):
+```sql
+alter table parcelamentos add column if not exists empresa_avulsa boolean not null default false;
+```
+
+---
+
 ## [v0.7.3] - 2026-07-23
 
 ### Corrigido
