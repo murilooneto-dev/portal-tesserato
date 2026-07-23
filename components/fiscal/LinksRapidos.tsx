@@ -37,6 +37,10 @@ export default function LinksRapidos({ links, isAdmin }: Props) {
     startTransition(async () => {
       const result = await atualizarLink(link.id, titulo.trim(), url.trim())
       if (result.error) { setErro(result.error); return }
+      setEdits(prev => {
+        const { [link.id]: _removido, ...resto } = prev
+        return resto
+      })
       router.refresh()
     })
   }
@@ -45,6 +49,10 @@ export default function LinksRapidos({ links, isAdmin }: Props) {
     if (!confirm('Excluir este link?')) return
     startTransition(async () => {
       await excluirLink(id)
+      setEdits(prev => {
+        const { [id]: _removido, ...resto } = prev
+        return resto
+      })
       router.refresh()
     })
   }
@@ -68,7 +76,11 @@ export default function LinksRapidos({ links, isAdmin }: Props) {
         </h2>
         {isAdmin && (
           <button
-            onClick={() => setEditando(v => !v)}
+            onClick={() => {
+              setEditando(v => !v)
+              setEdits({})
+              setErro('')
+            }}
             className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]/70 border border-[var(--fg)]/10 hover:border-[var(--fg)]/20 px-2.5 py-1 rounded-lg transition-colors"
           >
             {editando ? 'Concluir edição' : 'Editar links'}
