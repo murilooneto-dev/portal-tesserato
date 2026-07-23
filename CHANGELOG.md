@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.7.3] - 2026-07-23
+
+### Corrigido
+- Ferramenta de comparação DTE x Sistema: planilhas anexadas e excluídas na mesma sessão (sem recarregar a página) não eram removidas de fato do banco. O upload gerava um ID temporário no navegador que nunca correspondia ao ID real salvo no Supabase, então o clique no "✕" tentava excluir um registro inexistente — falhava silenciosamente, mas a planilha já tinha sumido da tela. Ao dar F5, a planilha "excluída" reaparecia, junto com as novas anexadas depois. Agora o upload retorna o ID real do banco e a exclusão só atualiza a tela quando o registro é de fato removido, reportando erro ao usuário caso contrário.
+
+### Arquivos alterados
+- `app/fiscal/clientes/actions.ts` — `uploadArquivo` retorna o id real gerado pelo banco; `excluirArquivo` confirma que uma linha foi realmente excluída antes de reportar sucesso
+- `components/fiscal/ClienteArquivos.tsx` — usa o id real retornado pelo upload em vez de um UUID gerado no navegador; só remove o item da lista após confirmação de exclusão bem-sucedida
+
+---
+
 ## [v0.7.2] - 2026-07-13
 
 ### Corrigido
