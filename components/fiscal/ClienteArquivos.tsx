@@ -41,14 +41,14 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
         const formData = new FormData()
         formData.append('arquivo', file)
         const result = await uploadArquivo(clienteId, formData)
-        if (result.error) {
-          erros.push(`${file.name}: ${result.error}`)
+        if (result.error || !result.id) {
+          erros.push(`${file.name}: ${result.error ?? 'Falha ao enviar'}`)
         } else {
           novos.push({
-            id: crypto.randomUUID(),
+            id: result.id,
             name: file.name,
             size: file.size,
-            uploaded_at: new Date().toISOString(),
+            uploaded_at: result.uploaded_at ?? new Date().toISOString(),
           })
         }
       }
@@ -62,7 +62,11 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
   async function handleExcluir(id: string) {
     if (!confirm('Remover este arquivo?')) return
     startTransition(async () => {
-      await excluirArquivo(id)
+      const result = await excluirArquivo(id)
+      if (result?.error) {
+        setErro(result.error)
+        return
+      }
       setArquivos(prev => prev.filter(a => a.id !== id))
     })
   }
