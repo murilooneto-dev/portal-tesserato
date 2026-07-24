@@ -86,29 +86,26 @@ export async function uploadArquivo(clienteId: string, formData: FormData) {
   const bytes = await arquivo.arrayBuffer()
   const base64 = Buffer.from(bytes).toString('base64')
 
-  const { data, error } = await supabase.from('client_files').insert({
+  const { error } = await supabase.from('client_files').insert({
     cliente_id: clienteId,
     name: arquivo.name,
     size: arquivo.size,
     content_base64: base64,
     uploaded_at: new Date().toISOString(),
-  }).select('id, uploaded_at').single()
+  })
 
   if (!error) revalidatePath(`/fiscal/clientes/${clienteId}`)
 
-  return { error: error?.message ?? null, id: data?.id ?? null, uploaded_at: data?.uploaded_at ?? null }
+  return { error: error?.message ?? null }
 }
 
 export async function excluirArquivo(arquivoId: string) {
   const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return { error: 'Não autorizado' }
+  if (!supabase) return
   const { data: arquivo } = await supabase.from('client_files').select('cliente_id').eq('id', arquivoId).single()
-  if (!arquivo || !(await podeEditarCliente(arquivo.cliente_id))) return { error: 'Não autorizado' }
-  const { error, count } = await supabase.from('client_files').delete({ count: 'exact' }).eq('id', arquivoId)
-  if (error) return { error: error.message }
-  if (!count) return { error: 'Arquivo não encontrado' }
+  if (!arquivo || !(await podeEditarCliente(arquivo.cliente_id))) return
+  await supabase.from('client_files').delete().eq('id', arquivoId)
   revalidatePath(`/fiscal/clientes/${arquivo.cliente_id}`)
-  return { error: null }
 }
 
 export async function excluirCliente(id: string) {
