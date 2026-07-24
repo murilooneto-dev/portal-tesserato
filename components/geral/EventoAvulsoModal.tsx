@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { criarTarefaAvulsa } from '@/lib/tarefas-avulsas'
+import { criarTarefaAvulsa, uploadArquivoEvento } from '@/lib/tarefas-avulsas'
 import type { UserSetor } from '@/lib/types'
 
 interface Props {
@@ -19,14 +19,38 @@ export default function EventoAvulsoModal({ clienteId, setor, onClose }: Props) 
   const [titulo, setTitulo] = useState('')
   const [descricao, setDescricao] = useState('')
   const [data, setData] = useState('')
+  const [arquivos, setArquivos] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+
+  function handleSelecionarArquivos(files: FileList | null) {
+    if (!files) return
+    setArquivos(prev => [...prev, ...Array.from(files)])
+  }
+
+  function handleRemoverArquivoSelecionado(idx: number) {
+    setArquivos(prev => prev.filter((_, i) => i !== idx))
+  }
 
   async function handleSave() {
     if (!titulo.trim() || !data) { setErro('Título e data são obrigatórios.'); return }
     setSaving(true)
     setErro(null)
-    await criarTarefaAvulsa({ clienteId, setor, titulo: titulo.trim(), descricao: descricao.trim() || null, data })
+
+    const resultado = await criarTarefaAvulsa({ clienteId, setor, titulo: titulo.trim(), descricao: descricao.trim() || null, data })
+    if ('error' in resultado) {
+      setSaving(false)
+      setErro(resultado.error)
+      return
+    }
+
+    for (const arquivo of arquivos) {
+      const formData = new FormData()
+      formData.append('arquivo', arquivo)
+      const uploadResult = await uploadArquivoEvento(resultado.id, clienteId, setor, formData)
+      if (uploadResult.error) setErro(prev => prev ? `${prev} · ${uploadResult.error}` : uploadResult.error)
+    }
+
     setSaving(false)
     router.refresh()
     onClose()
@@ -56,6 +80,31 @@ export default function EventoAvulsoModal({ clienteId, setor, onClose }: Props) 
           <div>
             <label className={labelCls}>Data *</label>
             <input className={inputCls} type="date" value={data} onChange={e => setData(e.target.value)} />
+          </div>
+
+          <div>
+            <label className={labelCls}>Anexos</label>
+            <label className="inline-block text-xs px-3 py-2 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/60 hover:text-[var(--fg)] cursor-pointer transition-colors">
+              + Selecionar arquivo(s)
+              <input
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
+                multiple
+                className="hidden"
+                onChange={e => handleSelecionarArquivos(e.target.files)}
+              />
+            </label>
+            {arquivos.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {arquivos.map((arq, idx) => (
+                  <span key={idx} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
+                    📎 {arq.name}
+                    <button type="button" onClick={() => handleRemoverArquivoSelecionado(idx)}
+                      className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
