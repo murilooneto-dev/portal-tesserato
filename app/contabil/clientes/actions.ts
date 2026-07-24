@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarClienteContabil } from '@/lib/supabase/server'
+import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 
 export async function toggleTarefaContabil(
   clienteId: string,
@@ -130,17 +131,6 @@ export async function excluirClienteContabil(clienteId: string) {
   revalidatePath('/contabil/clientes')
 }
 
-const TIPOS_PERMITIDOS_TAREFA = [
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-  'application/vnd.ms-excel', // .xls
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-]
-const TAMANHO_MAX_ARQUIVO_TAREFA = 10 * 1024 * 1024 // 10 MB
-
 export async function salvarRespostaTexto(
   clienteId: string,
   tipo: string,
@@ -198,10 +188,10 @@ export async function uploadArquivoTarefa(
 
   const arquivo = formData.get('arquivo') as File | null
   if (!arquivo) return { error: 'Nenhum arquivo' }
-  if (!TIPOS_PERMITIDOS_TAREFA.includes(arquivo.type)) {
+  if (!TIPOS_ARQUIVO_PERMITIDOS.includes(arquivo.type)) {
     return { error: 'Tipo de arquivo não permitido. Use PDF, PNG, JPG, XLSX ou DOCX.' }
   }
-  if (arquivo.size > TAMANHO_MAX_ARQUIVO_TAREFA) {
+  if (arquivo.size > TAMANHO_MAX_ARQUIVO) {
     return { error: 'Arquivo muito grande. Máximo permitido: 10 MB.' }
   }
 
