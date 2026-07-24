@@ -112,9 +112,12 @@ export interface EventoArquivo {
   evento_id: string
   name: string
   size: number
+  content_base64: string
   uploaded_at: string
 }
 ```
+
+(Espelha `TarefaArquivo` também no campo `content_base64` — a lista do mês nunca seleciona esse campo, usando `Omit<EventoArquivo, 'content_base64'>[]` no tipo de retorno, mesmo padrão já usado pra `tarefa_arquivos`.)
 
 ### 6. UI — criação (`components/geral/EventoAvulsoModal.tsx`)
 
