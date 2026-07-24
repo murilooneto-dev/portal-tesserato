@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComPessoal } from '@/lib/clientes-pessoal'
+import type { PendenciaVinculo } from '@/lib/vinculos'
 import EmpresaPessoalModal from './EmpresaPessoalModal'
 
 const CORES_RESP: string[] = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316','#ef4444','#84cc16']
@@ -21,11 +22,12 @@ interface Props {
   mes: number
   ano: number
   tarefasPadrao: string[]
+  pendenciasVinculo: Record<string, PendenciaVinculo[]>
 }
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano, tarefasPadrao }: Props) {
+export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano, tarefasPadrao, pendenciasVinculo }: Props) {
   const [busca, setBusca] = useFiltroPersistente('clientes-pessoal:busca', '')
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes-pessoal:responsavel', 'TODOS')
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
@@ -104,7 +106,16 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
               )}
 
               <div className="flex-1 min-w-0">
-                <p className="text-[var(--fg)] text-sm font-semibold truncate">{cliente.nome}</p>
+                <p className="text-[var(--fg)] text-sm font-semibold truncate">
+                  {cliente.nome}
+                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => (
+                    <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                      p.liberada ? 'bg-green-500/15 text-green-400' : 'bg-orange-500/15 text-orange-400'
+                    }`}>
+                      {p.liberada ? `✓ Liberada por ${p.setorOrigemLabel}` : `⏳ Aguardando ${p.setorOrigemLabel}`}
+                    </span>
+                  ))}
+                </p>
                 <p className="text-[var(--fg)]/25 text-xs mt-0.5">{cliente.cnpj ?? '—'}</p>
               </div>
 
