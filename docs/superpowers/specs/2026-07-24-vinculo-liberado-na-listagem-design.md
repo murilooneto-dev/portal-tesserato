@@ -1,4 +1,4 @@
-# Selo de vínculo liberado na listagem de clientes
+# Selos de vínculo (liberado/aguardando) na listagem de clientes
 
 **Data:** 2026-07-24
 **Status:** Aprovado
@@ -11,11 +11,10 @@ O usuário precisa saber que um cliente tem uma tarefa liberada por outro setor 
 
 ## Objetivo
 
-Na listagem de clientes de cada setor, ao lado do nome do cliente, aparece um selo `✓ Liberada por {Setor}` — visualmente idêntico ao já usado no checklist — pra cada vínculo ativo do cliente cuja tarefa de origem está concluída **e** cuja tarefa de destino (deste setor, no mês corrente da listagem) ainda não está concluída. O selo some sozinho assim que a tarefa deste setor for marcada como concluída. Se houver mais de um vínculo pendente, aparece um selo por vínculo.
+Na listagem de clientes de cada setor, ao lado do nome do cliente, aparece um selo — visualmente idêntico ao já usado no checklist — pra cada vínculo ativo do cliente cuja tarefa de destino (deste setor, no mês corrente da listagem) ainda não está concluída: `✓ Liberada por {Setor}` (verde) se a tarefa de origem já está concluída, ou `⏳ Aguardando {Setor}` (laranja) se ainda não está. O selo some sozinho assim que a tarefa deste setor for marcada como concluída, independente do estado da origem. Se houver mais de um vínculo pendente, aparece um selo por vínculo.
 
 ## Fora de escopo
 
-- Mostrar o selo "⏳ Aguardando" (origem ainda não concluída) na listagem — só o caso "liberada" interessa aqui, é isso que o usuário precisa notar sem abrir o cliente.
 - Mudar `buscarVinculosDoCliente`/o comportamento do checklist na tela de detalhe — continuam exatamente como estão.
 - Setores Societário/Financeiro — ainda não têm listagem de clientes funcional.
 
@@ -30,6 +29,7 @@ export interface PendenciaVinculo {
   tipoDestino: string
   tipoOrigem: string
   setorOrigemLabel: string
+  liberada: boolean
 }
 
 export async function buscarPendenciasVinculoPorCliente(
@@ -72,12 +72,13 @@ export async function buscarPendenciasVinculoPorCliente(
     for (const v of vinculosDoCliente) {
       const origemFeita = !!origemConcluidaPorSetor[v.setor_origem as string]?.[`${c.id}||${v.tipo_origem}`]
       const destinoFeita = !!destinoConcluida[`${c.id}||${v.tipo_destino}`]
-      if (origemFeita && !destinoFeita) {
+      if (!destinoFeita) {
         if (!resultado[c.id]) resultado[c.id] = []
         resultado[c.id].push({
           tipoDestino: v.tipo_destino as string,
           tipoOrigem: v.tipo_origem as string,
           setorOrigemLabel: SETOR_LABEL[v.setor_origem as UserSetor],
+          liberada: origemFeita,
         })
       }
     }
@@ -94,12 +95,14 @@ Custo: no pior caso, 1 query pra buscar os vínculos aplicáveis + 1 query por s
 
 ### 3. UI — selo na listagem
 
-`components/fiscal/ClientesLista.tsx`, `components/contabil/ClientesListaContabil.tsx`, `components/pessoal/ClientesListaPessoal.tsx`: logo depois do nome do cliente (mesma posição de `{cliente.nome}`), renderiza um selo por item de `pendenciasVinculo[cliente.id] ?? []`, com o markup idêntico ao já usado em `TarefaChecklist.tsx:306-316` (só o caso "liberada", sem o ramo "aguardando"):
+`components/fiscal/ClientesLista.tsx`, `components/contabil/ClientesListaContabil.tsx`, `components/pessoal/ClientesListaPessoal.tsx`: logo depois do nome do cliente (mesma posição de `{cliente.nome}`), renderiza um selo por item de `pendenciasVinculo[cliente.id] ?? []`, com o markup idêntico ao já usado em `TarefaChecklist.tsx:306-316` (os dois ramos, "liberada" e "aguardando"):
 
 ```tsx
 {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => (
-  <span key={i} className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap bg-green-500/15 text-green-400">
-    ✓ Liberada por {p.setorOrigemLabel}
+  <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+    p.liberada ? 'bg-green-500/15 text-green-400' : 'bg-orange-500/15 text-orange-400'
+  }`}>
+    {p.liberada ? `✓ Liberada por ${p.setorOrigemLabel}` : `⏳ Aguardando ${p.setorOrigemLabel}`}
   </span>
 ))}
 ```
@@ -108,9 +111,9 @@ Custo: no pior caso, 1 query pra buscar os vínculos aplicáveis + 1 query por s
 
 - Cliente sem nenhum vínculo ativo (`tarefas_vinculadas_ativas` vazio): não aparece nada, sem custo extra (a função já retorna cedo se a união de ids ativos entre todos os clientes for vazia).
 - Setor sem nenhum `tarefa_vinculos` com `setor_destino` igual ao setor da listagem: mesma coisa, retorno cedo.
-- Vínculo liberado E a tarefa deste setor já concluída: não aparece (é exatamente a condição de "resolvido", já não precisa mais chamar atenção).
-- Múltiplos vínculos pendentes pro mesmo cliente: um selo por vínculo, lado a lado, sem limite artificial (na prática são poucos, já que `tarefa_vinculos` é uma tabela pequena e ad hoc).
+- Vínculo (liberado ou não) com a tarefa deste setor já concluída: não aparece nenhum selo — uma vez que a tarefa de destino é marcada concluída, não há mais nada a chamar atenção nela, independente do estado da origem.
+- Múltiplos vínculos pendentes pro mesmo cliente (misturando liberados e aguardando): um selo por vínculo, lado a lado, sem limite artificial (na prática são poucos, já que `tarefa_vinculos` é uma tabela pequena e ad hoc).
 
 ## Testes
 
-Sem suíte automatizada no projeto. Verificação via `npx tsc --noEmit -p .` e `npm run build`, mais roteiro manual (criar um vínculo de teste via `/vinculos`, ativá-lo num cliente de teste via `/clientes`, marcar a tarefa de origem como concluída no setor de origem, confirmar que o selo aparece na listagem do setor de destino ao lado do nome do cliente; marcar a tarefa de destino como concluída e confirmar que o selo some).
+Sem suíte automatizada no projeto. Verificação via `npx tsc --noEmit -p .` e `npm run build`, mais roteiro manual: criar um vínculo de teste via `/vinculos`, ativá-lo num cliente de teste via `/clientes`; com a tarefa de origem ainda não concluída, confirmar que o selo laranja "⏳ Aguardando" aparece na listagem do setor de destino, ao lado do nome do cliente; marcar a tarefa de origem como concluída e confirmar que o selo vira verde "✓ Liberada"; marcar a tarefa de destino como concluída e confirmar que o selo some (independente do estado da origem).
