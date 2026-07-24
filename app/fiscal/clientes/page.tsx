@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import ClientesLista from '@/components/fiscal/ClientesLista'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
+import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import type { Tarefa } from '@/lib/types'
 
@@ -49,6 +50,15 @@ export default async function ClientesPage() {
       .map(([id]) => id)
   )
 
+  const pendenciasVinculo = await buscarPendenciasVinculoPorCliente(
+    supabase,
+    clientes.map(c => ({ id: c.id, tarefas_vinculadas_ativas: c.tarefas_vinculadas_ativas })),
+    tarefas ?? [],
+    'fiscal',
+    mes,
+    ano,
+  )
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <ClientesLista
@@ -58,6 +68,7 @@ export default async function ClientesPage() {
         mes={mes}
         ano={ano}
         templates={templatesMap}
+        pendenciasVinculo={pendenciasVinculo}
       />
     </div>
   )

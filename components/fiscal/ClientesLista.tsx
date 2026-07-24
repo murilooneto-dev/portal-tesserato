@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { Cliente } from '@/lib/types'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
+import type { PendenciaVinculo } from '@/lib/vinculos'
 import EmpresaModal from './EmpresaModal'
 
 const CORES_REGIME: Record<string, string> = {
@@ -40,11 +41,12 @@ interface Props {
   mes: number
   ano: number
   templates: Record<string, string[]>
+  pendenciasVinculo: Record<string, PendenciaVinculo[]>
 }
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-export default function ClientesLista({ clientes, comPendencia, progressoMap, mes, ano, templates }: Props) {
+export default function ClientesLista({ clientes, comPendencia, progressoMap, mes, ano, templates, pendenciasVinculo }: Props) {
   const [busca, setBusca] = useFiltroPersistente('clientes:busca', '')
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('clientes:grupo', 'TODOS')
@@ -171,6 +173,13 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
                     </span>
                   )}
                   {cliente.nome}
+                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => (
+                    <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                      p.liberada ? 'bg-green-500/15 text-green-400' : 'bg-orange-500/15 text-orange-400'
+                    }`}>
+                      {p.liberada ? `✓ Liberada por ${p.setorOrigemLabel}` : `⏳ Aguardando ${p.setorOrigemLabel}`}
+                    </span>
+                  ))}
                 </p>
                 <p className="text-[var(--fg)]/25 text-xs mt-0.5">{cliente.cnpj ?? '—'}</p>
               </div>
