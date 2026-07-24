@@ -189,3 +189,12 @@ export interface TarefaArquivo {
   content_base64: string
   uploaded_at: string
 }
+
+export interface EventoArquivo {
+  id: string
+  evento_id: string
+  name: string
+  size: number
+  content_base64: string
+  uploaded_at: string
+}

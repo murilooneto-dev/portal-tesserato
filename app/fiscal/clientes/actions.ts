@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarCliente } from '@/lib/supabase/server'
+import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 
 export async function desbloquearTarefa(
   tarefaId: string,
@@ -85,26 +86,29 @@ export async function uploadArquivo(clienteId: string, formData: FormData) {
   const bytes = await arquivo.arrayBuffer()
   const base64 = Buffer.from(bytes).toString('base64')
 
-  const { error } = await supabase.from('client_files').insert({
+  const { data, error } = await supabase.from('client_files').insert({
     cliente_id: clienteId,
     name: arquivo.name,
     size: arquivo.size,
     content_base64: base64,
     uploaded_at: new Date().toISOString(),
-  })
+  }).select('id, uploaded_at').single()
 
   if (!error) revalidatePath(`/fiscal/clientes/${clienteId}`)
 
-  return { error: error?.message ?? null }
+  return { error: error?.message ?? null, id: data?.id ?? null, uploaded_at: data?.uploaded_at ?? null }
 }
 
 export async function excluirArquivo(arquivoId: string) {
   const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return
+  if (!supabase) return { error: 'Não autorizado' }
   const { data: arquivo } = await supabase.from('client_files').select('cliente_id').eq('id', arquivoId).single()
-  if (!arquivo || !(await podeEditarCliente(arquivo.cliente_id))) return
-  await supabase.from('client_files').delete().eq('id', arquivoId)
+  if (!arquivo || !(await podeEditarCliente(arquivo.cliente_id))) return { error: 'Não autorizado' }
+  const { error, count } = await supabase.from('client_files').delete({ count: 'exact' }).eq('id', arquivoId)
+  if (error) return { error: error.message }
+  if (!count) return { error: 'Arquivo não encontrado' }
   revalidatePath(`/fiscal/clientes/${arquivo.cliente_id}`)
+  return { error: null }
 }
 
 export async function excluirCliente(id: string) {
@@ -187,17 +191,6 @@ export async function atualizarEtapa(
   revalidatePath('/fiscal/tarefas')
 }
 
-const TIPOS_PERMITIDOS_TAREFA = [
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-  'application/vnd.ms-excel', // .xls
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-]
-const TAMANHO_MAX_ARQUIVO_TAREFA = 10 * 1024 * 1024 // 10 MB
-
 export async function salvarRespostaTexto(
   clienteId: string,
   tipo: string,
@@ -255,10 +248,10 @@ export async function uploadArquivoTarefa(
 
   const arquivo = formData.get('arquivo') as File | null
   if (!arquivo) return { error: 'Nenhum arquivo' }
-  if (!TIPOS_PERMITIDOS_TAREFA.includes(arquivo.type)) {
+  if (!TIPOS_ARQUIVO_PERMITIDOS.includes(arquivo.type)) {
     return { error: 'Tipo de arquivo não permitido. Use PDF, PNG, JPG, XLSX ou DOCX.' }
   }
-  if (arquivo.size > TAMANHO_MAX_ARQUIVO_TAREFA) {
+  if (arquivo.size > TAMANHO_MAX_ARQUIVO) {
     return { error: 'Arquivo muito grande. Máximo permitido: 10 MB.' }
   }
 

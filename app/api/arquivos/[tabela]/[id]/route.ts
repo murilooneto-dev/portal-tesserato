@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 const TABELAS: Record<string, string> = {
   tarefa: 'tarefa_arquivos',
   client: 'client_files',
+  evento: 'evento_arquivos',
 }
 
 function tipoContent(nome: string): string {
