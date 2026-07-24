@@ -5,6 +5,10 @@ import { revalidatePath } from 'next/cache'
 import { buscarTodasTarefas } from '@/lib/tarefas-paginacao'
 import { createClient as createClienteDescartavel } from '@supabase/supabase-js'
 
+function normalizarNome(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
+}
+
 export async function salvarComunicado(formData: FormData) {
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) throw new Error('Não autorizado')
@@ -116,11 +120,11 @@ export async function salvarTemplate(
 
 export async function aplicarTemplateAClientes(
   atividadeBase: string
-): Promise<{ error?: string; atualizados: number }> {
+): Promise<{ error?: string; atualizados: number; avisoForaCatalogo: string[] }> {
   const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase || !user) return { error: 'Não autorizado.', atualizados: 0 }
+  if (!supabase || !user) return { error: 'Não autorizado.', atualizados: 0, avisoForaCatalogo: [] }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', atualizados: 0 }
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', atualizados: 0, avisoForaCatalogo: [] }
 
   const { data: templateRow, error: templateErr } = await supabase
     .from('atividade_templates')
@@ -129,10 +133,17 @@ export async function aplicarTemplateAClientes(
     .single()
 
   if (templateErr && templateErr.code !== 'PGRST116') {
-    return { error: templateErr.message, atualizados: 0 }
+    return { error: templateErr.message, atualizados: 0, avisoForaCatalogo: [] }
   }
   const tarefasBase: string[] = templateRow?.tarefas ?? []
-  if (tarefasBase.length === 0) return { atualizados: 0 }
+  if (tarefasBase.length === 0) return { atualizados: 0, avisoForaCatalogo: [] }
+
+  const { data: tiposCatalogo } = await supabase
+    .from('tarefa_tipos')
+    .select('nome')
+    .eq('setor', 'fiscal')
+  const nomesCatalogoNormalizados = new Set((tiposCatalogo ?? []).map(t => normalizarNome(t.nome as string)))
+  const avisoForaCatalogo = tarefasBase.filter(t => !nomesCatalogoNormalizados.has(normalizarNome(t)))
 
   const { data: clientes } = await supabase
     .from('clientes_fiscal')
@@ -155,7 +166,7 @@ export async function aplicarTemplateAClientes(
   }
 
   revalidatePath('/fiscal/clientes')
-  return { atualizados }
+  return { atualizados, avisoForaCatalogo }
 }
 
 export async function salvarTemplateGrupo(
@@ -178,11 +189,11 @@ export async function salvarTemplateGrupo(
 
 export async function aplicarTemplateGrupoAClientes(
   grupo: string
-): Promise<{ error?: string; atualizados: number }> {
+): Promise<{ error?: string; atualizados: number; avisoForaCatalogo: string[] }> {
   const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase || !user) return { error: 'Não autorizado.', atualizados: 0 }
+  if (!supabase || !user) return { error: 'Não autorizado.', atualizados: 0, avisoForaCatalogo: [] }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', atualizados: 0 }
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', atualizados: 0, avisoForaCatalogo: [] }
 
   const { data: templateRow, error: templateErr } = await supabase
     .from('grupo_templates')
@@ -191,10 +202,17 @@ export async function aplicarTemplateGrupoAClientes(
     .single()
 
   if (templateErr && templateErr.code !== 'PGRST116') {
-    return { error: templateErr.message, atualizados: 0 }
+    return { error: templateErr.message, atualizados: 0, avisoForaCatalogo: [] }
   }
   const tarefasBase: string[] = templateRow?.tarefas ?? []
-  if (tarefasBase.length === 0) return { atualizados: 0 }
+  if (tarefasBase.length === 0) return { atualizados: 0, avisoForaCatalogo: [] }
+
+  const { data: tiposCatalogo } = await supabase
+    .from('tarefa_tipos')
+    .select('nome')
+    .eq('setor', 'fiscal')
+  const nomesCatalogoNormalizados = new Set((tiposCatalogo ?? []).map(t => normalizarNome(t.nome as string)))
+  const avisoForaCatalogo = tarefasBase.filter(t => !nomesCatalogoNormalizados.has(normalizarNome(t)))
 
   const { data: clientes } = await supabase
     .from('clientes_fiscal')
@@ -217,7 +235,7 @@ export async function aplicarTemplateGrupoAClientes(
   }
 
   revalidatePath('/fiscal/clientes')
-  return { atualizados }
+  return { atualizados, avisoForaCatalogo }
 }
 
 export async function buscarDadosParaAlteracao(): Promise<{
