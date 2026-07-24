@@ -136,6 +136,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [salvandoTemplate, setSalvandoTemplate] = useState<string | null>(null)
   const [aplicandoTemplate, setAplicandoTemplate] = useState<string | null>(null)
   const [templateMsg, setTemplateMsg] = useState<Record<string, string>>({})
+  const [templateAviso, setTemplateAviso] = useState<Record<string, string[]>>({})
 
   // Templates de grupo
   const GRUPOS_TEMPLATE = [
@@ -154,6 +155,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [salvandoTemplateGrupo, setSalvandoTemplateGrupo] = useState<string | null>(null)
   const [aplicandoTemplateGrupo, setAplicandoTemplateGrupo] = useState<string | null>(null)
   const [templateGrupoMsg, setTemplateGrupoMsg] = useState<Record<string, string>>({})
+  const [templateGrupoAviso, setTemplateGrupoAviso] = useState<Record<string, string[]>>({})
   const [analisando, setAnalisando] = useState(false)
   const [analise, setAnalise] = useState<{ grupos: GrupoDuplicata[]; todasTarefas: string[] } | null>(null)
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({})
@@ -494,6 +496,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       ? `Erro: ${result.error}`
       : `${result.atualizados} cliente(s) atualizados`
     setTemplateMsg(prev => ({ ...prev, [base + '_aplicar']: msg }))
+    setTemplateAviso(prev => ({ ...prev, [base]: result.avisoForaCatalogo ?? [] }))
     setTimeout(() => setTemplateMsg(prev => ({ ...prev, [base + '_aplicar']: '' })), 4000)
   }
 
@@ -527,6 +530,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
       ? `Erro: ${result.error}`
       : `${result.atualizados} cliente(s) atualizados`
     setTemplateGrupoMsg(prev => ({ ...prev, [grupo + '_aplicar']: msg }))
+    setTemplateGrupoAviso(prev => ({ ...prev, [grupo]: result.avisoForaCatalogo ?? [] }))
     setTimeout(() => setTemplateGrupoMsg(prev => ({ ...prev, [grupo + '_aplicar']: '' })), 4000)
   }
 
@@ -954,6 +958,11 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                   {templateMsg[base + '_aplicar'] && (
                     <p className="text-xs text-center text-blue-400">{templateMsg[base + '_aplicar']}</p>
                   )}
+                  {(templateAviso[base]?.length ?? 0) > 0 && (
+                    <p className="text-xs text-center text-amber-400">
+                      Fora do catálogo: {templateAviso[base].join(', ')}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -1044,6 +1053,11 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                   )}
                   {templateGrupoMsg[grupo + '_aplicar'] && (
                     <p className="text-xs text-center text-blue-400">{templateGrupoMsg[grupo + '_aplicar']}</p>
+                  )}
+                  {(templateGrupoAviso[grupo]?.length ?? 0) > 0 && (
+                    <p className="text-xs text-center text-amber-400">
+                      Fora do catálogo: {templateGrupoAviso[grupo].join(', ')}
+                    </p>
                   )}
                 </div>
               </div>
