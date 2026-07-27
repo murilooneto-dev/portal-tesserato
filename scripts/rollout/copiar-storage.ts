@@ -1,8 +1,31 @@
 import { createClient } from '@supabase/supabase-js'
+import type { FileObject } from '@supabase/storage-js'
 import 'dotenv/config'
 
 function clienteDe(url: string, key: string) {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
+}
+
+async function listarPagina(
+  storage: ReturnType<typeof clienteDe>['storage'],
+  bucket: string,
+  prefixo: string,
+): Promise<FileObject[]> {
+  const limit = 1000
+  let offset = 0
+  const itens: FileObject[] = []
+
+  while (true) {
+    const { data, error } = await storage.from(bucket).list(prefixo, { limit, offset })
+    if (error) throw new Error(`Falha ao listar "${bucket}/${prefixo}": ${error.message}`)
+
+    itens.push(...(data ?? []))
+    // Página incompleta (menos que `limit`) = última página.
+    if (!data || data.length < limit) break
+    offset += limit
+  }
+
+  return itens
 }
 
 async function listarTodosObjetos(
@@ -10,11 +33,10 @@ async function listarTodosObjetos(
   bucket: string,
   prefixo = '',
 ): Promise<string[]> {
-  const { data, error } = await storage.from(bucket).list(prefixo, { limit: 1000 })
-  if (error) throw new Error(`Falha ao listar "${bucket}/${prefixo}": ${error.message}`)
+  const itens = await listarPagina(storage, bucket, prefixo)
 
   const caminhos: string[] = []
-  for (const item of data ?? []) {
+  for (const item of itens) {
     const caminho = prefixo ? `${prefixo}/${item.name}` : item.name
     if (item.id === null) {
       // pasta — desce recursivamente
@@ -46,41 +68,52 @@ async function copiarStorage(dryRun: boolean) {
   for (const bucket of buckets ?? []) {
     console.log(`\n=== Bucket: ${bucket.name} ===`)
 
-    if (!dryRun) {
-      const { error: erroCriar } = await destino.storage.createBucket(bucket.name, {
-        public: bucket.public,
-      })
-      if (erroCriar && !erroCriar.message.includes('already exists')) {
-        throw new Error(`Falha ao criar bucket "${bucket.name}" no destino: ${erroCriar.message}`)
+    try {
+      if (!dryRun) {
+        const { error: erroCriar } = await destino.storage.createBucket(bucket.name, {
+          public: bucket.public,
+        })
+        if (erroCriar && !erroCriar.message.includes('already exists')) {
+          throw new Error(
+            `Falha ao criar bucket "${bucket.name}" no destino: ${erroCriar.message}`,
+          )
+        }
       }
-    }
 
-    const objetos = await listarTodosObjetos(origem.storage, bucket.name)
-    console.log(`${objetos.length} objeto(s) encontrado(s).`)
+      const objetos = await listarTodosObjetos(origem.storage, bucket.name)
+      console.log(`${objetos.length} objeto(s) encontrado(s).`)
 
-    if (dryRun) {
-      for (const caminho of objetos) console.log(`  [dry-run] copiaria: ${caminho}`)
+      if (dryRun) {
+        for (const caminho of objetos) console.log(`  [dry-run] copiaria: ${caminho}`)
+        continue
+      }
+
+      for (const caminho of objetos) {
+        const { data: arquivo, error: erroDownload } = await origem.storage
+          .from(bucket.name)
+          .download(caminho)
+        if (erroDownload) {
+          console.error(`  Falha ao baixar "${caminho}": ${erroDownload.message}`)
+          continue
+        }
+
+        const { error: erroUpload } = await destino.storage
+          .from(bucket.name)
+          .upload(caminho, arquivo, { upsert: true })
+        if (erroUpload) {
+          console.error(`  Falha ao subir "${caminho}": ${erroUpload.message}`)
+          continue
+        }
+
+        console.log(`  copiado: ${caminho}`)
+      }
+    } catch (err) {
+      console.error(
+        `  Falha no bucket "${bucket.name}", pulando para o próximo: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      )
       continue
-    }
-
-    for (const caminho of objetos) {
-      const { data: arquivo, error: erroDownload } = await origem.storage
-        .from(bucket.name)
-        .download(caminho)
-      if (erroDownload) {
-        console.error(`  Falha ao baixar "${caminho}": ${erroDownload.message}`)
-        continue
-      }
-
-      const { error: erroUpload } = await destino.storage
-        .from(bucket.name)
-        .upload(caminho, arquivo, { upsert: true })
-      if (erroUpload) {
-        console.error(`  Falha ao subir "${caminho}": ${erroUpload.message}`)
-        continue
-      }
-
-      console.log(`  copiado: ${caminho}`)
     }
   }
 }
