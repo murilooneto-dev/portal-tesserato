@@ -30,7 +30,7 @@ Produzir um runbook validado e executável para promover a expansão multi-setor
 ## Escopo
 
 Dentro do escopo:
-1. Procedimento de clone completo de produção → projeto de teste (schema, dados, Storage, `auth.users`), com checklist de verificação objetiva.
+1. Procedimento de clone completo de produção → projeto de teste (schema `public`, dados, Storage, usuários de teste com UUID igual aos de produção), com checklist de verificação objetiva.
 2. Preparação do conjunto de migrations "prontas para produção", derivado por diff real entre produção e dev, organizado em fases seguras.
 3. Runbook de rollout em fases, com verificação objetiva entre cada fase.
 4. Runbook de rollback em camadas (reversão granular por fase + restore completo como último recurso).
@@ -48,16 +48,17 @@ Fora do escopo (explicitamente adiado, não tratar como pendência desta spec):
 
 ### 1. Clone completo produção → teste
 
-O `pg_dump` padrão do schema `public` não é suficiente: não move Storage (arquivos de `client_files` e outros buckets) nem necessariamente o schema `auth` de forma restaurável. O clone precisa cobrir três frentes separadamente:
+O `pg_dump` padrão do schema `public` não é suficiente: não move Storage (arquivos de `client_files` e outros buckets), e o comando oficial da Supabase (`supabase db dump`) **exclui deliberadamente os schemas `auth` e `storage`** de qualquer dump por padrão (são gerenciados pela própria plataforma — sobrescrever o DDL deles no destino quebra o versionamento interno do Supabase). O clone precisa cobrir três frentes separadamente:
 
-- **Banco Postgres completo:** dump via connection string direta de produção, cobrindo os schemas `public`, `auth` e as tabelas de metadata de `storage`, restaurado no projeto de teste.
-- **Arquivos de Storage:** script dedicado (via Storage API do Supabase) que lista cada bucket e objeto em produção e copia para o projeto de teste — o dump do Postgres move só os metadados (`storage.objects`), não os arquivos físicos.
-- **Inventário de configuração:** extensões do Postgres habilitadas, triggers/functions existentes, providers/templates de Auth relevantes — conferidos manualmente como parte do checklist, não assumidos como "vieram junto".
+- **Banco Postgres completo (schema `public`):** dump via connection string direta de produção, restaurado no projeto de teste — este é o schema que as migrations de fato alteram e que precisa ser fiel byte a byte a produção.
+- **Arquivos de Storage:** script dedicado (via Storage API do Supabase) que lista cada bucket e objeto em produção e copia para o projeto de teste.
+- **Usuários de teste (não cópia real de `auth.users`):** o `auth.users` real de produção nunca é migrado — nem no ensaio nem na promoção real, já que produção continua sendo o mesmo projeto Supabase o tempo todo, e as migrations não tocam nesse schema. Em vez de copiar dados reais de login (que exigiria replicar `auth.identities` além de `auth.users`, e carregar e-mails/hashes reais para um projeto descartável), criar usuários de teste via `auth.admin.createUser` no projeto de teste, **fixando o `id` igual ao UUID de usuários reais de produção** que os testes precisam (um por perfil: admin, mono-fiscal, multi-setor) — preserva as foreign keys com `public.profiles` e o comportamento das RLS policies (`auth.uid() = profiles.id`) de forma idêntica a usar os dados reais, sem o risco de expor credenciais reais num ambiente descartável. **Plano B:** se algum ensaio futuro exigir a base completa de usuários reais, é tecnicamente possível via `supabase db dump --data-only --schema auth --schema storage` (override explícito do padrão) trazendo também `auth.identities` — não necessário para o objetivo atual.
+- **Inventário de configuração:** extensões do Postgres habilitadas, triggers/functions existentes no `public` — conferidos manualmente como parte do checklist, não assumidos como "vieram junto".
 
 **Verificação obrigatória pós-clone** (critério objetivo, não "parece que funcionou"):
-- Contagem de linhas de **todas** as tabelas de todos os schemas relevantes batendo produção↔teste.
+- Contagem de linhas de **todas** as tabelas do schema `public` batendo produção↔teste.
 - Contagem de arquivos e tamanho total por bucket de Storage batendo.
-- Login funcional no projeto de teste com um usuário real copiado, confirmando que `auth.users` foi restaurado corretamente.
+- Login funcional no projeto de teste com cada usuário de teste criado, confirmando que as RLS policies reconhecem corretamente `auth.uid()` contra `public.profiles`.
 
 Esse mesmo procedimento de clone **é o mecanismo de backup real** para o dia da promoção em produção — como produção está no plano Free (sem PITR/backup automático), o clone completo tirado imediatamente antes do rollout real é a única rede de segurança disponível. Por isso ele precisa ser ensaiado exatamente como será usado de verdade, não como uma versão simplificada.
 
