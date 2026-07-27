@@ -35,12 +35,14 @@ Dentro do escopo:
 3. Runbook de rollout em fases, com verificação objetiva entre cada fase.
 4. Runbook de rollback em camadas (reversão granular por fase + restore completo como último recurso).
 5. Execução do ensaio completo (clone → rollout → rollback) no projeto de teste, feita pelo usuário com o assistente preparando cada comando e revisando os resultados.
-6. Runbook final, pronto para ser seguido no dia da promoção real em produção.
+6. Sincronização de `feat/motor-tarefas-setor` com `main` e deploy do código novo em produção via Vercel — como etapa final e acoplada do protocolo (ver seção 5 da Arquitetura), não uma decisão separada.
+7. Runbook final, pronto para ser seguido no dia da promoção real em produção.
 
 Fora do escopo (explicitamente adiado, não tratar como pendência desta spec):
 - A promoção real em produção em si — esta spec cobre o protocolo e seu ensaio, não a execução contra produção.
-- Sincronizar `feat/motor-tarefas-setor` com `main` (decisão anterior do usuário: não fazer agora).
 - Societário e Financeiro (decisão anterior do usuário: só depois).
+
+**Nota sobre acoplamento código↔banco (correção de um entendimento anterior):** "sincronizar `main`" e "promover o schema" não são independentes. O deploy do Vercel é automático a partir de `main` — mesclar essa branch publica código novo (que já espera `profiles.setores`, `clientes_fiscal`, `tarefa_tipos` etc.) no ar. Se isso acontecer antes das migrations de produção, o portal quebra imediatamente para todos os usuários porque o código consultaria colunas/tabelas inexistentes. Por isso o merge/deploy do código é tratado nesta spec como a etapa final do próprio rollout (seção 5 da Arquitetura), não como um item avulso a decidir depois.
 
 ## Arquitetura do protocolo
 
@@ -74,13 +76,19 @@ Organizar o resultado em três fases, cada uma numa migration própria dentro de
 - **Fase de correção pontual:** RLS recursion fix reescrito contra as policies reais confirmadas de produção; restauração do fallback do `handle_new_user()`. Trocas de RLS sempre dentro de uma única transação; `DISABLE ROW LEVEL SECURITY` proibido em qualquer etapa do runbook.
 - **Fase de limpeza:** remoção de `profiles.setor` (e qualquer outra coluna substituída) — só depois de confirmar estabilidade das fases anteriores e do código novo (que lê `setores` com fallback para `setor`) já estar publicado e sem deployments antigos vivos na Vercel.
 
+**Auditoria obrigatória de retrocompatibilidade (cada statement da fase de correção):** entre a migration aplicada e o deploy novo publicado (seção 6), o código velho ainda em produção continua rodando contra o schema já alterado — essa janela não é instantânea (build do Vercel leva minutos e pode falhar). Cada alteração da fase de correção precisa ser classificada explicitamente como "segura sob código velho" (ex: criar uma function nova, corrigir uma policy sem mudar a forma que o código velho já consulta) ou "exige código novo" (ex: `NOT NULL`, rename, mudança de tipo, trigger que muda comportamento observável). Qualquer item do segundo grupo é adiado para depois do deploy novo — não entra na fase de correção como está hoje.
+
+O princípio de retrocompatibilidade adotado aqui é **o schema ser aditivo/retrocompatível** (colunas antigas mantidas até a limpeza), não o código ler os dois formatos — dual-read no código dobraria o esforço de teste sem necessidade, já que o próprio schema em fases já resolve o problema.
+
 ### 3. Rollback em camadas
 
 Não é "restaurar tudo" como único mecanismo — cada fase tem sua própria estratégia de reversão, do mais barato para o mais custoso:
 
 - **Fase aditiva:** reverte com `DROP` do que foi criado — sem perder dados gravados depois do rollout, porque nada existente foi alterado.
 - **Fase de correção:** a definição original de cada policy/function alterada é capturada e guardada antes da mudança; reversão é reaplicar a definição original — instantâneo, sem perda de dados.
-- **Fase de limpeza:** sem reversão graciosa possível (coluna já foi removida) — único recurso é restaurar o clone completo (item 1) tirado antes do rollout real. Por isso essa fase só roda depois de tempo suficiente de confiança nas duas anteriores, e idealmente numa janela de manutenção/modo leitura anunciada.
+- **Fase de limpeza:** sem reversão graciosa possível (coluna já foi removida) — único recurso é restaurar o clone completo (item 1) tirado antes do rollout real. Por isso essa fase só roda depois de tempo suficiente de confiança nas duas anteriores, e idealmente numa janela de manutenção/modo leitura anunciada. Um clone/dump completo imediatamente antes desta fase é etapa **obrigatória** do runbook, não opcional — é o único ponto do protocolo verdadeiramente irreversível, e produção está no plano Free (sem PITR).
+
+**Nota sobre rollback de código (Vercel):** o "Instant Rollback" do Vercel reverte o código publicado em segundos, mas isso **reintroduz o código velho rodando contra o schema já alterado** — só é uma opção segura enquanto a fase de limpeza não tiver rodado. Depois da limpeza, reverter o código não resolve nada sozinho (o código anterior esperava a coluna que já foi removida); nesse ponto o único caminho é o restore completo acima.
 
 ### 4. Ensaio no projeto de teste
 
@@ -91,13 +99,25 @@ Tudo executado pelo usuário, com o assistente preparando cada comando/script pr
 3. Ensaio de rollback: restaurar o clone tirado no passo 1 e confirmar que o estado bate exatamente com o "antes" (mesmo checklist de verificação do item 1).
 4. Descartar o projeto de teste assim que o ensaio completo (rollout + rollback) for validado.
 
-### 5. Entregável final
+### 5. Sincronização com `main` e deploy do código novo (etapa final acoplada ao rollout)
+
+Esta etapa só acontece em produção real, depois que as fases aditiva e de correção já foram aplicadas com sucesso no banco de produção — nunca antes, e nunca no projeto de teste (o teste não tem deploy Vercel associado).
+
+- **Verificar o escopo das variáveis de ambiente no Vercel antes de qualquer coisa:** confirmar que as credenciais do Supabase de produção estão marcadas só para o ambiente "Production", não herdadas por "Preview" — senão qualquer push na branch já conversaria com o banco real de forma não intencional.
+- **Build validado antes do dia D:** rodar o build localmente (ou um preview deployment da própria branch) com as variáveis de ambiente de produção, para pegar erros de build que só aparecem nesse contexto — um build que falha no merge deixa produção travada no código velho contra o schema novo, por tempo indefinido.
+- **Promoção manual em vez de depender só do merge disparar o deploy:** preferir publicar via "Promote to Production" de um preview deployment já buildado e verificado, em vez de confiar cegamente que merge→build→deploy vai correr bem sem supervisão. Isso desacopla "merge no git" de "publicar de fato" e permite abortar se o build falhar.
+- **Branch protection no GitHub:** exigir PR (mesmo que aprovado pelo próprio usuário) para merges em `main`, evitando um merge acidental fora da sequência do runbook.
+- Só depois do deploy novo confirmado estável em produção (ver gate objetivo abaixo) é que a fase de limpeza (remoção de `profiles.setor`) pode rodar.
+
+**Gate técnico entre deploy e limpeza (salvaguarda, não só checklist):** a migration da fase de limpeza começa com uma verificação que aborta a execução se um marcador explícito de "deploy novo validado em produção" não existir (ex: uma linha de controle gravada manualmente pelo usuário só depois de confirmar o deploy estável) — transformando "não rodar a limpeza cedo demais" de uma regra de disciplina em uma trava técnica real.
+
+### 6. Entregável final
 
 Runbook (documento separado, produzido ao final desta iniciativa) com:
-- Comandos exatos para cada etapa (clone, diff, cada fase de migration, cada verificação, cada tipo de rollback).
-- Checklist de verificação objetiva em cada checkpoint.
+- Comandos exatos para cada etapa (clone, diff, cada fase de migration, cada verificação, cada tipo de rollback, deploy/promoção do Vercel).
+- Checklist de verificação objetiva em cada checkpoint, incluindo os gates técnicos descritos acima.
 - Ponto de não-retorno de cada fase (a partir de onde só resta rollback via restore completo).
-- Quem executa cada etapa e janela de manutenção/modo leitura sugerida para as fases de correção e limpeza.
+- Quem executa cada etapa e janela de manutenção/modo leitura sugerida para as fases de correção, deploy e limpeza.
 
 ## Testando
 
