@@ -96,8 +96,9 @@ Tudo executado pelo usuário, com o assistente preparando cada comando/script pr
 
 1. Clone completo de produção → projeto de teste (item 1), com checklist de verificação rodado e resultado conferido antes de prosseguir.
 2. Rollout fase por fase contra o projeto de teste — depois de cada fase, verificação objetiva (contagem de linhas, login como cada perfil: admin, mono-fiscal, multi-setor) além de navegação manual pelos fluxos principais.
-3. Ensaio de rollback: restaurar o clone tirado no passo 1 e confirmar que o estado bate exatamente com o "antes" (mesmo checklist de verificação do item 1).
-4. Descartar o projeto de teste assim que o ensaio completo (rollout + rollback) for validado.
+3. **Verificação final contra o dev:** depois da última fase (limpeza) aplicada no clone de teste, gerar um novo diff entre o schema do clone já migrado e o schema atual de dev — esperado dar vazio (nenhuma diferença estrutural). O dev funciona aqui só como um checklist de conferência barato, não como fundação da abordagem — se o diff não vier vazio, é sinal de que alguma parte do diff original (passo 2 da Arquitetura) foi mal traduzida em migration.
+4. Ensaio de rollback: restaurar o clone tirado no passo 1 e confirmar que o estado bate exatamente com o "antes" (mesmo checklist de verificação do item 1).
+5. Descartar o projeto de teste assim que o ensaio completo (rollout + rollback) for validado.
 
 ### 5. Sincronização com `main` e deploy do código novo (etapa final acoplada ao rollout)
 
