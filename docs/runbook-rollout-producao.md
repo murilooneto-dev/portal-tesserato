@@ -139,17 +139,33 @@ Separar o resultado em três migrations dentro de `supabase/migrations/prod/`:
    Por isso ela só roda depois de tempo suficiente de confiança nas duas
    fases anteriores, e idealmente numa janela de manutenção/modo leitura.
 
-### 1.8. Aplicar as fases no projeto de teste
+### 1.8. Aplicar as três fases no projeto de teste (incluindo limpeza)
 ```bash
 psql "$TARGET_DB_URL" -f supabase/migrations/prod/001_aditiva.sql
 # navegar no app local apontando pro teste, checklist de perfis
 psql "$TARGET_DB_URL" -f supabase/migrations/prod/002_correcao.sql
 # navegar de novo
-# (a fase de limpeza só roda depois da Parte 2 — deploy real — mesmo aqui no teste,
-#  para ensaiar a sequência completa exatamente como vai acontecer de verdade)
 ```
 
-### 1.9. Verificação final contra o dev
+O projeto de teste não tem deploy Vercel de verdade para gerar o marco
+`deploy_novo_validado` — simule esse gate manualmente, exatamente como você
+vai confirmar de verdade em produção depois do "Promote to Production"
+(Parte 2, item 3):
+```bash
+psql "$TARGET_DB_URL" -f scripts/rollout/registrar-marco.sql
+psql "$TARGET_DB_URL" -c "select registrar_marco('deploy_novo_validado');"
+```
+
+Só então aplicar a fase de limpeza — o ensaio precisa exercitar de verdade a
+migration `003_limpeza.sql` e o gate do marco (que ela consulta) antes do
+projeto de teste ser descartado, senão a parte mais irreversível do
+protocolo nunca teria sido validada:
+```bash
+psql "$TARGET_DB_URL" -f supabase/migrations/prod/003_limpeza.sql
+# navegar mais uma vez, checklist de perfis
+```
+
+### 1.9. Verificação final contra o dev (depois das três fases, incluindo limpeza)
 ```bash
 npx supabase db dump --db-url "$TARGET_DB_URL" --file schema-teste-pos-rollout.sql
 diff schema-teste-pos-rollout.sql schema-dev.sql
@@ -158,9 +174,11 @@ Esperado: vazio (ou só diferenças esperadas, ex: a tabela `_rollout_controle`
 que não existe no dev). Se houver qualquer outra diferença, alguma parte do
 diff do passo 1.7 foi mal traduzida em migration — corrigir antes de seguir.
 
-### 1.10a. Rollback granular (fases aditiva e de correção)
-Antes de recorrer ao restore completo (1.10), o rollback em camadas é mais
-barato para as duas primeiras fases:
+### 1.10a. Rollback granular (fases aditiva e de correção) — referência para uso na Parte 2
+Isto é o que você usaria numa promoção real se precisasse abortar **antes**
+da fase de limpeza — não faz parte da sequência linear deste ensaio (que em
+1.8 já aplicou as três fases, incluindo a limpeza, propositalmente). É mais
+barato que o restore completo para as duas primeiras fases:
 - **Fase aditiva:** `DROP` de cada objeto criado em `001_aditiva.sql` (na
   ordem inversa de criação, respeitando FKs) — não perde dado gravado
   depois do rollout, porque nada existente foi alterado.
@@ -168,8 +186,13 @@ barato para as duas primeiras fases:
   policy/function capturada no passo 1.7 (item 2) antes da mudança —
   instantâneo, sem perda de dado.
 
-A fase de limpeza não tem equivalente aqui — uma vez rodada, só o restore
-completo (1.10) resolve.
+A fase de limpeza não tem equivalente aqui — uma vez rodada (como já
+aconteceu neste ensaio, em 1.8), só o restore completo (1.10) resolve. Por
+isso, se quiser exercitar esses dois comandos na prática (não só documentá-los),
+faça isso antes de registrar o marco em 1.8: logo depois de validar
+`002_correcao.sql`, teste o `DROP`/reaplicação de definição, confirme que
+volta ao estado pré-correção, reaplique `001_aditiva.sql` + `002_correcao.sql`
+de novo, e só então prossiga para o marco e a limpeza.
 
 ### 1.10. Ensaiar o rollback completo (restore)
 ```bash
@@ -177,8 +200,20 @@ psql "$TARGET_DB_URL" -c "drop schema public cascade; create schema public;"
 psql "$TARGET_DB_URL" -f backup-antes-rollout.sql
 psql "$TARGET_DB_URL" -f backup-antes-rollout-dados.sql
 ```
-Rodar `verificar-paridade.ts` de novo (contra o backup original) para
-confirmar que voltou exatamente ao estado anterior.
+Rodar `verificar-paridade.ts` de novo para confirmar que voltou exatamente
+ao estado anterior — mas note o que o script realmente compara: ele conecta
+em duas connection strings (`SOURCE_DB_URL`/`TARGET_DB_URL`) e conta linhas
+ao vivo, não lê arquivos `.sql` de dump. Nesta rehearsal isso funciona porque
+você aponta `SOURCE_DB_URL` para o estado original ainda preservado (o
+projeto de dev, ou outro clone intocado do estado pré-rollout — **não** o
+próprio `TARGET_DB_URL`, que é o projeto de teste que você acabou de
+sobrescrever com o restore) e `TARGET_DB_URL` para o projeto de teste
+recém-restaurado. Esse truque só é seguro num ambiente descartável com um
+segundo banco parado no tempo para comparar; **não é um substituto genérico
+plugável na Parte 2** — em produção real não existe um segundo banco "antes"
+ao vivo para apontar (só o arquivo de backup em disco), então o equivalente
+lá é comparar manualmente contagens do backup restaurado localmente, não
+rodar este script contra produção.
 
 ### 1.11. Descartar o projeto de teste
 Apagar o projeto no painel do Supabase assim que 1.9 e 1.10 estiverem
@@ -186,7 +221,53 @@ validados.
 
 ## Parte 2 — Promoção real (só depois da Parte 1 validada)
 
-Repetir 1.2–1.9 contra produção real, com estas diferenças:
+**Isto NÃO é "repetir 1.2–1.9 contra produção".** Produção é o `SOURCE`, não
+o `TARGET` — não existe um segundo projeto para onde clonar dessa vez. Vários
+passos da Parte 1 existem só para montar o projeto de teste descartável e
+**não se aplicam aqui**. Aplique exatamente esta lista, passo a passo da
+Parte 1 por passo da Parte 1:
+
+- **1.1 (criar projeto de teste) — não se aplica.** Produção já existe.
+- **1.2 (clonar schema para o target) — não se aplica.** Não há um projeto
+  separado para restaurar o dump de produção "dentro" — produção já é a
+  origem. Rodar `psql "$TARGET_DB_URL" -f dump-schema.sql` aqui recriaria
+  os mesmos objetos sobre eles mesmos (erro de objeto duplicado, na melhor
+  das hipóteses).
+- **1.3 (copiar Storage) — não se aplica.** Copiaria os buckets de produção
+  para eles mesmos; inofensivo mas inútil, e não é isso que este passo faz
+  de verdade — não rodar.
+- **1.4 (criar usuários de teste) — nunca se aplica em produção, em nenhuma
+  hipótese.** Este script cria `auth.users` fixando o `id` para bater com
+  UUIDs reais — rodá-lo contra o `TARGET_SUPABASE_URL` de produção real
+  colidiria com a primary key de usuários reais existentes. Esse passo
+  existe exclusivamente para o projeto de teste descartável (Parte 1). O
+  `auth.users` real de produção nunca é tocado por este protocolo, nem no
+  ensaio nem na promoção real.
+- **1.5 (verificar paridade) — não se aplica.** Não há um par origem/destino
+  separado para comparar nesta etapa; a verificação relevante aqui é a 1.9
+  (diff estrutural contra dev), listada abaixo.
+- **1.6 (backup) — aplica-se, e é obrigatório aqui.** É o único mecanismo de
+  rollback real (produção está no plano Free, sem PITR). Esse mesmo clone
+  completo é o backup usado no restore da fase de limpeza e deve ser tirado
+  imediatamente antes do rollout real, exatamente como foi ensaiado na
+  Parte 1 — não uma versão simplificada. Ver item 1 abaixo.
+- **1.7 (gerar diff e migrations) — aplica-se, mas como reaproveitamento, não
+  regeneração.** As três migrations (`001_aditiva.sql`, `002_correcao.sql`,
+  `003_limpeza.sql`) já foram produzidas e revisadas na Parte 1 — são as
+  mesmas que você já ensaiou. Rodar o diff de novo aqui serve só para
+  confirmar que produção não mudou desde o ensaio (nenhuma migration nova
+  deveria aparecer); se aparecer algo novo, pare e reavalie antes de seguir.
+- **1.8 (aplicar as fases) — aplica-se: é o rollout real em si**, seguindo a
+  mesma sequência fase a fase + gate já validada na Parte 1, com as
+  diferenças detalhadas no item 3 abaixo (o marco não é mais simulado — ele
+  depende do deploy real do Vercel).
+- **1.9 (verificação final contra o dev) — aplica-se**, como o mesmo
+  checklist objetivo pós-rollout.
+- **1.10 / 1.10a (rollback) — servem como referência caso algo dê errado**,
+  não como passo a executar na sequência feliz. Ver item 5 abaixo.
+- **1.11 (descartar o projeto) — não se aplica.** Produção não é descartável.
+
+Diferenças e passos adicionais específicos da promoção real:
 
 1. O passo 1.6 (backup) é **obrigatório e não opcional** aqui — é o único
    mecanismo de rollback real (produção está no plano Free, sem PITR). Esse
