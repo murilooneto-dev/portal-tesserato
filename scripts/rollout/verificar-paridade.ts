@@ -33,10 +33,12 @@ async function contarArquivosPorBucket(
 
   const resultado = new Map<string, { arquivos: number; bytes: number }>()
   for (const bucket of buckets ?? []) {
-    // Recursivo: buckets usados por este app guardam arquivos em layout de
-    // pasta (ex: `<client-id>/<arquivo>`) — uma listagem só da raiz veria
-    // apenas pseudo-entradas de pasta e reportaria 0 arquivos dos dois
-    // lados, "batendo" mesmo se nada tiver sido copiado de verdade.
+    // Recursivo: se algum bucket usar layout de pasta (ex:
+    // `<client-id>/<arquivo>` — não confirmado, ver lib-storage.ts), uma
+    // listagem só da raiz veria apenas pseudo-entradas de pasta e
+    // reportaria 0 arquivos dos dois lados, "batendo" mesmo se nada tiver
+    // sido copiado de verdade. A recursão cobre layout plano ou em pastas
+    // de qualquer forma.
     const arquivos = await listarArquivosComTamanho(supabase.storage, bucket.name)
     const bytes = arquivos.reduce((soma, a) => soma + a.bytes, 0)
     resultado.set(bucket.name, { arquivos: arquivos.length, bytes })

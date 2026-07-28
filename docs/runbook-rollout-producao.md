@@ -37,8 +37,8 @@ service_role) — vão em `TARGET_*` no seu `.env` local (copie de
 ```bash
 npx supabase db dump --db-url "$SOURCE_DB_URL" --file dump-schema.sql
 npx supabase db dump --db-url "$SOURCE_DB_URL" --data-only --schema public --file dump-dados.sql
-psql "$TARGET_DB_URL" -f dump-schema.sql
-psql "$TARGET_DB_URL" -f dump-dados.sql
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f dump-schema.sql
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f dump-dados.sql
 ```
 
 **Atenção ao `--schema public` no segundo comando — não é opcional.**
@@ -102,16 +102,28 @@ script, e devolver a definição original em seguida:
 ```bash
 # 1. Capturar a definição atual de handle_new_user() no projeto de teste
 #    (é a que veio do clone de produção em 1.2 — 1.4 roda antes de
-#    qualquer fase de migration em 1.8, então ainda não é a versão do dev):
-psql "$TARGET_DB_URL" -At -c "select pg_get_functiondef('public.handle_new_user()'::regprocedure);" > handle_new_user-original.sql
+#    qualquer fase de migration em 1.8, então ainda não é a versão do dev).
+#    O "|| ';'" garante um arquivo .sql válido por si só (pg_get_functiondef
+#    não inclui o ; final):
+psql "$TARGET_DB_URL" -At -c "select pg_get_functiondef('public.handle_new_user()'::regprocedure) || ';';" > handle_new_user-original.sql
 
-# 2. Copiar para handle_new_user-idempotente.sql e adicionar
-#    "on conflict (id) do nothing" logo depois do "insert into
-#    public.profiles (...) values (...)" e antes do "; return new;" —
-#    é a única mudança no arquivo. Depois aplicar:
+# 2. Copiar para handle_new_user-idempotente.sql e editar manualmente — a
+#    única mudança é no bloco final do corpo da function. Localize:
+#
+#      );
+#      return new;
+#
+#    (o "  );" fecha o "insert into public.profiles (...) values (...)")
+#    e troque por:
+#
+#      )
+#      on conflict (id) do nothing;
+#      return new;
+#
+#    Depois aplicar:
 cp handle_new_user-original.sql handle_new_user-idempotente.sql
-# edite handle_new_user-idempotente.sql manualmente, então:
-psql "$TARGET_DB_URL" -f handle_new_user-idempotente.sql
+# edite handle_new_user-idempotente.sql manualmente (bloco acima), então:
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f handle_new_user-idempotente.sql
 
 # 3. Rodar a criação dos usuários de teste normalmente:
 TARGET_SUPABASE_URL=... TARGET_SERVICE_ROLE_KEY=... \
@@ -124,11 +136,23 @@ npx tsx scripts/rollout/criar-usuarios-teste.ts '[
 # 4. Restaurar a definição original capturada no passo 1 — obrigatório,
 #    não pular: a versão idempotente esconde colisões reais de PK em
 #    usuários que não deveriam colidir.
-psql "$TARGET_DB_URL" -f handle_new_user-original.sql
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f handle_new_user-original.sql
+
+# 5. Confirmar que a restauração foi exata — não pressupor que o passo 4
+#    funcionou só porque não imprimiu erro:
+psql "$TARGET_DB_URL" -At -c "select pg_get_functiondef('public.handle_new_user()'::regprocedure) || ';';" > handle_new_user-restaurada.sql
+diff handle_new_user-original.sql handle_new_user-restaurada.sql
 ```
-Conferir a saída do script em si: ele agora encerra com código de saída 1
-(e uma linha final de aviso) se qualquer usuário falhar — não trate um
-batch com falhas reportadas como sucesso só porque o processo "terminou".
+O `diff` do passo 5 precisa vir **vazio**. Qualquer saída ali significa que
+a versão idempotente (ou outra coisa) ainda está em vigor — pare e
+investigue antes de seguir para 1.5, porque essa falha ficaria invisível no
+checklist de login (que só confirma que o usuário existe e enxerga seus
+dados, não qual versão de `handle_new_user()` está ativa).
+
+Conferir também a saída do script em si: ele agora encerra com código de
+saída 1 (e uma linha final de aviso) se qualquer usuário falhar — não trate
+um batch com falhas reportadas como sucesso só porque o processo
+"terminou".
 
 ### 1.5. Verificar paridade pós-clone
 ```bash
@@ -224,9 +248,9 @@ Separar o resultado em três migrations dentro de `supabase/migrations/prod/`:
 
 ### 1.8. Aplicar as três fases no projeto de teste (incluindo limpeza)
 ```bash
-psql "$TARGET_DB_URL" -f supabase/migrations/prod/001_aditiva.sql
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f supabase/migrations/prod/001_aditiva.sql
 # navegar no app local apontando pro teste, checklist de perfis
-psql "$TARGET_DB_URL" -f supabase/migrations/prod/002_correcao.sql
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f supabase/migrations/prod/002_correcao.sql
 # navegar de novo
 ```
 
@@ -235,7 +259,7 @@ O projeto de teste não tem deploy Vercel de verdade para gerar o marco
 vai confirmar de verdade em produção depois do "Promote to Production"
 (Parte 2, item 3):
 ```bash
-psql "$TARGET_DB_URL" -f scripts/rollout/registrar-marco.sql
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f scripts/rollout/registrar-marco.sql
 psql "$TARGET_DB_URL" -c "select registrar_marco('deploy_novo_validado');"
 ```
 
@@ -244,7 +268,7 @@ migration `003_limpeza.sql` e o gate do marco (que ela consulta) antes do
 projeto de teste ser descartado, senão a parte mais irreversível do
 protocolo nunca teria sido validada:
 ```bash
-psql "$TARGET_DB_URL" -f supabase/migrations/prod/003_limpeza.sql
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f supabase/migrations/prod/003_limpeza.sql
 # navegar mais uma vez, checklist de perfis
 ```
 
@@ -280,9 +304,27 @@ de novo, e só então prossiga para o marco e a limpeza.
 ### 1.10. Ensaiar o rollback completo (restore)
 ```bash
 psql "$TARGET_DB_URL" -c "drop schema public cascade; create schema public;"
-psql "$TARGET_DB_URL" -f backup-antes-rollout.sql
-psql "$TARGET_DB_URL" -f backup-antes-rollout-dados.sql
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f backup-antes-rollout.sql
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f backup-antes-rollout-dados.sql
 ```
+
+**Recriar a trigger `on_auth_user_created` — não pular.** `drop schema
+public cascade` derruba não só as tabelas do `public`, mas qualquer objeto
+dependente delas, incluindo a trigger `on_auth_user_created` (vive em
+`auth.users`, mas chama `public.handle_new_user()` — a dependência a torna
+alvo do `cascade`). O restore acima recria `public.handle_new_user()` (veio
+no dump de schema), mas **não** recria a trigger em si, porque `auth.users`
+está fora do dump por design (1.2/1.6 excluem `auth`). Sem este passo, o
+projeto restaurado fica silenciosamente incapaz de criar o perfil de novos
+usuários — um jeito confuso de descobrir isso depois. Recriar manualmente:
+```bash
+psql "$TARGET_DB_URL" -c "create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();"
+psql "$TARGET_DB_URL" -c "select tgname from pg_trigger where tgname = 'on_auth_user_created';"
+```
+A segunda linha precisa devolver uma linha (`on_auth_user_created`). Se vier
+vazia, a trigger não foi recriada — repita antes de considerar o restore
+concluído.
+
 Rodar `verificar-paridade.ts` de novo para confirmar que voltou exatamente
 ao estado anterior — mas note o que o script realmente compara: ele conecta
 em duas connection strings (`SOURCE_DB_URL`/`TARGET_DB_URL`) e conta linhas
@@ -326,7 +368,7 @@ Parte 1 por passo da Parte 1:
 - **1.1 (criar projeto de teste) — não se aplica.** Produção já existe.
 - **1.2 (clonar schema para o target) — não se aplica.** Não há um projeto
   separado para restaurar o dump de produção "dentro" — produção já é a
-  origem. Rodar `psql "$TARGET_DB_URL" -f dump-schema.sql` aqui recriaria
+  origem. Rodar `psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f dump-schema.sql` aqui recriaria
   os mesmos objetos sobre eles mesmos (erro de objeto duplicado, na melhor
   das hipóteses).
 - **1.3 (copiar Storage) — não se aplica.** Copiaria os buckets de produção
@@ -387,7 +429,7 @@ Diferenças e passos adicionais específicos da promoção real:
    - Confirmar o deploy novo estável (navegar no site real, checklist de
      perfis) e só então rodar:
      ```bash
-     psql "$SOURCE_DB_URL" -f scripts/rollout/registrar-marco.sql
+     psql -v ON_ERROR_STOP=1 --single-transaction "$SOURCE_DB_URL" -f scripts/rollout/registrar-marco.sql
      psql "$SOURCE_DB_URL" -c "select registrar_marco('deploy_novo_validado');"
      ```
 4. Só depois do marco registrado, aplicar a fase de limpeza
@@ -402,3 +444,30 @@ Diferenças e passos adicionais específicos da promoção real:
    retrocompatíveis por design). Se algo der errado **depois** da limpeza:
    restaurar o backup do passo 1 desta Parte 2 (único recurso — reverter só
    o código não resolve, o código anterior esperava a coluna já removida).
+   **O mesmo procedimento de 1.10 se aplica aqui, incluindo o passo que
+   costuma ser esquecido:** `drop schema public cascade` derruba a trigger
+   `on_auth_user_created` (dependente de `public.handle_new_user()`) e o
+   restore do backup não a recria (o dump de backup exclui `auth` por
+   design, igual em 1.2/1.6). Depois de restaurar o backup desta Parte 2,
+   recriar a trigger manualmente e confirmar antes de considerar a
+   recuperação concluída:
+   ```bash
+   psql "$SOURCE_DB_URL" -c "create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();"
+   psql "$SOURCE_DB_URL" -c "select tgname from pg_trigger where tgname = 'on_auth_user_created';"
+   ```
+   Sem isso, produção volta a funcionar aparentemente normal, mas para de
+   criar o perfil de qualquer usuário novo — um jeito ruim de descobrir o
+   problema, bem depois do incidente que motivou o restore.
+
+**Limpeza final (opcional, depois de tudo confirmado estável):**
+`_rollout_controle`, `registrar_marco()` e `exigir_marco()` ficam em
+produção depois de uma promoção bem-sucedida — não têm mais função depois
+que a fase de limpeza já rodou, e vão aparecer como diferença permanente em
+qualquer diff futuro contra o dev (a menos que você também aplique
+`scripts/rollout/registrar-marco.sql` no dev, o que não é o objetivo dele).
+Uma vez com a promoção confirmada estável, é seguro rodar em produção:
+```sql
+drop table if exists _rollout_controle;
+drop function if exists registrar_marco(text);
+drop function if exists exigir_marco(text);
+```

@@ -37,10 +37,14 @@ export async function listarPagina(
 
 /**
  * Lista recursivamente todos os arquivos (não pastas) de um bucket,
- * descendo em qualquer subpasta encontrada. Buckets usados por este app
- * guardam arquivos em layout de pasta (ex: `<client-id>/<arquivo>`) — uma
- * listagem só da raiz do bucket vê apenas pseudo-entradas de pasta
- * (`id === null`) e nunca chega nos arquivos de verdade.
+ * descendo em qualquer subpasta encontrada. Se algum bucket usar layout de
+ * pasta (ex: `<client-id>/<arquivo>`) — não confirmado, o app não tem
+ * nenhuma chamada `.storage.` no próprio código (anexos ficam como base64
+ * em colunas do Postgres) e não há bucket disponível em dev para checar —
+ * uma listagem só da raiz veria apenas pseudo-entradas de pasta
+ * (`id === null`) e nunca chegaria nos arquivos de verdade. A recursão
+ * cobre os dois casos (layout plano ou em pastas) de qualquer forma, então
+ * isso não depende de confirmar a suposição.
  */
 export async function listarTodosObjetos(
   storage: StorageClient,

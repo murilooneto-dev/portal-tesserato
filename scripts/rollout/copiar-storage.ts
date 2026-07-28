@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { clienteDe, listarTodosObjetos } from './lib-storage'
 
-async function copiarStorage(dryRun: boolean) {
+async function copiarStorage(dryRun: boolean): Promise<boolean> {
   const sourceUrl = process.env.SOURCE_SUPABASE_URL
   const sourceKey = process.env.SOURCE_SERVICE_ROLE_KEY
   const targetUrl = process.env.TARGET_SUPABASE_URL
@@ -17,6 +17,9 @@ async function copiarStorage(dryRun: boolean) {
 
   const { data: buckets, error: erroBuckets } = await origem.storage.listBuckets()
   if (erroBuckets) throw new Error(`Falha ao listar buckets: ${erroBuckets.message}`)
+
+  let algumaFalha = false
+  const falhas: string[] = []
 
   for (const bucket of buckets ?? []) {
     console.log(`\n=== Bucket: ${bucket.name} ===`)
@@ -47,6 +50,8 @@ async function copiarStorage(dryRun: boolean) {
           .download(caminho)
         if (erroDownload) {
           console.error(`  Falha ao baixar "${caminho}": ${erroDownload.message}`)
+          algumaFalha = true
+          falhas.push(`${bucket.name}/${caminho} (download): ${erroDownload.message}`)
           continue
         }
 
@@ -55,24 +60,41 @@ async function copiarStorage(dryRun: boolean) {
           .upload(caminho, arquivo, { upsert: true })
         if (erroUpload) {
           console.error(`  Falha ao subir "${caminho}": ${erroUpload.message}`)
+          algumaFalha = true
+          falhas.push(`${bucket.name}/${caminho} (upload): ${erroUpload.message}`)
           continue
         }
 
         console.log(`  copiado: ${caminho}`)
       }
     } catch (err) {
-      console.error(
-        `  Falha no bucket "${bucket.name}", pulando para o próximo: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      )
+      const mensagem = err instanceof Error ? err.message : String(err)
+      console.error(`  Falha no bucket "${bucket.name}", pulando para o próximo: ${mensagem}`)
+      algumaFalha = true
+      falhas.push(`${bucket.name} (bucket inteiro): ${mensagem}`)
       continue
     }
   }
+
+  if (algumaFalha) {
+    console.error(`\n${falhas.length} falha(s) durante a cópia — não considere este batch como sucesso:`)
+    for (const falha of falhas) console.error(`  - ${falha}`)
+  }
+
+  return algumaFalha
 }
 
 const dryRun = process.argv.includes('--dry-run')
-copiarStorage(dryRun).catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+copiarStorage(dryRun)
+  .then((algumaFalha) => {
+    // dry-run nunca escreve nada, então não há "falha real" possível ali
+    // além de erros já lançados (capturados no .catch abaixo) — só o modo
+    // de cópia de verdade precisa do exit code condicional.
+    if (!dryRun && algumaFalha) {
+      process.exit(1)
+    }
+  })
+  .catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
