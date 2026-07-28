@@ -36,15 +36,30 @@ service_role) — vão em `TARGET_*` no seu `.env` local (copie de
 ### 1.2. Clonar o schema `public` de produção para o teste
 ```bash
 npx supabase db dump --db-url "$SOURCE_DB_URL" --file dump-schema.sql
-npx supabase db dump --db-url "$SOURCE_DB_URL" --data-only --file dump-dados.sql
+npx supabase db dump --db-url "$SOURCE_DB_URL" --data-only --schema public --file dump-dados.sql
 psql "$TARGET_DB_URL" -f dump-schema.sql
 psql "$TARGET_DB_URL" -f dump-dados.sql
 ```
 
-`supabase db dump` exclui deliberadamente os schemas `auth` e `storage` do
-dump por padrão (são gerenciados pela própria plataforma) — é isso mesmo que
-queremos aqui, Storage e usuários são tratados separadamente abaixo (1.3 e
-1.4).
+**Atenção ao `--schema public` no segundo comando — não é opcional.**
+`supabase db dump` **sem `--data-only`** (dump de schema) exclui os schemas
+`auth` e `storage` por padrão, mas o dump **`--data-only`** (dados) tem uma
+lista de exclusão diferente e menor — sem `--schema public`, ele traz junto
+os dados reais de `auth`/`storage` (senhas, e-mails de usuários reais).
+Storage e usuários de teste são tratados separadamente abaixo (1.3 e 1.4) de
+propósito — não copiar `auth`/`storage` de verdade aqui é o que garante que
+nenhuma credencial real de produção vai parar no projeto de teste
+descartável (confirmado rodando `npx supabase db dump --data-only --dry-run`
+com e sem `--schema public` e comparando as listas de `--exclude-schema`
+geradas).
+
+O comando com `--schema public` continua incluindo `SET
+session_replication_role = replica;` no início do dump (visível no
+`--dry-run`) — isso desliga a checagem de foreign keys durante a
+restauração, então `profiles.id` (que referencia `auth.users`, ainda vazio
+neste ponto) é restaurado sem erro mesmo com `auth.users` vazio. Não é
+preciso nenhum passo extra para isso — já vem de graça no dump gerado pela
+CLI.
 
 **Inventário de configuração (manual, não assumir que "veio junto"):**
 depois de restaurar o schema, conferir no projeto de teste, comparando com
@@ -135,8 +150,15 @@ contra `public.profiles` no clone, não só que os dados foram copiados.
 ### 1.6. Tirar o backup de referência (usado no ensaio de rollback)
 ```bash
 npx supabase db dump --db-url "$TARGET_DB_URL" --file backup-antes-rollout.sql
-npx supabase db dump --db-url "$TARGET_DB_URL" --data-only --file backup-antes-rollout-dados.sql
+npx supabase db dump --db-url "$TARGET_DB_URL" --data-only --schema public --file backup-antes-rollout-dados.sql
 ```
+Mesmo motivo do `--schema public` em 1.2: sem ele, este dump traria também os
+3 usuários de teste (schema `auth`) e os arquivos de Storage já copiados
+(schema `storage`). Isso não é sensível aqui (são dados de teste, não reais),
+mas quebraria a restauração em 1.10 — o restore ali só recria o schema
+`public` (`drop schema public cascade`), então tentar reinserir linhas de
+`auth.users`/`storage.objects` que ainda existem no projeto de teste bateria
+em violação de chave primária.
 
 ### 1.7. Gerar o diff real entre produção e dev
 ```bash
