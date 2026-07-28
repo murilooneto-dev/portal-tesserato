@@ -1,5 +1,18 @@
 # Runbook: Promoção de produção (rollout/rollback)
 
+> **Rode todos os comandos deste documento no Git Bash, nunca no PowerShell
+> nativo ou no `cmd.exe`.** A sintaxe usada aqui (`VAR=valor comando`,
+> continuação de linha com `\`, JSON multi-linha entre aspas simples) é
+> Bash — em PowerShell nativo ela falha ou faz algo diferente do esperado,
+> silenciosamente em alguns casos. Antes de começar, confirme que está no
+> shell certo:
+> ```bash
+> echo $BASH_VERSION
+> ```
+> Isso precisa imprimir um número de versão (ex: `5.2.21(1)-release`). Se
+> vier vazio ou der erro, você está no PowerShell/cmd — abra um terminal
+> Git Bash e comece de novo.
+
 Referência: `docs/superpowers/specs/2026-07-27-rollout-rollback-protocol-design.md`.
 Você executa todos os comandos abaixo pessoalmente — este documento só reúne
 a ordem certa e o que cada comando faz.
@@ -50,15 +63,57 @@ npx tsx scripts/rollout/copiar-storage.ts
 ### 1.4. Criar os usuários de teste
 Escolher 3 UUIDs reais de produção (um admin, um mono-fiscal, um
 multi-setor — consultar `select id, email from auth.users` em produção,
-read-only) e rodar:
+read-only).
+
+**Atenção — a trigger `on_auth_user_created` vai colidir com a chave
+primária de `profiles` para estes 3 usuários.** Os UUIDs escolhidos já têm
+uma linha em `public.profiles` restaurada no passo 1.2. A trigger
+`handle_new_user()` roda automaticamente a cada `insert` em `auth.users` e
+tenta inserir uma linha em `profiles` sem `ON CONFLICT` — como a linha para
+esses UUIDs já existe, a trigger colide com a chave primária de `profiles`
+e a criação do usuário falha (o mesmo padrão de bug documentado no
+`CHANGELOG.md`, v0.6.2). Como o perfil já existe (com os dados reais
+restaurados), a trigger não precisa fazer nada para esses 3 usuários.
+
+**Não tente desabilitar a trigger diretamente** (`alter table auth.users
+disable trigger ...`) — `auth.users` pertence à role `supabase_auth_admin`,
+não à role `postgres` que você usa para conectar (confirmado testando
+contra o dev: `ALTER TABLE auth.users ...` retorna `must be owner of table
+users`, mesmo com a connection string de superusuário aparente do
+Supabase). O contorno é redefinir temporariamente a própria function
+`handle_new_user()` — essa você é dona (foi criada pelas migrations do
+projeto, rodadas como `postgres`) — para tolerar o conflito, rodar o
+script, e devolver a definição original em seguida:
 ```bash
+# 1. Capturar a definição atual de handle_new_user() no projeto de teste
+#    (é a que veio do clone de produção em 1.2 — 1.4 roda antes de
+#    qualquer fase de migration em 1.8, então ainda não é a versão do dev):
+psql "$TARGET_DB_URL" -At -c "select pg_get_functiondef('public.handle_new_user()'::regprocedure);" > handle_new_user-original.sql
+
+# 2. Copiar para handle_new_user-idempotente.sql e adicionar
+#    "on conflict (id) do nothing" logo depois do "insert into
+#    public.profiles (...) values (...)" e antes do "; return new;" —
+#    é a única mudança no arquivo. Depois aplicar:
+cp handle_new_user-original.sql handle_new_user-idempotente.sql
+# edite handle_new_user-idempotente.sql manualmente, então:
+psql "$TARGET_DB_URL" -f handle_new_user-idempotente.sql
+
+# 3. Rodar a criação dos usuários de teste normalmente:
 TARGET_SUPABASE_URL=... TARGET_SERVICE_ROLE_KEY=... \
 npx tsx scripts/rollout/criar-usuarios-teste.ts '[
   {"id":"<uuid-admin>","email":"teste-admin@tesserato.local","senha":"..."},
   {"id":"<uuid-mono-fiscal>","email":"teste-fiscal@tesserato.local","senha":"..."},
   {"id":"<uuid-multi-setor>","email":"teste-multi@tesserato.local","senha":"..."}
 ]'
+
+# 4. Restaurar a definição original capturada no passo 1 — obrigatório,
+#    não pular: a versão idempotente esconde colisões reais de PK em
+#    usuários que não deveriam colidir.
+psql "$TARGET_DB_URL" -f handle_new_user-original.sql
 ```
+Conferir a saída do script em si: ele agora encerra com código de saída 1
+(e uma linha final de aviso) se qualquer usuário falhar — não trate um
+batch com falhas reportadas como sucesso só porque o processo "terminou".
 
 ### 1.5. Verificar paridade pós-clone
 ```bash
@@ -130,9 +185,15 @@ Separar o resultado em três migrations dentro de `supabase/migrations/prod/`:
    definição atual antes de rodar) e guardar junto da migration, para
    reversão instantânea (ver 1.10a).
 3. **`003_limpeza.sql`** — remoção de `profiles.setor` (e qualquer outra
-   coluna substituída). Começa aplicando `registrar-marco.sql` uma vez (se
-   ainda não aplicado) e checando o marco `deploy_novo_validado` antes de
-   rodar qualquer `drop column`/`drop table`.
+   coluna substituída). O **primeiro statement do arquivo**, antes de
+   qualquer `drop column`/`drop table`, precisa ser:
+   ```sql
+   select exigir_marco('deploy_novo_validado');
+   ```
+   (função definida em `scripts/rollout/registrar-marco.sql` — aplicar esse
+   arquivo uma vez no banco alvo antes de rodar `003_limpeza.sql`, se ainda
+   não aplicado). `exigir_marco` aborta a migration inteira com exceção se
+   o marco não existir — é uma trava real, não só uma checagem de prosa.
    **Ponto de não-retorno: sim.** Depois desta fase não existe reversão
    graciosa — coluna já foi removida. O único recurso é restaurar o clone
    completo tirado antes do rollout real (1.6, ou o equivalente da Parte 2).
@@ -204,16 +265,29 @@ Rodar `verificar-paridade.ts` de novo para confirmar que voltou exatamente
 ao estado anterior — mas note o que o script realmente compara: ele conecta
 em duas connection strings (`SOURCE_DB_URL`/`TARGET_DB_URL`) e conta linhas
 ao vivo, não lê arquivos `.sql` de dump. Nesta rehearsal isso funciona porque
-você aponta `SOURCE_DB_URL` para o estado original ainda preservado (o
-projeto de dev, ou outro clone intocado do estado pré-rollout — **não** o
-próprio `TARGET_DB_URL`, que é o projeto de teste que você acabou de
-sobrescrever com o restore) e `TARGET_DB_URL` para o projeto de teste
-recém-restaurado. Esse truque só é seguro num ambiente descartável com um
-segundo banco parado no tempo para comparar; **não é um substituto genérico
-plugável na Parte 2** — em produção real não existe um segundo banco "antes"
-ao vivo para apontar (só o arquivo de backup em disco), então o equivalente
-lá é comparar manualmente contagens do backup restaurado localmente, não
-rodar este script contra produção.
+você aponta `SOURCE_DB_URL` para **outro clone intocado do estado
+pré-rollout** (não o projeto de dev — dev tem um dataset completamente
+diferente do de produção, comparar contra ele só produz uma parede de
+`DIF` sem sinal útil nenhum; precisa ser um segundo banco parado
+exatamente no estado anterior ao rollout, não o próprio `TARGET_DB_URL`,
+que é o projeto de teste que você acabou de sobrescrever com o restore) e
+`TARGET_DB_URL` para o projeto de teste recém-restaurado. Esse truque só é
+seguro num ambiente descartável com um segundo banco parado no tempo para
+comparar; **não é um substituto genérico plugável na Parte 2** — em
+produção real não existe um segundo banco "antes" ao vivo para apontar (só
+o arquivo de backup em disco), então o equivalente lá é comparar
+manualmente contagens do backup restaurado localmente, não rodar este
+script contra produção.
+
+**Nota sobre `_rollout_controle`:** se em algum momento você rodar
+`verificar-paridade.ts` comparando o clone pré-rollout (1.6, antes das três
+fases) contra o projeto de teste logo depois de 1.8 (que já rodou a fase de
+limpeza e portanto já criou `_rollout_controle`) — antes de restaurar em
+1.10 — é esperado um `DIF` isolado nessa única tabela, porque ela só existe
+do lado que já passou pela limpeza. Não é uma falha real; só reflita que,
+depois do restore completo abaixo, essa tabela deixa de existir dos dois
+lados de novo (o restore volta ao estado anterior à limpeza) e a paridade
+volta a fechar sem exceção.
 
 ### 1.11. Descartar o projeto de teste
 Apagar o projeto no painel do Supabase assim que 1.9 e 1.10 estiverem

@@ -1,42 +1,44 @@
 import { Client } from 'pg'
-import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
+import { clienteDe, listarArquivosComTamanho } from './lib-storage'
 
 async function contarLinhasPorTabela(dbUrl: string): Promise<Map<string, number>> {
   const client = new Client({ connectionString: dbUrl })
   await client.connect()
 
-  const { rows: tabelas } = await client.query<{ tablename: string }>(
-    `select tablename from pg_tables where schemaname = 'public' order by tablename`,
-  )
+  try {
+    const { rows: tabelas } = await client.query<{ tablename: string }>(
+      `select tablename from pg_tables where schemaname = 'public' order by tablename`,
+    )
 
-  const contagens = new Map<string, number>()
-  for (const { tablename } of tabelas) {
-    const { rows } = await client.query(`select count(*)::int as total from "${tablename}"`)
-    contagens.set(tablename, rows[0].total)
+    const contagens = new Map<string, number>()
+    for (const { tablename } of tabelas) {
+      const { rows } = await client.query(`select count(*)::int as total from "${tablename}"`)
+      contagens.set(tablename, rows[0].total)
+    }
+
+    return contagens
+  } finally {
+    await client.end()
   }
-
-  await client.end()
-  return contagens
 }
 
 async function contarArquivosPorBucket(
   url: string,
   key: string,
 ): Promise<Map<string, { arquivos: number; bytes: number }>> {
-  const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
+  const supabase = clienteDe(url, key)
   const { data: buckets, error } = await supabase.storage.listBuckets()
   if (error) throw new Error(`Falha ao listar buckets: ${error.message}`)
 
   const resultado = new Map<string, { arquivos: number; bytes: number }>()
   for (const bucket of buckets ?? []) {
-    const { data: objetos, error: erroList } = await supabase.storage
-      .from(bucket.name)
-      .list(undefined, { limit: 10000 })
-    if (erroList) throw new Error(`Falha ao listar "${bucket.name}": ${erroList.message}`)
-
-    const arquivos = (objetos ?? []).filter((o) => o.id !== null)
-    const bytes = arquivos.reduce((soma, o) => soma + (o.metadata?.size ?? 0), 0)
+    // Recursivo: buckets usados por este app guardam arquivos em layout de
+    // pasta (ex: `<client-id>/<arquivo>`) — uma listagem só da raiz veria
+    // apenas pseudo-entradas de pasta e reportaria 0 arquivos dos dois
+    // lados, "batendo" mesmo se nada tiver sido copiado de verdade.
+    const arquivos = await listarArquivosComTamanho(supabase.storage, bucket.name)
+    const bytes = arquivos.reduce((soma, a) => soma + a.bytes, 0)
     resultado.set(bucket.name, { arquivos: arquivos.length, bytes })
   }
   return resultado

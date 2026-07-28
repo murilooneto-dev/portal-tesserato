@@ -1,52 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-import type { FileObject } from '@supabase/storage-js'
 import 'dotenv/config'
-
-function clienteDe(url: string, key: string) {
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
-}
-
-async function listarPagina(
-  storage: ReturnType<typeof clienteDe>['storage'],
-  bucket: string,
-  prefixo: string,
-): Promise<FileObject[]> {
-  const limit = 1000
-  let offset = 0
-  const itens: FileObject[] = []
-
-  while (true) {
-    const { data, error } = await storage.from(bucket).list(prefixo, { limit, offset })
-    if (error) throw new Error(`Falha ao listar "${bucket}/${prefixo}": ${error.message}`)
-
-    itens.push(...(data ?? []))
-    // Página incompleta (menos que `limit`) = última página.
-    if (!data || data.length < limit) break
-    offset += limit
-  }
-
-  return itens
-}
-
-async function listarTodosObjetos(
-  storage: ReturnType<typeof clienteDe>['storage'],
-  bucket: string,
-  prefixo = '',
-): Promise<string[]> {
-  const itens = await listarPagina(storage, bucket, prefixo)
-
-  const caminhos: string[] = []
-  for (const item of itens) {
-    const caminho = prefixo ? `${prefixo}/${item.name}` : item.name
-    if (item.id === null) {
-      // pasta — desce recursivamente
-      caminhos.push(...(await listarTodosObjetos(storage, bucket, caminho)))
-    } else {
-      caminhos.push(caminho)
-    }
-  }
-  return caminhos
-}
+import { clienteDe, listarTodosObjetos } from './lib-storage'
 
 async function copiarStorage(dryRun: boolean) {
   const sourceUrl = process.env.SOURCE_SUPABASE_URL
