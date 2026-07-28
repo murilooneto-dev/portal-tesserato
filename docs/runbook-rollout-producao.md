@@ -260,6 +260,23 @@ vai confirmar de verdade em produção depois do "Promote to Production"
 (Parte 2, item 3):
 ```bash
 psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f scripts/rollout/registrar-marco.sql
+```
+
+**Teste negativo do gate — não pular.** Antes de registrar o marco, confirme
+que `003_limpeza.sql` realmente aborta sem ele (prova que a trava funciona
+de verdade, não só "acredito que funciona"):
+```bash
+psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f supabase/migrations/prod/003_limpeza.sql
+```
+Esperado: erro do `exigir_marco` ("Marco... não encontrado"), a transação
+inteira faz rollback. Confirme que a coluna não foi removida:
+```bash
+psql "$TARGET_DB_URL" -c "select column_name from information_schema.columns where table_name = 'profiles' and column_name = 'setor';"
+```
+Esperado: uma linha (a coluna `setor` ainda existe). Só depois de ver esse
+erro e essa confirmação é que o gate está provado, não só suposto — agora
+registre o marco de verdade e aplique a limpeza:
+```bash
 psql "$TARGET_DB_URL" -c "select registrar_marco('deploy_novo_validado');"
 ```
 
@@ -319,7 +336,7 @@ projeto restaurado fica silenciosamente incapaz de criar o perfil de novos
 usuários — um jeito confuso de descobrir isso depois. Recriar manualmente:
 ```bash
 psql "$TARGET_DB_URL" -c "create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();"
-psql "$TARGET_DB_URL" -c "select tgname from pg_trigger where tgname = 'on_auth_user_created';"
+psql "$TARGET_DB_URL" -c "select tgname, tgrelid::regclass, tgenabled from pg_trigger where tgname = 'on_auth_user_created';"
 ```
 A segunda linha precisa devolver uma linha (`on_auth_user_created`). Se vier
 vazia, a trigger não foi recriada — repita antes de considerar o restore
@@ -453,7 +470,7 @@ Diferenças e passos adicionais específicos da promoção real:
    recuperação concluída:
    ```bash
    psql "$SOURCE_DB_URL" -c "create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();"
-   psql "$SOURCE_DB_URL" -c "select tgname from pg_trigger where tgname = 'on_auth_user_created';"
+   psql "$SOURCE_DB_URL" -c "select tgname, tgrelid::regclass, tgenabled from pg_trigger where tgname = 'on_auth_user_created';"
    ```
    Sem isso, produção volta a funcionar aparentemente normal, mas para de
    criar o perfil de qualquer usuário novo — um jeito ruim de descobrir o

@@ -87,10 +87,10 @@ async function copiarStorage(dryRun: boolean): Promise<boolean> {
 const dryRun = process.argv.includes('--dry-run')
 copiarStorage(dryRun)
   .then((algumaFalha) => {
-    // dry-run nunca escreve nada, então não há "falha real" possível ali
-    // além de erros já lançados (capturados no .catch abaixo) — só o modo
-    // de cópia de verdade precisa do exit code condicional.
-    if (!dryRun && algumaFalha) {
+    // Uma falha de listagem (capturada dentro do loop por-bucket) conta como
+    // falha real mesmo em dry-run — o próprio propósito do dry-run é validar
+    // que listar funciona, então "1 falha(s)" impresso não pode sair como 0.
+    if (algumaFalha) {
       process.exit(1)
     }
   })
