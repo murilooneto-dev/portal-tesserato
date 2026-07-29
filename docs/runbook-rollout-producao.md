@@ -441,7 +441,16 @@ Parte 1 por passo da Parte 1:
   `003_limpeza.sql`) já foram produzidas e revisadas na Parte 1 — são as
   mesmas que você já ensaiou. Rodar o diff de novo aqui serve só para
   confirmar que produção não mudou desde o ensaio (nenhuma migration nova
-  deveria aparecer); se aparecer algo novo, pare e reavalie antes de seguir.
+  deveria aparecer); se aparecer algo novo, pare e reavalie antes de seguir:
+  ```bash
+  npx supabase db dump --db-url "$SOURCE_DB_URL" --file schema-producao-agora.sql
+  diff -b schema-producao-agora.sql schema-producao.sql
+  ```
+  (`schema-producao.sql` é o dump de produção já tirado durante o ensaio da
+  Parte 1 — reaproveite o arquivo, não precisa buscar de novo. Esperado:
+  vazio. Qualquer diferença aqui significa que alguém alterou o schema de
+  produção depois do ensaio — pare e reavalie as migrations antes de
+  continuar, elas foram escritas contra o schema de um momento específico.)
 - **1.8 (aplicar as fases) — aplica-se: é o rollout real em si**, seguindo a
   mesma sequência fase a fase + gate já validada na Parte 1, com as
   diferenças detalhadas no item 3 abaixo (o marco não é mais simulado — ele
@@ -458,14 +467,27 @@ Diferenças e passos adicionais específicos da promoção real:
    mecanismo de rollback real (produção está no plano Free, sem PITR). Esse
    mesmo clone completo é o backup usado no restore da fase de limpeza (ver
    1.10) e deve ser tirado imediatamente antes do rollout real, exatamente
-   como foi ensaiado na Parte 1 — não uma versão simplificada.
+   como foi ensaiado na Parte 1 — não uma versão simplificada. Comando
+   exato (equivalente ao 1.6, mas com `$SOURCE_DB_URL` — produção é a
+   origem E o alvo aqui, não há `$TARGET_DB_URL` separado):
+   ```bash
+   npx supabase db dump --db-url "$SOURCE_DB_URL" --file backup-prod-antes-rollout.sql
+   npx supabase db dump --db-url "$SOURCE_DB_URL" --data-only --schema public --file backup-prod-antes-rollout-dados.sql
+   ```
 2. **Branch protection no GitHub:** antes de mexer no código, confirmar (ou
    configurar) que `main` exige PR para merge — mesmo que aprovado pelo
    próprio usuário — evitando um merge acidental fora da sequência deste
    runbook (ex: código novo publicado antes das migrations de produção
    rodarem, o que quebraria o app imediatamente).
-3. Depois da fase de correção (equivalente ao 1.8, fase 002) aplicada com
-   sucesso em produção:
+3. **Aplicar as fases aditiva e de correção em produção real** (comando
+   exato, mesmas migrations já testadas na Parte 1, sem alterar nenhuma
+   linha):
+   ```bash
+   psql -v ON_ERROR_STOP=1 --single-transaction "$SOURCE_DB_URL" -f supabase/migrations/prod/001_aditiva.sql
+   # checklist de perfis / navegação real no app (código antigo ainda no ar)
+   psql -v ON_ERROR_STOP=1 --single-transaction "$SOURCE_DB_URL" -f supabase/migrations/prod/002_correcao.sql
+   ```
+4. Depois da fase de correção aplicada com sucesso em produção:
    - Verificar no painel do Vercel que as variáveis de ambiente de
      produção do Supabase estão marcadas só para "Production", não
      herdadas por "Preview".
@@ -479,18 +501,37 @@ Diferenças e passos adicionais específicos da promoção real:
      psql -v ON_ERROR_STOP=1 --single-transaction "$SOURCE_DB_URL" -f scripts/rollout/registrar-marco.sql
      psql "$SOURCE_DB_URL" -c "select registrar_marco('deploy_novo_validado');"
      ```
-4. Só depois do marco registrado, aplicar a fase de limpeza
-   (`003_limpeza.sql`) em produção. Considerar uma janela de manutenção com
-   o app em modo leitura para esta fase — é o único ponto do protocolo sem
-   rollback gracioso.
-5. Se algo der errado a qualquer momento antes da fase de limpeza: usar o
+5. Só depois do marco registrado, aplicar a fase de limpeza em produção
+   (comando exato — este é o ponto de não-retorno do protocolo inteiro):
+   ```bash
+   psql -v ON_ERROR_STOP=1 --single-transaction "$SOURCE_DB_URL" -f supabase/migrations/prod/003_limpeza.sql
+   ```
+   Considerar uma janela de manutenção com o app em modo leitura para esta
+   fase — é o único ponto do protocolo sem rollback gracioso.
+6. Verificação final contra o dev (equivalente ao 1.9, mesmo comando, contra
+   `$SOURCE_DB_URL` em vez de `$TARGET_DB_URL`):
+   ```bash
+   npx supabase db dump --db-url "$SOURCE_DB_URL" --file schema-prod-pos-rollout.sql
+   diff -b schema-prod-pos-rollout.sql schema-dev.sql
+   ```
+   Mesma calibração de expectativa do 1.9: não vai vir vazio (drift antigo
+   de produção que o dev nunca teve — `autenticados_acesso_total` e afins —
+   continua lá, fora de escopo). O que precisa bater é só a parte da
+   expansão multi-setor em si.
+7. Se algo der errado a qualquer momento antes da fase de limpeza: usar o
    rollback granular (1.10a: `DROP` para a fase aditiva, reaplicar
    definição original para a fase de correção) ou, para o código, o
    "Instant Rollback" do Vercel, sem mexer no banco — o código anterior
    ainda é compatível com o schema (fases aditiva/correção são
    retrocompatíveis por design). Se algo der errado **depois** da limpeza:
-   restaurar o backup do passo 1 desta Parte 2 (único recurso — reverter só
+   restaurar o backup do item 1 desta Parte 2 (único recurso — reverter só
    o código não resolve, o código anterior esperava a coluna já removida).
+   Comando exato (mesmo padrão do 1.10, arquivos deste item):
+   ```bash
+   psql "$SOURCE_DB_URL" -c "drop schema public cascade; create schema public;"
+   psql -v ON_ERROR_STOP=1 --single-transaction "$SOURCE_DB_URL" -f backup-prod-antes-rollout.sql
+   psql -v ON_ERROR_STOP=1 --single-transaction "$SOURCE_DB_URL" -f backup-prod-antes-rollout-dados.sql
+   ```
    **O mesmo procedimento de 1.10 se aplica aqui, incluindo o passo que
    costuma ser esquecido:** `drop schema public cascade` derruba a trigger
    `on_auth_user_created` (dependente de `public.handle_new_user()`) e o
