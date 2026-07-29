@@ -269,6 +269,22 @@ insert into tarefa_tipos (setor, nome, etapas, tipo_resposta) values
 on conflict (setor, nome) do nothing;
 
 -- ============================================================
+-- tarefas: setor (com DEFAULT mantido — ver nota abaixo) + resposta_texto
+-- ============================================================
+--
+-- Diferente da migration original do dev (006), que dropa o DEFAULT
+-- logo depois de adicionar a coluna: aqui o DEFAULT 'fiscal' é mantido
+-- de propósito. Código antigo faz INSERT em `tarefas` sem especificar
+-- essa coluna (não sabe que ela existe) — sem DEFAULT, esses INSERTs
+-- quebrariam com "null value in column setor violates not-null
+-- constraint". O DEFAULT só é removido na fase de limpeza (003), depois
+-- que o código novo (que sempre especifica setor) já estiver no ar.
+
+alter table tarefas add column if not exists setor user_setor not null default 'fiscal';
+alter table tarefas add column if not exists resposta_texto text;
+
+
+-- ============================================================
 -- tarefa_etapas: sub-passos nomeados genéricos (usado por "Movimentação")
 -- ============================================================
 
@@ -368,21 +384,6 @@ alter table tarefa_vinculos enable row level security;
 
 create policy "Autenticados leem tarefa_vinculos" on tarefa_vinculos for select using (auth.uid() is not null);
 create policy "Admin gerencia tarefa_vinculos" on tarefa_vinculos for all using (is_admin());
-
--- ============================================================
--- tarefas: setor (com DEFAULT mantido — ver nota abaixo) + resposta_texto
--- ============================================================
---
--- Diferente da migration original do dev (006), que dropa o DEFAULT
--- logo depois de adicionar a coluna: aqui o DEFAULT 'fiscal' é mantido
--- de propósito. Código antigo faz INSERT em `tarefas` sem especificar
--- essa coluna (não sabe que ela existe) — sem DEFAULT, esses INSERTs
--- quebrariam com "null value in column setor violates not-null
--- constraint". O DEFAULT só é removido na fase de limpeza (003), depois
--- que o código novo (que sempre especifica setor) já estiver no ar.
-
-alter table tarefas add column if not exists setor user_setor not null default 'fiscal';
-alter table tarefas add column if not exists resposta_texto text;
 
 -- ============================================================
 -- tarefas_avulsas: mecanismo genérico "+ Evento"
