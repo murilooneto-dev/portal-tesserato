@@ -294,9 +294,26 @@ psql -v ON_ERROR_STOP=1 --single-transaction "$TARGET_DB_URL" -f supabase/migrat
 npx supabase db dump --db-url "$TARGET_DB_URL" --file schema-teste-pos-rollout.sql
 diff schema-teste-pos-rollout.sql schema-dev.sql
 ```
-Esperado: vazio (ou só diferenças esperadas, ex: a tabela `_rollout_controle`
-que não existe no dev). Se houver qualquer outra diferença, alguma parte do
-diff do passo 1.7 foi mal traduzida em migration — corrigir antes de seguir.
+**Não espere vazio de verdade — achado real do primeiro ensaio completo.**
+Produção tem drift histórico que o dev nunca herdou (foi construído do zero):
+policies antigas e muito permissivas em várias tabelas (`autenticados_acesso_total`,
+`allow_authenticated_all`, `leitura_autenticados` — dão acesso total a
+qualquer autenticado em `tarefas`/`clientes`/`profiles`/`app_settings`/
+`bots_config`/`client_files`/`task_unlock_log`), e policies antigas de admin
+usando subquery direta (`EXISTS (SELECT 1 FROM profiles WHERE...)`) em vez de
+`is_admin()` em tabelas fora de `profiles` (funcionalmente idêntico, só
+estilo diferente). Nenhuma dessas diferenças foi causada pelas migrations
+desta promoção — são drift pré-existente, fora de escopo aqui (não confundir
+com um "diff mal traduzido"). O que precisa vir vazio é só a parte relativa
+à expansão multi-setor em si (as tabelas/colunas/policies novas criadas
+pelas 3 fases) — compare visualmente que o diff restante é só esse drift já
+conhecido + `_rollout_controle`, não algo novo.
+
+Se comparar arquivos no Windows/Git Bash, use `diff -b` (ignora espaço) —
+`psql -At` às vezes duplica quebras de linha (`\r\n\r` em vez de `\r\n`) de
+forma cosmética, sem mudar o conteúdo real; `diff` puro acusa isso como
+diferença mesmo quando o conteúdo é idêntico (confirmado no ensaio, ao
+verificar a restauração de `handle_new_user()` no passo 1.4).
 
 ### 1.10a. Rollback granular (fases aditiva e de correção) — referência para uso na Parte 2
 Isto é o que você usaria numa promoção real se precisasse abortar **antes**
@@ -359,6 +376,19 @@ produção real não existe um segundo banco "antes" ao vivo para apontar (só
 o arquivo de backup em disco), então o equivalente lá é comparar
 manualmente contagens do backup restaurado localmente, não rodar este
 script contra produção.
+
+**Cuidado real, confirmado no primeiro ensaio completo:** se `SOURCE_DB_URL`
+no seu `.env` local ainda estiver apontando pra produção **ao vivo** (o
+valor normal usado nos passos 1.2/1.6/1.7), rodar `verificar-paridade.ts`
+aqui vai comparar contra produção em tempo real, não contra o estado
+congelado de antes do rollout — qualquer escrita real em produção durante
+o ensaio (uma tarefa nova criada por um usuário de verdade, por exemplo)
+aparece como `DIF`, mesmo que o rollback tenha funcionado perfeitamente.
+Troque `SOURCE_DB_URL` temporariamente para um segundo clone/dump congelado
+antes de rodar esta verificação específica, ou aceite conscientemente que
+uma `DIF` aqui pode ser só produção ter avançado, não um rollback quebrado
+— confirme comparando contra os números já anotados no passo 1.5 (o
+`destino` bater com o que era o `destino` de lá é o sinal real de sucesso).
 
 **Nota sobre `_rollout_controle`:** se em algum momento você rodar
 `verificar-paridade.ts` comparando o clone pré-rollout (1.6, antes das três
