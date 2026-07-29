@@ -1,0 +1,23 @@
+-- supabase/migrations/016_fix_mit_type_dev.sql
+--
+-- Reparo dev-only (não aplicar em produção): clientes.mit ficou com o tipo
+-- errado (date) desde 001_initial.sql, um "chute" anterior a qualquer
+-- inspeção real do schema de produção. A correção real (text) que
+-- 002_sync_prod_schema_dev.sql tentava aplicar nunca rodou de fato, porque
+-- usa `create table if not exists` e a tabela `clientes` já existia (criada
+-- por 001) — o Postgres pula a criação inteira nesse caso, não compara
+-- coluna a coluna.
+--
+-- Produção real usa `mit text` (confirmado com dados reais: strings tipo
+-- "JUAZEIRO DO NORTE/CE", formato "município/UF") e todo o código do app
+-- trata `mit` como string (lib/types.ts, ClienteGeralModal.tsx,
+-- EmpresaModal.tsx, app/fiscal/clientes/actions.ts). O próprio repo já tem
+-- um precedente documentado dessa mesma confusão em scripts/migration.sql
+-- ("Garantir que mit seja text (era date em algumas versões)").
+--
+-- Por isso: produção nunca precisou dessa correção (já está certa) e as
+-- migrations de promoção pra produção (supabase/migrations/prod/) NÃO
+-- devem tocar em `clientes.mit` — essa divergência é só um bug de bootstrap
+-- do dev, não uma mudança de design a promover.
+
+alter table clientes alter column mit type text using mit::text;
