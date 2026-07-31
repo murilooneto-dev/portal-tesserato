@@ -5,12 +5,13 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
+import { normalizarTitulo } from '@/lib/calendario'
 import TarefaChecklistPessoal from '@/components/pessoal/TarefaChecklistPessoal'
 import ClientePessoalAcoes from '@/components/pessoal/ClientePessoalAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
 import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsPessoal } from '../actions'
-import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -38,6 +39,16 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
     supabase.from('profiles').select('nome').contains('setores', ['pessoal']),
     supabase.from('tarefa_tipos').select('nome, etapas, meses_visiveis, tipo_resposta').eq('setor', 'pessoal'),
   ])
+
+  const { data: eventosCalRaw } = await supabase
+    .from('calendario_eventos')
+    .select('*')
+    .eq('setor', 'pessoal')
+
+  const prazosPorTipo: Record<string, CalendarioEvento> = {}
+  for (const e of (eventosCalRaw ?? []) as CalendarioEvento[]) {
+    prazosPorTipo[normalizarTitulo(e.titulo)] = e
+  }
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'pessoal', mes, ano)
 
@@ -129,6 +140,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
         onUploadArquivo={onUploadArquivo}
         onExcluirArquivo={onExcluirArquivo}
         podeEditar={podeEditar}
+        prazosPorTipo={prazosPorTipo}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="pessoal" eventos={eventosAvulsos} podeEditar={podeEditar} />
