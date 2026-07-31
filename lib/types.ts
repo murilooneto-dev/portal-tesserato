@@ -153,8 +153,10 @@ export interface CalendarioEvento {
   titulo: string
   descricao: string | null
   tipo_data: TipoDataEvento
-  dia_mes: number | null
-  data: string | null
+  interna_dia_mes: number | null
+  interna_data: string | null
+  oficial_dia_mes: number | null
+  oficial_data: string | null
   created_at: string
   created_by: string | null
 }
