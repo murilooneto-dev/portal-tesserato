@@ -90,6 +90,23 @@ export async function criarUsuario(payload: {
   return {}
 }
 
+export async function deletarUsuario(id: string): Promise<{ error?: string }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.' }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
+  if (id === user.id) return { error: 'Você não pode excluir seu próprio usuário.' }
+
+  const admin = createAdminClient()
+  // profiles.id referencia auth.users on delete cascade — apagar o auth.user
+  // já remove a linha em profiles junto.
+  const { error } = await admin.auth.admin.deleteUser(id)
+  if (error) return { error: error.message }
+
+  revalidatePath('/fiscal/parametros')
+  return {}
+}
+
 export async function salvarConfiguracoes(settings: Record<string, unknown>): Promise<{ error?: string }> {
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return { error: 'Não autorizado' }

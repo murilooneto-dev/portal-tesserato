@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { SETORES, SETOR_LABEL, type UserSetor } from '@/lib/types'
 import { PAGINAS_POR_SETOR } from '@/lib/paginas-setor'
-import { salvarComunicado, atualizarPerfil, criarUsuario, salvarConfiguracoes } from './actions'
+import { salvarComunicado, atualizarPerfil, criarUsuario, deletarUsuario, salvarConfiguracoes } from './actions'
 import { salvarTemplate, aplicarTemplateAClientes, salvarTemplateGrupo, aplicarTemplateGrupoAClientes, analisarParcelamentosDuplicados, limparParcelamentosDuplicados } from './actions'
 import type { GrupoParcelamentoDuplicado } from './actions'
 import { resolverTemplate } from '@/lib/atividade-templates'
@@ -34,6 +34,7 @@ interface DeletionLog {
 
 interface Props {
   profiles: Profile[]
+  currentUserId: string
   dashboardAnnouncement: string
   taskLogs: TaskLog[]
   deletionLogs: DeletionLog[]
@@ -64,7 +65,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   )
 }
 
-export default function ParametrosClient({ profiles, dashboardAnnouncement, taskLogs, deletionLogs, emailSettings = {}, atividadeTemplates, grupoTemplates }: Props) {
+export default function ParametrosClient({ profiles, currentUserId, dashboardAnnouncement, taskLogs, deletionLogs, emailSettings = {}, atividadeTemplates, grupoTemplates }: Props) {
   const router = useRouter()
 
   // Comunicado
@@ -99,6 +100,7 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
   const [editingProfile, setEditingProfile] = useState<string | null>(null)
   const [profileEdits, setProfileEdits] = useState<Record<string, Partial<Profile>>>({})
   const [savingProfile, setSavingProfile] = useState<string | null>(null)
+  const [deletingProfile, setDeletingProfile] = useState<string | null>(null)
 
   // Novo usuário
   const [novoNome, setNovoNome] = useState('')
@@ -211,6 +213,18 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
     await atualizarPerfil(id, fd)
     setSavingProfile(null)
     setEditingProfile(null)
+    router.refresh()
+  }
+
+  async function handleDeletarUsuario(id: string, nome: string) {
+    if (!confirm(`Excluir o usuário "${nome}"? Essa ação não pode ser desfeita.`)) return
+    setDeletingProfile(id)
+    const result = await deletarUsuario(id)
+    setDeletingProfile(null)
+    if (result.error) {
+      alert(result.error)
+      return
+    }
     router.refresh()
   }
 
@@ -720,6 +734,12 @@ export default function ParametrosClient({ profiles, dashboardAnnouncement, task
                           className="px-3 py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/8 text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/10 text-xs transition-colors">
                           Editar
                         </button>
+                        {p.id !== currentUserId && (
+                          <button onClick={() => handleDeletarUsuario(p.id, p.nome)} disabled={deletingProfile === p.id}
+                            className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400/70 hover:text-red-400 hover:bg-red-500/15 text-xs transition-colors disabled:opacity-50">
+                            {deletingProfile === p.id ? 'Excluindo...' : 'Excluir'}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

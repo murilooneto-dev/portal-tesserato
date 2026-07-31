@@ -59,6 +59,7 @@ export default async function ParametrosPage() {
   return (
     <ParametrosClient
       profiles={profiles ?? []}
+      currentUserId={user.id}
       dashboardAnnouncement={s.dashboard_announcement ?? ''}
       taskLogs={taskLogs ?? []}
       deletionLogs={deletionLogs ?? []}
