@@ -10,11 +10,19 @@ Ter um backup completo e recorrente do banco Postgres de **produção** (projeto
 
 - Banco: produção apenas (`qilwxzpxkjzbfrwlbydt`). Dev não é coberto por esta rotina.
 - Backup completo: schema + dados, via `pg_dump`.
-- Execução: GitHub Actions, no repositório `portal-tesserato` (já existe, com remote `github.com/murilooneto-dev/portal-tesserato`).
+- Execução: GitHub Actions, em um repositório **novo e dedicado** (`tesserato-backups`, privado), não no `portal-tesserato`. Motivo: isola o secret do banco de produção dos outros secrets/workflows que já existem no repo do app (deploy, Vercel, etc.), e deixa esse repo pronto pra virar o lugar central de backup de outros bancos (Fiscal, Societário, Financeiro) conforme os outros setores do portal multi-setor forem saindo do papel — sem misturar infraestrutura de ops com histórico de features de produto.
 - Armazenamento: artifacts do próprio workflow do GitHub Actions.
 - Restauração: **fora de escopo** de implementação — só documentada em texto, execução é manual e sob decisão humana (operação potencialmente destrutiva).
 
+Este documento é criado no repo `portal-tesserato` (onde a conversa começou), mas o conteúdo final passa a residir também no repo `tesserato-backups` assim que ele for criado, junto com o workflow.
+
 ## Componentes
+
+### 0. Repositório `tesserato-backups`
+
+- Repositório novo no GitHub, privado, sob a mesma conta/organização do `portal-tesserato`.
+- Conteúdo mínimo: `.github/workflows/backup-db.yml` e uma cópia deste design doc (ou um README curto explicando a rotina).
+- Criação do repositório é uma ação em sistema externo (GitHub) — feita com confirmação explícita do usuário antes de executar, não silenciosamente durante a implementação.
 
 ### 1. Workflow `.github/workflows/backup-db.yml`
 
@@ -34,7 +42,7 @@ Job (`ubuntu-latest`):
 ### 2. Secret `PROD_SUPABASE_DB_URL`
 
 - Connection string **direta** (porta 5432, não a pooled 6543) do Postgres de produção, pega em Supabase → Project Settings → Database → Connection string.
-- Cadastrado pelo usuário diretamente no GitHub: repo `portal-tesserato` → Settings → Secrets and variables → Actions → New repository secret, nome exato `PROD_SUPABASE_DB_URL`.
+- Cadastrado pelo usuário diretamente no GitHub: repo `tesserato-backups` → Settings → Secrets and variables → Actions → New repository secret, nome exato `PROD_SUPABASE_DB_URL`.
 - Esse cadastro não é feito pelo assistente — envolve credencial de banco de produção.
 
 ### 3. Nome do arquivo
