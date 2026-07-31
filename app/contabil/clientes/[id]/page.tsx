@@ -4,13 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
+import { normalizarTitulo } from '@/lib/calendario'
 import TarefaChecklistContabil from '@/components/contabil/TarefaChecklistContabil'
 import ClienteContabilAcoes from '@/components/contabil/ClienteContabilAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
 import { toggleTarefaContabil, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsContabil } from '../actions'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
-import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -33,11 +34,17 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
 
   const { mes, ano } = await getMesAno()
 
-  const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }] = await Promise.all([
+  const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
     supabase.from('profiles').select('nome').contains('setores', ['contabil']),
     supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'contabil'),
+    supabase.from('calendario_eventos').select('*').eq('setor', 'contabil'),
   ])
+
+  const prazosPorTipo: Record<string, CalendarioEvento> = {}
+  for (const e of (eventosCalRaw ?? []) as CalendarioEvento[]) {
+    prazosPorTipo[normalizarTitulo(e.titulo)] = e
+  }
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'contabil', mes, ano)
 
@@ -128,6 +135,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
         onUploadArquivo={onUploadArquivo}
         onExcluirArquivo={onExcluirArquivo}
         podeEditar={podeEditar}
+        prazosPorTipo={prazosPorTipo}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} />
