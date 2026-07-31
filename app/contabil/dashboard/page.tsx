@@ -6,7 +6,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
-import { proximaOcorrencia, diasRestantes, alertaColor, alertaLabel } from '@/lib/calendario'
+import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
 
 export const metadata = { title: 'Dashboard — Tesserato Contábil' }
 
@@ -45,7 +45,7 @@ export default async function DashboardContabilPage() {
   const alertas = ehMesAtual
     ? eventos
         .map(evento => {
-          const alvo = proximaOcorrencia(evento, hoje)
+          const alvo = proximoPrazo(evento, hoje)
           const dias = diasRestantes(alvo, hoje)
           return { evento, dias }
         })
@@ -55,7 +55,7 @@ export default async function DashboardContabilPage() {
 
   const clientesObs = cs.filter(c => c.obs && c.obs.trim() !== '')
   const responsaveis = Array.from(
-    new Set(ps.filter(p => p.setores.includes('contabil')).map(p => p.nome).filter(Boolean))
+    new Set(ps.filter(p => p.setores.includes('contabil') && p.role === 'operador').map(p => p.nome).filter(Boolean))
   ).sort()
 
   return (
@@ -76,6 +76,8 @@ export default async function DashboardContabilPage() {
               return (
                 <div key={a.evento.id} className={`rounded-full border px-3 py-1.5 flex items-center gap-2.5 ${alertaColor(a.dias)}`}>
                   <span className="text-[var(--fg)] text-xs font-semibold">{a.evento.titulo}</span>
+                  <span className="text-[var(--fg)]/25 text-xs">·</span>
+                  <span className="text-[var(--fg)]/50 text-xs">{labelDatas(a.evento)}</span>
                   <span className="text-[var(--fg)]/25 text-xs">·</span>
                   <span className={`text-xs font-bold ${lbl.cls}`}>{lbl.text}</span>
                 </div>
