@@ -56,11 +56,12 @@ export function diasRestantes(dataAlvo: Date, hoje: Date = new Date()): number {
 // duas datas ficam visíveis lado a lado e o contador é só "o próximo
 // prazo, seja ele qual for". Se só um lado existe, retorna esse. Se os
 // dois já passaram (só possível com tipo_data 'unica'), retorna oficial.
-export function proximoPrazo(evento: CalendarioEvento, hoje: Date = new Date()): Date {
+export function proximoPrazo(evento: CalendarioEvento, hoje: Date = new Date()): Date | null {
   const interna = proximaOcorrencia(evento, 'interna', hoje)
   const oficial = proximaOcorrencia(evento, 'oficial', hoje)
   if (interna && !oficial) return interna
   if (oficial && !interna) return oficial
+  if (!interna && !oficial) return null
 
   const diasInterna = diasRestantes(interna!, hoje)
   const diasOficial = diasRestantes(oficial!, hoje)

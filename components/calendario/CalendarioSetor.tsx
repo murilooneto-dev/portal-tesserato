@@ -26,11 +26,9 @@ export default function CalendarioSetor({ setor, eventos, isAdmin }: Props) {
   const hoje = new Date()
 
   const cards = eventos
-    .map(evento => {
-      const alvo = proximoPrazo(evento, hoje)
-      const dias = diasRestantes(alvo, hoje)
-      return { evento, dias }
-    })
+    .map(evento => ({ evento, alvo: proximoPrazo(evento, hoje) }))
+    .filter((c): c is { evento: CalendarioEvento; alvo: Date } => c.alvo !== null)
+    .map(({ evento, alvo }) => ({ evento, dias: diasRestantes(alvo, hoje) }))
     .sort((a, b) => a.dias - b.dias)
 
   async function handleExcluir(id: string) {
@@ -65,7 +63,7 @@ export default function CalendarioSetor({ setor, eventos, isAdmin }: Props) {
                   <span className="text-[var(--fg)] font-semibold text-sm">{evento.titulo}</span>
                   <span className={`text-xs font-bold ${lbl.cls}`}>{lbl.text}</span>
                 </div>
-                <p className="text-[var(--fg)]/50 text-xs mb-1">{labelDatas(evento)}</p>
+                <p className="text-[var(--fg)]/50 text-xs mb-1">{labelDatas(evento, hoje)}</p>
                 {evento.descricao && (
                   <p className="text-[var(--fg)]/40 text-xs leading-relaxed">{evento.descricao}</p>
                 )}
