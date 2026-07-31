@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Cliente, Profile, Tarefa } from '@/lib/types'
+import { Profile, Tarefa } from '@/lib/types'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
+import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, ClienteComFiscal } from '@/lib/clientes-fiscal'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
 
@@ -46,13 +47,13 @@ export default async function DashboardPage() {
     return mes === real.mes && ano === real.ano
   })()
 
-  const [{ data: clientes }, { data: profiles }, tarefas] = await Promise.all([
-    supabase.from('clientes').select('*').order('nome'),
+  const [{ data: clientesRaw }, { data: profiles }, tarefas] = await Promise.all([
+    supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome'),
     supabase.from('profiles').select('*'),
     buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano),
   ])
 
-  const cs = (clientes ?? []) as Cliente[]
+  const cs = (clientesRaw ?? []).map(flattenClienteFiscal)
   const ps = (profiles ?? []) as Profile[]
   const ts = tarefas
 
@@ -83,7 +84,7 @@ export default async function DashboardPage() {
 
   const clientesObs = cs.filter(c => c.obs && c.obs.trim() !== '')
   const responsaveis = Array.from(
-    new Set(cs.map(c => c.responsavel).filter(Boolean) as string[])
+    new Set(ps.filter(p => p.setores.includes('fiscal')).map(p => p.nome).filter(Boolean))
   ).sort()
 
   return (

@@ -17,7 +17,7 @@ export default async function AdminPage() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') redirect('/fiscal/intranet')
+  if (profile?.role !== 'admin') redirect('/intranet')
 
   const { data: profiles } = await supabase
     .from('profiles')

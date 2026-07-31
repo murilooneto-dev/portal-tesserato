@@ -79,6 +79,35 @@ export async function podeEditarCliente(clienteId: string): Promise<boolean> {
   const { data: profile } = await supabase.from('profiles').select('role,nome').eq('id', user.id).single()
   if (profile?.role === 'admin') return true
 
-  const { data: cliente } = await supabase.from('clientes').select('responsavel').eq('id', clienteId).single()
+  const { data: cliente } = await supabase.from('clientes_fiscal').select('responsavel').eq('cliente_id', clienteId).single()
+  return !!profile?.nome && !!cliente?.responsavel && profile.nome.toLowerCase() === cliente.responsavel.toLowerCase()
+}
+
+// Mesma lógica de podeEditarCliente, mas pro setor Contábil (consulta
+// clientes_contabil em vez de clientes_fiscal). Função irmã, não
+// parametrizada — cada setor tem a sua, mesmo padrão de clientes_fiscal.
+export async function podeEditarClienteContabil(clienteId: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data: profile } = await supabase.from('profiles').select('role,nome').eq('id', user.id).single()
+  if (profile?.role === 'admin') return true
+
+  const { data: cliente } = await supabase.from('clientes_contabil').select('responsavel').eq('cliente_id', clienteId).single()
+  return !!profile?.nome && !!cliente?.responsavel && profile.nome.toLowerCase() === cliente.responsavel.toLowerCase()
+}
+
+// Mesma lógica de podeEditarClienteContabil, mas pro setor Pessoal
+// (consulta clientes_pessoal em vez de clientes_contabil).
+export async function podeEditarClientePessoal(clienteId: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data: profile } = await supabase.from('profiles').select('role,nome').eq('id', user.id).single()
+  if (profile?.role === 'admin') return true
+
+  const { data: cliente } = await supabase.from('clientes_pessoal').select('responsavel').eq('cliente_id', clienteId).single()
   return !!profile?.nome && !!cliente?.responsavel && profile.nome.toLowerCase() === cliente.responsavel.toLowerCase()
 }

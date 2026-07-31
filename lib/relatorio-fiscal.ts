@@ -1,4 +1,5 @@
-import type { Cliente, Tarefa } from './types'
+import type { Tarefa } from './types'
+import type { ClienteComFiscal } from './clientes-fiscal'
 
 export interface ProgressoCliente {
   total: number
@@ -7,7 +8,7 @@ export interface ProgressoCliente {
   pendentes: string[]
 }
 
-export function calcularProgresso(cliente: Cliente, tarefas: Tarefa[]): ProgressoCliente {
+export function calcularProgresso(cliente: ClienteComFiscal, tarefas: Tarefa[]): ProgressoCliente {
   const tipos = new Set(cliente.tarefas_personalizadas ?? [])
   const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.has(t.tipo))
   const total = tipos.size
@@ -18,14 +19,14 @@ export function calcularProgresso(cliente: Cliente, tarefas: Tarefa[]): Progress
 }
 
 export interface LinhaRelatorio {
-  cliente: Cliente
+  cliente: ClienteComFiscal
   total: number
   feitas: number
   pct: number
   pendentes: string[]
 }
 
-export function montarLinhasRelatorio(clientes: Cliente[], tarefas: Tarefa[]): LinhaRelatorio[] {
+export function montarLinhasRelatorio(clientes: ClienteComFiscal[], tarefas: Tarefa[]): LinhaRelatorio[] {
   return clientes
     .map(cliente => ({ cliente, ...calcularProgresso(cliente, tarefas) }))
     .sort((a, b) => a.pct - b.pct)

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { UserSetor } from './types'
 
 /**
  * Busca todas as linhas de `tarefas` para um mes/ano, paginando em blocos de 1000.
@@ -10,7 +11,8 @@ export async function buscarTodasTarefasDoMes<T = Record<string, unknown>>(
   supabase: SupabaseClient,
   mes: number,
   ano: number,
-  colunas: string = '*'
+  colunas: string = '*',
+  setor: UserSetor = 'fiscal'
 ): Promise<T[]> {
   const linhas: T[] = []
   const TAMANHO_PAGINA = 1000
@@ -21,6 +23,7 @@ export async function buscarTodasTarefasDoMes<T = Record<string, unknown>>(
       .select(colunas)
       .eq('mes', mes)
       .eq('ano', ano)
+      .eq('setor', setor)
       .range(inicio, inicio + TAMANHO_PAGINA - 1)
 
     if (error) throw new Error(error.message)
@@ -39,7 +42,8 @@ export async function buscarTodasTarefasDoMes<T = Record<string, unknown>>(
  */
 export async function buscarTodasTarefas<T = Record<string, unknown>>(
   supabase: SupabaseClient,
-  colunas: string = '*'
+  colunas: string = '*',
+  setor: UserSetor = 'fiscal'
 ): Promise<T[]> {
   const linhas: T[] = []
   const TAMANHO_PAGINA = 1000
@@ -48,6 +52,7 @@ export async function buscarTodasTarefas<T = Record<string, unknown>>(
     const { data, error } = await supabase
       .from('tarefas')
       .select(colunas)
+      .eq('setor', setor)
       .range(inicio, inicio + TAMANHO_PAGINA - 1)
 
     if (error) throw new Error(error.message)

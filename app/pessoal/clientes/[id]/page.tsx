@@ -1,0 +1,136 @@
+import { notFound, redirect } from 'next/navigation'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import { getMesAno } from '@/lib/mes-atual-server'
+import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
+import { buscarVinculosDoCliente } from '@/lib/vinculos'
+import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
+import TarefaChecklistPessoal from '@/components/pessoal/TarefaChecklistPessoal'
+import ClientePessoalAcoes from '@/components/pessoal/ClientePessoalAcoes'
+import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
+import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa } from '../actions'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
+
+interface Props {
+  params: Promise<{ id: string }>
+}
+
+export default async function ClientePessoalDetalhePage({ params }: Props) {
+  const { id } = await params
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase.from('profiles').select('nome,role').eq('id', user.id).single()
+
+  const { data: clienteRaw } = await supabase.from('clientes').select(SELECT_CLIENTE_PESSOAL).eq('id', id).single()
+  if (!clienteRaw) notFound()
+  const cliente = flattenClientePessoal(clienteRaw)
+
+  const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
+
+  const { mes, ano } = await getMesAno()
+
+  const [{ data: tarefas }, { data: usuariosPessoal }, { data: tiposRaw }] = await Promise.all([
+    supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'pessoal'),
+    supabase.from('profiles').select('nome').contains('setores', ['pessoal']),
+    supabase.from('tarefa_tipos').select('nome, etapas, meses_visiveis, tipo_resposta').eq('setor', 'pessoal'),
+  ])
+
+  const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'pessoal', mes, ano)
+
+  const vinculos = await buscarVinculosDoCliente(
+    supabase, id, cliente.tarefas_vinculadas_ativas ?? [], 'pessoal', mes, ano
+  )
+
+  const responsaveis = Array.from(new Set(
+    (usuariosPessoal ?? []).map(p => p.nome ?? '').filter(Boolean)
+  )).sort()
+
+  const tarefaTipos: Record<string, { etapas: string[] | null; mesesVisiveis: number[] | null; tipoResposta: TipoResposta }> = {}
+  for (const t of tiposRaw ?? []) {
+    tarefaTipos[t.nome as string] = {
+      etapas: t.etapas as string[] | null,
+      mesesVisiveis: t.meses_visiveis as number[] | null,
+      tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
+    }
+  }
+  const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
+
+  const tarefaIds = (tarefas ?? []).map(t => t.id)
+  const { data: etapas } = tarefaIds.length > 0
+    ? await supabase.from('tarefa_etapas').select('*').in('tarefa_id', tarefaIds)
+    : { data: [] as TarefaEtapa[] }
+  const { data: arquivos } = tarefaIds.length > 0
+    ? await supabase.from('tarefa_arquivos').select('id, tarefa_id, name, size, uploaded_at').in('tarefa_id', tarefaIds)
+    : { data: [] as Omit<TarefaArquivo, 'content_base64'>[] }
+
+  async function onToggleSimples(tipo: string, concluida: boolean, data?: string) {
+    'use server'
+    await toggleTarefaPessoal(id, tipo, mes, ano, concluida, data)
+  }
+
+  async function onAtualizarEtapa(tipo: string, etapaNome: string, concluida: boolean, data?: string) {
+    'use server'
+    await atualizarEtapa(id, mes, ano, tipo, etapaNome, concluida, data)
+  }
+
+  async function onSalvarTexto(tipo: string, texto: string) {
+    'use server'
+    await salvarRespostaTexto(id, tipo, mes, ano, texto)
+  }
+
+  async function onUploadArquivo(tipo: string, formData: FormData) {
+    'use server'
+    return await uploadArquivoTarefa(id, tipo, mes, ano, formData)
+  }
+
+  async function onExcluirArquivo(arquivoId: string) {
+    'use server'
+    await excluirArquivoTarefa(arquivoId)
+  }
+
+  return (
+    <div className="p-8 max-w-4xl mx-auto">
+      <div className="mb-8 pb-6 border-b border-[var(--fg)]/8">
+        <div className="flex items-start gap-4">
+          <Link href="/pessoal/clientes" className="mt-1 text-[var(--fg)]/30 hover:text-[var(--fg)]/70 transition-colors text-lg">←</Link>
+          <div className="flex-1">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h1 className="text-xl font-bold text-[var(--fg)]">{cliente.nome}</h1>
+                <p className="text-[var(--fg)]/40 text-sm mt-0.5">{cliente.cnpj ?? '—'}</p>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {cliente.atividade && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.atividade}</span>}
+                  {cliente.responsavel && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.responsavel}</span>}
+                  {cliente.municipio && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
+                </div>
+              </div>
+              {podeEditar && <ClientePessoalAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} />}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <TarefaChecklistPessoal
+        tarefasPersonalizadas={cliente.tarefas_personalizadas}
+        tarefaTipos={tarefaTipos}
+        tarefas={(tarefas ?? []) as Tarefa[]}
+        etapas={(etapas ?? []) as TarefaEtapa[]}
+        arquivos={(arquivos ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}
+        vinculos={vinculos}
+        mes={mes}
+        ano={ano}
+        onToggleSimples={onToggleSimples}
+        onAtualizarEtapa={onAtualizarEtapa}
+        onSalvarTexto={onSalvarTexto}
+        onUploadArquivo={onUploadArquivo}
+        onExcluirArquivo={onExcluirArquivo}
+        podeEditar={podeEditar}
+      />
+
+      <EventosAvulsosSecao clienteId={id} setor="pessoal" eventos={eventosAvulsos} podeEditar={podeEditar} />
+    </div>
+  )
+}

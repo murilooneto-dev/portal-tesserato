@@ -43,3 +43,6 @@ next-env.d.ts
 # banco de dados local (dados sensíveis)
 *.sqlite
 *.db
+
+# worktrees isolados (superpowers)
+/.worktrees/

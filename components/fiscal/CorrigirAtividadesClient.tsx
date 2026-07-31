@@ -81,9 +81,14 @@ export default function CorrigirAtividadesClient() {
 
   useEffect(() => {
     const sb = createClient()
-    sb.from('clientes').select('id,nome,atividade').not('atividade', 'is', null).order('nome')
+    sb.from('clientes').select('id,nome,clientes_fiscal!inner(atividade)').not('clientes_fiscal.atividade', 'is', null).order('nome')
       .then(({ data }) => {
-        const fora = (data ?? [])
+        const flat = (data ?? []).map((c: any) => ({
+          id: c.id,
+          nome: c.nome,
+          atividade: c.clientes_fiscal.atividade,
+        }))
+        const fora = flat
           .filter(c => c.atividade && !ATIVIDADES.includes(c.atividade))
           .map(c => {
             const sugestao = melhorSugestao(c.atividade)
@@ -109,7 +114,7 @@ export default function CorrigirAtividadesClient() {
     const sb = createClient()
     await Promise.all(
       selecionados.map(i =>
-        sb.from('clientes').update({ atividade: i.correcaoManual.trim() }).eq('id', i.id)
+        sb.from('clientes_fiscal').update({ atividade: i.correcaoManual.trim() }).eq('cliente_id', i.id)
       )
     )
     setSalvando(false)

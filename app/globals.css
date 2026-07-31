@@ -18,6 +18,21 @@
   --accent-hover: #008fac;
 }
 
+/* Textos secundários (text-[var(--fg)]/NN) foram calibrados para o modo escuro
+   (branco sobre azul-marinho). No modo claro, --fg é escuro e a mesma opacidade
+   fica lavada contra fundo claro — eleva o piso de contraste aqui. */
+:root.light .text-\[var\(--fg\)\]\/15 { color: color-mix(in oklab, var(--fg) 55%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/20 { color: color-mix(in oklab, var(--fg) 58%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/25 { color: color-mix(in oklab, var(--fg) 60%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/30 { color: color-mix(in oklab, var(--fg) 63%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/35 { color: color-mix(in oklab, var(--fg) 66%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/40 { color: color-mix(in oklab, var(--fg) 68%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/45 { color: color-mix(in oklab, var(--fg) 70%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/50 { color: color-mix(in oklab, var(--fg) 72%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/60 { color: color-mix(in oklab, var(--fg) 76%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/70 { color: color-mix(in oklab, var(--fg) 80%, transparent); }
+:root.light .text-\[var\(--fg\)\]\/80 { color: color-mix(in oklab, var(--fg) 85%, transparent); }
+
 body {
   background: var(--bg-page);
   color: var(--fg);

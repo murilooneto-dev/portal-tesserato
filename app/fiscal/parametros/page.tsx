@@ -15,7 +15,7 @@ export default async function ParametrosPage() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') redirect('/fiscal/intranet')
+  if (profile?.role !== 'admin') redirect('/intranet')
 
   const [
     { data: profiles },

@@ -1,11 +1,22 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { SETOR_HOME, type UserSetor } from '@/lib/types'
+
+const PREFIXOS_SETOR: UserSetor[] = ['fiscal', 'contabil', 'pessoal', 'societario', 'financeiro']
+
+// Páginas fora do sistema de permissão granular por página: sempre
+// liberadas pra qualquer usuário que tenha o setor (não aparecem no menu
+// nem na tela de permissões, mas continuam acessíveis por URL direta).
+// `dashboard` é a home de cada setor (nunca pode ser bloqueada, senão o
+// usuário fica sem destino de redirecionamento). agenda/bots/tarefas são
+// páginas operacionais por-usuário do Fiscal, que operadores já usam por
+// URL direta hoje — não são gerenciadas pela permissão por página.
+const PAGINAS_SEMPRE_LIBERADAS = ['dashboard', 'agenda', 'bots', 'tarefas']
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Rotas públicas — deixa passar sem verificar sessão
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth') ||
@@ -16,7 +27,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Padrão obrigatório do @supabase/ssr: atualiza request E response com o token renovado
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -26,9 +36,7 @@ export async function proxy(request: NextRequest) {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
-          // Atualiza cookies na request para que Server Components vejam o token novo
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          // Recria response com a request atualizada e define os cookies no browser
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options)
@@ -38,11 +46,34 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // Renova sessão se necessário — essencial para @supabase/ssr funcionar em server actions
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  const setorDaRota = PREFIXOS_SETOR.find(s => pathname.startsWith(`/${s}`))
+  if (setorDaRota) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('setores, role, paginas_acesso')
+      .eq('id', user.id)
+      .single()
+
+    const podeAcessarSetor = profile?.role === 'admin' || (profile?.setores ?? []).includes(setorDaRota)
+
+    const resto = pathname.slice(`/${setorDaRota}`.length).replace(/^\//, '')
+    const pagina = resto.split('/')[0] || 'dashboard'
+    const podeAcessarPagina =
+      profile?.role === 'admin' ||
+      PAGINAS_SEMPRE_LIBERADAS.includes(pagina) ||
+      (profile?.paginas_acesso ?? []).includes(`${setorDaRota}:${pagina}`)
+
+    if (!podeAcessarSetor || !podeAcessarPagina) {
+      const primeiroSetor = profile?.setores?.[0] as UserSetor | undefined
+      const destino = primeiroSetor ? SETOR_HOME[primeiroSetor] : '/intranet'
+      return NextResponse.redirect(new URL(destino, request.url))
+    }
   }
 
   return supabaseResponse

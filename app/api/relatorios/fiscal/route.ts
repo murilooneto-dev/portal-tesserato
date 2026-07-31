@@ -4,7 +4,8 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { montarLinhasRelatorio } from '@/lib/relatorio-fiscal'
 import { gerarRelatorioFiscalPDF } from '@/lib/relatorio-fiscal-pdf'
-import type { Cliente, Tarefa } from '@/lib/types'
+import type { Tarefa } from '@/lib/types'
+import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, type ClienteComFiscal } from '@/lib/clientes-fiscal'
 
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
@@ -29,12 +30,12 @@ export async function POST() {
   const ano = agora.getFullYear()
 
   const [{ data: clientesRows, error: clientesErr }, tarefas] = await Promise.all([
-    admin.from('clientes').select('*').order('nome'),
+    admin.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome'),
     buscarTodasTarefasDoMes<Tarefa>(admin, mes, ano),
   ])
   if (clientesErr) return NextResponse.json({ error: clientesErr.message }, { status: 500 })
 
-  const clientes = (clientesRows ?? []) as Cliente[]
+  const clientes = (clientesRows ?? []).map(flattenClienteFiscal) as ClienteComFiscal[]
   const responsaveis = Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[])).sort()
 
   if (responsaveis.length === 0) {

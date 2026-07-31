@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
-import type { Cliente } from '@/lib/types'
+import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
 
 interface Props {
-  clientes: Cliente[]
+  clientes: ClienteComFiscal[]
   isAdmin: boolean
   userNome: string
 }
@@ -33,7 +33,7 @@ const CARD_META: Record<Ferramenta, { titulo: string; descricao: string; cor: st
   },
 }
 
-function filtrarClientes(clientes: Cliente[], tipo: Ferramenta): Cliente[] {
+function filtrarClientes(clientes: ClienteComFiscal[], tipo: Ferramenta): ClienteComFiscal[] {
   switch (tipo) {
     case 'SIGA': return clientes.filter(c => c.confere_siga)
     case 'ISS':  return clientes.filter(c => c.envia_iss)
@@ -41,7 +41,7 @@ function filtrarClientes(clientes: Cliente[], tipo: Ferramenta): Cliente[] {
   }
 }
 
-function exportarPlanilha(clientes: Cliente[], tipo: Ferramenta) {
+function exportarPlanilha(clientes: ClienteComFiscal[], tipo: Ferramenta) {
 
   let headers: string[]
   let rows: (string | number)[][]

@@ -55,17 +55,23 @@ export default function CorrigirTarefasClient() {
     const sb = createClient()
 
     Promise.all([
-      sb.from('clientes').select('id,nome,tarefas_personalizadas').not('tarefas_personalizadas', 'is', null),
-      buscarTodasTarefas<{ id: string; cliente_id: string; tipo: string }>(sb, 'id,cliente_id,tipo'),
+      sb.from('clientes').select('id,nome,clientes_fiscal!inner(tarefas_personalizadas)').not('clientes_fiscal.tarefas_personalizadas', 'is', null),
+      buscarTodasTarefas<{ id: string; cliente_id: string; tipo: string }>(sb, 'id,cliente_id,tipo', 'fiscal'),
       sb.from('clientes').select('nome').order('nome'), // só pra join de nomes
-    ]).then(([{ data: clientes }, tarefas]) => {
+    ]).then(([{ data: rows }, tarefas]) => {
+      const clientes = (rows ?? []).map((c: any) => ({
+        id: c.id,
+        nome: c.nome,
+        tarefas_personalizadas: c.clientes_fiscal.tarefas_personalizadas,
+      }))
+
       const clienteMap: Record<string, string> = {}
-      for (const c of clientes ?? []) clienteMap[c.id] = c.nome
+      for (const c of clientes) clienteMap[c.id] = c.nome
 
       // Coleta todos os valores "limpos" das tarefas_personalizadas de todos os clientes
       // para usar como base de correção de tipos personalizados
       const todosLimpos: string[] = [...TIPOS_PADRAO]
-      for (const c of clientes ?? []) {
+      for (const c of clientes) {
         for (const t of (c.tarefas_personalizadas ?? []) as string[]) {
           if (t && !estaBroken(t)) todosLimpos.push(t)
         }
@@ -155,7 +161,7 @@ export default function CorrigirTarefasClient() {
 
     await Promise.all([
       ...Object.entries(updateClientes).map(([id, arr]) =>
-        sb.from('clientes').update({ tarefas_personalizadas: arr }).eq('id', id)
+        sb.from('clientes_fiscal').update({ tarefas_personalizadas: arr }).eq('cliente_id', id)
       ),
       ...updateTarefas.flatMap(item =>
         item.tarefaIds.map(tid =>
