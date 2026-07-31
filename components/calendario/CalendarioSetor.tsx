@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { proximaOcorrencia, diasRestantes, alertaColor, alertaLabel } from '@/lib/calendario'
+import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
 import CalendarioEventoModal from './CalendarioEventoModal'
 import type { CalendarioEvento, UserSetor } from '@/lib/types'
 
@@ -27,9 +27,9 @@ export default function CalendarioSetor({ setor, eventos, isAdmin }: Props) {
 
   const cards = eventos
     .map(evento => {
-      const alvo = proximaOcorrencia(evento, hoje)
+      const alvo = proximoPrazo(evento, hoje)
       const dias = diasRestantes(alvo, hoje)
-      return { evento, alvo, dias }
+      return { evento, dias }
     })
     .sort((a, b) => a.dias - b.dias)
 
@@ -57,16 +57,15 @@ export default function CalendarioSetor({ setor, eventos, isAdmin }: Props) {
         <p className="text-[var(--fg)]/30 text-sm text-center py-12">Nenhum evento cadastrado ainda.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {cards.map(({ evento, alvo, dias }) => {
+          {cards.map(({ evento, dias }) => {
             const lbl = alertaLabel(dias)
-            const diaLabel = `${String(alvo.getDate()).padStart(2, '0')}/${String(alvo.getMonth() + 1).padStart(2, '0')}`
             return (
               <div key={evento.id} className={`rounded-xl border p-4 ${alertaColor(dias)}`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[var(--fg)] font-semibold text-sm">{evento.titulo}</span>
                   <span className={`text-xs font-bold ${lbl.cls}`}>{lbl.text}</span>
                 </div>
-                <p className="text-[var(--fg)]/50 text-xs mb-1">Dia {diaLabel}</p>
+                <p className="text-[var(--fg)]/50 text-xs mb-1">{labelDatas(evento)}</p>
                 {evento.descricao && (
                   <p className="text-[var(--fg)]/40 text-xs leading-relaxed">{evento.descricao}</p>
                 )}
