@@ -21,6 +21,7 @@ interface Parcelamento {
   id: string
   secao: string
   empresa: string
+  empresa_avulsa: boolean
   cnpj: string | null
   regime: string | null
   responsavel: string | null
@@ -33,7 +34,7 @@ interface Parcelamento {
 }
 
 const EMPTY_FORM: Omit<Parcelamento, 'id'> = {
-  secao: SECOES[0], empresa: '', cnpj: '', regime: '', responsavel: '',
+  secao: SECOES[0], empresa: '', empresa_avulsa: false, cnpj: '', regime: '', responsavel: '',
   local_tipo: '', tarefa: '', senhas: '',
   jan: null, fev: null, mar: null, abr: null, mai: null, jun: null,
   jul: null, ago: null, set: null, out: null, nov: null, dez: null,
@@ -119,8 +120,7 @@ export default function ParcelamentosPage() {
   function openEdit(item: Parcelamento) {
     setEditItem(item)
     const { id, ...rest } = item
-    const empresaValida = clientesCadastrados.some(c => c.nome === rest.empresa)
-    setForm(empresaValida ? rest : { ...rest, empresa: '' })
+    setForm(rest)
     setModalOpen(true)
   }
 
@@ -430,21 +430,46 @@ export default function ParcelamentosPage() {
               {/* Empresa + CNPJ */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>Empresa</label>
-                  <select
-                    value={form.empresa}
-                    onChange={e => {
-                      const nomeSelecionado = e.target.value
-                      const cliente = clientesCadastrados.find(c => c.nome === nomeSelecionado)
-                      setF('empresa', nomeSelecionado)
-                      setF('cnpj', cliente?.cnpj ?? null)
-                    }}
-                    className={inputCls + ' bg-[var(--bg-surface)]'}>
-                    <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
-                    {clientesCadastrados.map(c => (
-                      <option key={c.nome} value={c.nome} className="bg-[var(--bg-surface)]">{c.nome}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className={labelCls + ' mb-0'}>Empresa</label>
+                    <label className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--fg)]/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.empresa_avulsa}
+                        onChange={e => {
+                          const avulsa = e.target.checked
+                          setF('empresa_avulsa', avulsa)
+                          setF('empresa', '')
+                          setF('cnpj', null)
+                        }}
+                        className="accent-[var(--accent)]"
+                      />
+                      Empresa Avulsa
+                    </label>
+                  </div>
+                  {form.empresa_avulsa ? (
+                    <input
+                      value={form.empresa}
+                      onChange={e => setF('empresa', e.target.value)}
+                      placeholder="Digite o nome da empresa..."
+                      className={inputCls}
+                    />
+                  ) : (
+                    <select
+                      value={form.empresa}
+                      onChange={e => {
+                        const nomeSelecionado = e.target.value
+                        const cliente = clientesCadastrados.find(c => c.nome === nomeSelecionado)
+                        setF('empresa', nomeSelecionado)
+                        setF('cnpj', cliente?.cnpj ?? null)
+                      }}
+                      className={inputCls + ' bg-[var(--bg-surface)]'}>
+                      <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
+                      {clientesCadastrados.map(c => (
+                        <option key={c.nome} value={c.nome} className="bg-[var(--bg-surface)]">{c.nome}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className={labelCls}>CNPJ</label>
