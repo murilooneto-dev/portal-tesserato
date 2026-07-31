@@ -37,7 +37,6 @@ export async function desbloquearTarefa(
 
   revalidatePath('/fiscal/clientes')
   revalidatePath('/fiscal/dashboard')
-  revalidatePath('/fiscal/historico')
   revalidatePath('/fiscal/relatorios')
   revalidatePath('/fiscal/tarefas')
 }
@@ -183,7 +182,6 @@ export async function atualizarEtapa(
   revalidatePath(`/fiscal/clientes/${clienteId}`)
   revalidatePath('/fiscal/clientes')
   revalidatePath('/fiscal/dashboard')
-  revalidatePath('/fiscal/historico')
   revalidatePath('/fiscal/relatorios')
   revalidatePath('/fiscal/tarefas')
 }

@@ -123,7 +123,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
     revalidatePath(`/fiscal/clientes/${id}`)
     revalidatePath('/fiscal/clientes')
     revalidatePath('/fiscal/dashboard')
-    revalidatePath('/fiscal/historico')
     revalidatePath('/fiscal/relatorios')
     revalidatePath('/fiscal/tarefas')
   }
