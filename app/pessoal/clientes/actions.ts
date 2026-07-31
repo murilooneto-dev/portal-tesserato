@@ -250,3 +250,15 @@ export async function excluirArquivoTarefa(arquivoId: string) {
   revalidatePath(`/pessoal/clientes/${tarefa.cliente_id}`)
   revalidatePath('/pessoal/clientes')
 }
+
+export async function salvarObsPessoal(clienteId: string, texto: string): Promise<{ error?: string }> {
+  if (!(await podeEditarClientePessoal(clienteId))) return { error: 'Você não pode editar este cliente.' }
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+  const { error } = await supabase.from('clientes_pessoal').update({ obs: texto || null }).eq('cliente_id', clienteId)
+  if (error) return { error: error.message }
+  revalidatePath(`/pessoal/clientes/${clienteId}`)
+  revalidatePath('/pessoal/clientes')
+  revalidatePath('/pessoal/dashboard')
+  return {}
+}

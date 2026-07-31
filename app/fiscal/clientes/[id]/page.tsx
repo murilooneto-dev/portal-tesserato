@@ -7,6 +7,8 @@ import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import type { TarefaArquivo, TarefaEtapa, TipoResposta } from '@/lib/types'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
+import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
+import type { CalendarioEvento } from '@/lib/types'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
 import { atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa } from '../actions'
 import ClienteObs from '@/components/fiscal/ClienteObs'
@@ -40,6 +42,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   const { mes, ano } = await getMesAno()
   const anoAtual = getMesAnoRealAgora().ano
+  const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   // Tarefas do mês selecionado
   const { data: tarefas } = await supabase
@@ -87,6 +90,19 @@ export default async function ClienteDetalhePage({ params }: Props) {
     .eq('ano', ano)
     .maybeSingle()
 
+  // Eventos do calendário do setor, pra casar com tarefas de mesmo nome
+  // e mostrar o prazo operacional na linha da tarefa.
+  const { data: eventosCalRaw } = await supabase
+    .from('calendario_eventos')
+    .select('*')
+    .eq('setor', 'fiscal')
+
+  const prazosPorTipo: Record<string, number> = {}
+  for (const e of (eventosCalRaw ?? []) as CalendarioEvento[]) {
+    const prazo = prazoOperacional(e, hoje)
+    if (prazo) prazosPorTipo[normalizarTitulo(e.titulo)] = diasRestantes(prazo, hoje)
+  }
+
   // Dados pro EmpresaModal (editar cliente)
   const [{ data: usuariosFiscal }, { data: atividadeTemplates }] = await Promise.all([
     supabase.from('profiles').select('nome').contains('setores', ['fiscal']),
@@ -123,7 +139,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
     revalidatePath(`/fiscal/clientes/${id}`)
     revalidatePath('/fiscal/clientes')
     revalidatePath('/fiscal/dashboard')
-    revalidatePath('/fiscal/historico')
     revalidatePath('/fiscal/relatorios')
     revalidatePath('/fiscal/tarefas')
   }
@@ -209,6 +224,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
         onSalvarTexto={onSalvarTexto}
         onUploadArquivo={onUploadArquivo}
         onExcluirArquivo={onExcluirArquivo}
+        prazosPorTipo={prazosPorTipo}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} />

@@ -259,3 +259,15 @@ export async function excluirArquivoTarefa(arquivoId: string) {
   revalidatePath(`/contabil/clientes/${tarefa.cliente_id}`)
   revalidatePath('/contabil/clientes')
 }
+
+export async function salvarObsContabil(clienteId: string, texto: string): Promise<{ error?: string }> {
+  if (!(await podeEditarClienteContabil(clienteId))) return { error: 'Você não pode editar este cliente.' }
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+  const { error } = await supabase.from('clientes_contabil').update({ obs: texto || null }).eq('cliente_id', clienteId)
+  if (error) return { error: error.message }
+  revalidatePath(`/contabil/clientes/${clienteId}`)
+  revalidatePath('/contabil/clientes')
+  revalidatePath('/contabil/dashboard')
+  return {}
+}

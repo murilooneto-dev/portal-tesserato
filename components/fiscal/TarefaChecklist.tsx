@@ -4,6 +4,7 @@ import { useTransition, useState } from 'react'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { desbloquearTarefa, salvarMIT } from '@/app/fiscal/clientes/actions'
+import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
 
 const TAREFAS_NORMAL  = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS']
 const TAREFAS_SIMPLES = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF']
@@ -40,6 +41,7 @@ interface Props {
   tarefaTipos?: Record<string, TipoInfo>
   etapas?: TarefaEtapa[]
   arquivos?: Omit<TarefaArquivo, 'content_base64'>[]
+  prazosPorTipo?: Record<string, number>
   onAtualizarEtapa?: (tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
   onSalvarTexto?: (tipo: string, texto: string) => Promise<void>
   onUploadArquivo?: (tipo: string, formData: FormData) => Promise<{ error: string | null }>
@@ -95,6 +97,7 @@ export default function TarefaChecklist({
   tarefaTipos = {},
   etapas = [],
   arquivos = [],
+  prazosPorTipo = {},
   onAtualizarEtapa,
   onSalvarTexto,
   onUploadArquivo,
@@ -291,6 +294,7 @@ export default function TarefaChecklist({
           const feito = savedIso !== ''
           const isUnlocking = unlockingTipo === tipo
           const displayVal = getDisplayValue(tipo)
+          const diasPrazo = !feito ? (prazosPorTipo[normalizarTitulo(tipo)] ?? null) : null
 
           return (
             <div key={tipo} className="flex flex-col gap-0">
@@ -312,6 +316,11 @@ export default function TarefaChecklist({
                       {vinculos[tipo].liberada
                         ? `✓ Liberada por ${vinculos[tipo].setorOrigemLabel}`
                         : `⏳ Aguardando ${vinculos[tipo].setorOrigemLabel}`}
+                    </span>
+                  )}
+                  {diasPrazo !== null && (
+                    <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap bg-[var(--fg)]/5 ${alertaLabel(diasPrazo).cls}`}>
+                      ⏱ {alertaLabel(diasPrazo).text}
                     </span>
                   )}
                 </span>

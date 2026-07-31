@@ -5,11 +5,13 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
+import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import TarefaChecklistPessoal from '@/components/pessoal/TarefaChecklistPessoal'
 import ClientePessoalAcoes from '@/components/pessoal/ClientePessoalAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
-import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa } from '../actions'
-import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
+import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
+import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsPessoal } from '../actions'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -31,12 +33,24 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
   const { mes, ano } = await getMesAno()
+  const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   const [{ data: tarefas }, { data: usuariosPessoal }, { data: tiposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'pessoal'),
     supabase.from('profiles').select('nome').contains('setores', ['pessoal']),
     supabase.from('tarefa_tipos').select('nome, etapas, meses_visiveis, tipo_resposta').eq('setor', 'pessoal'),
   ])
+
+  const { data: eventosCalRaw } = await supabase
+    .from('calendario_eventos')
+    .select('*')
+    .eq('setor', 'pessoal')
+
+  const prazosPorTipo: Record<string, number> = {}
+  for (const e of (eventosCalRaw ?? []) as CalendarioEvento[]) {
+    const prazo = prazoOperacional(e, hoje)
+    if (prazo) prazosPorTipo[normalizarTitulo(e.titulo)] = diasRestantes(prazo, hoje)
+  }
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'pessoal', mes, ano)
 
@@ -128,9 +142,12 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
         onUploadArquivo={onUploadArquivo}
         onExcluirArquivo={onExcluirArquivo}
         podeEditar={podeEditar}
+        prazosPorTipo={prazosPorTipo}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="pessoal" eventos={eventosAvulsos} podeEditar={podeEditar} />
+
+      <ClienteObsSimples clienteId={id} obsInicial={cliente.obs ?? ''} podeEditar={podeEditar} salvarObs={salvarObsPessoal} />
     </div>
   )
 }

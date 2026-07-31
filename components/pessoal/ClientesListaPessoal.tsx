@@ -90,6 +90,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
           const total = prog?.total ?? 0
           const concluidas = prog?.concluidas ?? 0
           const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
+          const temObs = !!(cliente.obs?.trim())
 
           return (
             <Link
@@ -143,6 +144,10 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
                   <p className="text-[var(--fg)]/25 text-[10px] mt-0.5">{concluidas}/{total}</p>
                 </div>
               )}
+
+              <div className="w-4 shrink-0 text-center">
+                {temObs && <span className="text-amber-400 text-sm font-bold">!</span>}
+              </div>
             </Link>
           )
         })}
