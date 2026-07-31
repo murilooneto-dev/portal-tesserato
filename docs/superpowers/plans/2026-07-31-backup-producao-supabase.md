@@ -15,7 +15,7 @@
 - Formato do dump: `pg_dump -Fc --no-owner --no-privileges`
 - Nome do arquivo: `backup-producao-YYYY-MM-DD.dump`
 - Artifact retention: 90 dias
-- Secret esperado pelo workflow: `PROD_SUPABASE_DB_URL` (connection string direta, porta 5432, não a pooled 6543)
+- Secret esperado pelo workflow: `PROD_SUPABASE_DB_URL` (connection string do **Session pooler** — ver correção pós-execução na seção "Correções descobertas em execução real" da spec; a conexão direta porta 5432 não funciona a partir do GitHub Actions, só IPv6)
 - Repositório de destino: `https://github.com/murilooneto-dev/tesserato-backups.git` (privado, já existe vazio)
 - Push para o remote requer confirmação explícita do usuário a cada vez (não é automático)
 - Cadastro do secret no GitHub é feito pelo usuário, não pelo assistente

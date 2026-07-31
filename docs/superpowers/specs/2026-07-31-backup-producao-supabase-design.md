@@ -40,7 +40,7 @@ Job (`ubuntu-latest`):
 
 ### 2. Secret `PROD_SUPABASE_DB_URL`
 
-- Connection string **direta** (porta 5432, não a pooled 6543) do Postgres de produção, pega em Supabase → Project Settings → Database → Connection string.
+- Connection string do modo **Session pooler** (não "Direct connection" nem "Transaction pooler") do Postgres de produção, pega em Supabase → Project Settings → Database → Connection string.
 - Cadastrado pelo usuário diretamente no GitHub: repo `tesserato-backups` → Settings → Secrets and variables → Actions → New repository secret, nome exato `PROD_SUPABASE_DB_URL`.
 - Esse cadastro não é feito pelo assistente — envolve credencial de banco de produção.
 
@@ -52,6 +52,16 @@ Job (`ubuntu-latest`):
 
 - Falha de `pg_dump` (rede, credencial inválida, etc.) → job falha → GitHub Actions marca run como vermelho e envia notificação por e-mail (comportamento padrão da conta GitHub, nenhuma configuração extra necessária).
 - Sem retry automático: se falhar, fica pro próximo agendamento (sexta seguinte) ou disparo manual.
+- GitHub desativa automaticamente o trigger `schedule` de um workflow depois de ~60 dias sem nenhum commit no repositório — sem notificação de falha, porque o run simplesmente para de disparar. O workflow inclui um passo final que grava a data do último run num arquivo e comita isso automaticamente, mantendo o repositório "vivo" a cada execução.
+
+## Correções descobertas em execução real (2026-07-31)
+
+Durante o teste manual end-to-end (Task 4 do plano de implementação), duas premissas deste documento se mostraram erradas na prática:
+
+1. **Conexão direta (porta 5432) não funciona a partir do GitHub Actions.** A conexão direta do Supabase (`db.<ref>.supabase.co:5432`) só responde por IPv6 em projetos sem o add-on de IPv4, e os runners `ubuntu-latest` só têm rede IPv4 — resultado: `Network is unreachable`. Correção: usar a connection string do **Session pooler** (IPv4, compatível com `pg_dump`), nunca a conexão direta nem o Transaction pooler (porta 6543, que não suporta `pg_dump` de forma confiável).
+2. **`pg_dump` do runner conflita de versão com o servidor.** O `ubuntu-latest` já vem com um `pg_dump` 16.x na frente do PATH, mesmo depois de instalar `postgresql-client-17` via apt — o `update-alternatives` não troca sozinho. Correção: o workflow chama o binário versionado explicitamente, `/usr/lib/postgresql/17/bin/pg_dump`, em vez de `pg_dump` puro.
+
+O componente 2 acima já reflete a correção 1. O workflow (`tesserato-backups/.github/workflows/backup-db.yml`) já reflete a correção 2.
 
 ## Fora de escopo
 
