@@ -23,14 +23,19 @@ export default function CalendarioEventoModal({ setor, evento, onClose }: Props)
   const [titulo, setTitulo] = useState(evento?.titulo ?? '')
   const [descricao, setDescricao] = useState(evento?.descricao ?? '')
   const [tipoData, setTipoData] = useState<TipoDataEvento>(evento?.tipo_data ?? 'recorrente')
-  const [diaMes, setDiaMes] = useState<number>(evento?.dia_mes ?? 1)
-  const [data, setData] = useState(evento?.data ?? '')
+  const [internaDiaMes, setInternaDiaMes] = useState<number | ''>(evento?.interna_dia_mes ?? '')
+  const [internaData, setInternaData] = useState(evento?.interna_data ?? '')
+  const [oficialDiaMes, setOficialDiaMes] = useState<number | ''>(evento?.oficial_dia_mes ?? '')
+  const [oficialData, setOficialData] = useState(evento?.oficial_data ?? '')
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   async function handleSave() {
     if (!titulo.trim()) return
-    if (tipoData === 'unica' && !data) { setErro('Selecione uma data.'); return }
+
+    const temInterna = tipoData === 'recorrente' ? internaDiaMes !== '' : !!internaData
+    const temOficial = tipoData === 'recorrente' ? oficialDiaMes !== '' : !!oficialData
+    if (!temInterna && !temOficial) { setErro('Preencha ao menos uma das duas datas.'); return }
 
     setSaving(true)
     setErro(null)
@@ -40,8 +45,10 @@ export default function CalendarioEventoModal({ setor, evento, onClose }: Props)
       titulo: titulo.trim(),
       descricao: descricao.trim() || null,
       tipo_data: tipoData,
-      dia_mes: tipoData === 'recorrente' ? diaMes : null,
-      data: tipoData === 'unica' ? data : null,
+      interna_dia_mes: tipoData === 'recorrente' && internaDiaMes !== '' ? internaDiaMes : null,
+      interna_data: tipoData === 'unica' && internaData ? internaData : null,
+      oficial_dia_mes: tipoData === 'recorrente' && oficialDiaMes !== '' ? oficialDiaMes : null,
+      oficial_data: tipoData === 'unica' && oficialData ? oficialData : null,
     }
 
     const { error } = isEdit
@@ -90,18 +97,27 @@ export default function CalendarioEventoModal({ setor, evento, onClose }: Props)
             </div>
           </div>
 
-          {tipoData === 'recorrente' ? (
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Dia do mês (1–31)</label>
-              <input className={inputCls} type="number" min={1} max={31} value={diaMes}
-                onChange={e => setDiaMes(Number(e.target.value))} />
+              <label className={labelCls}>Data interna</label>
+              {tipoData === 'recorrente' ? (
+                <input className={inputCls} type="number" min={1} max={31} placeholder="Dia (1–31)"
+                  value={internaDiaMes} onChange={e => setInternaDiaMes(e.target.value === '' ? '' : Number(e.target.value))} />
+              ) : (
+                <input className={inputCls} type="date" value={internaData} onChange={e => setInternaData(e.target.value)} />
+              )}
             </div>
-          ) : (
             <div>
-              <label className={labelCls}>Data</label>
-              <input className={inputCls} type="date" value={data} onChange={e => setData(e.target.value)} />
+              <label className={labelCls}>Data oficial</label>
+              {tipoData === 'recorrente' ? (
+                <input className={inputCls} type="number" min={1} max={31} placeholder="Dia (1–31)"
+                  value={oficialDiaMes} onChange={e => setOficialDiaMes(e.target.value === '' ? '' : Number(e.target.value))} />
+              ) : (
+                <input className={inputCls} type="date" value={oficialData} onChange={e => setOficialData(e.target.value)} />
+              )}
             </div>
-          )}
+          </div>
+          <p className="text-[var(--fg)]/30 text-xs -mt-2">Preencha pelo menos uma das duas. Deixe a outra em branco se não se aplicar.</p>
         </div>
 
         {erro && (
