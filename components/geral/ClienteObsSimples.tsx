@@ -55,7 +55,7 @@ export default function ClienteObsSimples({ clienteId, obsInicial, podeEditar, s
           {erro && <p className="text-red-400 text-xs mt-1">{erro}</p>}
           <div className="flex gap-2 justify-end">
             <button
-              onClick={() => { setObs(obsInicial); setEditando(false) }}
+              onClick={() => { setObs(obsInicial); setEditando(false); setErro(null) }}
               className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)] px-3 py-1.5 rounded-lg border border-[var(--fg)]/10 transition-all"
             >
               Cancelar

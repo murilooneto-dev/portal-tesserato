@@ -7,7 +7,7 @@ import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import type { TarefaArquivo, TarefaEtapa, TipoResposta } from '@/lib/types'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
-import { normalizarTitulo } from '@/lib/calendario'
+import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import type { CalendarioEvento } from '@/lib/types'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
 import { atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa } from '../actions'
@@ -97,9 +97,10 @@ export default async function ClienteDetalhePage({ params }: Props) {
     .select('*')
     .eq('setor', 'fiscal')
 
-  const prazosPorTipo: Record<string, CalendarioEvento> = {}
+  const prazosPorTipo: Record<string, number> = {}
   for (const e of (eventosCalRaw ?? []) as CalendarioEvento[]) {
-    prazosPorTipo[normalizarTitulo(e.titulo)] = e
+    const prazo = prazoOperacional(e, hoje)
+    if (prazo) prazosPorTipo[normalizarTitulo(e.titulo)] = diasRestantes(prazo, hoje)
   }
 
   // Dados pro EmpresaModal (editar cliente)
@@ -224,7 +225,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
         onUploadArquivo={onUploadArquivo}
         onExcluirArquivo={onExcluirArquivo}
         prazosPorTipo={prazosPorTipo}
-        hoje={hoje}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} />

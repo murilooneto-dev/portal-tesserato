@@ -1,10 +1,10 @@
 'use client'
 
 import { useTransition, useState } from 'react'
-import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { tarefaVisivelNoMes } from '@/lib/tarefa-tipos'
-import { normalizarTitulo, prazoOperacional, diasRestantes, alertaLabel } from '@/lib/calendario'
+import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -21,8 +21,7 @@ interface Props {
   etapas: TarefaEtapa[]
   arquivos: Omit<TarefaArquivo, 'content_base64'>[]
   vinculos?: Record<string, VinculoStatus>
-  prazosPorTipo?: Record<string, CalendarioEvento>
-  hoje: Date
+  prazosPorTipo?: Record<string, number>
   mes: number
   ano: number
   onToggleSimples: (tipo: string, concluida: boolean, data?: string) => Promise<void>
@@ -73,7 +72,6 @@ export default function TarefaChecklistPessoal({
   arquivos,
   vinculos = {},
   prazosPorTipo = {},
-  hoje,
   mes,
   ano,
   onToggleSimples,
@@ -219,9 +217,7 @@ export default function TarefaChecklistPessoal({
           const tipoResposta: TipoResposta = info?.tipoResposta ?? 'data'
           const feito = !!mapaTarefa.get(tipo)?.concluida
           const displayVal = getDisplayValue(tipo)
-          const eventoCalendario = prazosPorTipo[normalizarTitulo(tipo)]
-          const prazo = eventoCalendario && !feito ? prazoOperacional(eventoCalendario, hoje) : null
-          const diasPrazo = prazo ? diasRestantes(prazo, hoje) : null
+          const diasPrazo = !feito ? (prazosPorTipo[normalizarTitulo(tipo)] ?? null) : null
 
           return (
             <div key={tipo} className="flex flex-col gap-0">

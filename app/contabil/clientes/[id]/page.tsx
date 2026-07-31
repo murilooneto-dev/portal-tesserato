@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
-import { normalizarTitulo } from '@/lib/calendario'
+import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import TarefaChecklistContabil from '@/components/contabil/TarefaChecklistContabil'
 import ClienteContabilAcoes from '@/components/contabil/ClienteContabilAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
@@ -42,9 +42,10 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
     supabase.from('calendario_eventos').select('*').eq('setor', 'contabil'),
   ])
 
-  const prazosPorTipo: Record<string, CalendarioEvento> = {}
+  const prazosPorTipo: Record<string, number> = {}
   for (const e of (eventosCalRaw ?? []) as CalendarioEvento[]) {
-    prazosPorTipo[normalizarTitulo(e.titulo)] = e
+    const prazo = prazoOperacional(e, hoje)
+    if (prazo) prazosPorTipo[normalizarTitulo(e.titulo)] = diasRestantes(prazo, hoje)
   }
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'contabil', mes, ano)
@@ -137,7 +138,6 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
         onExcluirArquivo={onExcluirArquivo}
         podeEditar={podeEditar}
         prazosPorTipo={prazosPorTipo}
-        hoje={hoje}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} />

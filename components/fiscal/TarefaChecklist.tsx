@@ -4,8 +4,7 @@ import { useTransition, useState } from 'react'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { desbloquearTarefa, salvarMIT } from '@/app/fiscal/clientes/actions'
-import { normalizarTitulo, prazoOperacional, diasRestantes, alertaLabel } from '@/lib/calendario'
-import type { CalendarioEvento } from '@/lib/types'
+import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
 
 const TAREFAS_NORMAL  = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS']
 const TAREFAS_SIMPLES = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF']
@@ -42,8 +41,7 @@ interface Props {
   tarefaTipos?: Record<string, TipoInfo>
   etapas?: TarefaEtapa[]
   arquivos?: Omit<TarefaArquivo, 'content_base64'>[]
-  prazosPorTipo?: Record<string, CalendarioEvento>
-  hoje: Date
+  prazosPorTipo?: Record<string, number>
   onAtualizarEtapa?: (tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
   onSalvarTexto?: (tipo: string, texto: string) => Promise<void>
   onUploadArquivo?: (tipo: string, formData: FormData) => Promise<{ error: string | null }>
@@ -100,7 +98,6 @@ export default function TarefaChecklist({
   etapas = [],
   arquivos = [],
   prazosPorTipo = {},
-  hoje,
   onAtualizarEtapa,
   onSalvarTexto,
   onUploadArquivo,
@@ -297,9 +294,7 @@ export default function TarefaChecklist({
           const feito = savedIso !== ''
           const isUnlocking = unlockingTipo === tipo
           const displayVal = getDisplayValue(tipo)
-          const eventoCalendario = prazosPorTipo[normalizarTitulo(tipo)]
-          const prazo = eventoCalendario && !feito ? prazoOperacional(eventoCalendario, hoje) : null
-          const diasPrazo = prazo ? diasRestantes(prazo, hoje) : null
+          const diasPrazo = !feito ? (prazosPorTipo[normalizarTitulo(tipo)] ?? null) : null
 
           return (
             <div key={tipo} className="flex flex-col gap-0">

@@ -5,7 +5,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
-import { normalizarTitulo } from '@/lib/calendario'
+import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import TarefaChecklistPessoal from '@/components/pessoal/TarefaChecklistPessoal'
 import ClientePessoalAcoes from '@/components/pessoal/ClientePessoalAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
@@ -46,9 +46,10 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
     .select('*')
     .eq('setor', 'pessoal')
 
-  const prazosPorTipo: Record<string, CalendarioEvento> = {}
+  const prazosPorTipo: Record<string, number> = {}
   for (const e of (eventosCalRaw ?? []) as CalendarioEvento[]) {
-    prazosPorTipo[normalizarTitulo(e.titulo)] = e
+    const prazo = prazoOperacional(e, hoje)
+    if (prazo) prazosPorTipo[normalizarTitulo(e.titulo)] = diasRestantes(prazo, hoje)
   }
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'pessoal', mes, ano)
@@ -142,7 +143,6 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
         onExcluirArquivo={onExcluirArquivo}
         podeEditar={podeEditar}
         prazosPorTipo={prazosPorTipo}
-        hoje={hoje}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="pessoal" eventos={eventosAvulsos} podeEditar={podeEditar} />
