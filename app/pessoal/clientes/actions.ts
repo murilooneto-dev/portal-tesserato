@@ -250,3 +250,13 @@ export async function excluirArquivoTarefa(arquivoId: string) {
   revalidatePath(`/pessoal/clientes/${tarefa.cliente_id}`)
   revalidatePath('/pessoal/clientes')
 }
+
+export async function salvarObsPessoal(clienteId: string, texto: string) {
+  if (!(await podeEditarClientePessoal(clienteId))) return
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return
+  await supabase.from('clientes_pessoal').update({ obs: texto || null }).eq('cliente_id', clienteId)
+  revalidatePath(`/pessoal/clientes/${clienteId}`)
+  revalidatePath('/pessoal/clientes')
+  revalidatePath('/pessoal/dashboard')
+}

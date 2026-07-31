@@ -259,3 +259,13 @@ export async function excluirArquivoTarefa(arquivoId: string) {
   revalidatePath(`/contabil/clientes/${tarefa.cliente_id}`)
   revalidatePath('/contabil/clientes')
 }
+
+export async function salvarObsContabil(clienteId: string, texto: string) {
+  if (!(await podeEditarClienteContabil(clienteId))) return
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return
+  await supabase.from('clientes_contabil').update({ obs: texto || null }).eq('cliente_id', clienteId)
+  revalidatePath(`/contabil/clientes/${clienteId}`)
+  revalidatePath('/contabil/clientes')
+  revalidatePath('/contabil/dashboard')
+}
