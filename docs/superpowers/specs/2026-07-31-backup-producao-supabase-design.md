@@ -20,9 +20,8 @@ Este documento é criado no repo `portal-tesserato` (onde a conversa começou), 
 
 ### 0. Repositório `tesserato-backups`
 
-- Repositório novo no GitHub, privado, sob a mesma conta/organização do `portal-tesserato`.
+- Repositório já criado pelo usuário: `https://github.com/murilooneto-dev/tesserato-backups.git` (privado).
 - Conteúdo mínimo: `.github/workflows/backup-db.yml` e uma cópia deste design doc (ou um README curto explicando a rotina).
-- Criação do repositório é uma ação em sistema externo (GitHub) — feita com confirmação explícita do usuário antes de executar, não silenciosamente durante a implementação.
 
 ### 1. Workflow `.github/workflows/backup-db.yml`
 
