@@ -1,42 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Profile, Tarefa } from '@/lib/types'
+import { Profile, Tarefa, CalendarioEvento } from '@/lib/types'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, ClienteComFiscal } from '@/lib/clientes-fiscal'
+import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
 
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
-
-const OBRIGACOES_CAL = [
-  { nome: 'SIGET', dia: 5 },
-  { nome: 'SPEED GOV', dia: 10 },
-  { nome: 'EFD-Reinf', dia: 15 },
-  { nome: 'DAS/PGDAS-D', dia: 15 },
-  { nome: 'ISS', dia: 15 },
-  { nome: 'ICMS/ICMS-ST', dia: 15 },
-  { nome: 'PIS/COFINS', dia: 20 },
-  { nome: 'DCTFWeb', dia: 20 },
-  { nome: 'IRPJ/CSLL', dia: 20 },
-  { nome: 'EFD-Contribuições', dia: -1 },
-]
-
-function alertaColor(diff: number) {
-  if (diff < 0) return 'border-red-500 bg-red-500/10'
-  if (diff <= 3) return 'border-orange-500 bg-orange-500/10'
-  if (diff <= 7) return 'border-blue-500 bg-blue-500/10'
-  return 'border-green-500/60 bg-green-500/10'
-}
-
-function alertaLabel(diff: number) {
-  if (diff < 0) return { text: `Vencido há ${Math.abs(diff)}d`, cls: 'text-red-400' }
-  if (diff === 0) return { text: 'Vence hoje', cls: 'text-orange-400' }
-  if (diff <= 3) return { text: `${diff}d restantes`, cls: 'text-orange-400' }
-  if (diff <= 7) return { text: `${diff}d restantes`, cls: 'text-blue-400' }
-  return { text: `${diff}d restantes`, cls: 'text-green-400' }
-}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -47,15 +20,17 @@ export default async function DashboardPage() {
     return mes === real.mes && ano === real.ano
   })()
 
-  const [{ data: clientesRaw }, { data: profiles }, tarefas] = await Promise.all([
+  const [{ data: clientesRaw }, { data: profiles }, tarefas, { data: eventosRaw }] = await Promise.all([
     supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome'),
     supabase.from('profiles').select('*'),
     buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano),
+    supabase.from('calendario_eventos').select('*').eq('setor', 'fiscal'),
   ])
 
   const cs = (clientesRaw ?? []).map(flattenClienteFiscal)
   const ps = (profiles ?? []) as Profile[]
   const ts = tarefas
+  const eventos = (eventosRaw ?? []) as CalendarioEvento[]
 
   // Mapa de tipos válidos por cliente
   const tiposMap: Record<string, Set<string>> = {}
@@ -71,20 +46,20 @@ export default async function DashboardPage() {
   const simples = cs.filter(c => c.grupo === 'simples').length
   const mei     = cs.filter(c => c.grupo === 'mei').length
 
-  const ultimoDia  = new Date(ano, mes, 0).getDate()
-
   const alertas = ehMesAtual
-    ? OBRIGACOES_CAL.map(ob => {
-        const diaNum = ob.dia === -1 ? ultimoDia : ob.dia
-        const due  = new Date(ano, mes - 1, diaNum)
-        const diff = Math.ceil((due.getTime() - hoje.getTime()) / 86400000)
-        return { ...ob, diaNum, diff }
-      }).filter(a => a.diff >= 0 && a.diff <= 10)
+    ? eventos
+        .map(evento => {
+          const alvo = proximoPrazo(evento, hoje)
+          const dias = diasRestantes(alvo, hoje)
+          return { evento, dias }
+        })
+        .filter(a => a.dias >= 0 && a.dias <= 10)
+        .sort((a, b) => a.dias - b.dias)
     : []
 
   const clientesObs = cs.filter(c => c.obs && c.obs.trim() !== '')
   const responsaveis = Array.from(
-    new Set(ps.filter(p => p.setores.includes('fiscal')).map(p => p.nome).filter(Boolean))
+    new Set(ps.filter(p => p.setores.includes('fiscal') && p.role === 'operador').map(p => p.nome).filter(Boolean))
   ).sort()
 
   return (
@@ -101,10 +76,12 @@ export default async function DashboardPage() {
         <section>
           <div className="flex flex-wrap gap-2">
             {alertas.map(a => {
-              const lbl = alertaLabel(a.diff)
+              const lbl = alertaLabel(a.dias)
               return (
-                <div key={a.nome} className={`rounded-full border px-3 py-1.5 flex items-center gap-2.5 ${alertaColor(a.diff)}`}>
-                  <span className="text-[var(--fg)] text-xs font-semibold">{a.nome}</span>
+                <div key={a.evento.id} className={`rounded-full border px-3 py-1.5 flex items-center gap-2.5 ${alertaColor(a.dias)}`}>
+                  <span className="text-[var(--fg)] text-xs font-semibold">{a.evento.titulo}</span>
+                  <span className="text-[var(--fg)]/25 text-xs">·</span>
+                  <span className="text-[var(--fg)]/50 text-xs">{labelDatas(a.evento)}</span>
                   <span className="text-[var(--fg)]/25 text-xs">·</span>
                   <span className={`text-xs font-bold ${lbl.cls}`}>{lbl.text}</span>
                 </div>
