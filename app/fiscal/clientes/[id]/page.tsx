@@ -42,6 +42,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   const { mes, ano } = await getMesAno()
   const anoAtual = getMesAnoRealAgora().ano
+  const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   // Tarefas do mês selecionado
   const { data: tarefas } = await supabase
@@ -223,6 +224,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
         onUploadArquivo={onUploadArquivo}
         onExcluirArquivo={onExcluirArquivo}
         prazosPorTipo={prazosPorTipo}
+        hoje={hoje}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} />

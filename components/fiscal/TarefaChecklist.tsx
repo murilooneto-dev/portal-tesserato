@@ -43,6 +43,7 @@ interface Props {
   etapas?: TarefaEtapa[]
   arquivos?: Omit<TarefaArquivo, 'content_base64'>[]
   prazosPorTipo?: Record<string, CalendarioEvento>
+  hoje: Date
   onAtualizarEtapa?: (tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
   onSalvarTexto?: (tipo: string, texto: string) => Promise<void>
   onUploadArquivo?: (tipo: string, formData: FormData) => Promise<{ error: string | null }>
@@ -99,6 +100,7 @@ export default function TarefaChecklist({
   etapas = [],
   arquivos = [],
   prazosPorTipo = {},
+  hoje,
   onAtualizarEtapa,
   onSalvarTexto,
   onUploadArquivo,
@@ -296,8 +298,8 @@ export default function TarefaChecklist({
           const isUnlocking = unlockingTipo === tipo
           const displayVal = getDisplayValue(tipo)
           const eventoCalendario = prazosPorTipo[normalizarTitulo(tipo)]
-          const prazo = eventoCalendario && !feito ? prazoOperacional(eventoCalendario) : null
-          const diasPrazo = prazo ? diasRestantes(prazo) : null
+          const prazo = eventoCalendario && !feito ? prazoOperacional(eventoCalendario, hoje) : null
+          const diasPrazo = prazo ? diasRestantes(prazo, hoje) : null
 
           return (
             <div key={tipo} className="flex flex-col gap-0">

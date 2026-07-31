@@ -33,6 +33,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
   const { mes, ano } = await getMesAno()
+  const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
@@ -136,6 +137,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
         onExcluirArquivo={onExcluirArquivo}
         podeEditar={podeEditar}
         prazosPorTipo={prazosPorTipo}
+        hoje={hoje}
       />
 
       <EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} />

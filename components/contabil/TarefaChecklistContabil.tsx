@@ -21,6 +21,7 @@ interface Props {
   arquivos: Omit<TarefaArquivo, 'content_base64'>[]
   vinculos?: Record<string, VinculoStatus>
   prazosPorTipo?: Record<string, CalendarioEvento>
+  hoje: Date
   mes: number
   ano: number
   onToggleSimples: (tipo: string, concluida: boolean, data?: string) => Promise<void>
@@ -71,6 +72,7 @@ export default function TarefaChecklistContabil({
   arquivos,
   vinculos = {},
   prazosPorTipo = {},
+  hoje,
   mes,
   ano,
   onToggleSimples,
@@ -215,8 +217,8 @@ export default function TarefaChecklistContabil({
           const feito = !!mapaTarefa.get(tipo)?.concluida
           const displayVal = getDisplayValue(tipo)
           const eventoCalendario = prazosPorTipo[normalizarTitulo(tipo)]
-          const prazo = eventoCalendario && !feito ? prazoOperacional(eventoCalendario) : null
-          const diasPrazo = prazo ? diasRestantes(prazo) : null
+          const prazo = eventoCalendario && !feito ? prazoOperacional(eventoCalendario, hoje) : null
+          const diasPrazo = prazo ? diasRestantes(prazo, hoje) : null
 
           return (
             <div key={tipo} className="flex flex-col gap-0">
