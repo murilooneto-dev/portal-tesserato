@@ -28,7 +28,7 @@ alter table admin_users enable row level security;
 -- Semente exigida pelo cliente. Troca obrigatória no primeiro acesso
 -- (trocar_senha=true) — RC2/DP4 do SPEC.
 insert into admin_users (username, senha_hash, trocar_senha)
-values ('ADMIN', crypt('ADMIN@123PASSWORD', gen_salt('bf')), true)
+values ('ADMIN', crypt('ADMIN@123PASSWORD', gen_salt('bf', 12)), true)
 on conflict (username) do nothing;
 
 -- Verifica credencial (bcrypt no banco, nunca no app) e aplica lockout
@@ -58,7 +58,13 @@ begin
     -- "usuário existe" contra um hash descartável, pra não vazar a
     -- existência do usuário por diferença de tempo de resposta (a
     -- mensagem já é genérica — RN3 — mas o tempo não era).
-    perform crypt(p_senha, '$2a$06$C6UzMDM.H6dfI/f/IKcEeO');
+    --
+    -- CODE_REVIEW.md MED-6: o custo aqui (12) tem que ser mantido em
+    -- sincronia com o `gen_salt('bf', 12)` usado nos hashes reais (seed,
+    -- admin_trocar_senha, admin_user_create) — se algum dos dois mudar
+    -- sozinho, o oráculo de tempo desta função reabre (invertido: o
+    -- caminho "usuário existe" ficaria mais lento que o "não existe").
+    perform crypt(p_senha, '$2a$12$C6UzMDM.H6dfI/f/IKcEeO');
     return query select 'invalid'::text, null::uuid, null::text, null::boolean;
     return;
   end if;
@@ -99,6 +105,10 @@ $$;
 
 revoke all on function admin_login(text, text) from public;
 revoke execute on function admin_login(text, text) from authenticated, anon;
+-- CODE_REVIEW.md (low): grant explícito, em vez de depender só do default
+-- privilege implícito do Supabase para service_role (que já funciona hoje,
+-- mas fica mais claro e auditável declarado aqui).
+grant execute on function admin_login(text, text) to service_role;
 
 -- Troca de senha (fluxo obrigatório do primeiro acesso e trocas futuras).
 -- p_id vem sempre da sessão ts_admin já verificada no servidor (nunca de
@@ -124,7 +134,7 @@ begin
   end if;
 
   update admin_users
-    set senha_hash = crypt(p_senha_nova, gen_salt('bf')),
+    set senha_hash = crypt(p_senha_nova, gen_salt('bf', 12)),
         trocar_senha = false
     where admin_users.id = p_id and ativo;
 
@@ -134,6 +144,7 @@ $$;
 
 revoke all on function admin_trocar_senha(uuid, text) from public;
 revoke execute on function admin_trocar_senha(uuid, text) from authenticated, anon;
+grant execute on function admin_trocar_senha(uuid, text) to service_role;
 
 -- RPCs de gestão para o roadmap (tela de gestão de usuários ADMIN — fora do
 -- escopo desta versão). Só service_role pode chamá-las por enquanto; sem
@@ -153,7 +164,7 @@ begin
   end if;
 
   insert into admin_users (username, senha_hash, trocar_senha)
-  values (p_username, crypt(p_senha, gen_salt('bf')), true)
+  values (p_username, crypt(p_senha, gen_salt('bf', 12)), true)
   returning id into v_id;
 
   return v_id;
@@ -161,6 +172,7 @@ end;
 $$;
 
 revoke all on function admin_user_create(text, text) from public;
+grant execute on function admin_user_create(text, text) to service_role;
 
 create or replace function admin_user_set_ativo(p_id uuid, p_ativo boolean)
 returns boolean
@@ -175,3 +187,4 @@ end;
 $$;
 
 revoke all on function admin_user_set_ativo(uuid, boolean) from public;
+grant execute on function admin_user_set_ativo(uuid, boolean) to service_role;

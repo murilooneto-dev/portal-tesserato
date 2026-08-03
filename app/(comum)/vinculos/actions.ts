@@ -5,6 +5,15 @@ import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 import { getValidAdminSession } from '@/lib/admin-auth/server'
 import type { UserSetor } from '@/lib/types'
 
+// ATENÇÃO (CODE_REVIEW.md / SECURITY_REPORT.md, risco residual de design):
+// `exigirAcessoAdmin()` devolve um cliente `service_role`, que ignora a
+// RLS `is_admin()` de `tarefa_vinculos`. Isso é intencional — é assim que
+// se aplica o gate de `ts_admin`, que a RLS não conhece —, mas significa
+// que a RLS deixou de ser rede de proteção neste arquivo: qualquer nova
+// Server Action aqui que esqueça de chamar `exigirAcessoAdmin()` escreve
+// sem obstáculo nenhum. Toda action neste arquivo deve chamá-la antes de
+// qualquer query.
+//
 // SECURITY_REPORT.md ALTA-1: VinculosClient.tsx escrevia direto em
 // tarefa_vinculos a partir do browser (lib/supabase/client), sem Server
 // Action nenhuma — só a RLS "Admin gerencia tarefa_vinculos" (is_admin()),

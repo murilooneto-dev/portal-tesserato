@@ -427,6 +427,13 @@ export async function verificarSenhaDev(
   login: string,
   senha: string
 ): Promise<{ ok: boolean; error?: string }> {
+  // CODE_REVIEW.md MED-5: única das 12 exportações deste arquivo sem
+  // guarda de sessão ADMIN — sem isso, qualquer autenticado tem um
+  // oráculo de força bruta contra a conta master (o rate limit do
+  // Supabase é por IP de origem, e aqui a origem é sempre o servidor).
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { ok: false, error: erroAdmin }
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { ok: false, error: 'Não autorizado.' }
 

@@ -120,6 +120,22 @@ Ordem seguida, conforme priorizado pela Segurança: CRIT-1 → ALTA-1 → ALTA-2
 - **BAIXA-4** (ausência de auditoria do step-up) — roadmap.
 - **BAIXA-5** (`secure: true` fixo no cookie) — comportamento correto para produção, sem mudança pedida.
 
+# Correções do Code Review (pré-QA)
+
+Segunda rodada, sobre a mesma branch de remediação, depois de Segurança (2ª revisão, APPROVED) e Code Review (APPROVED com bloqueantes) — `SECURITY_REPORT.md` v2 (`agent/security-engineer/c31fbf25-r2`) e `CODE_REVIEW.md` (`agent/code-reviewer/c31fbf25-review`).
+
+| # | Achado | Correção | Arquivo(s) |
+|---|---|---|---|
+| MED-5 (bloqueante p/ QA) | `verificarSenhaDev` era a única das 12 exportações de `parametros/actions.ts` sem guarda de sessão ADMIN — oráculo de força bruta contra a conta master via `Next-Action` | Adicionado `exigirSessaoAdmin()` como primeira linha | `app/fiscal/parametros/actions.ts` |
+| MED-6 (bloqueante p/ QA) | `gen_salt('bf')` sem custo explícito = 6 (abaixo do mínimo recomendado, ≥10/12) | `gen_salt('bf', 12)` nos quatro pontos (seed, `admin_trocar_senha`, `admin_user_create`) **e** o custo do hash descartável da equalização de tempo (`$2a$06$...` → `$2a$12$...`) — os quatro subiram juntos, senão o hash descartável ficaria mais rápido que os reais e reabriria o oráculo de tempo invertido | `019_admin_section_auth.sql` |
+| low | Erro de `createAdminClient()` (service_role mal configurado) indistinguível de senha errada nos logs | `console.error` nos dois `catch` (`adminLogin`, `trocarSenhaInicial`) — a resposta ao usuário continua genérica (RN3), só o log ficou mais específico | `app/admin/bloqueio/actions.ts` |
+| low | `grant execute ... to service_role` implícito (default privilege do Supabase) nas 4 RPCs | Grants explícitos ao lado de cada `revoke` | `019_admin_section_auth.sql` |
+| low | Risco residual de design não documentado no próprio arquivo: `exigirAcessoAdmin()` devolve cliente `service_role`, que ignora a RLS `is_admin()` — uma action futura sem a guarda escreveria sem obstáculo | Comentário de alerta no topo do arquivo | `app/(comum)/vinculos/actions.ts` |
+
+**Registrado como tech debt separado, fora do escopo de TES-3 (a pedido do PM — tocam 15+ arquivos):**
+- **Rename de `getAuthenticatedAdmin()`** (`lib/supabase/server.ts:42`) para algo como `getAuthenticatedServiceClient()` — o nome promete uma autorização que a função não faz (retorna `service_role` pra qualquer autenticado, sem checar `role`), e isso já induziu ao erro duas vezes (ALTA-2). Usado em `intranet/actions.ts`, `contabil/clientes/actions.ts`, `fiscal/clientes/actions.ts`, `pessoal/clientes/actions.ts`, `fiscal/bots/page.tsx`, `fiscal/clientes/[id]/page.tsx`, `lib/tarefa-tipos-actions.ts`, além dos 3 arquivos desta feature.
+- **Extração de um helper de autorização único** para as ~11 actions de `app/fiscal/parametros/actions.ts` (hoje cada uma repete manualmente o mesmo bloco `role + sessão ts_admin`) — `vinculos/actions.ts` já resolveu isso com `exigirAcessoAdmin()`; o Code Reviewer apontou essa duplicação como a causa raiz confirmada tanto do ALTA-2 quanto do MED-5 (duas actions/uma export esqueceram o check porque não havia um único ponto de verdade). Recomendo extrair para `lib/admin-auth/server.ts` e reaproveitar nos três arquivos de Server Actions da seção ADMIN — mas isso é refatoração, não bugfix pontual, e mistura escopo com o restante do arquivo de Parâmetros; melhor como issue própria.
+
 # Observações Técnicas
 
 - **Comprimento mínimo de senha:** fixado em **8 caracteres** (`ADMIN_MIN_PASSWORD_LENGTH` em `lib/admin-auth/constants.ts`), aplicado tanto na RPC `admin_trocar_senha`/`admin_user_create` (defesa em profundidade no banco) quanto no Server Action `trocarSenhaInicial` (feedback rápido ao usuário). Segue a sugestão do Design; tratada aqui como regra de segurança confirmada, não apenas de UX.
@@ -131,7 +147,8 @@ Ordem seguida, conforme priorizado pela Segurança: CRIT-1 → ALTA-1 → ALTA-2
 
 # Pendências
 
-- **Nova revisão de Segurança** sobre esta branch de remediação antes do Code Review (pedido explícito do PM/Security ao encerrar esta rodada).
+- **Segurança (2ª rodada) e Code Review já aprovaram esta branch** (`agent/backend-engineer/remediation-de6a41be`), com MED-5/MED-6 (bloqueantes p/ QA) fechados nesta atualização. Não é necessária nova rodada de Segurança/Code Review para estes dois itens — segue direto para QA.
+- **Tech debt registrado, não faz parte desta entrega:** rename de `getAuthenticatedAdmin()` e extração de um helper de autorização único para `parametros/actions.ts` (ver seção acima) — abrir issue própria fora de TES-3.
 - **Rodar a migration** `019_admin_section_auth.sql` (já com os grants corrigidos) no Supabase de cada ambiente (dev/staging/prod) antes do merge desta feature ir ao ar — não incluído neste PR porque não há pipeline de migration automatizado no repositório. Se a versão anterior (com `grant ... to authenticated`) já tiver sido aplicada em algum ambiente, os `revoke` desta migration cobrem a correção; não é necessário recriar a tabela.
 - **Configurar `ADMIN_SESSION_SECRET`** no Vercel (Production + Preview), agora com **≥ 32 bytes** (a validação de força passou a rejeitar segredos curtos — ver MED-3).
 - **Tela de gestão de usuários ADMIN e auditoria** — roadmap (RC5 do SPEC), fora do escopo desta versão; `admin_user_create`/`admin_user_set_ativo` já existem no banco para uso via SQL/service role até lá.

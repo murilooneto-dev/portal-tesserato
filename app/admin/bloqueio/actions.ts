@@ -40,7 +40,12 @@ export async function adminLogin(username: string, senha: string): Promise<Admin
   let admin
   try {
     admin = createAdminClient()
-  } catch {
+  } catch (e) {
+    // CODE_REVIEW.md (low): sem isto, um erro de configuração do
+    // service_role (env ausente) fica indistinguível de senha errada nos
+    // logs — o retorno ao usuário continua genérico (RN3), só o log é
+    // mais específico para quem opera o servidor.
+    console.error('adminLogin: falha ao criar client service_role', e)
     return { error: ERRO_CREDENCIAL }
   }
 
@@ -89,7 +94,8 @@ export async function trocarSenhaInicial(
   let admin
   try {
     admin = createAdminClient()
-  } catch {
+  } catch (e) {
+    console.error('trocarSenhaInicial: falha ao criar client service_role', e)
     return { error: 'Não foi possível salvar a nova senha. Tente novamente.' }
   }
 
