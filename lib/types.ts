@@ -109,6 +109,7 @@ export interface BotEvento {
 export interface ClienteContabil {
   cliente_id: string
   atividade: string | null
+  regime: string | null
   responsavel: string | null
   prioridade: number
   obs: string | null
@@ -118,6 +119,7 @@ export interface ClienteContabil {
 export interface ClientePessoal {
   cliente_id: string
   atividade: string | null
+  regime: string | null
   responsavel: string | null
   prioridade: number
   obs: string | null
@@ -132,6 +134,7 @@ export interface TarefaTipo {
   meses_visiveis: number[] | null
   tipo_resposta: TipoResposta
   ativo: boolean
+  padrao: boolean
 }
 
 export interface TarefaEtapa {

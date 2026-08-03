@@ -209,7 +209,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
       if (form.setores.includes('contabil')) {
         const { data: existenteContabil } = await sb.from('clientes_contabil').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
         if (!existenteContabil) {
-          const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').order('nome')
+          const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).order('nome')
           const { error: errContabil } = await sb.from('clientes_contabil').insert({
             cliente_id: clienteId,
             tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
@@ -229,7 +229,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
       if (form.setores.includes('pessoal')) {
         const { data: existentePessoal } = await sb.from('clientes_pessoal').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
         if (!existentePessoal) {
-          const { data: tiposPessoal } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').order('nome')
+          const { data: tiposPessoal } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).order('nome')
           const { error: errPessoal } = await sb.from('clientes_pessoal').insert({
             cliente_id: clienteId,
             tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome),
@@ -258,7 +258,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
         }
       }
       if (form.setores.includes('contabil')) {
-        const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').order('nome')
+        const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).order('nome')
         const { error: errContabil } = await sb.from('clientes_contabil').insert({
           cliente_id: novoCliente.id,
           tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
@@ -270,7 +270,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
         }
       }
       if (form.setores.includes('pessoal')) {
-        const { data: tiposPessoal } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').order('nome')
+        const { data: tiposPessoal } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).order('nome')
         const { error: errPessoal } = await sb.from('clientes_pessoal').insert({
           cliente_id: novoCliente.id,
           tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome),

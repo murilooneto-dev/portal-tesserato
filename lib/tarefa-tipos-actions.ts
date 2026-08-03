@@ -23,11 +23,18 @@ export async function criarTipoTarefa(
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!user || !supabase) return { error: 'Sessão inválida.' }
 
+  // Criado a partir do cadastro de um cliente específico (NovoTipoTarefaModal)
+  // — não é um tipo padrão do catálogo, então não deve ser copiado
+  // automaticamente pra tarefas_personalizadas de outros clientes (ver
+  // ClienteGeralModal.tsx, que filtra .eq('padrao', true) ao provisionar
+  // cliente novo). Fica disponível no catálogo pra reuso manual, mas não se
+  // impõe sozinho.
   const { error } = await supabase.from('tarefa_tipos').insert({
     setor,
     nome: nomeTrim,
     tipo_resposta: tipoResposta,
     etapas,
+    padrao: false,
   })
 
   if (error) {

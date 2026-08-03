@@ -7,11 +7,13 @@ import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
+import { ATIVIDADES, REGIMES } from '@/lib/atividades-regimes'
 
 interface FormData {
   cnpj: string
   nome: string
   atividade: string
+  regime: string
   municipio: string
   uf: string
   responsavel: string
@@ -29,7 +31,7 @@ interface Props {
 }
 
 const emptyForm = (tarefasPadrao: string[]): FormData => ({
-  cnpj: '', nome: '', atividade: '', municipio: '', uf: '', responsavel: '', contato_chat: '',
+  cnpj: '', nome: '', atividade: '', regime: '', municipio: '', uf: '', responsavel: '', contato_chat: '',
   prioridade: 3, tarefas_personalizadas: tarefasPadrao,
 })
 
@@ -60,6 +62,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
         cnpj: data.cnpj ?? '',
         nome: data.nome ?? '',
         atividade: data.atividade ?? '',
+        regime: data.regime ?? '',
         municipio: data.municipio ?? '',
         uf: data.uf ?? '',
         responsavel: data.responsavel ?? '',
@@ -121,6 +124,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
     }
     const pessoalPayload = {
       atividade: form.atividade || null,
+      regime: form.regime || null,
       responsavel: form.responsavel || null,
       prioridade: form.prioridade,
       tarefas_personalizadas: form.tarefas_personalizadas,
@@ -192,9 +196,24 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
               <input className={inputCls} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} disabled={readOnly} />
             </div>
 
-            <div>
-              <label className={labelCls}>Atividade</label>
-              <input className={inputCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly} />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Atividade</label>
+                <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly}>
+                  <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
+                  {form.atividade && !ATIVIDADES.includes(form.atividade) && (
+                    <option value={form.atividade} className="bg-[var(--bg-surface)]">{form.atividade} (atual)</option>
+                  )}
+                  {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Regime</label>
+                <select className={selectCls} value={form.regime} onChange={e => set('regime', e.target.value)} disabled={readOnly}>
+                  <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
+                  {REGIMES.map(r => <option key={r.value} value={r.value} className="bg-[var(--bg-surface)]">{r.label}</option>)}
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
