@@ -132,6 +132,7 @@ export interface TarefaTipo {
   meses_visiveis: number[] | null
   tipo_resposta: TipoResposta
   ativo: boolean
+  padrao: boolean
 }
 
 export interface TarefaEtapa {
