@@ -201,6 +201,15 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
             return
           }
         }
+      } else {
+        // Setor Fiscal desmarcado: remove a linha em clientes_fiscal para
+        // que o cliente saia de /fiscal/clientes, que usa inner join.
+        const { error: errRemoveFiscal } = await sb.from('clientes_fiscal').delete().eq('cliente_id', clienteId)
+        if (errRemoveFiscal) {
+          setSaving(false)
+          setErro(errRemoveFiscal.message)
+          return
+        }
       }
       // Mesmo raciocínio do bloco Fiscal acima: se o setor Contábil acabou
       // de ser marcado num cliente que nunca teve linha em clientes_contabil,
@@ -219,6 +228,15 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
             setErro(errContabil.message)
             return
           }
+        }
+      } else {
+        // Setor Contábil desmarcado: remove a linha em clientes_contabil para
+        // que o cliente saia de /contabil/clientes, que usa inner join.
+        const { error: errRemoveContabil } = await sb.from('clientes_contabil').delete().eq('cliente_id', clienteId)
+        if (errRemoveContabil) {
+          setSaving(false)
+          setErro(errRemoveContabil.message)
+          return
         }
       }
       // Mesmo raciocínio dos blocos Fiscal/Contábil acima: se o setor
@@ -239,6 +257,15 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
             setErro(errPessoal.message)
             return
           }
+        }
+      } else {
+        // Setor Pessoal desmarcado: remove a linha em clientes_pessoal para
+        // que o cliente saia de /pessoal/clientes, que usa inner join.
+        const { error: errRemovePessoal } = await sb.from('clientes_pessoal').delete().eq('cliente_id', clienteId)
+        if (errRemovePessoal) {
+          setSaving(false)
+          setErro(errRemovePessoal.message)
+          return
         }
       }
       setSaving(false)
