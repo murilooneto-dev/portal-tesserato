@@ -80,5 +80,22 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon\\.ico|logo\\.ico|logo\\.png).*)'],
+  matcher: [
+    {
+      source: '/((?!_next/static|_next/image|favicon\\.ico|logo\\.ico|logo\\.png).*)',
+      // Prefetch requests (disparados em massa pelos <Link> do Sidebar/TopNav
+      // assim que entram no viewport) não devem chamar supabase.auth.getUser().
+      // Cada chamada pode disparar um refresh de token; como o refresh token
+      // do Supabase é rotacionado (invalidado após o primeiro uso), várias
+      // requisições concorrentes usando o mesmo cookie de sessão faziam a
+      // maioria delas falhar com "refresh token already used" e cair no
+      // redirect de login — mesmo com o usuário autenticado. É esse race
+      // condition que explicava o padrão: falha ao navegar (múltiplas
+      // requisições simultâneas), mas funciona ao dar F5 (requisição única).
+      missing: [
+        { type: 'header', key: 'next-router-prefetch' },
+        { type: 'header', key: 'purpose', value: 'prefetch' },
+      ],
+    },
+  ],
 }
