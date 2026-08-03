@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireAdminSection } from '@/lib/admin-auth/server'
+import SairAdminButton from '@/components/admin/SairAdminButton'
 import ParametrosClient from './ParametrosClient'
 
 export const metadata = { title: 'Parâmetros — Tesserato Fiscal' }
@@ -63,15 +64,18 @@ export default async function ParametrosPage() {
   }
 
   return (
-    <ParametrosClient
-      profiles={profiles ?? []}
-      currentUserId={user.id}
-      dashboardAnnouncement={s.dashboard_announcement ?? ''}
-      taskLogs={taskLogs ?? []}
-      deletionLogs={deletionLogs ?? []}
-      emailSettings={emailSettings}
-      atividadeTemplates={templatesMap}
-      grupoTemplates={grupoTemplatesMap}
-    />
+    <>
+      <SairAdminButton />
+      <ParametrosClient
+        profiles={profiles ?? []}
+        currentUserId={user.id}
+        dashboardAnnouncement={s.dashboard_announcement ?? ''}
+        taskLogs={taskLogs ?? []}
+        deletionLogs={deletionLogs ?? []}
+        emailSettings={emailSettings}
+        atividadeTemplates={templatesMap}
+        grupoTemplates={grupoTemplatesMap}
+      />
+    </>
   )
 }

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireAdminSection } from '@/lib/admin-auth/server'
+import SairAdminButton from '@/components/admin/SairAdminButton'
 import VinculosClient from './VinculosClient'
 import type { TarefaVinculo } from '@/lib/types'
 
@@ -36,8 +37,11 @@ export default async function VinculosPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <VinculosClient vinculosIniciais={vinculos} tiposPorSetor={tiposPorSetor} />
-    </div>
+    <>
+      <SairAdminButton />
+      <div className="p-8 max-w-4xl mx-auto">
+        <VinculosClient vinculosIniciais={vinculos} tiposPorSetor={tiposPorSetor} />
+      </div>
+    </>
   )
 }
