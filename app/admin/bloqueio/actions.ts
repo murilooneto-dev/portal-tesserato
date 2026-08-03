@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getAdminSession, setAdminSessionCookie, clearAdminSessionCookie } from '@/lib/admin-auth/server'
 import { ADMIN_MIN_PASSWORD_LENGTH } from '@/lib/admin-auth/constants'
 
@@ -19,6 +19,13 @@ interface AdminActionResult {
 // (profiles.role='admin') — modelo mais restritivo assumido pela
 // Arquitetura (credencial ADMIN sozinha não basta). A senha em si nunca é
 // verificada aqui: a RPC `admin_login` faz o bcrypt dentro do Postgres.
+//
+// SECURITY_REPORT.md CRIT-1: `admin_login`/`admin_trocar_senha` não têm
+// mais `grant` para `authenticated` (migration 019) — só são chamáveis
+// via `service_role`, depois que a validação de sessão do portal +
+// `role='admin'` acima já passou. Isso mantém o gate de autorização e o
+// gate de execução no mesmo lado (o servidor), em vez de confiar que
+// nenhum chamador vai contornar o Next.js e falar direto com o PostgREST.
 export async function adminLogin(username: string, senha: string): Promise<AdminActionResult> {
   const usernameTrim = username.trim()
   if (!usernameTrim || !senha) return { error: ERRO_CREDENCIAL }
@@ -30,7 +37,14 @@ export async function adminLogin(username: string, senha: string): Promise<Admin
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return { error: ERRO_CREDENCIAL }
 
-  const { data, error } = await supabase.rpc('admin_login', {
+  let admin
+  try {
+    admin = createAdminClient()
+  } catch {
+    return { error: ERRO_CREDENCIAL }
+  }
+
+  const { data, error } = await admin.rpc('admin_login', {
     p_username: usernameTrim,
     p_senha: senha,
   })
@@ -72,8 +86,14 @@ export async function trocarSenhaInicial(
   const session = await getAdminSession()
   if (!session) redirect('/admin/bloqueio')
 
-  const supabase = await createClient()
-  const { data: ok, error } = await supabase.rpc('admin_trocar_senha', {
+  let admin
+  try {
+    admin = createAdminClient()
+  } catch {
+    return { error: 'Não foi possível salvar a nova senha. Tente novamente.' }
+  }
+
+  const { data: ok, error } = await admin.rpc('admin_trocar_senha', {
     p_id: session.sub,
     p_senha_nova: senhaNova,
   })

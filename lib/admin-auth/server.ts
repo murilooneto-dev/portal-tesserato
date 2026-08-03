@@ -50,6 +50,19 @@ export async function requireAdminSection(nextPath?: string): Promise<AdminSessi
   return session
 }
 
+// SECURITY_REPORT.md ALTA-1: variante sem redirect, para Server Actions de
+// escrita (não RSC de página) — `redirect()` joga fora o formato de
+// retorno `{ error }` que essas actions já usam e navegaria a página
+// inteira no meio de uma submissão. Retorna `null` se não houver sessão
+// `ts_admin` válida ou se a troca de senha obrigatória ainda estiver
+// pendente; quem chama decide como reportar (early-return `{ error }` ou
+// `throw`, conforme o formato de retorno da action).
+export async function getValidAdminSession(): Promise<AdminSessionPayload | null> {
+  const session = await getAdminSession()
+  if (!session || session.mustChangePassword) return null
+  return session
+}
+
 // Emite/renova o cookie `ts_admin` após login bem-sucedido ou troca de
 // senha. `loginAt` deve ser repassado nas renovações (nunca em um novo
 // login) para preservar o teto de expiração absoluta de 8h.

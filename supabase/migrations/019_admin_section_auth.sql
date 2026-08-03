@@ -35,6 +35,13 @@ on conflict (username) do nothing;
 -- temporário após 5 tentativas incorretas (DP5). `status` distingue
 -- 'ok' | 'invalid' | 'locked' apenas para a UI escolher a mensagem certa
 -- (bloqueio vs. credencial errada) — nunca revela se o usuário existe.
+--
+-- SECURITY_REPORT.md CRIT-1: esta função **não** é concedida a
+-- `authenticated` (ver revoke abaixo) — só é chamável via `service_role`,
+-- a partir da Server Action `adminLogin` (app/admin/bloqueio/actions.ts),
+-- que já validou sessão do portal + `role='admin'` antes de chamar. Expor
+-- via `authenticated`/anon key permitiria qualquer colaborador logado
+-- tomar a credencial ADMIN direto pelo PostgREST.
 create or replace function admin_login(p_username text, p_senha text)
 returns table (status text, id uuid, username text, trocar_senha boolean)
 language plpgsql
@@ -47,11 +54,23 @@ begin
   select * into v from admin_users where admin_users.username = p_username and ativo;
 
   if not found then
+    -- SECURITY_REPORT.md BAIXA-2: paga o mesmo custo de bcrypt do caminho
+    -- "usuário existe" contra um hash descartável, pra não vazar a
+    -- existência do usuário por diferença de tempo de resposta (a
+    -- mensagem já é genérica — RN3 — mas o tempo não era).
+    perform crypt(p_senha, '$2a$06$C6UzMDM.H6dfI/f/IKcEeO');
     return query select 'invalid'::text, null::uuid, null::text, null::boolean;
     return;
   end if;
 
-  if v.bloqueado_ate is not null and v.bloqueado_ate > now() then
+  -- SECURITY_REPORT.md MED-2: zera o contador quando o lockout anterior já
+  -- expirou — sem isso, uma tentativa errada a cada 15 min mantém o admin
+  -- legítimo bloqueado indefinidamente (só um login bem-sucedido zerava).
+  if v.bloqueado_ate is not null and v.bloqueado_ate <= now() then
+    update admin_users set tentativas_falhas = 0, bloqueado_ate = null
+      where admin_users.id = v.id
+      returning tentativas_falhas, bloqueado_ate into v.tentativas_falhas, v.bloqueado_ate;
+  elsif v.bloqueado_ate is not null and v.bloqueado_ate > now() then
     return query select 'locked'::text, null::uuid, null::text, null::boolean;
     return;
   end if;
@@ -79,13 +98,20 @@ end;
 $$;
 
 revoke all on function admin_login(text, text) from public;
-grant execute on function admin_login(text, text) to authenticated;
+revoke execute on function admin_login(text, text) from authenticated, anon;
 
 -- Troca de senha (fluxo obrigatório do primeiro acesso e trocas futuras).
 -- p_id vem sempre da sessão ts_admin já verificada no servidor (nunca de
 -- input do cliente) — não há verificação de senha atual aqui porque quem
 -- chama já passou pelo admin_login nesta mesma sessão. Comprimento mínimo
 -- de 8 caracteres é regra de backend/segurança (RN — ver BACKEND.md).
+--
+-- SECURITY_REPORT.md CRIT-1: assim como admin_login, esta função não tem
+-- `grant` para `authenticated`/anon (ver revoke abaixo) — só é chamável
+-- via `service_role`, a partir de `trocarSenhaInicial`, que já resolveu
+-- `p_id` da sessão `ts_admin` verificada no servidor. Sem essa restrição,
+-- qualquer autenticado poderia trocar a senha de qualquer admin_users
+-- passando um `p_id` arbitrário direto pelo PostgREST.
 create or replace function admin_trocar_senha(p_id uuid, p_senha_nova text)
 returns boolean
 language plpgsql
@@ -107,7 +133,7 @@ end;
 $$;
 
 revoke all on function admin_trocar_senha(uuid, text) from public;
-grant execute on function admin_trocar_senha(uuid, text) to authenticated;
+revoke execute on function admin_trocar_senha(uuid, text) from authenticated, anon;
 
 -- RPCs de gestão para o roadmap (tela de gestão de usuários ADMIN — fora do
 -- escopo desta versão). Só service_role pode chamá-las por enquanto; sem

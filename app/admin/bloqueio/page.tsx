@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { getAdminSession } from '@/lib/admin-auth/server'
+import { ehRotaAdmin } from '@/lib/rotas-admin'
 import BloqueioForm from './BloqueioForm'
 
 export const metadata = { title: 'Área Restrita — Tesserato' }
@@ -18,7 +19,12 @@ export default async function BloqueioPage({ searchParams }: Props) {
   if (!user) redirect('/login')
 
   const { next: nextParam, etapa } = await searchParams
-  const next = nextParam && nextParam.startsWith('/') ? nextParam : DESTINO_PADRAO
+  // SECURITY_REPORT.md MED-1: `startsWith('/')` sozinho aceita
+  // `//evil.com`/`/\evil.com` (URL protocol-relative), que o browser e o
+  // `redirect()`/`router.push()` tratam como absoluta para outro host —
+  // um open redirect explorável contra o administrador logo após o login.
+  // Validar contra a allowlist real de rotas ADMIN em vez de um prefixo.
+  const next = nextParam && ehRotaAdmin(nextParam) ? nextParam : DESTINO_PADRAO
 
   // Já autenticado na seção ADMIN (e sem troca de senha pendente): não faz
   // sentido mostrar a tela de bloqueio de novo, segue direto ao destino.

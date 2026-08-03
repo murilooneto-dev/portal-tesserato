@@ -1,6 +1,7 @@
 'use server'
 
 import { getAuthenticatedAdmin, createAdminClient } from '@/lib/supabase/server'
+import { getValidAdminSession } from '@/lib/admin-auth/server'
 import { revalidatePath } from 'next/cache'
 import { createClient as createClienteDescartavel } from '@supabase/supabase-js'
 
@@ -8,9 +9,34 @@ function normalizarNome(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
 }
 
+// SECURITY_REPORT.md ALTA-1: `requireAdminSection()` só protegia a
+// renderização das páginas de Parâmetros/Vínculos — nenhuma das Server
+// Actions abaixo checava a sessão `ts_admin`, então alguém com a sessão
+// do portal aberta (mas sem ter passado pela credencial ADMIN) conseguia
+// executar qualquer uma delas direto via `Next-Action`, sem nunca ver a
+// tela de bloqueio. Toda action de escrita desta página agora chama isto
+// como primeira linha.
+const ERRO_SESSAO_ADMIN = 'Acesso negado: sessão da área ADMIN expirada ou inválida.'
+
+async function exigirSessaoAdmin(): Promise<string | null> {
+  const session = await getValidAdminSession()
+  return session ? null : ERRO_SESSAO_ADMIN
+}
+
 export async function salvarComunicado(formData: FormData) {
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) throw new Error('Não autorizado')
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) throw new Error(erroAdmin)
+
+  // SECURITY_REPORT.md ALTA-2: esta action não checava `role='admin'`
+  // (diferente de quase todas as outras deste arquivo), então qualquer
+  // colaborador autenticado conseguia sobrescrever app_settings via
+  // getAuthenticatedAdmin() (que devolve um cliente service_role sem
+  // verificar o papel do chamador).
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) throw new Error('Não autorizado')
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') throw new Error('Acesso negado.')
+
   const texto = formData.get('dashboard_announcement') as string
   const { error } = await supabase.from('app_settings').update({ dashboard_announcement: texto }).eq('id', 1)
   if (error) throw new Error(error.message)
@@ -18,6 +44,9 @@ export async function salvarComunicado(formData: FormData) {
 }
 
 export async function atualizarPerfil(id: string, formData: FormData) {
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) throw new Error(erroAdmin)
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) throw new Error('Não autorizado.')
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -50,6 +79,9 @@ export async function criarUsuario(payload: {
   paginasAcesso: string[]
   setores: string[]
 }): Promise<{ error?: string }> {
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { error: erroAdmin }
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -91,6 +123,9 @@ export async function criarUsuario(payload: {
 }
 
 export async function deletarUsuario(id: string): Promise<{ error?: string }> {
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { error: erroAdmin }
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -108,8 +143,17 @@ export async function deletarUsuario(id: string): Promise<{ error?: string }> {
 }
 
 export async function salvarConfiguracoes(settings: Record<string, unknown>): Promise<{ error?: string }> {
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return { error: 'Não autorizado' }
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { error: erroAdmin }
+
+  // SECURITY_REPORT.md ALTA-2: mesma lacuna de salvarComunicado — faltava
+  // o check de `role='admin'`, e getAuthenticatedAdmin() sozinho devolve
+  // service_role pra qualquer autenticado.
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado' }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
+
   const { error } = await supabase.from('app_settings').update(settings).eq('id', 1)
   if (error) return { error: error.message }
   revalidatePath('/fiscal/parametros')
@@ -120,6 +164,9 @@ export async function salvarTemplate(
   atividade: string,
   tarefas: string[]
 ): Promise<{ error?: string }> {
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { error: erroAdmin }
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -137,6 +184,9 @@ export async function salvarTemplate(
 export async function aplicarTemplateAClientes(
   atividadeBase: string
 ): Promise<{ error?: string; atualizados: number; avisoForaCatalogo: string[] }> {
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { error: erroAdmin, atualizados: 0, avisoForaCatalogo: [] }
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', atualizados: 0, avisoForaCatalogo: [] }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -189,6 +239,9 @@ export async function salvarTemplateGrupo(
   grupo: string,
   tarefas: string[]
 ): Promise<{ error?: string }> {
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { error: erroAdmin }
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -206,6 +259,9 @@ export async function salvarTemplateGrupo(
 export async function aplicarTemplateGrupoAClientes(
   grupo: string
 ): Promise<{ error?: string; atualizados: number; avisoForaCatalogo: string[] }> {
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { error: erroAdmin, atualizados: 0, avisoForaCatalogo: [] }
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', atualizados: 0, avisoForaCatalogo: [] }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -275,6 +331,9 @@ export async function analisarParcelamentosDuplicados(): Promise<{
   error?: string
   grupos: GrupoParcelamentoDuplicado[]
 }> {
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { error: erroAdmin, grupos: [] }
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', grupos: [] }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -311,6 +370,9 @@ export async function limparParcelamentosDuplicados(): Promise<{
   gruposMesclados: number
   linhasRemovidas: number
 }> {
+  const erroAdmin = await exigirSessaoAdmin()
+  if (erroAdmin) return { error: erroAdmin, gruposMesclados: 0, linhasRemovidas: 0 }
+
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', gruposMesclados: 0, linhasRemovidas: 0 }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()

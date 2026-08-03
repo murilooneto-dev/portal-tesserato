@@ -20,6 +20,14 @@ export interface AdminSessionPayload extends JWTPayload {
   loginAt: number
 }
 
+// SECURITY_REPORT.md MED-3: HS256 com segredo curto é quebrável offline por
+// força bruta a partir de um único cookie capturado — exigir >= 32 bytes
+// (256 bits) e falhar fechado (mesmo caminho de erro do segredo ausente,
+// que já é tratado como falha fechada por quem chama: verifyAdminToken
+// captura e retorna null; signAdminToken propaga e quebra o login em vez
+// de emitir um token inseguro).
+const ADMIN_SESSION_SECRET_MIN_BYTES = 32
+
 function getSecretKey(): Uint8Array {
   const secret = process.env[ADMIN_SESSION_SECRET_ENV]
   if (!secret) {
@@ -27,7 +35,13 @@ function getSecretKey(): Uint8Array {
       `${ADMIN_SESSION_SECRET_ENV} não configurada. Adicione em: Vercel → Settings → Environment Variables (ver DEPLOY.md).`
     )
   }
-  return new TextEncoder().encode(secret)
+  const key = new TextEncoder().encode(secret)
+  if (key.byteLength < ADMIN_SESSION_SECRET_MIN_BYTES) {
+    throw new Error(
+      `${ADMIN_SESSION_SECRET_ENV} é curta demais (${key.byteLength} bytes; mínimo ${ADMIN_SESSION_SECRET_MIN_BYTES}). Gere um valor novo, ex.: openssl rand -base64 32 (ver DEPLOY.md).`
+    )
+  }
+  return key
 }
 
 // Assina um novo token. `loginAt` deve ser preservado (não recalculado)
@@ -59,7 +73,10 @@ export async function signAdminToken(params: {
 // `loginAt`), que o `exp` sozinho não cobre porque é renovado a cada acesso.
 export async function verifyAdminToken(token: string): Promise<AdminSessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecretKey())
+    // SECURITY_REPORT.md BAIXA-1: pin explícito do algoritmo — defesa
+    // barata contra regressão futura (ex.: reuso do segredo simétrico em
+    // outro contexto que aceite outra família de alg).
+    const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ['HS256'] })
     const sub = payload.sub
     const username = payload.username
     const mustChangePassword = payload.mustChangePassword
