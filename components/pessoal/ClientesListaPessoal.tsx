@@ -6,6 +6,7 @@ import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComPessoal } from '@/lib/clientes-pessoal'
 import type { PendenciaVinculo } from '@/lib/vinculos'
 import EmpresaPessoalModal from './EmpresaPessoalModal'
+import { REGIMES } from '@/lib/atividades-regimes'
 
 const CORES_RESP: string[] = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316','#ef4444','#84cc16']
 const _respColorCache: Record<string, string> = {}
@@ -14,6 +15,16 @@ function corResponsavel(nome: string): string {
     _respColorCache[nome] = CORES_RESP[Object.keys(_respColorCache).length % CORES_RESP.length]
   }
   return _respColorCache[nome]
+}
+
+const CORES_REGIME: Record<string, string> = {
+  normal:  '#3b82f6',
+  simples: '#10b981',
+  mei:     '#f59e0b',
+}
+
+function labelRegime(regime: string): string {
+  return REGIMES.find(r => r.value === regime)?.label ?? regime
 }
 
 interface Props {
@@ -30,6 +41,7 @@ const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov'
 export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano, tarefasPadrao, pendenciasVinculo }: Props) {
   const [busca, setBusca] = useFiltroPersistente('clientes-pessoal:busca', '')
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes-pessoal:responsavel', 'TODOS')
+  const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientes-pessoal:regime', 'TODOS')
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
 
   const responsaveis = useMemo(() => ['TODOS', ...Array.from(new Set(
@@ -42,8 +54,9 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
       if (!c.nome.toLowerCase().includes(q) && !(c.cnpj ?? '').includes(q)) return false
     }
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
+    if (filtroRegime !== 'TODOS' && c.regime !== filtroRegime) return false
     return true
-  }), [clientes, busca, filtroResponsavel])
+  }), [clientes, busca, filtroResponsavel, filtroRegime])
 
   const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
@@ -59,6 +72,10 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
         />
         <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} className={selectClass}>
           {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
+        </select>
+        <select value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)} className={selectClass}>
+          <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os regimes</option>
+          {REGIMES.map(r => <option key={r.value} value={r.value} className="bg-[var(--bg-surface)]">{r.label}</option>)}
         </select>
         <button
           onClick={() => setModalNovoOpen(true)}
@@ -121,6 +138,12 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                {cliente.regime && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                    style={{ backgroundColor: (CORES_REGIME[cliente.regime] ?? '#6b7280') + '25', color: CORES_REGIME[cliente.regime] ?? '#6b7280', border: `1px solid ${CORES_REGIME[cliente.regime] ?? '#6b7280'}50` }}>
+                    {labelRegime(cliente.regime)}
+                  </span>
+                )}
                 {cliente.atividade && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
                     {cliente.atividade}
