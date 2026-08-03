@@ -12,7 +12,10 @@ EMAIL_HOST                      = smtp.gmail.com
 EMAIL_PORT                      = 587
 EMAIL_USER                      = tesseratocontabilidade@gmail.com
 EMAIL_PASS                      = <senha de app Gmail>
+ADMIN_SESSION_SECRET            = <string aleatória, >= 32 bytes — ex.: openssl rand -base64 32>
 ```
+
+`ADMIN_SESSION_SECRET` assina o cookie `ts_admin` da seção ADMIN (Parâmetros/Vínculos — feature TES-3). Configurar em Production **e** Preview; nunca versionar. Trocar o valor invalida todas as sessões ADMIN ativas (aceitável).
 
 ## Supabase — configurações necessárias
 
@@ -43,3 +46,6 @@ EMAIL_PASS                      = <senha de app Gmail>
 - [ ] Site URL configurado no Supabase Auth
 - [ ] Domínio verificado no Vercel
 - [ ] Testar login, reset de senha e acesso de não-admin
+- [ ] `ADMIN_SESSION_SECRET` configurada (Production + Preview)
+- [ ] Migration `019_admin_section_auth.sql` aplicada (cria `admin_users`, RPCs e a semente `ADMIN`)
+- [ ] Testar seção ADMIN: acesso sem sessão → bloqueio; credencial semente → troca de senha obrigatória; credencial inválida → erro genérico; acesso direto por URL bloqueado; logout da área ADMIN
