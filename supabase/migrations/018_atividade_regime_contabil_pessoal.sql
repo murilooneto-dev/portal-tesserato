@@ -10,5 +10,5 @@
 -- `atividade` já existe em clientes_contabil e clientes_pessoal desde as
 -- migrations 007 e 010 — não precisa de alteração de schema, só a UI que a
 -- edita passa a usar um select fixo em vez de texto livre.
-alter table clientes_contabil add column regime text;
-alter table clientes_pessoal  add column regime text;
+alter table clientes_contabil add column if not exists regime text;
+alter table clientes_pessoal  add column if not exists regime text;

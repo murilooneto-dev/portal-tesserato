@@ -17,3 +17,7 @@ export const REGIMES = [
   { value: 'simples', label: 'Simples Nacional' },
   { value: 'mei',     label: 'MEI' },
 ]
+
+export function labelRegime(regime: string): string {
+  return REGIMES.find(r => r.value === regime)?.label ?? regime
+}

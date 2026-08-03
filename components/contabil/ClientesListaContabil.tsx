@@ -6,7 +6,7 @@ import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComContabil } from '@/lib/clientes-contabil'
 import type { PendenciaVinculo } from '@/lib/vinculos'
 import EmpresaContabilModal from './EmpresaContabilModal'
-import { REGIMES } from '@/lib/atividades-regimes'
+import { REGIMES, labelRegime } from '@/lib/atividades-regimes'
 
 const CORES_RESP: string[] = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316','#ef4444','#84cc16']
 const _respColorCache: Record<string, string> = {}
@@ -23,9 +23,6 @@ const CORES_REGIME: Record<string, string> = {
   mei:     '#f59e0b',
 }
 
-function labelRegime(regime: string): string {
-  return REGIMES.find(r => r.value === regime)?.label ?? regime
-}
 
 interface Props {
   clientes: ClienteComContabil[]
