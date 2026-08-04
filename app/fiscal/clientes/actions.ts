@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarCliente } from '@/lib/supabase/server'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
+import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 
 export async function desbloquearTarefa(
   tarefaId: string,
@@ -316,4 +317,41 @@ export async function excluirArquivoTarefa(arquivoId: string) {
 
   revalidatePath(`/fiscal/clientes/${tarefa.cliente_id}`)
   revalidatePath('/fiscal/clientes')
+}
+
+export async function desabilitarCliente(clienteId: string, senha: string): Promise<{ error?: string }> {
+  if (!(await podeEditarCliente(clienteId))) return { error: 'Não autorizado.' }
+
+  const { ok, error: erroSenha } = await verificarSenhaUsuarioAtual(senha)
+  if (!ok) return { error: erroSenha ?? 'Senha incorreta.' }
+
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+
+  const { error } = await supabase.from('clientes_fiscal').update({ ativo: false }).eq('cliente_id', clienteId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/fiscal/clientes/${clienteId}`)
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/dashboard')
+  revalidatePath('/fiscal/relatorios')
+  revalidatePath('/fiscal/tarefas')
+  return {}
+}
+
+export async function reabilitarCliente(clienteId: string): Promise<{ error?: string }> {
+  if (!(await podeEditarCliente(clienteId))) return { error: 'Não autorizado.' }
+
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+
+  const { error } = await supabase.from('clientes_fiscal').update({ ativo: true }).eq('cliente_id', clienteId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/fiscal/clientes/${clienteId}`)
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/dashboard')
+  revalidatePath('/fiscal/relatorios')
+  revalidatePath('/fiscal/tarefas')
+  return {}
 }

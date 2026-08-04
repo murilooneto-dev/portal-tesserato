@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Cliente } from '@/lib/types'
-import { excluirCliente } from '@/app/fiscal/clientes/actions'
+import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
+import { excluirCliente, desabilitarCliente, reabilitarCliente } from '@/app/fiscal/clientes/actions'
+import DesabilitarClienteModal from '@/components/geral/DesabilitarClienteModal'
 import EmpresaModal from './EmpresaModal'
 
 interface Props {
-  cliente: Cliente
+  cliente: ClienteComFiscal
   responsaveis: string[]
   templates: Record<string, string[]>
 }
@@ -18,7 +19,21 @@ export default function ClienteAcoes({ cliente, responsaveis, templates }: Props
   const [nomeDigitado, setNomeDigitado] = useState('')
   const [palavraDigitada, setPalavraDigitada] = useState('')
   const [excluindo, setExcluindo] = useState(false)
+  const [desabilitarModalOpen, setDesabilitarModalOpen] = useState(false)
+  const [confirmandoReabilitar, setConfirmandoReabilitar] = useState(false)
+  const [reabilitando, setReabilitando] = useState(false)
   const router = useRouter()
+
+  async function handleReabilitar() {
+    setReabilitando(true)
+    try {
+      await reabilitarCliente(cliente.id)
+      router.refresh()
+    } finally {
+      setReabilitando(false)
+      setConfirmandoReabilitar(false)
+    }
+  }
 
   const confirmacaoValida = nomeDigitado.trim() === cliente.nome && palavraDigitada.trim().toUpperCase() === 'DELETAR'
 
@@ -52,6 +67,31 @@ export default function ClienteAcoes({ cliente, responsaveis, templates }: Props
           className="text-xs text-red-400/70 hover:text-red-400 px-3 py-1.5 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all">
           Excluir
         </button>
+        {cliente.ativo ? (
+          <button
+            onClick={() => setDesabilitarModalOpen(true)}
+            className="text-xs text-amber-400/70 hover:text-amber-400 px-3 py-1.5 rounded-lg border border-amber-500/20 hover:border-amber-500/40 transition-all">
+            Desabilitar
+          </button>
+        ) : (
+          <>
+            <span className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15 uppercase tracking-wide">
+              Desabilitado
+            </span>
+            {confirmandoReabilitar ? (
+              <button onClick={handleReabilitar} disabled={reabilitando}
+                className="text-xs bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-3 py-1.5 rounded-lg hover:bg-emerald-500/30 transition-all disabled:opacity-40">
+                {reabilitando ? 'Reabilitando...' : 'Confirmar'}
+              </button>
+            ) : (
+              <button
+                onClick={() => setConfirmandoReabilitar(true)}
+                className="text-xs text-emerald-400/70 hover:text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-all">
+                Reabilitar
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       {modalOpen && (
@@ -109,6 +149,15 @@ export default function ClienteAcoes({ cliente, responsaveis, templates }: Props
             </div>
           </div>
         </div>
+      )}
+
+      {desabilitarModalOpen && (
+        <DesabilitarClienteModal
+          clienteNome={cliente.nome}
+          onClose={() => setDesabilitarModalOpen(false)}
+          onConfirm={senha => desabilitarCliente(cliente.id, senha)}
+          onConfirmado={() => router.refresh()}
+        />
       )}
     </>
   )

@@ -103,7 +103,7 @@ export default function ParcelamentosPage() {
         load(admin, nome)
       })
     })
-    sb.from('clientes').select('nome, cnpj, clientes_fiscal!inner(responsavel)').order('nome').then(({ data }) => {
+    sb.from('clientes').select('nome, cnpj, clientes_fiscal!inner(responsavel)').eq('clientes_fiscal.ativo', true).order('nome').then(({ data }) => {
       setClientesCadastrados(data?.map((c: any) => ({
         nome: c.nome,
         cnpj: c.cnpj,
