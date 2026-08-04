@@ -2,20 +2,32 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { SETOR_HOME, type UserSetor } from '@/lib/types'
+import { resolveSetorPagina, podeAcessarSetor, podeAcessarPagina } from '@/lib/route-permissions'
 import { ehRotaAdmin } from '@/lib/rotas-admin'
 import { ADMIN_SESSION_COOKIE, ADMIN_SESSION_INACTIVITY_TTL_SECONDS } from '@/lib/admin-auth/constants'
 import { signAdminToken, verifyAdminToken } from '@/lib/admin-auth/session'
 
-const PREFIXOS_SETOR: UserSetor[] = ['fiscal', 'contabil', 'pessoal', 'societario', 'financeiro']
+// Nome do header que sinaliza pra camada de dados (getPortalContext) que o
+// Proxy rodou pra essa navegação. É a base da defesa em profundidade: a
+// checagem de setor/página abaixo NÃO é a única em vigor — getPortalContext
+// repete a mesma checagem (via lib/route-permissions) antes de renderizar
+// qualquer layout de setor. Se esse header não chegar lá (por exemplo, uma
+// requisição forjada com "purpose: prefetch" pra escapar do matcher abaixo),
+// getPortalContext nega o acesso por padrão em vez de confiar apenas em
+// "existe um usuário logado".
+const PATHNAME_HEADER = 'x-pathname'
 
-// Páginas fora do sistema de permissão granular por página: sempre
-// liberadas pra qualquer usuário que tenha o setor (não aparecem no menu
-// nem na tela de permissões, mas continuam acessíveis por URL direta).
-// `dashboard` é a home de cada setor (nunca pode ser bloqueada, senão o
-// usuário fica sem destino de redirecionamento). agenda/bots/tarefas são
-// páginas operacionais por-usuário do Fiscal, que operadores já usam por
-// URL direta hoje — não são gerenciadas pela permissão por página.
-const PAGINAS_SEMPRE_LIBERADAS = ['dashboard', 'agenda', 'bots', 'tarefas']
+// getUser() pode ter rotacionado o refresh token antes de decidirmos
+// redirecionar (login inválido ou setor sem permissão). Um NextResponse.redirect
+// novo não carrega os Set-Cookie que ficaram pendurados em `supabaseResponse` —
+// sem repassar esses cookies, o navegador guardaria o refresh token antigo
+// (já invalidado pelo Supabase) e seria deslogado à força na requisição
+// seguinte, mesmo tendo acabado de renovar a sessão com sucesso.
+function redirectComCookies(url: URL, origem: NextResponse) {
+  const redirect = NextResponse.redirect(url)
+  origem.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie))
+  return redirect
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -30,7 +42,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let supabaseResponse = NextResponse.next({ request })
+  const buildResponse = () => {
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set(PATHNAME_HEADER, pathname)
+    return NextResponse.next({ request: { headers: requestHeaders } })
+  }
+
+  let supabaseResponse = buildResponse()
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,7 +58,7 @@ export async function proxy(request: NextRequest) {
         getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
+          supabaseResponse = buildResponse()
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options)
           })
@@ -52,7 +70,7 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return redirectComCookies(new URL('/login', request.url), supabaseResponse)
   }
 
   // Seção ADMIN (Parâmetros/Vínculos): exige role='admin' do portal *e*
@@ -63,7 +81,7 @@ export async function proxy(request: NextRequest) {
   if (ehRotaAdmin(pathname)) {
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     if (profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/intranet', request.url))
+      return redirectComCookies(new URL('/intranet', request.url), supabaseResponse)
     }
 
     const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value
@@ -73,7 +91,7 @@ export async function proxy(request: NextRequest) {
       const url = new URL('/admin/bloqueio', request.url)
       url.searchParams.set('next', pathname)
       if (session?.mustChangePassword) url.searchParams.set('etapa', 'trocar-senha')
-      return NextResponse.redirect(url)
+      return redirectComCookies(url, supabaseResponse)
     }
 
     // Renovação por inatividade (sliding window): reemite o cookie a cada
@@ -94,7 +112,7 @@ export async function proxy(request: NextRequest) {
     })
   }
 
-  const setorDaRota = PREFIXOS_SETOR.find(s => pathname.startsWith(`/${s}`))
+  const { setor: setorDaRota, pagina } = resolveSetorPagina(pathname)
   if (setorDaRota) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -102,19 +120,10 @@ export async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const podeAcessarSetor = profile?.role === 'admin' || (profile?.setores ?? []).includes(setorDaRota)
-
-    const resto = pathname.slice(`/${setorDaRota}`.length).replace(/^\//, '')
-    const pagina = resto.split('/')[0] || 'dashboard'
-    const podeAcessarPagina =
-      profile?.role === 'admin' ||
-      PAGINAS_SEMPRE_LIBERADAS.includes(pagina) ||
-      (profile?.paginas_acesso ?? []).includes(`${setorDaRota}:${pagina}`)
-
-    if (!podeAcessarSetor || !podeAcessarPagina) {
+    if (!podeAcessarSetor(profile, setorDaRota) || !podeAcessarPagina(profile, setorDaRota, pagina)) {
       const primeiroSetor = profile?.setores?.[0] as UserSetor | undefined
       const destino = primeiroSetor ? SETOR_HOME[primeiroSetor] : '/intranet'
-      return NextResponse.redirect(new URL(destino, request.url))
+      return redirectComCookies(new URL(destino, request.url), supabaseResponse)
     }
   }
 
@@ -122,5 +131,28 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon\\.ico|logo\\.ico|logo\\.png).*)'],
+  matcher: [
+    {
+      source: '/((?!_next/static|_next/image|favicon\\.ico|logo\\.ico|logo\\.png).*)',
+      // Prefetch requests (disparados em massa pelos <Link> do Sidebar/TopNav
+      // assim que entram no viewport) não devem chamar supabase.auth.getUser().
+      // Cada chamada pode disparar um refresh de token; como o refresh token
+      // do Supabase é rotacionado (invalidado após o primeiro uso), várias
+      // requisições concorrentes usando o mesmo cookie de sessão faziam a
+      // maioria delas falhar com "refresh token already used" e cair no
+      // redirect de login — mesmo com o usuário autenticado. É esse race
+      // condition que explicava o padrão: falha ao navegar (múltiplas
+      // requisições simultâneas), mas funciona ao dar F5 (requisição única).
+      //
+      // Excluir essas requisições do Proxy também significa que a checagem
+      // de setor/página abaixo não roda para elas. Isso é intencional e só é
+      // seguro porque getPortalContext (lib/get-portal-context.ts) refaz a
+      // mesma checagem como defesa em profundidade antes de renderizar
+      // qualquer página protegida — ver PATHNAME_HEADER acima.
+      missing: [
+        { type: 'header', key: 'next-router-prefetch' },
+        { type: 'header', key: 'purpose', value: 'prefetch' },
+      ],
+    },
+  ],
 }
