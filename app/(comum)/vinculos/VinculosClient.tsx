@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { criarVinculo, excluirVinculo } from './actions'
 import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
 
 interface Props {
@@ -15,7 +15,6 @@ const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase trac
 
 export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Props) {
   const router = useRouter()
-  const sb = createClient()
 
   const [setorOrigem, setSetorOrigem] = useState<UserSetor>('fiscal')
   const [tipoOrigem, setTipoOrigem] = useState('')
@@ -29,14 +28,14 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
     if (!tipoOrigem || !tipoDestino) return
     setSaving(true)
     setErro(null)
-    const { error } = await sb.from('tarefa_vinculos').insert({
-      setor_origem: setorOrigem,
-      tipo_origem: tipoOrigem,
-      setor_destino: setorDestino,
-      tipo_destino: tipoDestino,
+    const { error } = await criarVinculo({
+      setorOrigem,
+      tipoOrigem,
+      setorDestino,
+      tipoDestino,
     })
     setSaving(false)
-    if (error) { setErro(error.message); return }
+    if (error) { setErro(error); return }
     setTipoOrigem('')
     setTipoDestino('')
     router.refresh()
@@ -44,8 +43,9 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
 
   async function handleExcluir(id: string) {
     setExcluindoId(id)
-    await sb.from('tarefa_vinculos').delete().eq('id', id)
+    const { error } = await excluirVinculo(id)
     setExcluindoId(null)
+    if (error) { setErro(error); return }
     router.refresh()
   }
 

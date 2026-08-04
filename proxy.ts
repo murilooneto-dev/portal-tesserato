@@ -3,6 +3,9 @@ import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { SETOR_HOME, type UserSetor } from '@/lib/types'
 import { resolveSetorPagina, podeAcessarSetor, podeAcessarPagina } from '@/lib/route-permissions'
+import { ehRotaAdmin } from '@/lib/rotas-admin'
+import { ADMIN_SESSION_COOKIE, ADMIN_SESSION_INACTIVITY_TTL_SECONDS } from '@/lib/admin-auth/constants'
+import { signAdminToken, verifyAdminToken } from '@/lib/admin-auth/session'
 
 // Nome do header que sinaliza pra camada de dados (getPortalContext) que o
 // Proxy rodou pra essa navegação. É a base da defesa em profundidade: a
@@ -68,6 +71,45 @@ export async function proxy(request: NextRequest) {
 
   if (!user) {
     return redirectComCookies(new URL('/login', request.url), supabaseResponse)
+  }
+
+  // Seção ADMIN (Parâmetros/Vínculos): exige role='admin' do portal *e*
+  // sessão própria ts_admin (defesa em profundidade — modelo mais
+  // restritivo assumido pela Arquitetura para a feature TES-3). O proxy
+  // só verifica assinatura/expiração do JWT (Edge-safe, sem query pesada);
+  // a verificação de senha em si acontece só no login, via RPC no Postgres.
+  if (ehRotaAdmin(pathname)) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'admin') {
+      return redirectComCookies(new URL('/intranet', request.url), supabaseResponse)
+    }
+
+    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value
+    const session = token ? await verifyAdminToken(token) : null
+
+    if (!session || session.mustChangePassword) {
+      const url = new URL('/admin/bloqueio', request.url)
+      url.searchParams.set('next', pathname)
+      if (session?.mustChangePassword) url.searchParams.set('etapa', 'trocar-senha')
+      return redirectComCookies(url, supabaseResponse)
+    }
+
+    // Renovação por inatividade (sliding window): reemite o cookie a cada
+    // acesso válido às rotas ADMIN, preservando `loginAt` para manter o
+    // teto de expiração absoluta de 8h.
+    const renovado = await signAdminToken({
+      sub: session.sub,
+      username: session.username,
+      mustChangePassword: session.mustChangePassword,
+      loginAt: session.loginAt,
+    })
+    supabaseResponse.cookies.set(ADMIN_SESSION_COOKIE, renovado, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: ADMIN_SESSION_INACTIVITY_TTL_SECONDS,
+    })
   }
 
   const { setor: setorDaRota, pagina } = resolveSetorPagina(pathname)
