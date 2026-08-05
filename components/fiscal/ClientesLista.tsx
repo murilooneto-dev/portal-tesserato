@@ -52,6 +52,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('clientes:grupo', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('clientes:atividade', 'TODOS')
   const [filtroPendencia, setFiltroPendencia] = useFiltroPersistente('clientes:pendencia', false)
+  const [mostrarDesabilitados, setMostrarDesabilitados] = useFiltroPersistente('clientes:mostrarDesabilitados', false)
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
 
   const responsaveis = useMemo(() => ['TODOS', ...Array.from(new Set(
@@ -76,8 +77,9 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     if (filtroGrupo !== 'TODOS' && c.grupo !== filtroGrupo) return false
     if (filtroAtividade !== 'TODOS' && c.atividade !== filtroAtividade) return false
     if (filtroPendencia && !comPendencia.has(c.id)) return false
+    if (!mostrarDesabilitados && c.ativo === false) return false
     return true
-  }), [clientes, busca, filtroResponsavel, filtroGrupo, filtroAtividade, filtroPendencia, comPendencia])
+  }), [clientes, busca, filtroResponsavel, filtroGrupo, filtroAtividade, filtroPendencia, mostrarDesabilitados, comPendencia])
 
   const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
@@ -113,6 +115,15 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
             className="w-4 h-4 accent-[var(--accent)]"
           />
           <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Apenas pendentes</span>
+        </label>
+        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
+          <input
+            type="checkbox"
+            checked={mostrarDesabilitados}
+            onChange={e => setMostrarDesabilitados(e.target.checked)}
+            className="w-4 h-4 accent-[var(--accent)]"
+          />
+          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Mostrar desabilitados</span>
         </label>
         <button
           onClick={() => setModalNovoOpen(true)}
@@ -201,6 +212,11 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
                     style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
                     {cliente.responsavel}
+                  </span>
+                )}
+                {cliente.ativo === false && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
+                    Desabilitado
                   </span>
                 )}
               </div>

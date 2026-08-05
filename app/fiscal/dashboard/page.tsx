@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   })()
 
   const [{ data: clientesRaw }, { data: profiles }, tarefas, { data: eventosRaw }] = await Promise.all([
-    supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome'),
+    supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('clientes_fiscal.ativo', true).order('nome'),
     supabase.from('profiles').select('*'),
     buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano),
     supabase.from('calendario_eventos').select('*').eq('setor', 'fiscal'),

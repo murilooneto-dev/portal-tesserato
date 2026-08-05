@@ -18,7 +18,7 @@ export default async function FerramentasPage() {
 
   const isAdmin = profile?.role === 'admin'
 
-  let q = supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
+  let q = supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('clientes_fiscal.ativo', true).order('nome')
   if (!isAdmin && profile?.nome) q = q.ilike('clientes_fiscal.responsavel', profile.nome)
 
   const { data: clientes } = await q

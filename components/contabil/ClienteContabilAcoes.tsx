@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { excluirClienteContabil } from '@/app/contabil/clientes/actions'
+import { excluirClienteContabil, desabilitarCliente, reabilitarCliente } from '@/app/contabil/clientes/actions'
+import DesabilitarClienteModal from '@/components/geral/DesabilitarClienteModal'
 import EmpresaContabilModal from './EmpresaContabilModal'
 import type { ClienteComContabil } from '@/lib/clientes-contabil'
 
@@ -17,6 +18,26 @@ export default function ClienteContabilAcoes({ cliente, responsaveis, tarefasPad
   const [editando, setEditando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
+  const [desabilitarModalOpen, setDesabilitarModalOpen] = useState(false)
+  const [confirmandoReabilitar, setConfirmandoReabilitar] = useState(false)
+  const [reabilitando, setReabilitando] = useState(false)
+  const [erroReabilitar, setErroReabilitar] = useState<string | null>(null)
+
+  async function handleReabilitar() {
+    setReabilitando(true)
+    setErroReabilitar(null)
+    try {
+      const resultado = await reabilitarCliente(cliente.id)
+      if (resultado.error) {
+        setErroReabilitar(resultado.error)
+        return
+      }
+      router.refresh()
+      setConfirmandoReabilitar(false)
+    } finally {
+      setReabilitando(false)
+    }
+  }
 
   async function handleExcluir() {
     setExcluindo(true)
@@ -54,12 +75,48 @@ export default function ClienteContabilAcoes({ cliente, responsaveis, tarefasPad
         </button>
       )}
 
+      {cliente.ativo !== false ? (
+        <button
+          onClick={() => setDesabilitarModalOpen(true)}
+          className="text-xs bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-amber-400/70 hover:text-amber-400 px-3 py-1.5 rounded-lg transition-all">
+          Desabilitar
+        </button>
+      ) : (
+        <>
+          <span className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15 uppercase tracking-wide">
+            Desabilitado
+          </span>
+          {confirmandoReabilitar ? (
+            <button onClick={handleReabilitar} disabled={reabilitando}
+              className="text-xs bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-3 py-1.5 rounded-lg hover:bg-emerald-500/30 transition-all disabled:opacity-40">
+              {reabilitando ? 'Reabilitando...' : 'Confirmar'}
+            </button>
+          ) : (
+            <button
+              onClick={() => setConfirmandoReabilitar(true)}
+              className="text-xs bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-emerald-400/70 hover:text-emerald-400 px-3 py-1.5 rounded-lg transition-all">
+              Reabilitar
+            </button>
+          )}
+          {erroReabilitar && <p className="text-red-400 text-xs">{erroReabilitar}</p>}
+        </>
+      )}
+
       {editando && (
         <EmpresaContabilModal
           clienteId={cliente.id}
           responsaveis={responsaveis}
           tarefasPadrao={tarefasPadrao}
           onClose={() => setEditando(false)}
+        />
+      )}
+
+      {desabilitarModalOpen && (
+        <DesabilitarClienteModal
+          clienteNome={cliente.nome}
+          onClose={() => setDesabilitarModalOpen(false)}
+          onConfirm={senha => desabilitarCliente(cliente.id, senha)}
+          onConfirmado={() => router.refresh()}
         />
       )}
     </div>

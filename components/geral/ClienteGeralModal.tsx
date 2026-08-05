@@ -143,12 +143,23 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
 
   async function handleSave() {
     if (!form.nome.trim()) return
+    if (form.setores.length === 0) {
+      setErro('Selecione ao menos um setor.')
+      return
+    }
     setSaving(true)
     setErro(null)
 
     const mit = form.municipio && form.uf
       ? `${form.municipio}/${form.uf}`
       : form.municipio || null
+
+    // form.setores nunca chega vazio aqui (bloqueado acima). Um fallback
+    // silencioso para 'fiscal' foi removido: ele reintroduzia o cliente
+    // "fantasma" sempre que Fiscal era o único setor marcado (caso comum,
+    // já que Fiscal é o setor padrão de clientes legados) — desmarcá-lo
+    // esvaziava o array e o fallback recolocava 'fiscal' sem o usuário notar.
+    const setoresEfetivos = form.setores
 
     const clientePayload = {
       nome:         form.nome,
@@ -157,7 +168,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
       uf:           form.uf || null,
       mit,
       contato_chat: form.contato_chat || null,
-      setores:      form.setores.length > 0 ? form.setores : ['fiscal'],
+      setores:      setoresEfetivos,
       tarefas_vinculadas_ativas: form.vinculosAtivos,
     }
 
@@ -191,7 +202,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
         setErro(error.message)
         return
       }
-      if (form.setores.includes('fiscal')) {
+      if (setoresEfetivos.includes('fiscal')) {
         const { data: existente } = await sb.from('clientes_fiscal').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
         if (!existente) {
           const { error: errFiscal } = await sb.from('clientes_fiscal').insert({ cliente_id: clienteId, ...fiscalPayload })
@@ -201,12 +212,21 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
             return
           }
         }
+      } else {
+        // Setor Fiscal desmarcado: remove a linha em clientes_fiscal para
+        // que o cliente saia de /fiscal/clientes, que usa inner join.
+        const { error: errRemoveFiscal } = await sb.from('clientes_fiscal').delete().eq('cliente_id', clienteId)
+        if (errRemoveFiscal) {
+          setSaving(false)
+          setErro(errRemoveFiscal.message)
+          return
+        }
       }
       // Mesmo raciocínio do bloco Fiscal acima: se o setor Contábil acabou
       // de ser marcado num cliente que nunca teve linha em clientes_contabil,
       // provisiona uma com as tarefas padrão do setor — sem isso o cliente
       // fica invisível em /contabil/clientes, que também usa inner join.
-      if (form.setores.includes('contabil')) {
+      if (setoresEfetivos.includes('contabil')) {
         const { data: existenteContabil } = await sb.from('clientes_contabil').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
         if (!existenteContabil) {
           const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).order('nome')
@@ -220,13 +240,22 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
             return
           }
         }
+      } else {
+        // Setor Contábil desmarcado: remove a linha em clientes_contabil para
+        // que o cliente saia de /contabil/clientes, que usa inner join.
+        const { error: errRemoveContabil } = await sb.from('clientes_contabil').delete().eq('cliente_id', clienteId)
+        if (errRemoveContabil) {
+          setSaving(false)
+          setErro(errRemoveContabil.message)
+          return
+        }
       }
       // Mesmo raciocínio dos blocos Fiscal/Contábil acima: se o setor
       // Pessoal acabou de ser marcado num cliente que nunca teve linha em
       // clientes_pessoal, provisiona uma com as tarefas padrão do setor —
       // sem isso o cliente fica invisível em /pessoal/clientes, que também
       // usa inner join.
-      if (form.setores.includes('pessoal')) {
+      if (setoresEfetivos.includes('pessoal')) {
         const { data: existentePessoal } = await sb.from('clientes_pessoal').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
         if (!existentePessoal) {
           const { data: tiposPessoal } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).order('nome')
@@ -240,6 +269,15 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
             return
           }
         }
+      } else {
+        // Setor Pessoal desmarcado: remove a linha em clientes_pessoal para
+        // que o cliente saia de /pessoal/clientes, que usa inner join.
+        const { error: errRemovePessoal } = await sb.from('clientes_pessoal').delete().eq('cliente_id', clienteId)
+        if (errRemovePessoal) {
+          setSaving(false)
+          setErro(errRemovePessoal.message)
+          return
+        }
       }
       setSaving(false)
     } else {
@@ -249,7 +287,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
         setErro(errCliente?.message ?? 'Falha ao criar cliente')
         return
       }
-      if (form.setores.includes('fiscal')) {
+      if (setoresEfetivos.includes('fiscal')) {
         const { error: errFiscal } = await sb.from('clientes_fiscal').insert({ cliente_id: novoCliente.id, ...fiscalPayload })
         if (errFiscal) {
           setSaving(false)
@@ -257,7 +295,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
           return
         }
       }
-      if (form.setores.includes('contabil')) {
+      if (setoresEfetivos.includes('contabil')) {
         const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).order('nome')
         const { error: errContabil } = await sb.from('clientes_contabil').insert({
           cliente_id: novoCliente.id,
@@ -269,7 +307,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
           return
         }
       }
-      if (form.setores.includes('pessoal')) {
+      if (setoresEfetivos.includes('pessoal')) {
         const { data: tiposPessoal } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).order('nome')
         const { error: errPessoal } = await sb.from('clientes_pessoal').insert({
           cliente_id: novoCliente.id,
@@ -433,7 +471,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
               className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
               Cancelar
             </button>
-            <button onClick={handleSave} disabled={saving || !form.nome.trim()}
+            <button onClick={handleSave} disabled={saving || !form.nome.trim() || form.setores.length === 0}
               className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
               {saving ? 'Salvando...' : 'Salvar cliente'}
             </button>

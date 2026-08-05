@@ -30,7 +30,7 @@ export async function POST() {
   const ano = agora.getFullYear()
 
   const [{ data: clientesRows, error: clientesErr }, tarefas] = await Promise.all([
-    admin.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome'),
+    admin.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('clientes_fiscal.ativo', true).order('nome'),
     buscarTodasTarefasDoMes<Tarefa>(admin, mes, ano),
   ])
   if (clientesErr) return NextResponse.json({ error: clientesErr.message }, { status: 500 })
