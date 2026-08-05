@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
+import { buscarLabelsParcelamentoAtivo } from '@/lib/parcelamentos-aviso'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import TarefaChecklistPessoal from '@/components/pessoal/TarefaChecklistPessoal'
@@ -30,6 +31,8 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   const { data: clienteRaw } = await supabase.from('clientes').select(SELECT_CLIENTE_PESSOAL).eq('id', id).single()
   if (!clienteRaw) notFound()
   const cliente = flattenClientePessoal(clienteRaw)
+
+  const labelsParcelamento = await buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null)
 
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
@@ -122,6 +125,13 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
                   {cliente.responsavel && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.responsavel}</span>}
                   {cliente.municipio && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
                 </div>
+                {labelsParcelamento.length > 0 && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 bg-red-500/15 px-3 py-1 rounded-full">
+                      ⚠️ Cliente possui parcelamento! {labelsParcelamento.join(' / ')}
+                    </span>
+                  </div>
+                )}
               </div>
               {podeEditar && <ClientePessoalAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} />}
             </div>
