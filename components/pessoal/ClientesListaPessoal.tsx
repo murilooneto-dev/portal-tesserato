@@ -39,6 +39,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
   const [busca, setBusca] = useFiltroPersistente('clientes-pessoal:busca', '')
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes-pessoal:responsavel', 'TODOS')
   const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientes-pessoal:regime', 'TODOS')
+  const [mostrarDesabilitados, setMostrarDesabilitados] = useFiltroPersistente('clientes-pessoal:mostrarDesabilitados', false)
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
 
   const responsaveis = useMemo(() => ['TODOS', ...Array.from(new Set(
@@ -52,8 +53,9 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
     }
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
     if (filtroRegime !== 'TODOS' && c.regime !== filtroRegime) return false
+    if (!mostrarDesabilitados && c.ativo === false) return false
     return true
-  }), [clientes, busca, filtroResponsavel, filtroRegime])
+  }), [clientes, busca, filtroResponsavel, filtroRegime, mostrarDesabilitados])
 
   const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
@@ -74,6 +76,15 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os regimes</option>
           {REGIMES.map(r => <option key={r.value} value={r.value} className="bg-[var(--bg-surface)]">{r.label}</option>)}
         </select>
+        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
+          <input
+            type="checkbox"
+            checked={mostrarDesabilitados}
+            onChange={e => setMostrarDesabilitados(e.target.checked)}
+            className="w-4 h-4 accent-[var(--accent)]"
+          />
+          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Mostrar desabilitados</span>
+        </label>
         <button
           onClick={() => setModalNovoOpen(true)}
           className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
@@ -150,6 +161,11 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
                     style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
                     {cliente.responsavel}
+                  </span>
+                )}
+                {cliente.ativo === false && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
+                    Desabilitado
                   </span>
                 )}
               </div>
