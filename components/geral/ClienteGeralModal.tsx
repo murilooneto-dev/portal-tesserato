@@ -143,6 +143,10 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
 
   async function handleSave() {
     if (!form.nome.trim()) return
+    if (form.setores.length === 0) {
+      setErro('Selecione ao menos um setor.')
+      return
+    }
     setSaving(true)
     setErro(null)
 
@@ -150,11 +154,12 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
       ? `${form.municipio}/${form.uf}`
       : form.municipio || null
 
-    // Nunca salvamos um cliente sem setor: se o usuário desmarcar todos,
-    // caímos no fallback 'fiscal'. setoresEfetivos é a mesma fonte usada
-    // tanto no payload de `clientes` quanto nos if/else de provisionamento
-    // abaixo, para as duas ficarem sempre coerentes entre si.
-    const setoresEfetivos = form.setores.length > 0 ? form.setores : (['fiscal'] as UserSetor[])
+    // form.setores nunca chega vazio aqui (bloqueado acima). Um fallback
+    // silencioso para 'fiscal' foi removido: ele reintroduzia o cliente
+    // "fantasma" sempre que Fiscal era o único setor marcado (caso comum,
+    // já que Fiscal é o setor padrão de clientes legados) — desmarcá-lo
+    // esvaziava o array e o fallback recolocava 'fiscal' sem o usuário notar.
+    const setoresEfetivos = form.setores
 
     const clientePayload = {
       nome:         form.nome,
@@ -466,7 +471,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
               className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
               Cancelar
             </button>
-            <button onClick={handleSave} disabled={saving || !form.nome.trim()}
+            <button onClick={handleSave} disabled={saving || !form.nome.trim() || form.setores.length === 0}
               className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
               {saving ? 'Salvando...' : 'Salvar cliente'}
             </button>
