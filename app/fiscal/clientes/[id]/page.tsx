@@ -17,6 +17,8 @@ import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
 import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
+import ClienteParcelamentoAviso from '@/components/fiscal/ClienteParcelamentoAviso'
+import { buscarLocaisParcelamentoDoCliente } from '@/lib/parcelamentos-aviso'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -104,9 +106,10 @@ export default async function ClienteDetalhePage({ params }: Props) {
   }
 
   // Dados pro EmpresaModal (editar cliente)
-  const [{ data: usuariosFiscal }, { data: atividadeTemplates }] = await Promise.all([
+  const [{ data: usuariosFiscal }, { data: atividadeTemplates }, locaisParcelamento] = await Promise.all([
     supabase.from('profiles').select('nome').contains('setores', ['fiscal']),
     supabase.from('atividade_templates').select('atividade,tarefas'),
+    buscarLocaisParcelamentoDoCliente(supabase, cliente),
   ])
   const responsaveis = Array.from(new Set(
     (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
@@ -189,6 +192,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                   {cliente.atividade && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.atividade}</span>}
                   {cliente.responsavel && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.responsavel}</span>}
                   {cliente.municipio && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
+                  <ClienteParcelamentoAviso locais={locaisParcelamento} />
                 </div>
               </div>
               <div className="flex items-center gap-3">
