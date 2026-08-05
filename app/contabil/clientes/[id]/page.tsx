@@ -31,18 +31,18 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   const { data: clienteRaw } = await supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).eq('id', id).single()
   if (!clienteRaw) notFound()
   const cliente = flattenClienteContabil(clienteRaw)
-  const labelsParcelamento = await buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null)
 
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
   const { mes, ano } = await getMesAno()
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
-  const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }] = await Promise.all([
+  const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }, labelsParcelamento] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
     supabase.from('profiles').select('nome').contains('setores', ['contabil']),
     supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'contabil'),
     supabase.from('calendario_eventos').select('*').eq('setor', 'contabil'),
+    buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null),
   ])
 
   const prazosPorTipo: Record<string, number> = {}

@@ -1,5 +1,7 @@
 -- supabase/migrations/019_parcelamento_status_e_datas.sql
 
+begin;
+
 -- Status geral do parcelamento — usado pro aviso na ficha do cliente
 -- (spec 2026-08-05). Até aqui não existia um campo único dizendo se o
 -- parcelamento como um todo está ativo; só havia texto livre por mês.
@@ -40,3 +42,5 @@ alter table parcelamentos add column if not exists dez date;
 -- Usado por buscarLabelsParcelamentoAtivo (lib/parcelamentos-aviso.ts) pra
 -- casar parcelamento ↔ cliente por CNPJ e filtrar só os em andamento.
 create index if not exists idx_parcelamentos_cnpj_status on parcelamentos (cnpj, status);
+
+commit;

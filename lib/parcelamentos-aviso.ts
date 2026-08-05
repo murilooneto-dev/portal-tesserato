@@ -28,6 +28,7 @@ export async function buscarLabelsParcelamentoAtivo(
     .select('secao')
     .eq('cnpj', cnpj)
     .eq('status', 'EM ANDAMENTO')
+    .order('secao')
 
   if (!data || data.length === 0) return []
 

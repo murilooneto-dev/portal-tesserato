@@ -182,6 +182,7 @@ export default function ParcelamentosPage() {
           <td>${p.regime ?? '—'}</td>
           <td>${p.responsavel ?? '—'}</td>
           <td>${p.local_tipo ?? '—'}</td>
+          <td>${p.status}</td>
           ${MESES_COLS.map(m => {
             const v = (p as any)[m] as string | null
             return `<td class="month ${v ? 'filled' : ''}">${v ? formatarDataBR(v) : '—'}</td>`
@@ -191,7 +192,7 @@ export default function ParcelamentosPage() {
         <div class="section-title">${secao} <span class="count">${rows.length} parcelamento${rows.length !== 1 ? 's' : ''}</span></div>
         <table>
           <thead><tr>
-            <th>Empresa</th><th>CNPJ</th><th>Regime</th><th>Responsável</th><th>Local/Tipo</th>
+            <th>Empresa</th><th>CNPJ</th><th>Regime</th><th>Responsável</th><th>Local/Tipo</th><th>Status</th>
             ${MESES_ABREV.map(m => `<th class="month">${m}</th>`).join('')}
           </tr></thead>
           <tbody>${trs}</tbody>

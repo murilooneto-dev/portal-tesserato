@@ -32,17 +32,16 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   if (!clienteRaw) notFound()
   const cliente = flattenClientePessoal(clienteRaw)
 
-  const labelsParcelamento = await buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null)
-
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
   const { mes, ano } = await getMesAno()
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
-  const [{ data: tarefas }, { data: usuariosPessoal }, { data: tiposRaw }] = await Promise.all([
+  const [{ data: tarefas }, { data: usuariosPessoal }, { data: tiposRaw }, labelsParcelamento] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'pessoal'),
     supabase.from('profiles').select('nome').contains('setores', ['pessoal']),
     supabase.from('tarefa_tipos').select('nome, etapas, meses_visiveis, tipo_resposta').eq('setor', 'pessoal'),
+    buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null),
   ])
 
   const { data: eventosCalRaw } = await supabase
