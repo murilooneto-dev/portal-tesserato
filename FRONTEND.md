@@ -32,7 +32,7 @@ Nenhuma rota nova. Nenhuma navegação nova. O selo não é clicável.
 
 # Integrações
 
-- `lib/parcelamentos-aviso.ts` → `buscarLocaisParcelamentoDoCliente(supabase, cliente)`: query Supabase `select('secao')` em `parcelamentos`, filtrando `empresa_avulsa = false` e `ilike('empresa', cliente.nome)` (RN02/RN06), disparada dentro do `Promise.all` já existente na página junto às consultas de `usuariosFiscal`/`atividadeTemplates`, para não somar latência sequencial (conforme recomendação da Arquitetura).
+- `lib/parcelamentos-aviso.ts` → `buscarLocaisParcelamentoDoCliente(supabase, cliente)`: query Supabase `select('secao')` em `parcelamentos`, filtrando `empresa_avulsa = false` e `eq('empresa', cliente.nome)` (RN02/RN06), disparada dentro do `Promise.all` já existente na página junto às consultas de `usuariosFiscal`/`atividadeTemplates`, para não somar latência sequencial (conforme recomendação da Arquitetura).
 - Nenhuma chamada HTTP nova, nenhum Route Handler, nenhuma Server Action — leitura direta no Server Component, herdando a RLS de `parcelamentos` já existente.
 
 # Estados
@@ -54,7 +54,7 @@ Nenhuma dependência nova. Reaproveitado `lucide-react` (`AlertTriangle`), já p
 # Observações Técnicas
 
 - Segui o mapa e a ordem canônica exatamente como definidos no ARCHITECTURE.md (`SECAO_PARA_LOCAL`, `ORDEM_LOCAIS`), sem alterar regras de negócio.
-- O vínculo cliente↔parcelamento usa apenas `ilike('empresa', cliente.nome)` (RN02), igual ao contrato assinado pela Arquitetura em `buscarLocaisParcelamentoDoCliente`; o reforço opcional por CNPJ mencionado como observação para o Product Analyst não foi implementado por não fazer parte do contrato READY da Arquitetura — permanece registrado como decisão em aberto, não como escopo desta implementação.
+- O vínculo cliente↔parcelamento usa `eq('empresa', cliente.nome)` (RN02) — trocado de `ilike` para `eq` após recomendação do Code Review (M1): como `empresa`, para parcelamentos não avulsos, é sempre uma cópia exata de `clientes.nome` (seleção por dropdown, nunca texto livre), `eq` cobre a mesma regra sem o risco de `%`/`_` serem interpretados como wildcards do Postgres. O reforço opcional por CNPJ mencionado como observação para o Product Analyst não foi implementado por não fazer parte do contrato READY da Arquitetura — permanece registrado como decisão em aberto, não como escopo desta implementação.
 - Validado com `tsc --noEmit`, `next build` (Next.js 16 / Turbopack) e `eslint` — todos sem erros.
 - Não foi possível validar visualmente em navegador nesta sessão (sem ambiente com credenciais Supabase/dados de cliente para renderizar a ficha); a implementação segue rigorosamente as classes Tailwind e o comportamento especificados no DESIGN.md, já validados nos dois temas em `AgendaPessoal.tsx`, citado como referência no próprio documento de design.
 

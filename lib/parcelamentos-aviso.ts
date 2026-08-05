@@ -27,7 +27,7 @@ export async function buscarLocaisParcelamentoDoCliente(
     .from('parcelamentos')
     .select('secao')
     .eq('empresa_avulsa', false)
-    .ilike('empresa', cliente.nome)
+    .eq('empresa', cliente.nome)
 
   return locaisDoParcelamento(data ?? [])
 }
