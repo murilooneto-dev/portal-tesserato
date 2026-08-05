@@ -7,6 +7,7 @@ import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import type { TarefaArquivo, TarefaEtapa, TipoResposta } from '@/lib/types'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
+import { buscarLabelsParcelamentoAtivo } from '@/lib/parcelamentos-aviso'
 import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import type { CalendarioEvento } from '@/lib/types'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
@@ -37,6 +38,8 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const { data: clienteRaw } = await supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('id', id).single()
   if (!clienteRaw) notFound()
   const cliente = flattenClienteFiscal(clienteRaw)
+
+  const labelsParcelamento = await buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null)
 
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
@@ -190,6 +193,13 @@ export default async function ClienteDetalhePage({ params }: Props) {
                   {cliente.responsavel && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.responsavel}</span>}
                   {cliente.municipio && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
                 </div>
+                {labelsParcelamento.length > 0 && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 bg-red-500/15 px-3 py-1 rounded-full">
+                      ⚠️ Cliente possui parcelamento! {labelsParcelamento.join(' / ')}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-[var(--fg)] font-medium text-sm">

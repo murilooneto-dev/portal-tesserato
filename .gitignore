@@ -46,3 +46,6 @@ next-env.d.ts
 
 # worktrees isolados (superpowers)
 /.worktrees/
+
+# workspace de execução de planos (superpowers)
+/.superpowers/sdd/

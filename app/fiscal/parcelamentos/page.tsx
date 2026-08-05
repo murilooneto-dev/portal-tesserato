@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useMesAno } from '@/lib/mes-atual-context'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
+import type { StatusParcelamento } from '@/lib/parcelamentos-aviso'
 
 const SECOES = [
   'RECEITA FEDERAL - ECAC',
@@ -26,6 +27,7 @@ interface Parcelamento {
   regime: string | null
   responsavel: string | null
   local_tipo: string | null
+  status: StatusParcelamento
   tarefa: string | null
   senhas: string | null
   jan: string | null; fev: string | null; mar: string | null; abr: string | null
@@ -35,7 +37,7 @@ interface Parcelamento {
 
 const EMPTY_FORM: Omit<Parcelamento, 'id'> = {
   secao: SECOES[0], empresa: '', empresa_avulsa: false, cnpj: '', regime: '', responsavel: '',
-  local_tipo: '', tarefa: '', senhas: '',
+  local_tipo: '', status: 'EM ANDAMENTO', tarefa: '', senhas: '',
   jan: null, fev: null, mar: null, abr: null, mai: null, jun: null,
   jul: null, ago: null, set: null, out: null, nov: null, dez: null,
 }
@@ -48,13 +50,15 @@ function corResp(nome: string): string {
   return CORES_CACHE[nome]
 }
 
-function badgeColor(val: string | null): { bg: string; text: string; label: string } {
-  if (!val) return { bg: '', text: '', label: '' }
-  const v = val.toLowerCase()
-  if (v.includes('liquidado'))  return { bg: 'bg-green-500/20',  text: 'text-green-300',  label: 'LIQUIDADO' }
-  if (v.includes('cancelado'))  return { bg: 'bg-red-500/20',    text: 'text-red-300',    label: 'CANCELADO' }
-  if (v.includes('comunicado')) return { bg: 'bg-amber-500/20',  text: 'text-amber-300',  label: 'COMUNICADO' }
-  return { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'ENVIADO' }
+function formatarDataBR(iso: string): string {
+  const [, mes, dia] = iso.split('-')
+  return `${dia}/${mes}`
+}
+
+function statusBadge(status: StatusParcelamento): { bg: string; text: string; label: string } {
+  if (status === 'LIQUIDADO') return { bg: 'bg-green-500/20', text: 'text-green-300', label: 'LIQUIDADO' }
+  if (status === 'CANCELADO') return { bg: 'bg-red-500/20', text: 'text-red-300', label: 'CANCELADO' }
+  return { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'EM ANDAMENTO' }
 }
 
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50"
@@ -178,16 +182,17 @@ export default function ParcelamentosPage() {
           <td>${p.regime ?? '—'}</td>
           <td>${p.responsavel ?? '—'}</td>
           <td>${p.local_tipo ?? '—'}</td>
+          <td>${p.status}</td>
           ${MESES_COLS.map(m => {
             const v = (p as any)[m] as string | null
-            return `<td class="month ${v ? 'filled' : ''}">${v ?? '—'}</td>`
+            return `<td class="month ${v ? 'filled' : ''}">${v ? formatarDataBR(v) : '—'}</td>`
           }).join('')}
         </tr>`).join('')
       return `
         <div class="section-title">${secao} <span class="count">${rows.length} parcelamento${rows.length !== 1 ? 's' : ''}</span></div>
         <table>
           <thead><tr>
-            <th>Empresa</th><th>CNPJ</th><th>Regime</th><th>Responsável</th><th>Local/Tipo</th>
+            <th>Empresa</th><th>CNPJ</th><th>Regime</th><th>Responsável</th><th>Local/Tipo</th><th>Status</th>
             ${MESES_ABREV.map(m => `<th class="month">${m}</th>`).join('')}
           </tr></thead>
           <tbody>${trs}</tbody>
@@ -308,6 +313,7 @@ export default function ParcelamentosPage() {
                         <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider">Regime</th>
                         <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider">Responsável</th>
                         <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider whitespace-nowrap">Local / Tipo</th>
+                        <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider whitespace-nowrap">Status</th>
                         {MESES_ABREV.map(m => (
                           <th key={m} className="text-center px-1.5 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider w-[72px]">{m}</th>
                         ))}
@@ -327,16 +333,17 @@ export default function ParcelamentosPage() {
                               <td className="px-3 py-3 text-[var(--fg)]/50">{item.regime ?? '—'}</td>
                               <td className="px-3 py-3 font-semibold" style={{ color: cor }}>{item.responsavel ?? '—'}</td>
                               <td className="px-3 py-3 text-[var(--fg)]/50 max-w-[140px] truncate">{item.local_tipo ?? '—'}</td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                {(() => { const { bg, text, label } = statusBadge(item.status); return (
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${bg} ${text}`}>{label}</span>
+                                )})()}
+                              </td>
                               {MESES_COLS.map(mes => {
                                 const val = (item as any)[mes] as string | null
-                                const { bg, text, label } = badgeColor(val)
                                 return (
                                   <td key={mes} className="px-1.5 py-2 text-center">
                                     {val ? (
-                                      <div className="flex flex-col items-center gap-0.5">
-                                        <span className="text-[var(--fg)]/70 text-[10px] font-mono leading-none">{val}</span>
-                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${bg} ${text}`}>{label}</span>
-                                      </div>
+                                      <span className="text-[var(--fg)]/70 text-[10px] font-mono">{formatarDataBR(val)}</span>
                                     ) : (
                                       <span className="text-[var(--fg)]/15">—</span>
                                     )}
@@ -348,7 +355,7 @@ export default function ParcelamentosPage() {
                             {/* Linha expandida */}
                             {isExp && (
                               <tr key={`${item.id}-exp`} className="border-b border-[var(--fg)]/8">
-                                <td colSpan={17} className="px-4 py-3 bg-[var(--bg-surface-2)]">
+                                <td colSpan={18} className="px-4 py-3 bg-[var(--bg-surface-2)]">
                                   {/* Botões + Info numa linha */}
                                   <div className="flex items-center gap-6 mb-3">
                                     <button onClick={e => { e.stopPropagation(); openEdit(item) }}
@@ -366,6 +373,7 @@ export default function ParcelamentosPage() {
                                       { label: 'Regime', val: item.regime ?? '—' },
                                       { label: 'Responsável', val: item.responsavel ?? '—', cor },
                                       { label: 'Local / Tipo', val: item.local_tipo ?? '—' },
+                                      { label: 'Status', val: item.status },
                                     ].map(f => (
                                       <div key={f.label} className="min-w-0">
                                         <p className="text-[var(--fg)]/30 text-[9px] uppercase tracking-wider">{f.label}</p>
@@ -375,15 +383,14 @@ export default function ParcelamentosPage() {
                                   </div>
 
                                   {/* Parcelas mensais — compactas */}
-                                  <p className="text-[9px] font-bold text-[var(--fg)]/25 uppercase tracking-widest mb-2">Parcelas Mensais</p>
+                                  <p className="text-[9px] font-bold text-[var(--fg)]/25 uppercase tracking-widest mb-2">Parcelas Mensais (data de emissão/envio)</p>
                                   <div className="grid grid-cols-12 gap-1.5">
                                     {MESES_COLS.map((mes, i) => {
                                       const val = (item as any)[mes] as string | null
-                                      const { bg, text } = badgeColor(val)
                                       return (
-                                        <div key={mes} className={`rounded-lg border px-2 py-1.5 ${val ? `${bg} border-transparent` : 'border-[var(--fg)]/8 bg-[var(--fg)]/2'}`}>
-                                          <p className={`text-[9px] font-bold uppercase ${val ? text : 'text-[var(--fg)]/20'}`}>{MESES_NOME[i]}</p>
-                                          <p className={`text-sm font-bold mt-0.5 ${val ? 'text-[var(--fg)]' : 'text-[var(--fg)]/15'}`}>{val ?? '—'}</p>
+                                        <div key={mes} className={`rounded-lg border px-2 py-1.5 ${val ? 'bg-blue-500/15 border-transparent' : 'border-[var(--fg)]/8 bg-[var(--fg)]/2'}`}>
+                                          <p className={`text-[9px] font-bold uppercase ${val ? 'text-blue-300' : 'text-[var(--fg)]/20'}`}>{MESES_NOME[i]}</p>
+                                          <p className={`text-sm font-bold mt-0.5 ${val ? 'text-[var(--fg)]' : 'text-[var(--fg)]/15'}`}>{val ? formatarDataBR(val) : '—'}</p>
                                         </div>
                                       )
                                     })}
@@ -477,8 +484,8 @@ export default function ParcelamentosPage() {
                 </div>
               </div>
 
-              {/* Regime + Responsável + Local/Tipo */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Regime + Responsável + Local/Tipo + Status */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Regime</label>
                   <input className={inputCls} value={form.regime ?? ''} onChange={e => setF('regime', e.target.value || null)} />
@@ -499,6 +506,17 @@ export default function ParcelamentosPage() {
                   <label className={labelCls}>Local / Tipo</label>
                   <input className={inputCls} value={form.local_tipo ?? ''} onChange={e => setF('local_tipo', e.target.value || null)} />
                 </div>
+                <div>
+                  <label className={labelCls}>Status</label>
+                  <select
+                    value={form.status}
+                    onChange={e => setF('status', e.target.value as StatusParcelamento)}
+                    className={inputCls + ' bg-[var(--bg-surface)]'}>
+                    <option value="EM ANDAMENTO" className="bg-[var(--bg-surface)]">Em andamento</option>
+                    <option value="LIQUIDADO" className="bg-[var(--bg-surface)]">Liquidado</option>
+                    <option value="CANCELADO" className="bg-[var(--bg-surface)]">Cancelado</option>
+                  </select>
+                </div>
               </div>
 
               {/* Tarefa */}
@@ -509,15 +527,15 @@ export default function ParcelamentosPage() {
 
               {/* Meses */}
               <div>
-                <label className={labelCls}>Parcelas Mensais</label>
+                <label className={labelCls}>Parcelas Mensais — data de emissão/envio</label>
                 <div className="grid grid-cols-6 gap-2">
                   {MESES_COLS.map((mes, i) => (
                     <div key={mes}>
                       <p className="text-[var(--fg)]/30 text-[10px] text-center mb-1">{MESES_ABREV[i]}</p>
                       <input
+                        type="date"
                         value={(form as any)[mes] ?? ''}
                         onChange={e => setF(mes as any, e.target.value || null)}
-                        placeholder="—"
                         className="w-full px-2 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs text-center focus:outline-none focus:border-[var(--accent)]/50" />
                     </div>
                   ))}
