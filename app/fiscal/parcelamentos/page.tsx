@@ -50,11 +50,6 @@ function corResp(nome: string): string {
   return CORES_CACHE[nome]
 }
 
-function formatarDataBR(iso: string): string {
-  const [, mes, dia] = iso.split('-')
-  return `${dia}/${mes}`
-}
-
 function statusBadge(status: StatusParcelamento): { bg: string; text: string; label: string } {
   if (status === 'LIQUIDADO') return { bg: 'bg-green-500/20', text: 'text-green-300', label: 'LIQUIDADO' }
   if (status === 'CANCELADO') return { bg: 'bg-red-500/20', text: 'text-red-300', label: 'CANCELADO' }
@@ -185,7 +180,7 @@ export default function ParcelamentosPage() {
           <td>${p.status}</td>
           ${MESES_COLS.map(m => {
             const v = (p as any)[m] as string | null
-            return `<td class="month ${v ? 'filled' : ''}">${v ? formatarDataBR(v) : '—'}</td>`
+            return `<td class="month ${v ? 'filled' : ''}">${v ?? '—'}</td>`
           }).join('')}
         </tr>`).join('')
       return `
@@ -343,7 +338,7 @@ export default function ParcelamentosPage() {
                                 return (
                                   <td key={mes} className="px-1.5 py-2 text-center">
                                     {val ? (
-                                      <span className="text-[var(--fg)]/70 text-[10px] font-mono">{formatarDataBR(val)}</span>
+                                      <span className="text-[var(--fg)]/70 text-[10px] font-mono">{val}</span>
                                     ) : (
                                       <span className="text-[var(--fg)]/15">—</span>
                                     )}
@@ -390,7 +385,7 @@ export default function ParcelamentosPage() {
                                       return (
                                         <div key={mes} className={`rounded-lg border px-2 py-1.5 ${val ? 'bg-blue-500/15 border-transparent' : 'border-[var(--fg)]/8 bg-[var(--fg)]/2'}`}>
                                           <p className={`text-[9px] font-bold uppercase ${val ? 'text-blue-300' : 'text-[var(--fg)]/20'}`}>{MESES_NOME[i]}</p>
-                                          <p className={`text-sm font-bold mt-0.5 ${val ? 'text-[var(--fg)]' : 'text-[var(--fg)]/15'}`}>{val ? formatarDataBR(val) : '—'}</p>
+                                          <p className={`text-sm font-bold mt-0.5 ${val ? 'text-[var(--fg)]' : 'text-[var(--fg)]/15'}`}>{val ?? '—'}</p>
                                         </div>
                                       )
                                     })}
@@ -527,15 +522,15 @@ export default function ParcelamentosPage() {
 
               {/* Meses */}
               <div>
-                <label className={labelCls}>Parcelas Mensais — data de emissão/envio</label>
+                <label className={labelCls}>Parcelas Mensais — data de emissão/envio (dd/mm)</label>
                 <div className="grid grid-cols-6 gap-2">
                   {MESES_COLS.map((mes, i) => (
                     <div key={mes}>
                       <p className="text-[var(--fg)]/30 text-[10px] text-center mb-1">{MESES_ABREV[i]}</p>
                       <input
-                        type="date"
                         value={(form as any)[mes] ?? ''}
                         onChange={e => setF(mes as any, e.target.value || null)}
+                        placeholder="dd/mm"
                         className="w-full px-2 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs text-center focus:outline-none focus:border-[var(--accent)]/50" />
                     </div>
                   ))}
