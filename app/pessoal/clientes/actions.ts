@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarClientePessoal } from '@/lib/supabase/server'
+import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 
 export async function toggleTarefaPessoal(
@@ -260,5 +261,40 @@ export async function salvarObsPessoal(clienteId: string, texto: string): Promis
   revalidatePath(`/pessoal/clientes/${clienteId}`)
   revalidatePath('/pessoal/clientes')
   revalidatePath('/pessoal/dashboard')
+  return {}
+}
+
+export async function desabilitarCliente(clienteId: string, senha: string): Promise<{ error?: string }> {
+  if (!(await podeEditarClientePessoal(clienteId))) return { error: 'Não autorizado.' }
+
+  const { ok, error: erroSenha } = await verificarSenhaUsuarioAtual(senha)
+  if (!ok) return { error: erroSenha ?? 'Senha incorreta.' }
+
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+
+  const { error } = await supabase.from('clientes_pessoal').update({ ativo: false }).eq('cliente_id', clienteId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/pessoal/clientes/${clienteId}`)
+  revalidatePath('/pessoal/clientes')
+  revalidatePath('/pessoal/dashboard')
+  revalidatePath('/pessoal/relatorios')
+  return {}
+}
+
+export async function reabilitarCliente(clienteId: string): Promise<{ error?: string }> {
+  if (!(await podeEditarClientePessoal(clienteId))) return { error: 'Não autorizado.' }
+
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+
+  const { error } = await supabase.from('clientes_pessoal').update({ ativo: true }).eq('cliente_id', clienteId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/pessoal/clientes/${clienteId}`)
+  revalidatePath('/pessoal/clientes')
+  revalidatePath('/pessoal/dashboard')
+  revalidatePath('/pessoal/relatorios')
   return {}
 }

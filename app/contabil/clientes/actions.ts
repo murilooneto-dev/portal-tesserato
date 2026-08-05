@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarClienteContabil } from '@/lib/supabase/server'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
+import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 
 export async function toggleTarefaContabil(
   clienteId: string,
@@ -269,5 +270,40 @@ export async function salvarObsContabil(clienteId: string, texto: string): Promi
   revalidatePath(`/contabil/clientes/${clienteId}`)
   revalidatePath('/contabil/clientes')
   revalidatePath('/contabil/dashboard')
+  return {}
+}
+
+export async function desabilitarCliente(clienteId: string, senha: string): Promise<{ error?: string }> {
+  if (!(await podeEditarClienteContabil(clienteId))) return { error: 'Não autorizado.' }
+
+  const { ok, error: erroSenha } = await verificarSenhaUsuarioAtual(senha)
+  if (!ok) return { error: erroSenha ?? 'Senha incorreta.' }
+
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+
+  const { error } = await supabase.from('clientes_contabil').update({ ativo: false }).eq('cliente_id', clienteId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/contabil/clientes/${clienteId}`)
+  revalidatePath('/contabil/clientes')
+  revalidatePath('/contabil/dashboard')
+  revalidatePath('/contabil/relatorios')
+  return {}
+}
+
+export async function reabilitarCliente(clienteId: string): Promise<{ error?: string }> {
+  if (!(await podeEditarClienteContabil(clienteId))) return { error: 'Não autorizado.' }
+
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+
+  const { error } = await supabase.from('clientes_contabil').update({ ativo: true }).eq('cliente_id', clienteId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/contabil/clientes/${clienteId}`)
+  revalidatePath('/contabil/clientes')
+  revalidatePath('/contabil/dashboard')
+  revalidatePath('/contabil/relatorios')
   return {}
 }

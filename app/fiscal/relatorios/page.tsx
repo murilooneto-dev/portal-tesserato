@@ -48,7 +48,7 @@ export default function RelatoriosPage() {
         setIsAdmin(admin)
         setUserNome(p?.nome ?? null)
 
-        let clientesQ = sb.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
+        let clientesQ = sb.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('clientes_fiscal.ativo', true).order('nome')
         if (!admin && p?.nome) clientesQ = clientesQ.ilike('clientes_fiscal.responsavel', p.nome)
 
         Promise.all([

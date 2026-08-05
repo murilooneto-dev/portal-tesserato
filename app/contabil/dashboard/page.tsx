@@ -21,7 +21,7 @@ export default async function DashboardContabilPage() {
   })()
 
   const [{ data: clientesRaw }, { data: profiles }, tarefas, { data: eventosRaw }] = await Promise.all([
-    supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).order('nome'),
+    supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).eq('clientes_contabil.ativo', true).order('nome'),
     supabase.from('profiles').select('*'),
     buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano, '*', 'contabil'),
     supabase.from('calendario_eventos').select('*').eq('setor', 'contabil'),

@@ -18,7 +18,7 @@ export default async function RelatoriosContabilPage() {
 
   const isAdmin = profile?.role === 'admin'
 
-  let clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).order('nome')
+  let clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).eq('clientes_contabil.ativo', true).order('nome')
   if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('clientes_contabil.responsavel', profile.nome)
 
   const [{ data: clientesRaw }, tarefas] = await Promise.all([

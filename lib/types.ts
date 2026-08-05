@@ -60,6 +60,7 @@ export interface ClienteFiscal {
   email_envio_iss: string | null
   declaracao_anual: boolean
   tarefas_personalizadas: string[]
+  ativo: boolean
 }
 
 export interface Tarefa {
@@ -114,6 +115,7 @@ export interface ClienteContabil {
   prioridade: number
   obs: string | null
   tarefas_personalizadas: string[]
+  ativo: boolean
 }
 
 export interface ClientePessoal {
@@ -124,6 +126,7 @@ export interface ClientePessoal {
   prioridade: number
   obs: string | null
   tarefas_personalizadas: string[]
+  ativo: boolean
 }
 
 export interface TarefaTipo {

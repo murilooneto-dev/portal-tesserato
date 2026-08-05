@@ -26,6 +26,7 @@ export default async function TarefasPage() {
   const { data: clientes } = await supabase
     .from('clientes')
     .select('id, nome, clientes_fiscal!inner(cod, grupo, responsavel)')
+    .eq('clientes_fiscal.ativo', true)
     .order('nome')
 
   const clientesFlat = (clientes ?? []).map(row => {

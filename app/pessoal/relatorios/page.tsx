@@ -18,7 +18,7 @@ export default async function RelatoriosPessoalPage() {
 
   const isAdmin = profile?.role === 'admin'
 
-  let clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_PESSOAL).order('nome')
+  let clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_PESSOAL).eq('clientes_pessoal.ativo', true).order('nome')
   if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('clientes_pessoal.responsavel', profile.nome)
 
   const [{ data: clientesRaw }, tarefas, { data: tiposRaw }] = await Promise.all([
