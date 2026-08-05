@@ -1,6 +1,10 @@
 # SPEC — Tarefa automática "Parcelamento" no cadastro de cliente com sincronização de data
 
-> Issue: TES-8 · Setor: Fiscal · Status do documento: **AGUARDANDO INFORMAÇÕES** (há dúvidas críticas que impedem fechar o escopo — ver seção "Dúvidas Pendentes").
+> ⚠️ **DOCUMENTO OBSOLETO / SUPERSEDED (2026-08-04)** — O cliente mudou o escopo e **cancelou** a automação de criação de tarefa e sincronização de data descrita abaixo. Este arquivo é mantido apenas como histórico. O requisito vigente é um recurso de exibição (aviso de parcelamento na ficha do cliente), especificado em `docs/specs/tes-8-aviso-parcelamento/SPEC.md`. **Não usar este documento para arquitetura ou implementação.**
+
+---
+
+> Issue: TES-8 · Setor: Fiscal · Status do documento: **OBSOLETO (superseded)** — conteúdo abaixo preservado apenas como histórico.
 
 # Resumo Executivo
 
