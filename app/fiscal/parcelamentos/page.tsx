@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useMesAno } from '@/lib/mes-atual-context'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
+import type { StatusParcelamento } from '@/lib/parcelamentos-aviso'
 
 const SECOES = [
   'RECEITA FEDERAL - ECAC',
@@ -26,6 +27,7 @@ interface Parcelamento {
   regime: string | null
   responsavel: string | null
   local_tipo: string | null
+  status: StatusParcelamento
   tarefa: string | null
   senhas: string | null
   jan: string | null; fev: string | null; mar: string | null; abr: string | null
@@ -35,7 +37,7 @@ interface Parcelamento {
 
 const EMPTY_FORM: Omit<Parcelamento, 'id'> = {
   secao: SECOES[0], empresa: '', empresa_avulsa: false, cnpj: '', regime: '', responsavel: '',
-  local_tipo: '', tarefa: '', senhas: '',
+  local_tipo: '', status: 'EM ANDAMENTO', tarefa: '', senhas: '',
   jan: null, fev: null, mar: null, abr: null, mai: null, jun: null,
   jul: null, ago: null, set: null, out: null, nov: null, dez: null,
 }
@@ -55,6 +57,12 @@ function badgeColor(val: string | null): { bg: string; text: string; label: stri
   if (v.includes('cancelado'))  return { bg: 'bg-red-500/20',    text: 'text-red-300',    label: 'CANCELADO' }
   if (v.includes('comunicado')) return { bg: 'bg-amber-500/20',  text: 'text-amber-300',  label: 'COMUNICADO' }
   return { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'ENVIADO' }
+}
+
+function statusBadge(status: StatusParcelamento): { bg: string; text: string; label: string } {
+  if (status === 'LIQUIDADO') return { bg: 'bg-green-500/20', text: 'text-green-300', label: 'LIQUIDADO' }
+  if (status === 'CANCELADO') return { bg: 'bg-red-500/20', text: 'text-red-300', label: 'CANCELADO' }
+  return { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'EM ANDAMENTO' }
 }
 
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50"
@@ -308,6 +316,7 @@ export default function ParcelamentosPage() {
                         <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider">Regime</th>
                         <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider">Responsável</th>
                         <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider whitespace-nowrap">Local / Tipo</th>
+                        <th className="text-left px-3 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider whitespace-nowrap">Status</th>
                         {MESES_ABREV.map(m => (
                           <th key={m} className="text-center px-1.5 py-3 text-[var(--fg)]/40 font-semibold uppercase tracking-wider w-[72px]">{m}</th>
                         ))}
@@ -327,6 +336,11 @@ export default function ParcelamentosPage() {
                               <td className="px-3 py-3 text-[var(--fg)]/50">{item.regime ?? '—'}</td>
                               <td className="px-3 py-3 font-semibold" style={{ color: cor }}>{item.responsavel ?? '—'}</td>
                               <td className="px-3 py-3 text-[var(--fg)]/50 max-w-[140px] truncate">{item.local_tipo ?? '—'}</td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                {(() => { const { bg, text, label } = statusBadge(item.status); return (
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${bg} ${text}`}>{label}</span>
+                                )})()}
+                              </td>
                               {MESES_COLS.map(mes => {
                                 const val = (item as any)[mes] as string | null
                                 const { bg, text, label } = badgeColor(val)
@@ -348,7 +362,7 @@ export default function ParcelamentosPage() {
                             {/* Linha expandida */}
                             {isExp && (
                               <tr key={`${item.id}-exp`} className="border-b border-[var(--fg)]/8">
-                                <td colSpan={17} className="px-4 py-3 bg-[var(--bg-surface-2)]">
+                                <td colSpan={18} className="px-4 py-3 bg-[var(--bg-surface-2)]">
                                   {/* Botões + Info numa linha */}
                                   <div className="flex items-center gap-6 mb-3">
                                     <button onClick={e => { e.stopPropagation(); openEdit(item) }}
@@ -366,6 +380,7 @@ export default function ParcelamentosPage() {
                                       { label: 'Regime', val: item.regime ?? '—' },
                                       { label: 'Responsável', val: item.responsavel ?? '—', cor },
                                       { label: 'Local / Tipo', val: item.local_tipo ?? '—' },
+                                      { label: 'Status', val: item.status },
                                     ].map(f => (
                                       <div key={f.label} className="min-w-0">
                                         <p className="text-[var(--fg)]/30 text-[9px] uppercase tracking-wider">{f.label}</p>
@@ -477,8 +492,8 @@ export default function ParcelamentosPage() {
                 </div>
               </div>
 
-              {/* Regime + Responsável + Local/Tipo */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Regime + Responsável + Local/Tipo + Status */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Regime</label>
                   <input className={inputCls} value={form.regime ?? ''} onChange={e => setF('regime', e.target.value || null)} />
@@ -498,6 +513,17 @@ export default function ParcelamentosPage() {
                 <div>
                   <label className={labelCls}>Local / Tipo</label>
                   <input className={inputCls} value={form.local_tipo ?? ''} onChange={e => setF('local_tipo', e.target.value || null)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Status</label>
+                  <select
+                    value={form.status}
+                    onChange={e => setF('status', e.target.value as StatusParcelamento)}
+                    className={inputCls + ' bg-[var(--bg-surface)]'}>
+                    <option value="EM ANDAMENTO" className="bg-[var(--bg-surface)]">Em andamento</option>
+                    <option value="LIQUIDADO" className="bg-[var(--bg-surface)]">Liquidado</option>
+                    <option value="CANCELADO" className="bg-[var(--bg-surface)]">Cancelado</option>
+                  </select>
                 </div>
               </div>
 
