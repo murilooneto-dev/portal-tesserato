@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
+import { buscarLabelsParcelamentoAtivo } from '@/lib/parcelamentos-aviso'
 import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import TarefaChecklistContabil from '@/components/contabil/TarefaChecklistContabil'
 import ClienteContabilAcoes from '@/components/contabil/ClienteContabilAcoes'
@@ -36,11 +37,12 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   const { mes, ano } = await getMesAno()
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
-  const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }] = await Promise.all([
+  const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }, labelsParcelamento] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
     supabase.from('profiles').select('nome').contains('setores', ['contabil']),
     supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'contabil'),
     supabase.from('calendario_eventos').select('*').eq('setor', 'contabil'),
+    buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null),
   ])
 
   const prazosPorTipo: Record<string, number> = {}
@@ -118,6 +120,13 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
                   {cliente.municipio && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
                   {cliente.ativo === false && <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-semibold">Desabilitado</span>}
                 </div>
+                {labelsParcelamento.length > 0 && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 bg-red-500/15 px-3 py-1 rounded-full">
+                      ⚠️ Cliente possui parcelamento! {labelsParcelamento.join(' / ')}
+                    </span>
+                  </div>
+                )}
               </div>
               {podeEditar && <ClienteContabilAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} />}
             </div>

@@ -313,6 +313,8 @@ export async function aplicarTemplateGrupoAClientes(
 const CAMPOS_MESCLAVEIS_PARCELAMENTO = [
   'regime', 'responsavel', 'local_tipo', 'tarefa', 'senhas',
   'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez',
+  'jan_obs', 'fev_obs', 'mar_obs', 'abr_obs', 'mai_obs', 'jun_obs',
+  'jul_obs', 'ago_obs', 'set_obs', 'out_obs', 'nov_obs', 'dez_obs',
 ] as const
 
 function chaveParcelamento(r: { empresa: string | null; cnpj: string | null; secao: string | null }): string {
@@ -407,7 +409,14 @@ export async function limparParcelamentosDuplicados(): Promise<{
       mesclado[campo] = valor ?? null
     }
 
-    const mudou = CAMPOS_MESCLAVEIS_PARCELAMENTO.some(c => mesclado[c] !== (base as Record<string, unknown>)[c])
+    // Status não entra na lista genérica "primeiro valor truthy vence": um
+    // parcelamento EM ANDAMENTO nunca pode ser mascarado por um duplicado
+    // LIQUIDADO/CANCELADO — isso controlaria o aviso na ficha do cliente.
+    const algumEmAndamento = rows.some(r => (r as { status: string }).status === 'EM ANDAMENTO')
+    mesclado.status = algumEmAndamento ? 'EM ANDAMENTO' : (base as Record<string, unknown>).status
+
+    const camposParaComparar = [...CAMPOS_MESCLAVEIS_PARCELAMENTO, 'status'] as const
+    const mudou = camposParaComparar.some(c => mesclado[c] !== (base as Record<string, unknown>)[c])
     if (mudou) {
       await supabase.from('parcelamentos').update(mesclado).eq('id', base.id)
     }
