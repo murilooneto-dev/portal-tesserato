@@ -22,16 +22,22 @@ export default function ClienteAcoes({ cliente, responsaveis, templates }: Props
   const [desabilitarModalOpen, setDesabilitarModalOpen] = useState(false)
   const [confirmandoReabilitar, setConfirmandoReabilitar] = useState(false)
   const [reabilitando, setReabilitando] = useState(false)
+  const [erroReabilitar, setErroReabilitar] = useState<string | null>(null)
   const router = useRouter()
 
   async function handleReabilitar() {
     setReabilitando(true)
+    setErroReabilitar(null)
     try {
-      await reabilitarCliente(cliente.id)
+      const resultado = await reabilitarCliente(cliente.id)
+      if (resultado.error) {
+        setErroReabilitar(resultado.error)
+        return
+      }
       router.refresh()
+      setConfirmandoReabilitar(false)
     } finally {
       setReabilitando(false)
-      setConfirmandoReabilitar(false)
     }
   }
 
@@ -67,7 +73,7 @@ export default function ClienteAcoes({ cliente, responsaveis, templates }: Props
           className="text-xs text-red-400/70 hover:text-red-400 px-3 py-1.5 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all">
           Excluir
         </button>
-        {cliente.ativo ? (
+        {cliente.ativo !== false ? (
           <button
             onClick={() => setDesabilitarModalOpen(true)}
             className="text-xs text-amber-400/70 hover:text-amber-400 px-3 py-1.5 rounded-lg border border-amber-500/20 hover:border-amber-500/40 transition-all">
@@ -90,6 +96,7 @@ export default function ClienteAcoes({ cliente, responsaveis, templates }: Props
                 Reabilitar
               </button>
             )}
+            {erroReabilitar && <p className="text-red-400 text-xs">{erroReabilitar}</p>}
           </>
         )}
       </div>

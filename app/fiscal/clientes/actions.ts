@@ -336,6 +336,7 @@ export async function desabilitarCliente(clienteId: string, senha: string): Prom
   revalidatePath('/fiscal/dashboard')
   revalidatePath('/fiscal/relatorios')
   revalidatePath('/fiscal/tarefas')
+  revalidatePath('/ferramentas')
   return {}
 }
 
@@ -353,5 +354,6 @@ export async function reabilitarCliente(clienteId: string): Promise<{ error?: st
   revalidatePath('/fiscal/dashboard')
   revalidatePath('/fiscal/relatorios')
   revalidatePath('/fiscal/tarefas')
+  revalidatePath('/ferramentas')
   return {}
 }

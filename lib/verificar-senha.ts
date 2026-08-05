@@ -1,6 +1,4 @@
 // lib/verificar-senha.ts
-'use server'
-
 import { createClient as createClienteDescartavel } from '@supabase/supabase-js'
 import { getAuthenticatedAdmin } from './supabase/server'
 

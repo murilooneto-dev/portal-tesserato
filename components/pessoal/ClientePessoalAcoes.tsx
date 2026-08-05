@@ -21,15 +21,21 @@ export default function ClientePessoalAcoes({ cliente, responsaveis, tarefasPadr
   const [desabilitarModalOpen, setDesabilitarModalOpen] = useState(false)
   const [confirmandoReabilitar, setConfirmandoReabilitar] = useState(false)
   const [reabilitando, setReabilitando] = useState(false)
+  const [erroReabilitar, setErroReabilitar] = useState<string | null>(null)
 
   async function handleReabilitar() {
     setReabilitando(true)
+    setErroReabilitar(null)
     try {
-      await reabilitarCliente(cliente.id)
+      const resultado = await reabilitarCliente(cliente.id)
+      if (resultado.error) {
+        setErroReabilitar(resultado.error)
+        return
+      }
       router.refresh()
+      setConfirmandoReabilitar(false)
     } finally {
       setReabilitando(false)
-      setConfirmandoReabilitar(false)
     }
   }
 
@@ -69,7 +75,7 @@ export default function ClientePessoalAcoes({ cliente, responsaveis, tarefasPadr
         </button>
       )}
 
-      {cliente.ativo ? (
+      {cliente.ativo !== false ? (
         <button
           onClick={() => setDesabilitarModalOpen(true)}
           className="text-xs bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-amber-400/70 hover:text-amber-400 px-3 py-1.5 rounded-lg transition-all">
@@ -92,6 +98,7 @@ export default function ClientePessoalAcoes({ cliente, responsaveis, tarefasPadr
               Reabilitar
             </button>
           )}
+          {erroReabilitar && <p className="text-red-400 text-xs">{erroReabilitar}</p>}
         </>
       )}
 
