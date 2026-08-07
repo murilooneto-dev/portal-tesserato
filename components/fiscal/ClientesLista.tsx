@@ -51,6 +51,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('clientes:grupo', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('clientes:atividade', 'TODOS')
+  const [filtroPrioridade, setFiltroPrioridade] = useFiltroPersistente('clientes:prioridade', 'TODOS')
   const [filtroPendencia, setFiltroPendencia] = useFiltroPersistente('clientes:pendencia', false)
   const [mostrarDesabilitados, setMostrarDesabilitados] = useFiltroPersistente('clientes:mostrarDesabilitados', false)
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
@@ -64,6 +65,10 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     clientes.map(c => c.atividade ?? '').filter(Boolean)
   )).sort()], [clientes])
 
+  const prioridades = useMemo(() => Array.from(new Set(
+    clientes.map(c => c.prioridade).filter((p): p is number => !!p && p > 0)
+  )).sort((a, b) => a - b), [clientes])
+
   const filtrados = useMemo(() => clientes.filter(c => {
     if (busca) {
       const q = busca.toLowerCase()
@@ -76,10 +81,11 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
     if (filtroGrupo !== 'TODOS' && c.grupo !== filtroGrupo) return false
     if (filtroAtividade !== 'TODOS' && c.atividade !== filtroAtividade) return false
+    if (filtroPrioridade !== 'TODOS' && String(c.prioridade ?? '') !== filtroPrioridade) return false
     if (filtroPendencia && !comPendencia.has(c.id)) return false
     if (!mostrarDesabilitados && c.ativo === false) return false
     return true
-  }), [clientes, busca, filtroResponsavel, filtroGrupo, filtroAtividade, filtroPendencia, mostrarDesabilitados, comPendencia])
+  }), [clientes, busca, filtroResponsavel, filtroGrupo, filtroAtividade, filtroPrioridade, filtroPendencia, mostrarDesabilitados, comPendencia])
 
   const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
@@ -106,6 +112,10 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as atividades</option>
           {atividades.slice(1).map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
+        </select>
+        <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} className={selectClass}>
+          <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as prioridades</option>
+          {prioridades.map(p => <option key={p} value={p} className="bg-[var(--bg-surface)]">{`P${p}`}</option>)}
         </select>
         <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
           <input

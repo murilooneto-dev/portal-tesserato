@@ -39,12 +39,17 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
   const [busca, setBusca] = useFiltroPersistente('clientes-pessoal:busca', '')
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes-pessoal:responsavel', 'TODOS')
   const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientes-pessoal:regime', 'TODOS')
+  const [filtroPrioridade, setFiltroPrioridade] = useFiltroPersistente('clientes-pessoal:prioridade', 'TODOS')
   const [mostrarDesabilitados, setMostrarDesabilitados] = useFiltroPersistente('clientes-pessoal:mostrarDesabilitados', false)
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
 
   const responsaveis = useMemo(() => ['TODOS', ...Array.from(new Set(
     clientes.map(c => c.responsavel ?? '').filter(Boolean)
   )).sort()], [clientes])
+
+  const prioridades = useMemo(() => Array.from(new Set(
+    clientes.map(c => c.prioridade).filter((p): p is number => !!p && p > 0)
+  )).sort((a, b) => a - b), [clientes])
 
   const filtrados = useMemo(() => clientes.filter(c => {
     if (busca) {
@@ -53,9 +58,10 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
     }
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
     if (filtroRegime !== 'TODOS' && c.regime !== filtroRegime) return false
+    if (filtroPrioridade !== 'TODOS' && String(c.prioridade ?? '') !== filtroPrioridade) return false
     if (!mostrarDesabilitados && c.ativo === false) return false
     return true
-  }), [clientes, busca, filtroResponsavel, filtroRegime, mostrarDesabilitados])
+  }), [clientes, busca, filtroResponsavel, filtroRegime, filtroPrioridade, mostrarDesabilitados])
 
   const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
@@ -75,6 +81,10 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
         <select value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os regimes</option>
           {REGIMES.map(r => <option key={r.value} value={r.value} className="bg-[var(--bg-surface)]">{r.label}</option>)}
+        </select>
+        <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} className={selectClass}>
+          <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as prioridades</option>
+          {prioridades.map(p => <option key={p} value={p} className="bg-[var(--bg-surface)]">{`P${p}`}</option>)}
         </select>
         <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
           <input
