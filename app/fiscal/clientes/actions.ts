@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarCliente } from '@/lib/supabase/server'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
+import { gravarDataParcelamento } from '@/lib/parcelamento-tarefas'
 
 export async function desbloquearTarefa(
   tarefaId: string,
@@ -16,13 +17,17 @@ export async function desbloquearTarefa(
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
 
-  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id').eq('id', tarefaId).single()
+  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, mes, parcelamento_id').eq('id', tarefaId).single()
   if (!tarefa || !(await podeEditarCliente(tarefa.cliente_id))) return
 
   await supabase
     .from('tarefas')
     .update({ concluida: false, concluida_em: null, recebido: false, importado: false, conferido: false })
     .eq('id', tarefaId)
+
+  if (tarefa.parcelamento_id) {
+    await gravarDataParcelamento(supabase, tarefa.parcelamento_id, tarefa.mes, null)
+  }
 
   await supabase.from('task_unlock_log').insert({
     usuario_id: user?.id,
