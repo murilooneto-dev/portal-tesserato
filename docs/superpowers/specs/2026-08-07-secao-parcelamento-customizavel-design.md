@@ -6,7 +6,7 @@ Data: 2026-08-07
 
 Hoje a "Seção" de um parcelamento (o órgão/local onde ele está — ex: "RECEITA FEDERAL - ECAC", "PGFN - ECAC") é um select fixo com 5 opções, definidas como constante `SECOES` em `app/fiscal/parcelamentos/page.tsx`. Não há como cadastrar um parcelamento numa seção que não esteja nessa lista fixa.
 
-O objetivo é permitir que o usuário crie uma seção nova diretamente no fluxo de cadastro de parcelamento, e que essa seção passe a existir na lista pra criação de parcelamentos futuros (persistente, não só pra aquele cadastro).
+O objetivo é permitir que o usuário crie uma seção nova diretamente no fluxo de cadastro de parcelamento (persistente, disponível pra parcelamentos futuros), e também edite (renomeie) ou remova seções já existentes no catálogo.
 
 ## Escopo
 
@@ -24,12 +24,19 @@ O objetivo é permitir que o usuário crie uma seção nova diretamente no fluxo
 - Nome duplicado (já existe uma seção com esse nome após normalização): tratado como sucesso silencioso — a seção já existe, só seleciona ela (mesmo padrão de `criarTipoTarefa` em `lib/tarefa-tipos-actions.ts`, que trata a constraint unique como corrida entre dois usuários, não erro).
 - Permissão: qualquer usuário que já pode cadastrar/editar parcelamento pode criar seção nova — sem tela de admin separada, sem checagem de `role` adicional.
 
-### 3. Onde mais a lista de seções é usada
+### 3. Gerenciar seções (editar/remover)
 
-O filtro "Todas as seções" no topo da página (`secaoFiltro`) e o agrupamento de linhas por seção (tanto na tela quanto no relatório impresso) já iteram sobre a mesma lista `SECOES`. Ao trocar a fonte pra vir do banco, esses dois lugares automaticamente passam a incluir qualquer seção nova criada — não é uma mudança de comportamento adicional a implementar, é consequência direta de usar uma única fonte de dados.
+- Um link "Gerenciar seções" logo abaixo do select de "Seção" no modal de criar/editar parcelamento, abrindo um modal próprio (`GerenciarSecoesModal`) com a lista de todas as seções do catálogo.
+- Cada linha da lista tem: o nome da seção, um botão "Editar" (transforma o nome numa `<input>` inline com botões Salvar/Cancelar) e um botão "Remover".
+- **Editar (renomear):** ao salvar um novo nome (normalizado do mesmo jeito que na criação: `trim()` + `toUpperCase()`), a operação atualiza `parcelamento_secoes.nome` **e** todos os `parcelamentos.secao` que estejam com o nome antigo, na mesma transação — nenhum parcelamento existente fica com um nome de seção que não existe mais no catálogo. Nome duplicado (já existe outra seção com esse nome após normalização): erro exibido no modal, não deixa salvar (diferente da criação, aqui não faz sentido "silenciosamente" fundir duas seções que já têm parcelamentos distintos).
+- **Remover:** antes de remover, conta quantos `parcelamentos` usam essa seção. Se houver 1 ou mais, bloqueia a remoção e mostra a contagem ("Não é possível remover: 4 parcelamentos usam essa seção."). Só remove se a contagem for zero.
+- Permissão: mesma regra da criação — qualquer usuário que pode cadastrar/editar parcelamento pode editar/remover seção, sem checagem de `role` adicional.
+
+### 4. Onde mais a lista de seções é usada
+
+O filtro "Todas as seções" no topo da página (`secaoFiltro`) e o agrupamento de linhas por seção (tanto na tela quanto no relatório impresso) já iteram sobre a mesma lista `SECOES`. Ao trocar a fonte pra vir do banco, esses dois lugares automaticamente passam a refletir qualquer seção criada, renomeada ou removida — não é uma mudança de comportamento adicional a implementar, é consequência direta de usar uma única fonte de dados. Depois de renomear ou remover uma seção, a página recarrega a lista de parcelamentos (a mesma função `load()` já usada após salvar/excluir um parcelamento) pra refletir qualquer `secao` que tenha mudado de nome.
 
 ## Fora de escopo
 
-- Edição ou remoção de seções (só criação — o catálogo só cresce, igual ao `tarefa_tipos`).
-- Tela de gerenciamento dedicada.
-- Qualquer distinção de seção "padrão" vs "criada pelo usuário" (diferente do `tarefa_tipos.padrao`) — aqui todas as seções, fixas ou novas, são tratadas igual.
+- Tela de gerenciamento dedicada fora do modal (ex: uma página própria em Parâmetros) — o modal acessado a partir do formulário de parcelamento cobre o caso de uso.
+- Qualquer distinção de seção "padrão" vs "criada pelo usuário" (diferente do `tarefa_tipos.padrao`) — aqui todas as seções, fixas ou novas, são tratadas igual, inclusive pra edição/remoção (as 5 seções originais podem ser renomeadas ou removidas como qualquer outra).
