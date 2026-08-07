@@ -5,16 +5,7 @@ import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/typ
 import type { VinculoStatus } from '@/lib/vinculos'
 import { desbloquearTarefa, salvarMIT } from '@/app/fiscal/clientes/actions'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
-
-const TAREFAS_NORMAL  = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS']
-const TAREFAS_SIMPLES = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF']
-const TAREFAS_MEI     = ['DAS']
-
-function getTiposParaGrupo(grupo: string) {
-  if (grupo === 'simples') return TAREFAS_SIMPLES
-  if (grupo === 'mei')     return TAREFAS_MEI
-  return TAREFAS_NORMAL
-}
+import { getTiposParaGrupoFiscal } from '@/lib/tarefa-tipos'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -116,7 +107,7 @@ export default function TarefaChecklist({
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null)
   const [erroUpload, setErroUpload] = useState<Record<string, string>>({})
 
-  const tipos = tarefasPersonalizadas.length > 0 ? tarefasPersonalizadas : getTiposParaGrupo(grupo)
+  const tipos = tarefasPersonalizadas.length > 0 ? tarefasPersonalizadas : getTiposParaGrupoFiscal(grupo)
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
   const total = tipos.length
 
