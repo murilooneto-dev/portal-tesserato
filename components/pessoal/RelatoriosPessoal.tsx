@@ -87,7 +87,7 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
   <div class="stat" style="border-color:#ef4444"><div class="n" style="color:#ef4444">${stats.zero}</div><div>Não Iniciados</div></div>
 </div>
 <table>
-  <thead><tr><th>#</th><th>Cliente</th><th>CNPJ</th><th>Responsável</th><th>Progresso</th><th>Tarefas Pendentes</th><th>MIT</th></tr></thead>
+  <thead><tr><th>#</th><th>Cliente</th><th>CNPJ</th><th>Responsável</th><th>Progresso</th><th>Tarefas Pendentes</th><th>Observação</th><th>MIT</th></tr></thead>
   <tbody>
     ${filtrados.map((r, i) => `<tr>
       <td>${i+1}</td>
@@ -96,6 +96,7 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
       <td>${r.cliente.responsavel ?? '—'}</td>
       <td><span class="bar-bg"><span class="bar-fill" style="width:${r.pct}%"></span></span>${r.pct}%</td>
       <td>${r.pct === 100 ? '✓ Concluído' : r.pendentes.join(', ')}</td>
+      <td>${r.cliente.obs ?? ''}</td>
       <td>${r.cliente.mit ?? '—'}</td>
     </tr>`).join('')}
   </tbody>
@@ -166,7 +167,7 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--fg)]/12">
-              {['#','Cliente','CNPJ','Responsável','Progresso','Tarefas Pendentes','MIT'].map(h => (
+              {['#','Cliente','CNPJ','Responsável','Progresso','Tarefas Pendentes','Observação','MIT'].map(h => (
                 <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">{h}</th>
               ))}
             </tr>
@@ -190,12 +191,18 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
                     <span className="text-xs text-[var(--fg)]/70">{r.pct}%</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-sm max-w-[260px]">
+                <td className="px-4 py-3 text-sm w-40">
                   {r.pct === 100
                     ? <span className="text-green-400 text-xs font-medium">✓ Concluído</span>
-                    : <span className="text-[var(--fg)]/60 text-xs leading-relaxed">{r.pendentes.join(' · ')}</span>
+                    : (
+                      <div className="text-[var(--fg)]/60 text-xs leading-relaxed space-y-0.5">
+                        {r.pendentes.slice(0, 3).map(p => <div key={p} className="truncate">{p}</div>)}
+                        {r.pendentes.length > 3 && <div className="text-[var(--fg)]/35">+{r.pendentes.length - 3}</div>}
+                      </div>
+                    )
                   }
                 </td>
+                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs max-w-[200px] truncate" title={r.cliente.obs ?? undefined}>{r.cliente.obs ?? ''}</td>
                 <td className="px-4 py-3 text-[var(--fg)]/50 text-xs">{r.cliente.mit ?? '—'}</td>
               </tr>
             ))}
