@@ -96,9 +96,11 @@ export default function ParcelamentosPage() {
     setLoading(false)
   }
 
-  async function carregarSecoes() {
+  async function carregarSecoes(): Promise<SecaoParcelamento[]> {
     const { data } = await sb.from('parcelamento_secoes').select('id, nome').order('created_at')
-    setSecoes(data ?? [])
+    const secoesFrescas = data ?? []
+    setSecoes(secoesFrescas)
+    return secoesFrescas
   }
 
   useEffect(() => {
@@ -179,7 +181,20 @@ export default function ParcelamentosPage() {
   }
 
   async function handleSecoesChanged() {
-    await Promise.all([carregarSecoes(), load(isAdmin, userNome)])
+    const [secoesFrescas] = await Promise.all([carregarSecoes(), load(isAdmin, userNome)])
+    if (modalOpen) {
+      setForm(prev => {
+        if (secoesFrescas.some(s => s.nome === prev.secao)) return prev
+        return { ...prev, secao: secoesFrescas[0]?.nome ?? '' }
+      })
+    }
+  }
+
+  function fecharModal() {
+    setModalOpen(false)
+    setCriandoSecao(false)
+    setNovaSecaoNome('')
+    setNovaSecaoErro(null)
   }
 
   const responsaveis = Array.from(new Set(items.map(p => p.responsavel).filter(Boolean) as string[])).sort()
@@ -452,7 +467,7 @@ export default function ParcelamentosPage() {
           <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
               <h2 className="text-[var(--fg)] font-bold text-base">{editItem ? 'Editar Parcelamento' : 'Novo Parcelamento'}</h2>
-              <button onClick={() => setModalOpen(false)} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl">×</button>
+              <button onClick={fecharModal} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl">×</button>
             </div>
 
             <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
@@ -502,6 +517,9 @@ export default function ParcelamentosPage() {
                 )}
                 {novaSecaoErro && (
                   <p className="mt-1.5 text-xs text-red-400">⚠ {novaSecaoErro}</p>
+                )}
+                {secoes.length === 0 && (
+                  <p className="mt-1.5 text-[var(--fg)]/40 text-xs">Nenhuma seção cadastrada ainda — crie uma abaixo.</p>
                 )}
               </div>
 
@@ -622,11 +640,11 @@ export default function ParcelamentosPage() {
             </div>
 
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-              <button onClick={() => setModalOpen(false)}
+              <button onClick={fecharModal}
                 className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
                 Cancelar
               </button>
-              <button onClick={handleSave} disabled={saving || !form.empresa.trim()}
+              <button onClick={handleSave} disabled={saving || !form.empresa.trim() || !form.secao}
                 className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>

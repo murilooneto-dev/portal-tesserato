@@ -52,7 +52,14 @@ export async function renomearSecaoParcelamento(
   // parcelamento_secoes — precisa atualizar manualmente aqui pra nenhum
   // parcelamento existente ficar com um nome de seção que não existe mais
   // no catálogo.
-  await supabase.from('parcelamentos').update({ secao: nomeNormalizado }).eq('secao', nomeAntigo)
+  const { error: erroCascata } = await supabase
+    .from('parcelamentos')
+    .update({ secao: nomeNormalizado })
+    .eq('secao', nomeAntigo)
+
+  if (erroCascata) {
+    return { error: `Seção renomeada, mas os parcelamentos não foram atualizados: ${erroCascata.message}` }
+  }
 
   return { error: null }
 }
@@ -61,10 +68,12 @@ export async function removerSecaoParcelamento(id: string, nome: string): Promis
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!user || !supabase) return { error: 'Sessão inválida.' }
 
-  const { count } = await supabase
+  const { count, error: erroContagem } = await supabase
     .from('parcelamentos')
     .select('id', { count: 'exact', head: true })
     .eq('secao', nome)
+
+  if (erroContagem) return { error: erroContagem.message }
 
   if (count && count > 0) {
     return { error: `Não é possível remover: ${count} parcelamento${count !== 1 ? 's' : ''} usa${count !== 1 ? 'm' : ''} essa seção.` }

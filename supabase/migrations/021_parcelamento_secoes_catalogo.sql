@@ -19,3 +19,11 @@ insert into parcelamento_secoes (nome) values
   ('SEFAZ - PARCELAMENTOS'),
   ('FGTS DIGITAL')
 on conflict (nome) do nothing;
+
+alter table parcelamento_secoes enable row level security;
+
+create policy "Autenticados leem parcelamento_secoes" on parcelamento_secoes
+  for select using (auth.uid() is not null);
+
+create policy "Autenticados gerenciam parcelamento_secoes" on parcelamento_secoes
+  for all using (auth.uid() is not null);
