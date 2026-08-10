@@ -61,7 +61,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const tiposDeParcelamento = Array.from(new Set(
     (tarefas ?? []).filter(t => t.parcelamento_id).map(t => t.tipo)
   ))
-  const tarefasPersonalizadasEfetivas = [...tarefasBaseFiscal, ...tiposDeParcelamento]
+  const tarefasPersonalizadasEfetivas = Array.from(new Set([...tarefasBaseFiscal, ...tiposDeParcelamento]))
 
   const { data: tiposRaw } = await supabase
     .from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'fiscal')

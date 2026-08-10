@@ -49,7 +49,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   const tiposDeParcelamento = Array.from(new Set(
     (tarefas ?? []).filter(t => t.parcelamento_id).map(t => t.tipo)
   ))
-  const tarefasPersonalizadasEfetivas = [...cliente.tarefas_personalizadas, ...tiposDeParcelamento]
+  const tarefasPersonalizadasEfetivas = Array.from(new Set([...cliente.tarefas_personalizadas, ...tiposDeParcelamento]))
 
   const { data: eventosCalRaw } = await supabase
     .from('calendario_eventos')
