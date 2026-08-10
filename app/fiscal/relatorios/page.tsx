@@ -31,6 +31,7 @@ export default function RelatoriosPage() {
   const { mes, ano } = useMesAno()
   const [clientes, setClientes] = useState<ClienteComFiscal[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
+  const [obsPorCliente, setObsPorCliente] = useState<Record<string, string>>({})
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('relatorios:grupo', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('relatorios:atividade', 'TODAS')
@@ -54,9 +55,15 @@ export default function RelatoriosPage() {
         Promise.all([
           clientesQ,
           buscarTodasTarefasDoMes<Tarefa>(sb, mes, ano),
-        ]).then(([c, t]) => {
+          sb.from('observacoes_clientes').select('cliente_id,texto').eq('mes', mes).eq('ano', ano),
+        ]).then(([c, t, o]) => {
           setClientes((c.data ?? []).map(flattenClienteFiscal))
           setTarefas(t)
+          const obsMap: Record<string, string> = {}
+          for (const row of o.data ?? []) {
+            if (row.texto?.trim()) obsMap[row.cliente_id] = row.texto
+          }
+          setObsPorCliente(obsMap)
         })
       })
     })
@@ -129,7 +136,7 @@ export default function RelatoriosPage() {
       <td>${r.cliente.responsavel ?? '—'}</td>
       <td><span class="bar-bg"><span class="bar-fill" style="width:${r.pct}%"></span></span>${r.pct}%</td>
       <td>${r.pct === 100 ? '✓ Concluído' : r.pendentes.join(', ')}</td>
-      <td>${r.cliente.obs ?? ''}</td>
+      <td>${obsPorCliente[r.cliente.id] ?? ''}</td>
       <td>${r.cliente.mit ?? '—'}</td>
     </tr>`).join('')}
   </tbody>
@@ -253,7 +260,7 @@ export default function RelatoriosPage() {
                     )
                   }
                 </td>
-                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs max-w-[200px] truncate" title={r.cliente.obs ?? undefined}>{r.cliente.obs ?? ''}</td>
+                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs max-w-[200px] truncate" title={obsPorCliente[r.cliente.id]}>{obsPorCliente[r.cliente.id] ?? ''}</td>
                 <td className="px-4 py-3 text-[var(--fg)]/50 text-xs">{r.cliente.mit ?? '—'}</td>
               </tr>
             ))}

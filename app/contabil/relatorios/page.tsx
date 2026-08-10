@@ -21,12 +21,18 @@ export default async function RelatoriosContabilPage() {
   let clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).eq('clientes_contabil.ativo', true).order('nome')
   if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('clientes_contabil.responsavel', profile.nome)
 
-  const [{ data: clientesRaw }, tarefas] = await Promise.all([
+  const [{ data: clientesRaw }, tarefas, { data: observacoes }] = await Promise.all([
     clientesQ,
     buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano, '*', 'contabil'),
+    supabase.from('observacoes_clientes').select('cliente_id,texto').eq('mes', mes).eq('ano', ano),
   ])
 
   const clientes = (clientesRaw ?? []).map(flattenClienteContabil)
+
+  const obsPorCliente: Record<string, string> = {}
+  for (const row of observacoes ?? []) {
+    if (row.texto?.trim()) obsPorCliente[row.cliente_id] = row.texto
+  }
 
   return (
     <RelatoriosContabil
@@ -35,6 +41,7 @@ export default async function RelatoriosContabilPage() {
       isAdmin={isAdmin}
       mes={mes}
       ano={ano}
+      obsPorCliente={obsPorCliente}
     />
   )
 }
