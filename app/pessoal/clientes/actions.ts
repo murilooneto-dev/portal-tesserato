@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarClientePessoal } from '@/lib/supabase/server'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
+import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
 
 export async function toggleTarefaPessoal(
   clienteId: string,
@@ -22,7 +23,7 @@ export async function toggleTarefaPessoal(
     : null
 
   const { data: existing } = await supabase
-    .from('tarefas').select('id')
+    .from('tarefas').select('id, parcelamento_id')
     .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'pessoal')
     .maybeSingle()
 
@@ -30,6 +31,10 @@ export async function toggleTarefaPessoal(
     await supabase.from('tarefas').update({ concluida, concluida_em }).eq('id', existing.id)
   } else {
     await supabase.from('tarefas').insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, setor: 'pessoal', concluida, concluida_em })
+  }
+
+  if (existing?.parcelamento_id) {
+    await gravarDataParcelamento(supabase, existing.parcelamento_id, mes, concluida && data ? isoParaDdMm(data) : null)
   }
 
   revalidatePath(`/pessoal/clientes/${clienteId}`)

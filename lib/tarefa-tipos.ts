@@ -22,3 +22,18 @@ export function tarefaExisteNoCatalogo(catalogo: string[], nome: string): boolea
   const alvo = nome.trim().toLowerCase()
   return catalogo.some(c => c.trim().toLowerCase() === alvo)
 }
+
+// Fallback do setor Fiscal: usado só quando o cliente não tem
+// `tarefas_personalizadas` cadastradas (comportamento legado, anterior ao
+// catálogo por cliente). Compartilhado entre TarefaChecklist.tsx (que
+// renderiza) e a ficha do cliente (que precisa saber a lista efetiva antes
+// de mesclar tarefas de parcelamento nela).
+export const TAREFAS_FISCAL_NORMAL  = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS']
+export const TAREFAS_FISCAL_SIMPLES = ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','FECHAMENTO SIMPLES','GUIAS ENVIADAS','ICMS ST','REINF']
+export const TAREFAS_FISCAL_MEI     = ['DAS']
+
+export function getTiposParaGrupoFiscal(grupo: string): string[] {
+  if (grupo === 'simples') return TAREFAS_FISCAL_SIMPLES
+  if (grupo === 'mei')     return TAREFAS_FISCAL_MEI
+  return TAREFAS_FISCAL_NORMAL
+}

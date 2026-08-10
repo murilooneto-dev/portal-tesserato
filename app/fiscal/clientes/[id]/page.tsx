@@ -18,6 +18,8 @@ import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
 import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
+import { sincronizarTarefasParcelamento, gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
+import { getTiposParaGrupoFiscal } from '@/lib/tarefa-tipos'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -44,12 +46,22 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
   const { mes, ano } = await getMesAno()
+  await sincronizarTarefasParcelamento(supabase, 'fiscal', mes, ano)
   const anoAtual = getMesAnoRealAgora().ano
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   // Tarefas do mês selecionado
   const { data: tarefas } = await supabase
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
+
+  const tarefasPersonalizadasBrutas = cliente.tarefas_personalizadas ?? []
+  const tarefasBaseFiscal = tarefasPersonalizadasBrutas.length > 0
+    ? tarefasPersonalizadasBrutas
+    : getTiposParaGrupoFiscal(cliente.grupo ?? 'normal')
+  const tiposDeParcelamento = Array.from(new Set(
+    (tarefas ?? []).filter(t => t.parcelamento_id).map(t => t.tipo)
+  ))
+  const tarefasPersonalizadasEfetivas = Array.from(new Set([...tarefasBaseFiscal, ...tiposDeParcelamento]))
 
   const { data: tiposRaw } = await supabase
     .from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'fiscal')
@@ -128,7 +140,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
       ? (data ? new Date(data + 'T12:00:00').toISOString() : new Date().toISOString())
       : null
     const { data: existing } = await supabase
-      .from('tarefas').select('id')
+      .from('tarefas').select('id, parcelamento_id')
       .eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'fiscal')
       .maybeSingle()
     if (existing?.id) {
@@ -138,6 +150,9 @@ export default async function ClienteDetalhePage({ params }: Props) {
     } else {
       await supabase.from('tarefas')
         .insert({ cliente_id: id, usuario_id: user!.id, mes, ano, tipo, setor: 'fiscal', concluida, concluida_em })
+    }
+    if (existing?.parcelamento_id) {
+      await gravarDataParcelamento(supabase, existing.parcelamento_id, mes, concluida && data ? isoParaDdMm(data) : null)
     }
     revalidatePath(`/fiscal/clientes/${id}`)
     revalidatePath('/fiscal/clientes')
@@ -167,10 +182,9 @@ export default async function ClienteDetalhePage({ params }: Props) {
   }
 
   // Histórico por mês
-  const tiposDoCliente = cliente.tarefas_personalizadas ?? []
   const historicoMeses = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
-    const total = tiposDoCliente.length
+    const total = tarefasPersonalizadasEfetivas.length
     const feitas = (tarefasAno ?? []).filter(t => t.mes === m && t.concluida).length
     const pct = total > 0 ? Math.round((feitas / total) * 100) : 0
     return { m, total, feitas, pct }
@@ -218,7 +232,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
         clienteId={id}
         clienteNome={cliente.nome}
         grupo={cliente.grupo ?? 'normal'}
-        tarefasPersonalizadas={cliente.tarefas_personalizadas ?? []}
+        tarefasPersonalizadas={tarefasPersonalizadasEfetivas}
         tarefas={tarefas ?? []}
         vinculos={vinculos}
         mes={mes}
