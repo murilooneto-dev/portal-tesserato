@@ -5,14 +5,13 @@ import { createClient } from '@/lib/supabase/client'
 import { useMesAno } from '@/lib/mes-atual-context'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { StatusParcelamento } from '@/lib/parcelamentos-aviso'
+import { criarSecaoParcelamento } from '@/lib/parcelamento-secoes-actions'
+import GerenciarSecoesModal from '@/components/fiscal/GerenciarSecoesModal'
 
-const SECOES = [
-  'RECEITA FEDERAL - ECAC',
-  'PGFN - ECAC',
-  'SEFAZ - PARCELAMENTO MULTA AUTONOMA',
-  'SEFAZ - PARCELAMENTOS',
-  'FGTS DIGITAL',
-]
+interface SecaoParcelamento {
+  id: string
+  nome: string
+}
 
 const MESES_ABREV = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
 const MESES_COLS  = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
@@ -28,6 +27,7 @@ interface Parcelamento {
   responsavel: string | null
   local_tipo: string | null
   status: StatusParcelamento
+  setores: string[]
   tarefa: string | null
   senhas: string | null
   jan: string | null; fev: string | null; mar: string | null; abr: string | null
@@ -35,9 +35,15 @@ interface Parcelamento {
   set: string | null; out: string | null; nov: string | null; dez: string | null
 }
 
+const SETORES_PARCELAMENTO: { valor: string; label: string }[] = [
+  { valor: 'fiscal', label: 'Fiscal' },
+  { valor: 'contabil', label: 'Contábil' },
+  { valor: 'pessoal', label: 'Pessoal' },
+]
+
 const EMPTY_FORM: Omit<Parcelamento, 'id'> = {
-  secao: SECOES[0], empresa: '', empresa_avulsa: false, cnpj: '', regime: '', responsavel: '',
-  local_tipo: '', status: 'EM ANDAMENTO', tarefa: '', senhas: '',
+  secao: '', empresa: '', empresa_avulsa: false, cnpj: '', regime: '', responsavel: '',
+  local_tipo: '', status: 'EM ANDAMENTO', setores: [], tarefa: '', senhas: '',
   jan: null, fev: null, mar: null, abr: null, mai: null, jun: null,
   jul: null, ago: null, set: null, out: null, nov: null, dez: null,
 }
@@ -73,6 +79,12 @@ export default function ParcelamentosPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [userNome, setUserNome] = useState<string | null>(null)
   const [clientesCadastrados, setClientesCadastrados] = useState<{ nome: string; cnpj: string | null; responsavel: string | null }[]>([])
+  const [secoes, setSecoes] = useState<SecaoParcelamento[]>([])
+  const [gerenciarSecoesOpen, setGerenciarSecoesOpen] = useState(false)
+  const [criandoSecao, setCriandoSecao] = useState(false)
+  const [novaSecaoNome, setNovaSecaoNome] = useState('')
+  const [novaSecaoErro, setNovaSecaoErro] = useState<string | null>(null)
+  const [novaSecaoSalvando, setNovaSecaoSalvando] = useState(false)
 
   const { ano } = useMesAno()
 
@@ -89,6 +101,13 @@ export default function ParcelamentosPage() {
     const { data } = await q
     setItems(data ?? [])
     setLoading(false)
+  }
+
+  async function carregarSecoes(): Promise<SecaoParcelamento[]> {
+    const { data } = await sb.from('parcelamento_secoes').select('id, nome').order('created_at')
+    const secoesFrescas = data ?? []
+    setSecoes(secoesFrescas)
+    return secoesFrescas
   }
 
   useEffect(() => {
@@ -109,13 +128,18 @@ export default function ParcelamentosPage() {
         responsavel: c.clientes_fiscal?.responsavel ?? null
       })) ?? [])
     })
+    carregarSecoes()
   }, [])
 
   function toggleExpand(id: string) {
     setExpandedId(prev => prev === id ? null : id)
   }
 
-  function openCreate() { setEditItem(null); setForm(EMPTY_FORM); setModalOpen(true) }
+  function openCreate() {
+    setEditItem(null)
+    setForm({ ...EMPTY_FORM, secao: secoes[0]?.nome ?? '' })
+    setModalOpen(true)
+  }
   function openEdit(item: Parcelamento) {
     setEditItem(item)
     const { id, ...rest } = item
@@ -133,7 +157,12 @@ export default function ParcelamentosPage() {
   async function handleSave() {
     setSaving(true)
     if (editItem) {
-      await sb.from('parcelamentos').update(form).eq('id', editItem.id)
+      // Meses sao somente leitura na UI (preenchidos pela tarefa na ficha do
+      // cliente) — nao reenviar, senao o save do admin sobrescreve com o
+      // valor capturado na abertura do modal e desfaz o que a ficha gravou
+      // enquanto o modal estava aberto.
+      const { jan, fev, mar, abr, mai, jun, jul, ago, set, out, nov, dez, ...formSemMeses } = form
+      await sb.from('parcelamentos').update(formSemMeses).eq('id', editItem.id)
     } else {
       await sb.from('parcelamentos').insert(form)
     }
@@ -144,6 +173,47 @@ export default function ParcelamentosPage() {
 
   function setF<K extends keyof typeof form>(k: K, v: typeof form[K]) {
     setForm(p => ({ ...p, [k]: v }))
+  }
+
+  function toggleSetorParcelamento(setor: string) {
+    setForm(prev => ({
+      ...prev,
+      setores: prev.setores.includes(setor) ? prev.setores.filter(s => s !== setor) : [...prev.setores, setor],
+    }))
+  }
+
+  async function handleCriarSecao() {
+    const nome = novaSecaoNome.trim()
+    if (!nome) return
+    setNovaSecaoSalvando(true)
+    setNovaSecaoErro(null)
+    try {
+      const { error } = await criarSecaoParcelamento(nome)
+      if (error) { setNovaSecaoErro(error); return }
+      await carregarSecoes()
+      setF('secao', nome.toUpperCase())
+      setCriandoSecao(false)
+      setNovaSecaoNome('')
+    } finally {
+      setNovaSecaoSalvando(false)
+    }
+  }
+
+  async function handleSecoesChanged() {
+    const [secoesFrescas] = await Promise.all([carregarSecoes(), load(isAdmin, userNome)])
+    if (modalOpen) {
+      setForm(prev => {
+        if (secoesFrescas.some(s => s.nome === prev.secao)) return prev
+        return { ...prev, secao: secoesFrescas[0]?.nome ?? '' }
+      })
+    }
+  }
+
+  function fecharModal() {
+    setModalOpen(false)
+    setCriandoSecao(false)
+    setNovaSecaoNome('')
+    setNovaSecaoErro(null)
   }
 
   const responsaveis = Array.from(new Set(items.map(p => p.responsavel).filter(Boolean) as string[])).sort()
@@ -157,7 +227,7 @@ export default function ParcelamentosPage() {
     return matchSearch && matchSecao && matchResp
   })
 
-  const secoesMostrar = secaoFiltro === 'TODOS' ? SECOES : [secaoFiltro]
+  const secoesMostrar = secaoFiltro === 'TODOS' ? secoes.map(s => s.nome) : [secaoFiltro]
 
   function imprimir() {
     const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short' })
@@ -167,7 +237,7 @@ export default function ParcelamentosPage() {
       search ? `Busca: "${search}"` : null,
     ].filter(Boolean).join(' · ') || 'Todos os registros'
 
-    const secRows = (secaoFiltro === 'TODOS' ? SECOES : [secaoFiltro]).map(secao => {
+    const secRows = (secaoFiltro === 'TODOS' ? secoes.map(s => s.nome) : [secaoFiltro]).map(secao => {
       const rows = filtered.filter(p => p.secao === secao)
       if (!rows.length) return ''
       const trs = rows.map((p, i) => `
@@ -237,7 +307,7 @@ export default function ParcelamentosPage() {
     <div class="meta">
       <div class="meta-item"><div class="label">Ano de referência</div><div class="value">${ano}</div></div>
       <div class="meta-item"><div class="label">Total de parcelamentos</div><div class="value">${filtered.length}</div></div>
-      <div class="meta-item"><div class="label">Seções</div><div class="value">${(secaoFiltro === 'TODOS' ? SECOES : [secaoFiltro]).filter(s => filtered.some(p => p.secao === s)).length}</div></div>
+      <div class="meta-item"><div class="label">Seções</div><div class="value">${(secaoFiltro === 'TODOS' ? secoes.map(s => s.nome) : [secaoFiltro]).filter(s => filtered.some(p => p.secao === s)).length}</div></div>
       ${respFiltro !== 'TODOS' ? `<div class="meta-item"><div class="label">Responsável</div><div class="value">${respFiltro}</div></div>` : ''}
     </div>
     ${secRows}
@@ -262,7 +332,7 @@ export default function ParcelamentosPage() {
         <select value={secaoFiltro} onChange={e => setSecaoFiltro(e.target.value)}
           className="px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm focus:outline-none min-w-[180px]">
           <option value="TODOS">Todas as seções</option>
-          {SECOES.map(s => <option key={s} value={s} className="bg-[var(--bg-surface)]">{s}</option>)}
+          {secoes.map(s => <option key={s.id} value={s.nome} className="bg-[var(--bg-surface)]">{s.nome}</option>)}
         </select>
         {isAdmin && (
           <select value={respFiltro} onChange={e => setRespFiltro(e.target.value)}
@@ -416,17 +486,60 @@ export default function ParcelamentosPage() {
           <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
               <h2 className="text-[var(--fg)] font-bold text-base">{editItem ? 'Editar Parcelamento' : 'Novo Parcelamento'}</h2>
-              <button onClick={() => setModalOpen(false)} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl">×</button>
+              <button onClick={fecharModal} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl">×</button>
             </div>
 
             <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
               {/* Seção */}
               <div>
-                <label className={labelCls}>Seção</label>
-                <select value={form.secao} onChange={e => setF('secao', e.target.value)}
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelCls + ' mb-0'}>Seção</label>
+                  <button type="button" onClick={() => setGerenciarSecoesOpen(true)}
+                    className="text-[10px] font-semibold text-[var(--fg)]/40 hover:text-[var(--fg)] transition-colors">
+                    Gerenciar seções
+                  </button>
+                </div>
+                <select
+                  value={criandoSecao ? '__nova__' : form.secao}
+                  onChange={e => {
+                    if (e.target.value === '__nova__') {
+                      setCriandoSecao(true)
+                      setNovaSecaoNome('')
+                      setNovaSecaoErro(null)
+                    } else {
+                      setF('secao', e.target.value)
+                    }
+                  }}
                   className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50">
-                  {SECOES.map(s => <option key={s} value={s} className="bg-[var(--bg-surface)]">{s}</option>)}
+                  {secoes.map(s => <option key={s.id} value={s.nome} className="bg-[var(--bg-surface)]">{s.nome}</option>)}
+                  <option value="__nova__" className="bg-[var(--bg-surface)]">+ Criar nova seção...</option>
                 </select>
+                {criandoSecao && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      value={novaSecaoNome}
+                      onChange={e => setNovaSecaoNome(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCriarSecao())}
+                      placeholder="Nome da nova seção..."
+                      autoFocus
+                      className={inputCls + ' flex-1'}
+                    />
+                    <button type="button" onClick={handleCriarSecao} disabled={novaSecaoSalvando || !novaSecaoNome.trim()}
+                      className="px-4 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 whitespace-nowrap">
+                      {novaSecaoSalvando ? 'Criando...' : 'Criar'}
+                    </button>
+                    <button type="button" onClick={() => { setCriandoSecao(false); setNovaSecaoNome(''); setNovaSecaoErro(null) }}
+                      className="px-3 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+                {novaSecaoErro && (
+                  <p className="mt-1.5 text-xs text-red-400">⚠ {novaSecaoErro}</p>
+                )}
+                {secoes.length === 0 && (
+                  <p className="mt-1.5 text-[var(--fg)]/40 text-xs">Nenhuma seção cadastrada ainda — crie uma abaixo.</p>
+                )}
               </div>
 
               {/* Empresa + CNPJ */}
@@ -514,26 +627,47 @@ export default function ParcelamentosPage() {
                 </div>
               </div>
 
+              {/* Setores que geram tarefa automática */}
+              <div>
+                <label className={labelCls}>Gera tarefa automática nos setores</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {SETORES_PARCELAMENTO.map(s => (
+                    <label key={s.valor} className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10">
+                      <input
+                        type="checkbox"
+                        checked={form.setores.includes(s.valor)}
+                        onChange={() => toggleSetorParcelamento(s.valor)}
+                        className="w-3.5 h-3.5 accent-[var(--accent)]"
+                      />
+                      <span className="text-[var(--fg)]/70 text-xs">{s.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* Tarefa */}
               <div>
                 <label className={labelCls}>Tarefa</label>
                 <input className={inputCls} value={form.tarefa ?? ''} onChange={e => setF('tarefa', e.target.value || null)} />
               </div>
 
-              {/* Meses */}
+              {/* Meses — somente leitura: preenchidos pela tarefa na ficha do cliente */}
               <div>
-                <label className={labelCls}>Parcelas Mensais — data de emissão/envio (dd/mm)</label>
+                <label className={labelCls}>Parcelas Mensais — data de emissão/envio (preenchido pela tarefa na ficha do cliente)</label>
                 <div className="grid grid-cols-6 gap-2">
-                  {MESES_COLS.map((mes, i) => (
-                    <div key={mes}>
-                      <p className="text-[var(--fg)]/30 text-[10px] text-center mb-1">{MESES_ABREV[i]}</p>
-                      <input
-                        value={(form as any)[mes] ?? ''}
-                        onChange={e => setF(mes as any, e.target.value || null)}
-                        placeholder="dd/mm"
-                        className="w-full px-2 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs text-center focus:outline-none focus:border-[var(--accent)]/50" />
-                    </div>
-                  ))}
+                  {MESES_COLS.map((mes, i) => {
+                    const valor = (form as any)[mes] as string | null
+                    return (
+                      <div key={mes}>
+                        <p className="text-[var(--fg)]/30 text-[10px] text-center mb-1">{MESES_ABREV[i]}</p>
+                        <div className={`w-full px-2 py-2 rounded-xl border text-xs text-center ${
+                          valor ? 'bg-blue-500/10 border-transparent text-[var(--fg)]' : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/20'
+                        }`}>
+                          {valor ?? '—'}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -546,17 +680,25 @@ export default function ParcelamentosPage() {
             </div>
 
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-              <button onClick={() => setModalOpen(false)}
+              <button onClick={fecharModal}
                 className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
                 Cancelar
               </button>
-              <button onClick={handleSave} disabled={saving || !form.empresa.trim()}
+              <button onClick={handleSave} disabled={saving || !form.empresa.trim() || !form.secao}
                 className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {gerenciarSecoesOpen && (
+        <GerenciarSecoesModal
+          secoes={secoes}
+          onClose={() => setGerenciarSecoesOpen(false)}
+          onChanged={handleSecoesChanged}
+        />
       )}
     </div>
   )

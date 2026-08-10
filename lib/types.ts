@@ -78,6 +78,7 @@ export interface Tarefa {
   importado: boolean
   conferido: boolean
   created_at: string
+  parcelamento_id: string | null
 }
 
 export interface LinkRapido {

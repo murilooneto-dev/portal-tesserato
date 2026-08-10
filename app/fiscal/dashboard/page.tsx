@@ -6,6 +6,7 @@ import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
+import { sincronizarTarefasParcelamento } from '@/lib/parcelamento-tarefas'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
 
@@ -20,6 +21,8 @@ export default async function DashboardPage() {
     return mes === real.mes && ano === real.ano
   })()
 
+  await sincronizarTarefasParcelamento(supabase, 'fiscal', mes, ano)
+
   const [{ data: clientesRaw }, { data: profiles }, tarefas, { data: eventosRaw }] = await Promise.all([
     supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('clientes_fiscal.ativo', true).order('nome'),
     supabase.from('profiles').select('*'),
@@ -32,13 +35,17 @@ export default async function DashboardPage() {
   const ts = tarefas
   const eventos = (eventosRaw ?? []) as CalendarioEvento[]
 
-  // Mapa de tipos válidos por cliente
+  // Mapa de tipos válidos por cliente — inclui as tarefas geradas por
+  // parcelamento (nome dinâmico, não cadastrado em tarefas_personalizadas).
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
     tiposMap[c.id] = new Set(c.tarefas_personalizadas ?? [])
   }
+  for (const t of ts) {
+    if (t.parcelamento_id) tiposMap[t.cliente_id]?.add(t.tipo)
+  }
 
-  const totalTarefas = cs.reduce((sum, c) => sum + (c.tarefas_personalizadas?.length ?? 0), 0)
+  const totalTarefas = cs.reduce((sum, c) => sum + (tiposMap[c.id]?.size ?? 0), 0)
   const concluidasTarefas = ts.filter(t => t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)).length
   const pct = totalTarefas > 0 ? Math.round((concluidasTarefas / totalTarefas) * 100) : 0
 
