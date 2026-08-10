@@ -182,10 +182,9 @@ export default async function ClienteDetalhePage({ params }: Props) {
   }
 
   // Histórico por mês
-  const tiposDoCliente = cliente.tarefas_personalizadas ?? []
   const historicoMeses = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
-    const total = tiposDoCliente.length
+    const total = tarefasPersonalizadasEfetivas.length
     const feitas = (tarefasAno ?? []).filter(t => t.mes === m && t.concluida).length
     const pct = total > 0 ? Math.round((feitas / total) * 100) : 0
     return { m, total, feitas, pct }
