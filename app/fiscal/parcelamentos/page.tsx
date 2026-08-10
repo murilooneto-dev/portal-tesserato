@@ -157,7 +157,12 @@ export default function ParcelamentosPage() {
   async function handleSave() {
     setSaving(true)
     if (editItem) {
-      await sb.from('parcelamentos').update(form).eq('id', editItem.id)
+      // Meses sao somente leitura na UI (preenchidos pela tarefa na ficha do
+      // cliente) — nao reenviar, senao o save do admin sobrescreve com o
+      // valor capturado na abertura do modal e desfaz o que a ficha gravou
+      // enquanto o modal estava aberto.
+      const { jan, fev, mar, abr, mai, jun, jul, ago, set, out, nov, dez, ...formSemMeses } = form
+      await sb.from('parcelamentos').update(formSemMeses).eq('id', editItem.id)
     } else {
       await sb.from('parcelamentos').insert(form)
     }
