@@ -26,9 +26,10 @@ interface Props {
   mes: number
   ano: number
   mesesVisiveisPorTipo: Record<string, number[] | null>
+  obsPorCliente: Record<string, string>
 }
 
-export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano, mesesVisiveisPorTipo }: Props) {
+export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano, mesesVisiveisPorTipo, obsPorCliente }: Props) {
   const router = useRouter()
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios-pessoal:responsavel', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('relatorios-pessoal:atividade', 'TODAS')
@@ -96,7 +97,7 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
       <td>${r.cliente.responsavel ?? '—'}</td>
       <td><span class="bar-bg"><span class="bar-fill" style="width:${r.pct}%"></span></span>${r.pct}%</td>
       <td>${r.pct === 100 ? '✓ Concluído' : r.pendentes.join(', ')}</td>
-      <td>${r.cliente.obs ?? ''}</td>
+      <td>${obsPorCliente[r.cliente.id] ?? ''}</td>
       <td>${r.cliente.mit ?? '—'}</td>
     </tr>`).join('')}
   </tbody>
@@ -202,7 +203,7 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
                     )
                   }
                 </td>
-                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs max-w-[200px] truncate" title={r.cliente.obs ?? undefined}>{r.cliente.obs ?? ''}</td>
+                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs max-w-[200px] truncate" title={obsPorCliente[r.cliente.id]}>{obsPorCliente[r.cliente.id] ?? ''}</td>
                 <td className="px-4 py-3 text-[var(--fg)]/50 text-xs">{r.cliente.mit ?? '—'}</td>
               </tr>
             ))}
