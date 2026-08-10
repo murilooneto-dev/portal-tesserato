@@ -28,6 +28,10 @@ export function ddMmParaIso(ddMm: string, ano: number): string | null {
   const iso = `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`
   const dateObj = new Date(iso + 'T12:00:00')
   if (isNaN(dateObj.getTime())) return null
+  // new Date faz rollover leniente pra datas invalidas do calendario (ex:
+  // 31/02 vira 3 de marco) sem lancar erro nem virar NaN — confere que o
+  // mes/dia resultante bate com o que foi pedido pra rejeitar esses casos.
+  if (dateObj.getMonth() + 1 !== Number(mes) || dateObj.getDate() !== Number(dia)) return null
   return dateObj.toISOString()
 }
 

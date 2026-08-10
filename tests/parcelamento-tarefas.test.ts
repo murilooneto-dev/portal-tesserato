@@ -24,6 +24,12 @@ test('ddMmParaIso retorna null pra texto invalido', () => {
   assert.equal(ddMmParaIso('', 2026), null)
 })
 
+test('ddMmParaIso rejeita datas invalidas do calendario (rollover)', () => {
+  assert.equal(ddMmParaIso('31/02', 2026), null)  // fevereiro nao tem 31 dias
+  assert.equal(ddMmParaIso('30/02', 2026), null)  // fevereiro nao tem 30 dias
+  assert.equal(ddMmParaIso('29/02', 2026), null)  // 2026 nao e bissexto
+})
+
 test('nomeTarefaParcelamento sem desambiguacao usa so a secao', () => {
   assert.equal(nomeTarefaParcelamento('PGFN - ECAC', 'SEQ 4394823', false), 'Parcelamentos (PGFN - ECAC)')
 })
