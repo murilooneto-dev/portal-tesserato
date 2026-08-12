@@ -8,7 +8,7 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { filtrarTarefasVisiveis } from '@/lib/tarefa-tipos'
 import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
-import { sincronizarTarefasParcelamento } from '@/lib/parcelamento-tarefas'
+import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 
 export const metadata = { title: 'Dashboard — Tesserato Pessoal' }
 
@@ -40,12 +40,17 @@ export default async function DashboardPessoalPage() {
   const mesesVisiveisPorTipo: Record<string, number[] | null> = {}
   for (const t of tiposRaw ?? []) mesesVisiveisPorTipo[t.nome as string] = t.meses_visiveis as number[] | null
 
+  const parcelamentoIdsDoMes = Array.from(new Set(
+    ts.filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
+  ))
+  const parcelamentosAtivos = await idsDeParcelamentosAtivos(supabase, parcelamentoIdsDoMes)
+
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
     tiposMap[c.id] = new Set(filtrarTarefasVisiveis(c.tarefas_personalizadas ?? [], mesesVisiveisPorTipo, mes))
   }
   for (const t of ts) {
-    if (t.parcelamento_id) tiposMap[t.cliente_id]?.add(t.tipo)
+    if (t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)) tiposMap[t.cliente_id]?.add(t.tipo)
   }
 
   const totalTarefas = cs.reduce((sum, c) => sum + (tiposMap[c.id]?.size ?? 0), 0)
