@@ -5,7 +5,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import { buscarLabelsParcelamentoAtivo } from '@/lib/parcelamentos-aviso'
-import { sincronizarTarefasParcelamento } from '@/lib/parcelamento-tarefas'
+import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import TarefaChecklistPessoal from '@/components/pessoal/TarefaChecklistPessoal'
@@ -46,8 +46,12 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
     buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null),
   ])
 
+  const parcelamentoIdsDaFicha = Array.from(new Set(
+    (tarefas ?? []).filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
+  ))
+  const parcelamentosAtivos = await idsDeParcelamentosAtivos(supabase, parcelamentoIdsDaFicha)
   const tiposDeParcelamento = Array.from(new Set(
-    (tarefas ?? []).filter(t => t.parcelamento_id).map(t => t.tipo)
+    (tarefas ?? []).filter(t => t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)).map(t => t.tipo)
   ))
   const tarefasPersonalizadasEfetivas = Array.from(new Set([...cliente.tarefas_personalizadas, ...tiposDeParcelamento]))
 
