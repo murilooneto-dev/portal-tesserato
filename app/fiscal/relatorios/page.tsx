@@ -114,6 +114,7 @@ export default function RelatoriosPage() {
   .normal { background: #dbeafe; color: #1d4ed8; }
   .simples { background: #dcfce7; color: #166534; }
   .mei { background: #fef3c7; color: #92400e; }
+  .isento { background: #e2e8f0; color: #475569; }
   footer { margin-top: 16px; text-align: center; color: #999; font-size: 8px; }
   @media print { button { display: none; } }
 </style></head><body>
@@ -171,6 +172,7 @@ export default function RelatoriosPage() {
           <option value="normal" className="bg-[var(--bg-surface)]">Regime Normal</option>
           <option value="simples" className="bg-[var(--bg-surface)]">Simples Nacional</option>
           <option value="mei" className="bg-[var(--bg-surface)]">MEI</option>
+          <option value="isento" className="bg-[var(--bg-surface)]">Isento</option>
         </select>
 
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)}
@@ -237,6 +239,7 @@ export default function RelatoriosPage() {
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     r.cliente.grupo === 'simples' ? 'bg-green-500/15 text-green-400' :
                     r.cliente.grupo === 'mei' ? 'bg-amber-500/15 text-amber-400' :
+                    r.cliente.grupo === 'isento' ? 'bg-slate-500/15 text-slate-400' :
                     'bg-blue-500/15 text-blue-400'
                   }`}>{r.cliente.regime ?? r.cliente.grupo ?? '—'}</span>
                 </td>

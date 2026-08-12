@@ -57,6 +57,7 @@ export default async function DashboardPage() {
   const normal  = cs.filter(c => (c.grupo ?? 'normal') === 'normal').length
   const simples = cs.filter(c => c.grupo === 'simples').length
   const mei     = cs.filter(c => c.grupo === 'mei').length
+  const isento  = cs.filter(c => c.grupo === 'isento').length
 
   const alertas = ehMesAtual
     ? eventos
@@ -127,6 +128,10 @@ export default async function DashboardPage() {
             <div>
               <p className="text-xs text-[var(--fg)]/30 uppercase tracking-wide">MEI</p>
               <p className="text-sm font-semibold text-[var(--fg)]/60">{mei}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--fg)]/30 uppercase tracking-wide">Isento</p>
+              <p className="text-sm font-semibold text-[var(--fg)]/60">{isento}</p>
             </div>
           </div>
         </div>

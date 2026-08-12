@@ -145,14 +145,16 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
     { value: 'normal',  label: 'Regime Normal' },
     { value: 'simples', label: 'Simples Nacional' },
     { value: 'mei',     label: 'MEI' },
+    { value: 'isento',  label: 'Isento' },
   ]
   const [templatesGrupo, setTemplatesGrupo] = useState<Record<string, string[]>>({
     normal:  grupoTemplates['normal']  ?? [],
     simples: grupoTemplates['simples'] ?? [],
     mei:     grupoTemplates['mei']     ?? [],
+    isento:  grupoTemplates['isento']  ?? [],
   })
   const [novasTarefasGrupo, setNovasTarefasGrupo] = useState<Record<string, string>>({
-    normal: '', simples: '', mei: '',
+    normal: '', simples: '', mei: '', isento: '',
   })
   const [salvandoTemplateGrupo, setSalvandoTemplateGrupo] = useState<string | null>(null)
   const [aplicandoTemplateGrupo, setAplicandoTemplateGrupo] = useState<string | null>(null)
@@ -851,10 +853,10 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
         <div className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-6">
           {sectionHeader('Templates de Tarefas por Grupo')}
           <p className="text-[var(--fg)]/30 text-xs mb-5">
-            Configure as tarefas padrão para cada grupo (Regime Normal, Simples Nacional, MEI).
+            Configure as tarefas padrão para cada grupo (Regime Normal, Simples Nacional, MEI, Isento).
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {GRUPOS_TEMPLATE.map(({ value: grupo, label }) => (
               <div key={grupo} className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-xl p-4 flex flex-col gap-3">
                 <p className="text-[var(--fg)] font-semibold text-sm">{label}</p>

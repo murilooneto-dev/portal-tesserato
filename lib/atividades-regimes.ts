@@ -16,6 +16,7 @@ export const REGIMES = [
   { value: 'normal',  label: 'Regime Normal' },
   { value: 'simples', label: 'Simples Nacional' },
   { value: 'mei',     label: 'MEI' },
+  { value: 'isento',  label: 'Isento' },
 ]
 
 export function labelRegime(regime: string): string {

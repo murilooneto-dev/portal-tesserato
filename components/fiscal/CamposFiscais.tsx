@@ -6,6 +6,7 @@ const GRUPOS = [
   { value: 'normal',  label: 'Regime Normal' },
   { value: 'simples', label: 'Simples Nacional' },
   { value: 'mei',     label: 'MEI' },
+  { value: 'isento',  label: 'Isento' },
 ]
 
 const ATIVIDADES = [
