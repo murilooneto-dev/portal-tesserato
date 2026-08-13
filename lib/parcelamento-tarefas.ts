@@ -49,6 +49,49 @@ export function nomeTarefaParcelamento(
   return `Parcelamentos (${secao})`
 }
 
+interface ParcelamentoParaNome {
+  id: string
+  clienteId: string
+  secao: string
+  localTipo: string | null
+}
+
+// Gera o nome de tarefa de cada parcelamento, desambiguando primeiro por
+// Local/Tipo (spec item 3) e, se o nome ainda assim colidir com outro
+// parcelamento do mesmo cliente — Local/Tipo vazio ou repetido nos dois —,
+// acrescentando um contador determinístico (ordenado por id) pra garantir
+// nomes únicos. Sem isso, a unique constraint (cliente_id, mes, ano, tipo,
+// setor) do upsert em sincronizarTarefasParcelamento engole silenciosamente
+// um dos dois, e só um parcelamento fica de fato vinculado a uma tarefa.
+export function nomesTarefaParcelamentos(itens: ParcelamentoParaNome[]): Map<string, string> {
+  const contagemGrupo = new Map<string, number>()
+  for (const p of itens) {
+    const chave = `${p.clienteId}::${p.secao}`
+    contagemGrupo.set(chave, (contagemGrupo.get(chave) ?? 0) + 1)
+  }
+
+  const comNome = itens.map(p => {
+    const chave = `${p.clienteId}::${p.secao}`
+    const desambiguar = (contagemGrupo.get(chave) ?? 0) > 1
+    return { ...p, tipo: nomeTarefaParcelamento(p.secao, p.localTipo, desambiguar) }
+  })
+
+  const gruposPorNome = new Map<string, typeof comNome>()
+  for (const item of comNome) {
+    const chave = `${item.clienteId}::${item.tipo}`
+    const grupo = gruposPorNome.get(chave) ?? []
+    grupo.push(item)
+    gruposPorNome.set(chave, grupo)
+  }
+  for (const grupo of gruposPorNome.values()) {
+    if (grupo.length <= 1) continue
+    grupo.sort((a, b) => a.id.localeCompare(b.id))
+    grupo.forEach((item, i) => { item.tipo = `${item.tipo} (${i + 1})` })
+  }
+
+  return new Map(comNome.map(item => [item.id, item.tipo]))
+}
+
 // Grava (ou limpa, se valorDdMm=null) a data de um mes de parcelamento —
 // chamado depois que uma tarefa com parcelamento_id é marcada/desmarcada
 // no checklist da ficha (spec item 5).
@@ -113,19 +156,14 @@ export async function sincronizarTarefasParcelamento(
 
   if (resolvidos.length === 0) return
 
-  // Agrupa por cliente+secao pra decidir quem precisa de desambiguacao por
-  // local/tipo (spec item 3 — acontece quando o mesmo cliente tem 2+
-  // parcelamentos na mesma secao).
-  const contagemGrupo = new Map<string, number>()
-  for (const { parcelamento, clienteId } of resolvidos) {
-    const chave = `${clienteId}::${parcelamento.secao}`
-    contagemGrupo.set(chave, (contagemGrupo.get(chave) ?? 0) + 1)
-  }
+  const nomes = nomesTarefaParcelamentos(resolvidos.map(({ parcelamento, clienteId }) => ({
+    id: parcelamento.id,
+    clienteId,
+    secao: parcelamento.secao,
+    localTipo: parcelamento.local_tipo,
+  })))
 
   const novasTarefas = resolvidos.map(({ parcelamento, clienteId }) => {
-    const chave = `${clienteId}::${parcelamento.secao}`
-    const desambiguar = (contagemGrupo.get(chave) ?? 0) > 1
-    const tipo = nomeTarefaParcelamento(parcelamento.secao, parcelamento.local_tipo, desambiguar)
     const valorMes = (parcelamento[coluna] as string | null) ?? null
     const concluida = !!valorMes
     const concluida_em = concluida ? ddMmParaIso(valorMes!, ano) : null
@@ -134,7 +172,7 @@ export async function sincronizarTarefasParcelamento(
       usuario_id: null,
       mes,
       ano,
-      tipo,
+      tipo: nomes.get(parcelamento.id)!,
       setor,
       concluida,
       concluida_em,
