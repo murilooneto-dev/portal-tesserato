@@ -39,6 +39,13 @@ export default function RelatoriosPage() {
   const [apenasP, setApenasP] = useFiltroPersistente('relatorios:pendencia', false)
   const [userNome, setUserNome] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [ordenarPor, setOrdenarPor] = useState<'cliente' | 'progresso'>('progresso')
+  const [ordemAsc, setOrdemAsc] = useState(true)
+
+  function toggleSort(campo: 'cliente' | 'progresso') {
+    if (ordenarPor === campo) setOrdemAsc(a => !a)
+    else { setOrdenarPor(campo); setOrdemAsc(true) }
+  }
 
   useEffect(() => {
     const sb = createClient()
@@ -83,7 +90,12 @@ export default function RelatoriosPage() {
     .filter(c => filtroTarefa === 'TODAS' || (c.tarefas_personalizadas ?? []).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
-    .sort((a, b) => a.pct - b.pct)
+    .sort((a, b) => {
+      const cmp = ordenarPor === 'cliente'
+        ? a.cliente.nome.localeCompare(b.cliente.nome, 'pt-BR', { sensitivity: 'base' })
+        : a.pct - b.pct
+      return ordemAsc ? cmp : -cmp
+    })
 
   const stats = {
     total: filtrados.length,
@@ -220,9 +232,22 @@ export default function RelatoriosPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--fg)]/12">
-              {['#','Cliente','CNPJ','Regime','Responsável','Progresso','Tarefas Pendentes','Observação','MIT'].map(h => (
-                <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">{h}</th>
-              ))}
+              {['#','Cliente','CNPJ','Regime','Responsável','Progresso','Tarefas Pendentes','Observação','MIT'].map(h => {
+                const campo = h === 'Cliente' ? 'cliente' : h === 'Progresso' ? 'progresso' : null
+                return (
+                  <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">
+                    {campo ? (
+                      <button
+                        onClick={() => toggleSort(campo)}
+                        className="flex items-center gap-1 hover:text-[var(--fg)] transition-colors"
+                      >
+                        {h}
+                        <span className="text-[10px] w-2.5 inline-block">{ordenarPor === campo ? (ordemAsc ? '▲' : '▼') : ''}</span>
+                      </button>
+                    ) : h}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
