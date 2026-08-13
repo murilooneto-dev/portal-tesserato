@@ -150,3 +150,26 @@ export async function sincronizarTarefasParcelamento(
     ignoreDuplicates: true,
   })
 }
+
+// Dado um conjunto de ids de parcelamento (tipicamente extraído das tarefas
+// já carregadas de um cliente/mes/ano), retorna só os que estão atualmente
+// "EM ANDAMENTO". Usado pra decidir quais tarefas geradas por parcelamento
+// ainda devem aparecer no checklist/dashboard — cancelar ou liquidar um
+// parcelamento não apaga a tarefa já criada (histórico é preservado), só
+// tira ela da lista visível; reverter o status pro mesmo registro traz a
+// tarefa de volta, já que a checagem é sempre contra o status atual.
+export async function idsDeParcelamentosAtivos(
+  supabase: SupabaseClient,
+  parcelamentoIds: string[],
+): Promise<Set<string>> {
+  const idsUnicos = Array.from(new Set(parcelamentoIds))
+  if (idsUnicos.length === 0) return new Set()
+
+  const { data } = await supabase
+    .from('parcelamentos')
+    .select('id')
+    .in('id', idsUnicos)
+    .eq('status', 'EM ANDAMENTO')
+
+  return new Set((data ?? []).map(p => p.id as string))
+}

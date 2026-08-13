@@ -18,7 +18,7 @@ import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
 import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
-import { sincronizarTarefasParcelamento, gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
+import { sincronizarTarefasParcelamento, gravarDataParcelamento, isoParaDdMm, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { getTiposParaGrupoFiscal } from '@/lib/tarefa-tipos'
 
 interface Props {
@@ -58,8 +58,12 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const tarefasBaseFiscal = tarefasPersonalizadasBrutas.length > 0
     ? tarefasPersonalizadasBrutas
     : getTiposParaGrupoFiscal(cliente.grupo ?? 'normal')
+  const parcelamentoIdsDaFicha = Array.from(new Set(
+    (tarefas ?? []).filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
+  ))
+  const parcelamentosAtivos = await idsDeParcelamentosAtivos(supabase, parcelamentoIdsDaFicha)
   const tiposDeParcelamento = Array.from(new Set(
-    (tarefas ?? []).filter(t => t.parcelamento_id).map(t => t.tipo)
+    (tarefas ?? []).filter(t => t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)).map(t => t.tipo)
   ))
   const tarefasPersonalizadasEfetivas = Array.from(new Set([...tarefasBaseFiscal, ...tiposDeParcelamento]))
 

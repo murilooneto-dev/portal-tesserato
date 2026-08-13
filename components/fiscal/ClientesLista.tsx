@@ -108,6 +108,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
           <option value="normal" className="bg-[var(--bg-surface)]">Regime Normal</option>
           <option value="simples" className="bg-[var(--bg-surface)]">Simples Nacional</option>
           <option value="mei" className="bg-[var(--bg-surface)]">MEI</option>
+          <option value="isento" className="bg-[var(--bg-surface)]">Isento</option>
         </select>
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as atividades</option>

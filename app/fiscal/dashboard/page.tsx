@@ -6,7 +6,7 @@ import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
-import { sincronizarTarefasParcelamento } from '@/lib/parcelamento-tarefas'
+import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
 
@@ -37,12 +37,17 @@ export default async function DashboardPage() {
 
   // Mapa de tipos válidos por cliente — inclui as tarefas geradas por
   // parcelamento (nome dinâmico, não cadastrado em tarefas_personalizadas).
+  const parcelamentoIdsDoMes = Array.from(new Set(
+    ts.filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
+  ))
+  const parcelamentosAtivos = await idsDeParcelamentosAtivos(supabase, parcelamentoIdsDoMes)
+
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
     tiposMap[c.id] = new Set(c.tarefas_personalizadas ?? [])
   }
   for (const t of ts) {
-    if (t.parcelamento_id) tiposMap[t.cliente_id]?.add(t.tipo)
+    if (t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)) tiposMap[t.cliente_id]?.add(t.tipo)
   }
 
   const totalTarefas = cs.reduce((sum, c) => sum + (tiposMap[c.id]?.size ?? 0), 0)
@@ -52,6 +57,7 @@ export default async function DashboardPage() {
   const normal  = cs.filter(c => (c.grupo ?? 'normal') === 'normal').length
   const simples = cs.filter(c => c.grupo === 'simples').length
   const mei     = cs.filter(c => c.grupo === 'mei').length
+  const isento  = cs.filter(c => c.grupo === 'isento').length
 
   const alertas = ehMesAtual
     ? eventos
@@ -122,6 +128,10 @@ export default async function DashboardPage() {
             <div>
               <p className="text-xs text-[var(--fg)]/30 uppercase tracking-wide">MEI</p>
               <p className="text-sm font-semibold text-[var(--fg)]/60">{mei}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--fg)]/30 uppercase tracking-wide">Isento</p>
+              <p className="text-sm font-semibold text-[var(--fg)]/60">{isento}</p>
             </div>
           </div>
         </div>

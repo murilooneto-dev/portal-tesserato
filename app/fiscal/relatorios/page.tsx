@@ -39,6 +39,13 @@ export default function RelatoriosPage() {
   const [apenasP, setApenasP] = useFiltroPersistente('relatorios:pendencia', false)
   const [userNome, setUserNome] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [ordenarPor, setOrdenarPor] = useState<'cliente' | 'progresso'>('progresso')
+  const [ordemAsc, setOrdemAsc] = useState(true)
+
+  function toggleSort(campo: 'cliente' | 'progresso') {
+    if (ordenarPor === campo) setOrdemAsc(a => !a)
+    else { setOrdenarPor(campo); setOrdemAsc(true) }
+  }
 
   useEffect(() => {
     const sb = createClient()
@@ -83,7 +90,12 @@ export default function RelatoriosPage() {
     .filter(c => filtroTarefa === 'TODAS' || (c.tarefas_personalizadas ?? []).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
-    .sort((a, b) => a.pct - b.pct)
+    .sort((a, b) => {
+      const cmp = ordenarPor === 'cliente'
+        ? a.cliente.nome.localeCompare(b.cliente.nome, 'pt-BR', { sensitivity: 'base' })
+        : a.pct - b.pct
+      return ordemAsc ? cmp : -cmp
+    })
 
   const stats = {
     total: filtrados.length,
@@ -114,6 +126,7 @@ export default function RelatoriosPage() {
   .normal { background: #dbeafe; color: #1d4ed8; }
   .simples { background: #dcfce7; color: #166534; }
   .mei { background: #fef3c7; color: #92400e; }
+  .isento { background: #e2e8f0; color: #475569; }
   footer { margin-top: 16px; text-align: center; color: #999; font-size: 8px; }
   @media print { button { display: none; } }
 </style></head><body>
@@ -171,6 +184,7 @@ export default function RelatoriosPage() {
           <option value="normal" className="bg-[var(--bg-surface)]">Regime Normal</option>
           <option value="simples" className="bg-[var(--bg-surface)]">Simples Nacional</option>
           <option value="mei" className="bg-[var(--bg-surface)]">MEI</option>
+          <option value="isento" className="bg-[var(--bg-surface)]">Isento</option>
         </select>
 
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)}
@@ -218,9 +232,22 @@ export default function RelatoriosPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--fg)]/12">
-              {['#','Cliente','CNPJ','Regime','Responsável','Progresso','Tarefas Pendentes','Observação','MIT'].map(h => (
-                <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">{h}</th>
-              ))}
+              {['#','Cliente','CNPJ','Regime','Responsável','Progresso','Tarefas Pendentes','Observação','MIT'].map(h => {
+                const campo = h === 'Cliente' ? 'cliente' : h === 'Progresso' ? 'progresso' : null
+                return (
+                  <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">
+                    {campo ? (
+                      <button
+                        onClick={() => toggleSort(campo)}
+                        className="flex items-center gap-1 hover:text-[var(--fg)] transition-colors"
+                      >
+                        {h}
+                        <span className="text-[10px] w-2.5 inline-block">{ordenarPor === campo ? (ordemAsc ? '▲' : '▼') : ''}</span>
+                      </button>
+                    ) : h}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
@@ -237,6 +264,7 @@ export default function RelatoriosPage() {
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     r.cliente.grupo === 'simples' ? 'bg-green-500/15 text-green-400' :
                     r.cliente.grupo === 'mei' ? 'bg-amber-500/15 text-amber-400' :
+                    r.cliente.grupo === 'isento' ? 'bg-slate-500/15 text-slate-400' :
                     'bg-blue-500/15 text-blue-400'
                   }`}>{r.cliente.regime ?? r.cliente.grupo ?? '—'}</span>
                 </td>
