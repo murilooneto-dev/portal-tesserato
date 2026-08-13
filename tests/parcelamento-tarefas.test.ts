@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { MES_PARA_COLUNA, isoParaDdMm, ddMmParaIso, nomeTarefaParcelamento } from '../lib/parcelamento-tarefas'
+import { MES_PARA_COLUNA, isoParaDdMm, ddMmParaIso, nomeTarefaParcelamento, nomesTarefaParcelamentos } from '../lib/parcelamento-tarefas'
 
 test('MES_PARA_COLUNA mapeia os 12 meses pras colunas de parcelamentos (set, nao sep)', () => {
   assert.equal(MES_PARA_COLUNA[1], 'jan')
@@ -44,4 +44,47 @@ test('nomeTarefaParcelamento com desambiguacao inclui local/tipo', () => {
 test('nomeTarefaParcelamento com desambiguacao mas sem local/tipo cai pro nome base', () => {
   assert.equal(nomeTarefaParcelamento('PGFN - ECAC', null, true), 'Parcelamentos (PGFN - ECAC)')
   assert.equal(nomeTarefaParcelamento('PGFN - ECAC', '  ', true), 'Parcelamentos (PGFN - ECAC)')
+})
+
+test('nomesTarefaParcelamentos: secao unica no cliente nao desambigua', () => {
+  const nomes = nomesTarefaParcelamentos([
+    { id: 'a', clienteId: 'c1', secao: 'PGFN - ECAC', localTipo: null },
+  ])
+  assert.equal(nomes.get('a'), 'Parcelamentos (PGFN - ECAC)')
+})
+
+test('nomesTarefaParcelamentos: 2 parcelamentos com local/tipo diferente desambiguam normal', () => {
+  const nomes = nomesTarefaParcelamentos([
+    { id: 'a', clienteId: 'c1', secao: 'PGFN - ECAC', localTipo: 'SEQ 1' },
+    { id: 'b', clienteId: 'c1', secao: 'PGFN - ECAC', localTipo: 'SEQ 2' },
+  ])
+  assert.equal(nomes.get('a'), 'Parcelamentos (PGFN - ECAC / SEQ 1)')
+  assert.equal(nomes.get('b'), 'Parcelamentos (PGFN - ECAC / SEQ 2)')
+})
+
+test('nomesTarefaParcelamentos: local/tipo vazio nos dois ainda colide -- desempata com contador', () => {
+  const nomes = nomesTarefaParcelamentos([
+    { id: 'b', clienteId: 'c1', secao: 'PGFN - ECAC', localTipo: null },
+    { id: 'a', clienteId: 'c1', secao: 'PGFN - ECAC', localTipo: null },
+  ])
+  assert.equal(nomes.get('a'), 'Parcelamentos (PGFN - ECAC) (1)')
+  assert.equal(nomes.get('b'), 'Parcelamentos (PGFN - ECAC) (2)')
+})
+
+test('nomesTarefaParcelamentos: local/tipo identico nos dois ainda colide -- desempata com contador', () => {
+  const nomes = nomesTarefaParcelamentos([
+    { id: 'a', clienteId: 'c1', secao: 'PGFN - ECAC', localTipo: 'ECAC' },
+    { id: 'b', clienteId: 'c1', secao: 'PGFN - ECAC', localTipo: 'ECAC' },
+  ])
+  assert.equal(nomes.get('a'), 'Parcelamentos (PGFN - ECAC / ECAC) (1)')
+  assert.equal(nomes.get('b'), 'Parcelamentos (PGFN - ECAC / ECAC) (2)')
+})
+
+test('nomesTarefaParcelamentos: colisao so desempata dentro do mesmo cliente', () => {
+  const nomes = nomesTarefaParcelamentos([
+    { id: 'a', clienteId: 'c1', secao: 'PGFN - ECAC', localTipo: null },
+    { id: 'b', clienteId: 'c2', secao: 'PGFN - ECAC', localTipo: null },
+  ])
+  assert.equal(nomes.get('a'), 'Parcelamentos (PGFN - ECAC)')
+  assert.equal(nomes.get('b'), 'Parcelamentos (PGFN - ECAC)')
 })
