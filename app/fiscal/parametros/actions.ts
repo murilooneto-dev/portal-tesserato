@@ -4,10 +4,7 @@ import { getAuthenticatedAdmin, createAdminClient } from '@/lib/supabase/server'
 import { getValidAdminSession } from '@/lib/admin-auth/server'
 import { revalidatePath } from 'next/cache'
 import { createClient as createClienteDescartavel } from '@supabase/supabase-js'
-
-function normalizarNome(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
-}
+import { normalizarNome } from '@/lib/config-entidades'
 
 // SECURITY_REPORT.md ALTA-1: `requireAdminSection()` só protegia a
 // renderização das páginas de Parâmetros/Vínculos — nenhuma das Server
