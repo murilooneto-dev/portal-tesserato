@@ -9,7 +9,7 @@ import { PAGINAS_POR_SETOR } from '@/lib/paginas-setor'
 import MesSeletor from './MesSeletor'
 import {
   Zap, LayoutGrid, Users, Calendar,
-  FileText, CreditCard, Wrench, Settings,
+  FileText, CreditCard, Wrench, Settings, SlidersHorizontal,
   Sun, Moon, Link2,
   type LucideIcon,
 } from 'lucide-react'
@@ -117,6 +117,7 @@ export default function Sidebar({ profile, mes, ano, setorAtivo }: Props) {
             <p className="px-3 text-[var(--fg)]/20 text-[10px] uppercase tracking-wider mb-1">Admin</p>
             <NavLink item={{ href: '/fiscal/parametros', label: 'Parâmetros', icon: Settings }} active={pathname.startsWith('/fiscal/parametros')} />
             <NavLink item={{ href: '/vinculos', label: 'Vínculos', icon: Link2 }} active={pathname.startsWith('/vinculos')} />
+            <NavLink item={{ href: '/admin/configuracoes', label: 'Configurações', icon: SlidersHorizontal }} active={pathname.startsWith('/admin/configuracoes')} />
           </>
         )}
       </nav>
