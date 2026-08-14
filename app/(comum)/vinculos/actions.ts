@@ -44,8 +44,15 @@ export async function criarVinculos(input: {
 
   if (input.pares.length === 0) return { error: 'Nenhum par novo pra criar.' }
 
+  // Dedup defensivo: `tarefa_vinculos` não tem constraint única, então uma
+  // aba desatualizada, dois admins simultâneos ou um duplo clique podem
+  // gerar linha duplicada pro mesmo par lógico. O dedup do cliente
+  // (calcularNovosPares) compara com o snapshot renderizado no servidor e
+  // não cobre esses casos.
+  const unicos = Array.from(new Map(input.pares.map(p => [`${p.tipoOrigem}||${p.tipoDestino}`, p])).values())
+
   const { error } = await supabase.from('tarefa_vinculos').insert(
-    input.pares.map(p => ({
+    unicos.map(p => ({
       setor_origem: input.setorOrigem,
       tipo_origem: p.tipoOrigem,
       setor_destino: input.setorDestino,
