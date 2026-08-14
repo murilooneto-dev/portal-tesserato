@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { criarVinculo, excluirVinculo } from './actions'
+import { criarVinculos, excluirVinculo } from './actions'
+import { calcularNovosPares } from '@/lib/vinculos'
 import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
 
 interface Props {
@@ -12,32 +13,37 @@ interface Props {
 
 const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
+const checkboxRowCls = "flex items-center gap-2 cursor-pointer select-none py-1"
 
 export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Props) {
   const router = useRouter()
 
   const [setorOrigem, setSetorOrigem] = useState<UserSetor>('fiscal')
-  const [tipoOrigem, setTipoOrigem] = useState('')
+  const [tiposOrigem, setTiposOrigem] = useState<string[]>([])
   const [setorDestino, setSetorDestino] = useState<UserSetor>('contabil')
-  const [tipoDestino, setTipoDestino] = useState('')
+  const [tiposDestino, setTiposDestino] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
+  function toggleTipo(lista: string[], setLista: (v: string[]) => void, tipo: string) {
+    setLista(lista.includes(tipo) ? lista.filter(t => t !== tipo) : [...lista, tipo])
+  }
+
   async function handleCriar() {
-    if (!tipoOrigem || !tipoDestino) return
+    if (tiposOrigem.length === 0 || tiposDestino.length === 0) return
+    const pares = calcularNovosPares(setorOrigem, tiposOrigem, setorDestino, tiposDestino, vinculosIniciais)
+    if (pares.length === 0) {
+      setErro('Todos os vínculos selecionados já existem no catálogo.')
+      return
+    }
     setSaving(true)
     setErro(null)
-    const { error } = await criarVinculo({
-      setorOrigem,
-      tipoOrigem,
-      setorDestino,
-      tipoDestino,
-    })
+    const { error } = await criarVinculos({ setorOrigem, setorDestino, pares })
     setSaving(false)
     if (error) { setErro(error); return }
-    setTipoOrigem('')
-    setTipoDestino('')
+    setTiposOrigem([])
+    setTiposDestino([])
     router.refresh()
   }
 
@@ -55,7 +61,7 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
   return (
     <div>
       <h1 className="text-2xl font-bold text-[var(--fg)] mb-1">Vínculos de Tarefas</h1>
-      <p className="text-sm text-[var(--fg)]/40 mb-6">Quando a tarefa de origem é concluída, a tarefa de destino (do mesmo cliente, outro setor) mostra um aviso de liberada.</p>
+      <p className="text-sm text-[var(--fg)]/40 mb-6">Quando a(s) tarefa(s) de origem são concluídas, a tarefa de destino (do mesmo cliente, outro setor) mostra um aviso de liberada. Marque mais de uma tarefa dos dois lados pra criar vários vínculos de uma vez.</p>
 
       <div className="rounded-2xl border border-[var(--fg)]/10 bg-[var(--fg)]/3 p-5 mb-8">
         <p className="text-xs font-bold text-[var(--fg)]/50 uppercase tracking-widest mb-4">Novo vínculo</p>
@@ -65,19 +71,26 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
             <div>
               <label className={labelCls}>Setor</label>
               <select className={selectCls} value={setorOrigem}
-                onChange={e => { setSetorOrigem(e.target.value as UserSetor); setTipoOrigem('') }}>
+                onChange={e => { setSetorOrigem(e.target.value as UserSetor); setTiposOrigem([]) }}>
                 {SETORES.map(s => <option key={s} value={s} className="bg-[var(--bg-surface)]">{SETOR_LABEL[s]}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls}>Tarefa</label>
-              <select className={selectCls} value={tipoOrigem} onChange={e => setTipoOrigem(e.target.value)}
-                disabled={tiposOrigemDisponiveis.length === 0}>
-                <option value="" className="bg-[var(--bg-surface)]">
-                  {tiposOrigemDisponiveis.length === 0 ? 'Nenhuma tarefa nesse setor' : 'Selecionar...'}
-                </option>
-                {tiposOrigemDisponiveis.map(t => <option key={t} value={t} className="bg-[var(--bg-surface)]">{t}</option>)}
-              </select>
+              <label className={labelCls}>Tarefas</label>
+              {tiposOrigemDisponiveis.length === 0 ? (
+                <p className="text-[var(--fg)]/30 text-xs">Nenhuma tarefa nesse setor.</p>
+              ) : (
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-[var(--fg)]/10 px-3 py-2">
+                  {tiposOrigemDisponiveis.map(t => (
+                    <label key={t} className={checkboxRowCls}>
+                      <input type="checkbox" checked={tiposOrigem.includes(t)}
+                        onChange={() => toggleTipo(tiposOrigem, setTiposOrigem, t)}
+                        className="w-3.5 h-3.5 accent-[var(--accent)]" />
+                      <span className="text-[var(--fg)]/80 text-sm">{t}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -86,19 +99,26 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
             <div>
               <label className={labelCls}>Setor</label>
               <select className={selectCls} value={setorDestino}
-                onChange={e => { setSetorDestino(e.target.value as UserSetor); setTipoDestino('') }}>
+                onChange={e => { setSetorDestino(e.target.value as UserSetor); setTiposDestino([]) }}>
                 {SETORES.map(s => <option key={s} value={s} className="bg-[var(--bg-surface)]">{SETOR_LABEL[s]}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls}>Tarefa</label>
-              <select className={selectCls} value={tipoDestino} onChange={e => setTipoDestino(e.target.value)}
-                disabled={tiposDestinoDisponiveis.length === 0}>
-                <option value="" className="bg-[var(--bg-surface)]">
-                  {tiposDestinoDisponiveis.length === 0 ? 'Nenhuma tarefa nesse setor' : 'Selecionar...'}
-                </option>
-                {tiposDestinoDisponiveis.map(t => <option key={t} value={t} className="bg-[var(--bg-surface)]">{t}</option>)}
-              </select>
+              <label className={labelCls}>Tarefas</label>
+              {tiposDestinoDisponiveis.length === 0 ? (
+                <p className="text-[var(--fg)]/30 text-xs">Nenhuma tarefa nesse setor.</p>
+              ) : (
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-[var(--fg)]/10 px-3 py-2">
+                  {tiposDestinoDisponiveis.map(t => (
+                    <label key={t} className={checkboxRowCls}>
+                      <input type="checkbox" checked={tiposDestino.includes(t)}
+                        onChange={() => toggleTipo(tiposDestino, setTiposDestino, t)}
+                        className="w-3.5 h-3.5 accent-[var(--accent)]" />
+                      <span className="text-[var(--fg)]/80 text-sm">{t}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -109,9 +129,9 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
           </div>
         )}
 
-        <button onClick={handleCriar} disabled={saving || !tipoOrigem || !tipoDestino}
+        <button onClick={handleCriar} disabled={saving || tiposOrigem.length === 0 || tiposDestino.length === 0}
           className="mt-4 px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-          {saving ? 'Salvando...' : '+ Criar vínculo'}
+          {saving ? 'Salvando...' : `+ Criar vínculo${tiposOrigem.length * tiposDestino.length > 1 ? `s (${tiposOrigem.length * tiposDestino.length})` : ''}`}
         </button>
       </div>
 
