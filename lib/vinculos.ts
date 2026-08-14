@@ -91,31 +91,43 @@ export async function buscarVinculosDoCliente(
   const vinculos = vinculosRaw ?? []
   if (vinculos.length === 0) return {}
 
-  const resultado: Record<string, VinculoStatus> = {}
+  const grupos = new Map<string, typeof vinculos>()
   for (const v of vinculos) {
-    const { data: origem } = await supabase
-      .from('tarefas')
-      .select('concluida')
-      .eq('cliente_id', clienteId)
-      .eq('setor', v.setor_origem)
-      .eq('tipo', v.tipo_origem)
-      .eq('mes', mes)
-      .eq('ano', ano)
-      .maybeSingle()
+    const arr = grupos.get(v.tipo_destino as string) ?? []
+    arr.push(v)
+    grupos.set(v.tipo_destino as string, arr)
+  }
 
-    resultado[v.tipo_destino as string] = {
-      setorOrigemLabel: SETOR_LABEL[v.setor_origem as UserSetor],
-      liberada: !!origem?.concluida,
+  const resultado: Record<string, VinculoStatus> = {}
+  for (const [tipoDestino, vs] of grupos) {
+    const origens: { setorOrigemLabel: string; concluida: boolean }[] = []
+    for (const v of vs) {
+      const { data: origem } = await supabase
+        .from('tarefas')
+        .select('concluida')
+        .eq('cliente_id', clienteId)
+        .eq('setor', v.setor_origem)
+        .eq('tipo', v.tipo_origem)
+        .eq('mes', mes)
+        .eq('ano', ano)
+        .maybeSingle()
+
+      origens.push({
+        setorOrigemLabel: SETOR_LABEL[v.setor_origem as UserSetor],
+        concluida: !!origem?.concluida,
+      })
     }
+    resultado[tipoDestino] = agregarStatusVinculo(origens)
   }
   return resultado
 }
 
 export interface PendenciaVinculo {
   tipoDestino: string
-  tipoOrigem: string
   setorOrigemLabel: string
   liberada: boolean
+  concluidos: number
+  total: number
 }
 
 // Pra todos os clientes de uma listagem de uma vez (evita N+1 query):
@@ -161,19 +173,20 @@ export async function buscarPendenciasVinculoPorCliente(
   const resultado: Record<string, PendenciaVinculo[]> = {}
   for (const c of clientes) {
     const vinculosDoCliente = vinculos.filter(v => c.tarefas_vinculadas_ativas.includes(v.id as string))
+    const porDestino = new Map<string, { setorOrigemLabel: string; concluida: boolean }[]>()
     for (const v of vinculosDoCliente) {
-      const origemFeita = !!origemConcluidaPorSetor[v.setor_origem as string]?.[`${c.id}||${v.tipo_origem}`]
       const destinoFeita = !!destinoConcluida[`${c.id}||${v.tipo_destino}`]
-      if (!destinoFeita) {
-        if (!resultado[c.id]) resultado[c.id] = []
-        resultado[c.id].push({
-          tipoDestino: v.tipo_destino as string,
-          tipoOrigem: v.tipo_origem as string,
-          setorOrigemLabel: SETOR_LABEL[v.setor_origem as UserSetor],
-          liberada: origemFeita,
-        })
-      }
+      if (destinoFeita) continue
+      const origemFeita = !!origemConcluidaPorSetor[v.setor_origem as string]?.[`${c.id}||${v.tipo_origem}`]
+      const arr = porDestino.get(v.tipo_destino as string) ?? []
+      arr.push({ setorOrigemLabel: SETOR_LABEL[v.setor_origem as UserSetor], concluida: origemFeita })
+      porDestino.set(v.tipo_destino as string, arr)
     }
+    if (porDestino.size === 0) continue
+    resultado[c.id] = Array.from(porDestino.entries()).map(([tipoDestino, origens]) => ({
+      tipoDestino,
+      ...agregarStatusVinculo(origens),
+    }))
   }
   return resultado
 }
