@@ -6,6 +6,7 @@ import type { Cliente } from '@/lib/types'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
 import type { PendenciaVinculo } from '@/lib/vinculos'
+import { formatarBadgeVinculo } from '@/lib/vinculos'
 import EmpresaModal from './EmpresaModal'
 
 const CORES_REGIME: Record<string, string> = {
@@ -184,13 +185,14 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
                     </span>
                   )}
                   {cliente.nome}
-                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => (
-                    <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
-                      p.liberada ? 'bg-green-500/15 text-green-400' : 'bg-orange-500/15 text-orange-400'
-                    }`}>
-                      {p.liberada ? `✓ Liberada por ${p.setorOrigemLabel}` : `⏳ Aguardando ${p.setorOrigemLabel}`}
-                    </span>
-                  ))}
+                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
+                    const badge = formatarBadgeVinculo(p)
+                    return (
+                      <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
+                        {badge.texto}
+                      </span>
+                    )
+                  })}
                 </p>
                 <p className="text-[var(--fg)]/25 text-xs mt-0.5">{cliente.cnpj ?? '—'}</p>
               </div>

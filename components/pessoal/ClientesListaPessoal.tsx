@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComPessoal } from '@/lib/clientes-pessoal'
 import type { PendenciaVinculo } from '@/lib/vinculos'
+import { formatarBadgeVinculo } from '@/lib/vinculos'
 import EmpresaPessoalModal from './EmpresaPessoalModal'
 import { REGIMES, labelRegime } from '@/lib/atividades-regimes'
 
@@ -134,13 +135,14 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
               <div className="flex-1 min-w-0">
                 <p className="text-[var(--fg)] text-sm font-semibold truncate">
                   {cliente.nome}
-                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => (
-                    <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
-                      p.liberada ? 'bg-green-500/15 text-green-400' : 'bg-orange-500/15 text-orange-400'
-                    }`}>
-                      {p.liberada ? `✓ Liberada por ${p.setorOrigemLabel}` : `⏳ Aguardando ${p.setorOrigemLabel}`}
-                    </span>
-                  ))}
+                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
+                    const badge = formatarBadgeVinculo(p)
+                    return (
+                      <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
+                        {badge.texto}
+                      </span>
+                    )
+                  })}
                 </p>
                 <p className="text-[var(--fg)]/25 text-xs mt-0.5">{cliente.cnpj ?? '—'}</p>
               </div>
