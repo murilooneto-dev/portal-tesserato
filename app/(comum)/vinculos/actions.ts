@@ -34,21 +34,31 @@ async function exigirAcessoAdmin() {
 
 const ERRO_ACESSO = 'Acesso negado: sessão da área ADMIN expirada ou inválida.'
 
-export async function criarVinculo(input: {
+export async function criarVinculos(input: {
   setorOrigem: UserSetor
-  tipoOrigem: string
   setorDestino: UserSetor
-  tipoDestino: string
+  pares: { tipoOrigem: string; tipoDestino: string }[]
 }): Promise<{ error?: string }> {
   const supabase = await exigirAcessoAdmin()
   if (!supabase) return { error: ERRO_ACESSO }
 
-  const { error } = await supabase.from('tarefa_vinculos').insert({
-    setor_origem: input.setorOrigem,
-    tipo_origem: input.tipoOrigem,
-    setor_destino: input.setorDestino,
-    tipo_destino: input.tipoDestino,
-  })
+  if (input.pares.length === 0) return { error: 'Nenhum par novo pra criar.' }
+
+  // Dedup defensivo: `tarefa_vinculos` não tem constraint única, então uma
+  // aba desatualizada, dois admins simultâneos ou um duplo clique podem
+  // gerar linha duplicada pro mesmo par lógico. O dedup do cliente
+  // (calcularNovosPares) compara com o snapshot renderizado no servidor e
+  // não cobre esses casos.
+  const unicos = Array.from(new Map(input.pares.map(p => [`${p.tipoOrigem}||${p.tipoDestino}`, p])).values())
+
+  const { error } = await supabase.from('tarefa_vinculos').insert(
+    unicos.map(p => ({
+      setor_origem: input.setorOrigem,
+      tipo_origem: p.tipoOrigem,
+      setor_destino: input.setorDestino,
+      tipo_destino: p.tipoDestino,
+    })),
+  )
   if (error) return { error: error.message }
 
   revalidatePath('/vinculos')
