@@ -34,21 +34,24 @@ async function exigirAcessoAdmin() {
 
 const ERRO_ACESSO = 'Acesso negado: sessão da área ADMIN expirada ou inválida.'
 
-export async function criarVinculo(input: {
+export async function criarVinculos(input: {
   setorOrigem: UserSetor
-  tipoOrigem: string
   setorDestino: UserSetor
-  tipoDestino: string
+  pares: { tipoOrigem: string; tipoDestino: string }[]
 }): Promise<{ error?: string }> {
   const supabase = await exigirAcessoAdmin()
   if (!supabase) return { error: ERRO_ACESSO }
 
-  const { error } = await supabase.from('tarefa_vinculos').insert({
-    setor_origem: input.setorOrigem,
-    tipo_origem: input.tipoOrigem,
-    setor_destino: input.setorDestino,
-    tipo_destino: input.tipoDestino,
-  })
+  if (input.pares.length === 0) return { error: 'Nenhum par novo pra criar.' }
+
+  const { error } = await supabase.from('tarefa_vinculos').insert(
+    input.pares.map(p => ({
+      setor_origem: input.setorOrigem,
+      tipo_origem: p.tipoOrigem,
+      setor_destino: input.setorDestino,
+      tipo_destino: p.tipoDestino,
+    })),
+  )
   if (error) return { error: error.message }
 
   revalidatePath('/vinculos')
