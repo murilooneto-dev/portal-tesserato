@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { UserSetor } from '@/lib/types'
-import { listarTarefaTiposDoSetor, alternarAtivoTarefaTipo, type TarefaTipoResumo } from '@/lib/tarefa-tipo-vinculos-actions'
+import { listarTarefaTiposDoSetor, type TarefaTipoResumo } from '@/lib/tarefa-tipo-vinculos-actions'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 
 interface Props {
@@ -28,12 +28,6 @@ export default function TarefasTab({ setor }: Props) {
   }, [setor])
 
   useEffect(() => { recarregar() }, [recarregar])
-
-  async function handleAlternarAtivo(item: TarefaTipoResumo) {
-    const { error } = await alternarAtivoTarefaTipo(item.id, !item.ativo)
-    if (error) { setErro(error); return }
-    await recarregar()
-  }
 
   return (
     <div>
@@ -71,9 +65,6 @@ export default function TarefasTab({ setor }: Props) {
               <span className={`flex-1 text-sm ${item.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
                 {item.nome}
               </span>
-              <button onClick={() => handleAlternarAtivo(item)} className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]">
-                {item.ativo ? 'Desativar' : 'Ativar'}
-              </button>
             </li>
           ))}
         </ul>
@@ -83,6 +74,7 @@ export default function TarefasTab({ setor }: Props) {
         <NovoTipoTarefaModal
           nome={novoNome}
           setor={setor}
+          padrao={true}
           onCancel={() => setMostrarModal(false)}
           onCriado={() => { setMostrarModal(false); setNovoNome(''); recarregar() }}
         />

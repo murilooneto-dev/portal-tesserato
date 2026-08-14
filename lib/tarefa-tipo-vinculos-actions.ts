@@ -7,6 +7,12 @@ import type { UserSetor } from '@/lib/types'
 
 export type TipoEntidadeVinculo = 'regime' | 'grupo' | 'atividade'
 
+const TABELA_POR_TIPO: Record<TipoEntidadeVinculo, 'regimes' | 'grupos' | 'atividades'> = {
+  regime: 'regimes',
+  grupo: 'grupos',
+  atividade: 'atividades',
+}
+
 export interface TarefaTipoResumo {
   id: string
   nome: string
@@ -84,6 +90,29 @@ export async function alternarVinculo(
   if (error || !supabase) return { error }
 
   if (vincular) {
+    // Um feature futura (fora deste branch) lê esses vínculos pra gerar
+    // tarefas de cliente — um vínculo órfão ou cruzando setor geraria dado
+    // errado silenciosamente lá. Validamos aqui, na origem, que a entidade
+    // existe na tabela certa e que seu setor bate com o do tarefa_tipo.
+    const { data: tarefaTipo, error: tarefaTipoError } = await supabase
+      .from('tarefa_tipos')
+      .select('setor')
+      .eq('id', tarefaTipoId)
+      .single()
+    if (tarefaTipoError || !tarefaTipo) return { error: 'Tipo de tarefa não encontrado.' }
+
+    const tabelaEntidade = TABELA_POR_TIPO[entidadeTipo]
+    const { data: entidade, error: entidadeError } = await supabase
+      .from(tabelaEntidade)
+      .select('setor')
+      .eq('id', entidadeId)
+      .single()
+    if (entidadeError || !entidade) return { error: 'Entidade não encontrada.' }
+
+    if (entidade.setor !== tarefaTipo.setor) {
+      return { error: 'A entidade pertence a um setor diferente do tipo de tarefa.' }
+    }
+
     const { error: insertError } = await supabase
       .from('tarefa_tipo_vinculos')
       .insert({ tarefa_tipo_id: tarefaTipoId, entidade_tipo: entidadeTipo, entidade_id: entidadeId })

@@ -14,6 +14,7 @@ export async function criarTipoTarefa(
   nome: string,
   tipoResposta: TipoResposta,
   etapas: string[] | null,
+  padrao: boolean = false,
 ): Promise<{ error: string | null }> {
   const nomeTrim = nome.trim()
   if (setor === 'fiscal' && NOMES_RESERVADOS_FISCAL.includes(nomeTrim)) {
@@ -23,18 +24,20 @@ export async function criarTipoTarefa(
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!user || !supabase) return { error: 'Sessão inválida.' }
 
-  // Criado a partir do cadastro de um cliente específico (NovoTipoTarefaModal)
-  // — não é um tipo padrão do catálogo, então não deve ser copiado
+  // Por padrão (chamado a partir do cadastro de um cliente específico via
+  // NovoTipoTarefaModal), `padrao` fica false — não deve ser copiado
   // automaticamente pra tarefas_personalizadas de outros clientes (ver
   // ClienteGeralModal.tsx, que filtra .eq('padrao', true) ao provisionar
   // cliente novo). Fica disponível no catálogo pra reuso manual, mas não se
-  // impõe sozinho.
+  // impõe sozinho. O catálogo global de admin (app/admin/configuracoes)
+  // passa padrao=true explicitamente, pois lá a expectativa é justamente
+  // criar um tipo padrão.
   const { error } = await supabase.from('tarefa_tipos').insert({
     setor,
     nome: nomeTrim,
     tipo_resposta: tipoResposta,
     etapas,
-    padrao: false,
+    padrao,
   })
 
   if (error) {
