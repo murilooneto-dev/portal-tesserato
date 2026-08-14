@@ -20,10 +20,11 @@ export default async function VinculosPage() {
   // query, é a que realmente protege os dados desta página.
   await requireAdminSection('/vinculos')
 
-  const [{ data: vinculosRaw }, { data: fiscalRows }, { data: contabilRows }] = await Promise.all([
+  const [{ data: vinculosRaw }, { data: fiscalRows }, { data: contabilRows }, { data: pessoalRows }] = await Promise.all([
     supabase.from('tarefa_vinculos').select('*').order('created_at'),
     supabase.from('clientes_fiscal').select('tarefas_personalizadas'),
     supabase.from('clientes_contabil').select('tarefas_personalizadas'),
+    supabase.from('clientes_pessoal').select('tarefas_personalizadas'),
   ])
 
   const vinculos = (vinculosRaw ?? []) as TarefaVinculo[]
@@ -31,7 +32,7 @@ export default async function VinculosPage() {
   const tiposPorSetor: Record<string, string[]> = {
     fiscal: Array.from(new Set((fiscalRows ?? []).flatMap(r => (r.tarefas_personalizadas ?? []) as string[]))).sort(),
     contabil: Array.from(new Set((contabilRows ?? []).flatMap(r => (r.tarefas_personalizadas ?? []) as string[]))).sort(),
-    pessoal: [],
+    pessoal: Array.from(new Set((pessoalRows ?? []).flatMap(r => (r.tarefas_personalizadas ?? []) as string[]))).sort(),
     societario: [],
     financeiro: [],
   }
