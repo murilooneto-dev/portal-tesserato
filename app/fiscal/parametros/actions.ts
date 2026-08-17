@@ -5,13 +5,14 @@ import { revalidatePath } from 'next/cache'
 import { createClient as createClienteDescartavel } from '@supabase/supabase-js'
 import { normalizarNome } from '@/lib/config-entidades'
 
-// SECURITY_REPORT.md ALTA-1: `requireAdminSection()` só protegia a
-// renderização das páginas de Parâmetros/Vínculos — nenhuma das Server
-// Actions abaixo checava a sessão `ts_admin`, então alguém com a sessão
-// do portal aberta (mas sem ter passado pela credencial ADMIN) conseguia
-// executar qualquer uma delas direto via `Next-Action`, sem nunca ver a
-// tela de bloqueio. Toda action de escrita desta página agora chama isto
-// como primeira linha.
+// SECURITY_REPORT.md ALTA-1 (histórico): `requireAdminSection()` só
+// protegia a renderização das páginas de Parâmetros/Vínculos — nenhuma das
+// Server Actions abaixo checava a sessão `ts_admin`, então alguém com a
+// sessão do portal aberta (mas sem ter passado pela credencial ADMIN)
+// conseguia executar qualquer uma delas direto via `Next-Action`, sem
+// nunca ver a tela de bloqueio. A sessão `ts_admin` foi removida do
+// portal; a proteção de cada action abaixo hoje é a checagem de
+// `role === 'admin'` feita logo no início de cada função.
 
 export async function salvarComunicado(formData: FormData) {
   // SECURITY_REPORT.md ALTA-2: esta action não checava `role='admin'`
