@@ -1,7 +1,6 @@
 'use server'
 
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
-import { getValidAdminSession } from '@/lib/admin-auth/server'
 import { revalidatePath } from 'next/cache'
 import type { UserSetor } from '@/lib/types'
 import { validarNomeEntidade, normalizarNome } from '@/lib/config-entidades'
@@ -23,14 +22,9 @@ export interface EntidadeConfig {
   ativo: boolean
 }
 
-const ERRO_SESSAO_ADMIN = 'Sessão ADMIN expirada. Faça login novamente.'
-
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
 
 async function exigirAdmin(): Promise<{ error: string | null; supabase: SupabaseAdmin | null }> {
-  const session = await getValidAdminSession()
-  if (!session) return { error: ERRO_SESSAO_ADMIN, supabase: null }
-
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', supabase: null }
 
@@ -46,9 +40,10 @@ export async function listarEntidades(
 ): Promise<{ data: EntidadeConfig[]; error: string | null }> {
   if (!TABELAS_VALIDAS.includes(tabela)) return { data: [], error: 'Tabela inválida.' }
 
-  // Leitura não exige a sessão ADMIN step-up (RLS já libera pra qualquer
-  // autenticado) — mas a tela em si vive atrás de requireAdminSection, então
-  // manter a mesma checagem aqui simplifica (uma função só, sem dois caminhos).
+  // Leitura não exige checar profiles.role = 'admin' (RLS já libera pra
+  // qualquer autenticado) — mas a tela em si vive atrás dessa checagem de
+  // role, então manter a mesma checagem aqui simplifica (uma função só,
+  // sem dois caminhos).
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { data: [], error }
 

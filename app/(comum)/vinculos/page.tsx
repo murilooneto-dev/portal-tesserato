@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { requireAdminSection } from '@/lib/admin-auth/server'
-import SairAdminButton from '@/components/admin/SairAdminButton'
 import VinculosClient from './VinculosClient'
 import type { TarefaVinculo } from '@/lib/types'
 
@@ -14,11 +12,6 @@ export default async function VinculosPage() {
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') redirect('/intranet')
-
-  // Guarda autoritativa da seção ADMIN (RNF2/RN1/CA5) — o proxy.ts já
-  // intercepta a navegação, mas a verificação aqui, antes de qualquer
-  // query, é a que realmente protege os dados desta página.
-  await requireAdminSection('/vinculos')
 
   const [{ data: vinculosRaw }, { data: fiscalRows }, { data: contabilRows }, { data: pessoalRows }] = await Promise.all([
     supabase.from('tarefa_vinculos').select('*').order('created_at'),
@@ -39,7 +32,6 @@ export default async function VinculosPage() {
 
   return (
     <>
-      <SairAdminButton />
       <div className="p-8 max-w-4xl mx-auto">
         <VinculosClient vinculosIniciais={vinculos} tiposPorSetor={tiposPorSetor} />
       </div>
