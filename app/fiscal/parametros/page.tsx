@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { requireAdminSection } from '@/lib/admin-auth/server'
-import SairAdminButton from '@/components/admin/SairAdminButton'
 import ParametrosClient from './ParametrosClient'
 
 export const metadata = { title: 'Parâmetros — Tesserato Fiscal' }
@@ -18,11 +16,6 @@ export default async function ParametrosPage() {
     .single()
 
   if (profile?.role !== 'admin') redirect('/intranet')
-
-  // Guarda autoritativa da seção ADMIN (RNF2/RN1/CA5) — o proxy.ts já
-  // intercepta a navegação, mas a verificação aqui, antes de qualquer
-  // query, é a que realmente protege os dados desta página.
-  await requireAdminSection('/fiscal/parametros')
 
   const [
     { data: profiles },
@@ -65,7 +58,6 @@ export default async function ParametrosPage() {
 
   return (
     <>
-      <SairAdminButton />
       <ParametrosClient
         profiles={profiles ?? []}
         currentUserId={user.id}

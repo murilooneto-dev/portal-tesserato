@@ -9,6 +9,12 @@ type Formato = 'data' | 'texto' | 'opcoes'
 interface Props {
   nome: string
   setor: UserSetor
+  // Só true quando chamado a partir do catálogo global de admin
+  // (app/admin/configuracoes/TarefasTab.tsx), onde um tipo criado deve
+  // virar padrão (ClienteGeralModal.tsx filtra .eq('padrao', true) ao
+  // provisionar cliente novo). Nos demais call sites (criação ad-hoc a
+  // partir do cadastro de um cliente específico) permanece false.
+  padrao?: boolean
   onCancel: () => void
   onCriado: (nome: string) => void
 }
@@ -22,7 +28,7 @@ const FORMATOS: { value: Formato; label: string; desc: string }[] = [
   { value: 'opcoes', label: 'Opções', desc: 'Lista de etapas nomeadas, cada uma com seu checkbox' },
 ]
 
-export default function NovoTipoTarefaModal({ nome, setor, onCancel, onCriado }: Props) {
+export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCancel, onCriado }: Props) {
   const [formato, setFormato] = useState<Formato>('data')
   const [etapas, setEtapas] = useState<string[]>([])
   const [novaEtapa, setNovaEtapa] = useState('')
@@ -43,7 +49,7 @@ export default function NovoTipoTarefaModal({ nome, setor, onCancel, onCriado }:
     const tipoResposta: TipoResposta = formato === 'texto' ? 'texto' : 'data'
     const etapasFinal = formato === 'opcoes' ? etapas : null
     try {
-      const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal)
+      const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal, padrao)
       if (error) { setErro(error); return }
       onCriado(nome)
     } catch {
