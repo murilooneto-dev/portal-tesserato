@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { UserSetor } from '@/lib/types'
-import { listarTarefaTiposDoSetor, type TarefaTipoResumo } from '@/lib/tarefa-tipo-vinculos-actions'
+import { listarTarefaTiposDoSetor, excluirTarefaTipo, type TarefaTipoResumo } from '@/lib/tarefa-tipo-vinculos-actions'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 
 interface Props {
@@ -28,6 +28,14 @@ export default function TarefasTab({ setor }: Props) {
   }, [setor])
 
   useEffect(() => { recarregar() }, [recarregar])
+
+  async function handleExcluir(item: TarefaTipoResumo) {
+    if (!confirm(`Excluir a tarefa "${item.nome}"? Essa ação não pode ser desfeita e remove também os vínculos dela com regimes/grupos/atividades.`)) return
+    const { error } = await excluirTarefaTipo(item.id)
+    if (error) { setErro(error); return }
+    setErro(null)
+    await recarregar()
+  }
 
   return (
     <div>
@@ -65,6 +73,10 @@ export default function TarefasTab({ setor }: Props) {
               <span className={`flex-1 text-sm ${item.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
                 {item.nome}
               </span>
+
+              <button onClick={() => handleExcluir(item)} className="text-xs text-red-400/70 hover:text-red-400">
+                Excluir
+              </button>
             </li>
           ))}
         </ul>
