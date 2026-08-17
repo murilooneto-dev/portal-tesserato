@@ -57,6 +57,19 @@ export async function alternarAtivoTarefaTipo(id: string, ativo: boolean): Promi
   return { error: null }
 }
 
+export async function excluirTarefaTipo(id: string): Promise<{ error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { error }
+
+  // tarefa_tipo_vinculos.tarefa_tipo_id tem on delete cascade (migration
+  // 025) — excluir aqui já remove os vínculos dessa tarefa junto.
+  const { error: deleteError } = await supabase.from('tarefa_tipos').delete().eq('id', id)
+  if (deleteError) return { error: deleteError.message }
+
+  revalidatePath('/admin/configuracoes')
+  return { error: null }
+}
+
 export async function listarTarefaTipoIdsVinculados(
   entidadeTipo: TipoEntidadeVinculo,
   entidadeId: string,
