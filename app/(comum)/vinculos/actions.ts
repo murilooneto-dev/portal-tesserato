@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
-import { getValidAdminSession } from '@/lib/admin-auth/server'
 import type { UserSetor } from '@/lib/types'
 
 // ATENÇÃO (CODE_REVIEW.md / SECURITY_REPORT.md, risco residual de design):
@@ -25,9 +24,6 @@ async function exigirAcessoAdmin() {
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return null
-
-  const adminSession = await getValidAdminSession()
-  if (!adminSession) return null
 
   return supabase
 }

@@ -1,7 +1,6 @@
 'use server'
 
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
-import { getValidAdminSession } from '@/lib/admin-auth/server'
 import { revalidatePath } from 'next/cache'
 import type { UserSetor } from '@/lib/types'
 import { validarNomeEntidade, normalizarNome } from '@/lib/config-entidades'
@@ -23,14 +22,9 @@ export interface EntidadeConfig {
   ativo: boolean
 }
 
-const ERRO_SESSAO_ADMIN = 'Sessão ADMIN expirada. Faça login novamente.'
-
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
 
 async function exigirAdmin(): Promise<{ error: string | null; supabase: SupabaseAdmin | null }> {
-  const session = await getValidAdminSession()
-  if (!session) return { error: ERRO_SESSAO_ADMIN, supabase: null }
-
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', supabase: null }
 
