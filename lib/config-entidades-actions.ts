@@ -40,9 +40,10 @@ export async function listarEntidades(
 ): Promise<{ data: EntidadeConfig[]; error: string | null }> {
   if (!TABELAS_VALIDAS.includes(tabela)) return { data: [], error: 'Tabela inválida.' }
 
-  // Leitura não exige a sessão ADMIN step-up (RLS já libera pra qualquer
-  // autenticado) — mas a tela em si vive atrás de requireAdminSection, então
-  // manter a mesma checagem aqui simplifica (uma função só, sem dois caminhos).
+  // Leitura não exige checar profiles.role = 'admin' (RLS já libera pra
+  // qualquer autenticado) — mas a tela em si vive atrás dessa checagem de
+  // role, então manter a mesma checagem aqui simplifica (uma função só,
+  // sem dois caminhos).
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { data: [], error }
 

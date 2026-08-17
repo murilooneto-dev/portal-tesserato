@@ -396,6 +396,8 @@ export async function verificarSenhaDev(
 ): Promise<{ ok: boolean; error?: string }> {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { ok: false, error: 'Não autorizado.' }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { ok: false, error: 'Acesso negado.' }
 
   const devEmail = process.env.DEV_MASTER_EMAIL
   if (!devEmail) return { ok: false, error: 'DEV_MASTER_EMAIL não configurada no servidor.' }

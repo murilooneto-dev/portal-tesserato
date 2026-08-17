@@ -26,7 +26,7 @@ async function exigirAcessoAdmin() {
   return supabase
 }
 
-const ERRO_ACESSO = 'Acesso negado: sessão da área ADMIN expirada ou inválida.'
+const ERRO_ACESSO = 'Acesso negado.'
 
 export async function criarVinculos(input: {
   setorOrigem: UserSetor
