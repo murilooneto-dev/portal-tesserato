@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import ClientesGeralLista from '@/components/geral/ClientesGeralLista'
 import type { TarefaVinculo } from '@/lib/types'
+import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 
 export const metadata = { title: 'Clientes — Tesserato' }
 
@@ -30,6 +31,8 @@ export default async function ClientesGeralPage() {
     templatesMap[row.atividade] = row.tarefas ?? []
   }
 
+  const catalogoFiscal = await buscarCatalogoCliente(supabase, 'fiscal')
+
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <ClientesGeralLista
@@ -38,6 +41,7 @@ export default async function ClientesGeralPage() {
         responsaveis={responsaveis}
         templates={templatesMap}
         vinculosCatalogo={(vinculosCatalogo ?? []) as TarefaVinculo[]}
+        catalogoFiscal={catalogoFiscal}
       />
     </div>
   )
