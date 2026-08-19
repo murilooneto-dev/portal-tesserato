@@ -163,8 +163,12 @@ export default function ParcelamentosPage() {
       // admin sobrescreve com o valor capturado na abertura do modal e
       // desfaz o que a ficha gravou enquanto o modal estava aberto. Avulso:
       // nunca tem tarefa (cnpj null nunca resolve cliente_id), entao os
-      // meses sao editados aqui e entram no update normalmente.
-      const payload = montarUpdateParcelamento(form, editItem.empresa_avulsa)
+      // meses sao editados aqui e entram no update normalmente. Usa
+      // form.empresa_avulsa (valor ao vivo, editavel no modal) e nao
+      // editItem.empresa_avulsa (valor obsoleto capturado na abertura do
+      // modal) — senao alternar o checkbox durante a edicao de um vinculado
+      // e digitar meses faz o save descartar esses meses silenciosamente.
+      const payload = montarUpdateParcelamento(form, form.empresa_avulsa)
       await sb.from('parcelamentos').update(payload).eq('id', editItem.id)
     } else {
       await sb.from('parcelamentos').insert(form)
