@@ -115,11 +115,11 @@ modal correspondente.
 `app/contabil/clientes/[id]/page.tsx` e `app/pessoal/clientes/[id]/page.tsx`
 exibem `regime`/`atividade` como badges de texto (via `labelRegime()`) sem
 select — como o valor salvo continua sendo texto puro, essas telas
-continuam funcionando sem mudança. `labelRegime()` (que traduzia o código
-`'simples'` pro rótulo "Simples Nacional") deixa de fazer sentido depois
-que `lib/atividades-regimes.ts` for removido — os dois pontos que a usam
-passam a exibir `cliente.regime` diretamente (já é o texto legível agora,
-não mais um código).
+continuam funcionando sem mudança nenhuma (nem no badge, já que
+`lib/atividades-regimes.ts`/`labelRegime()` não são removidos — ver seção
+acima). Só precisam da nova busca de catálogo pra repassar pro componente
+de ações (`ClienteContabilAcoes`/`ClientePessoalAcoes`), que é quem
+efetivamente abre o modal de edição.
 
 ## Testes
 
