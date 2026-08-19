@@ -108,10 +108,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
         </select>
         <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todos</option>
-          <option value="normal" className="bg-[var(--bg-surface)]">Regime Normal</option>
-          <option value="simples" className="bg-[var(--bg-surface)]">Simples Nacional</option>
-          <option value="mei" className="bg-[var(--bg-surface)]">MEI</option>
-          <option value="isento" className="bg-[var(--bg-surface)]">Isento</option>
+          {catalogo.grupos.map(g => <option key={g} value={g} className="bg-[var(--bg-surface)]">{g}</option>)}
         </select>
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as atividades</option>

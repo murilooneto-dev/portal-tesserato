@@ -83,7 +83,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
         </select>
         <select value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os regimes</option>
-          {REGIMES.map(r => <option key={r.value} value={r.value} className="bg-[var(--bg-surface)]">{r.label}</option>)}
+          {catalogo.regimes.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
         </select>
         <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as prioridades</option>

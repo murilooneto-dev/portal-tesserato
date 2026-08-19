@@ -129,3 +129,39 @@ grupo/regime/atividade não bate com nada cadastrado no catálogo (valor
 "(atual)" deve aparecer); cadastrar um item novo em Configurações e
 confirmar que aparece no select do cliente; salvar e confirmar que o valor
 persiste como texto igual antes.
+
+## Correção pós-revisão final: valores fixos em Grupo (Fiscal) e Regime (todos os setores)
+
+A revisão final de branch inteira encontrou uma lacuna real neste spec: a
+frase "grava o `nome` escolhido como texto, igual já acontece hoje" não é
+inteiramente verdadeira para `clientes_fiscal.grupo` (e para `regime` em
+Contábil/Pessoal). Antes desta mudança, esses campos guardavam um **código
+fixo** (`normal`/`simples`/`mei`/`isento`) por trás de um rótulo bonito —
+não texto livre. Pelo menos 6 pontos do sistema comparam o valor salvo
+contra esses 4 códigos literais: geração automática do checklist do
+Fiscal (`getTiposParaGrupoFiscal`), contadores do dashboard Fiscal, cores
+dos relatórios, a ferramenta de MEI, "aplicar template por grupo" em
+`/fiscal/parametros`, e os filtros por Grupo/Regime nas 3 listagens.
+
+Decisão tomada com o usuário: por ora, **não redesenhar** nenhum desses 6
+pontos. O catálogo de Grupos do Fiscal e de Regimes de Contábil/Pessoal
+deve ser cadastrado com exatamente os 4 valores `normal`, `simples`,
+`mei`, `isento` (minúsculo, sem acento) em `/admin/configuracoes` — isso
+mantém os 5 pontos que não foram corrigidos funcionando sem nenhuma
+mudança de código. O único ponto corrigido nesta correção foi o mais
+barato e seguro: os filtros por Grupo/Regime das 3 telas de listagem
+passaram a puxar as opções do catálogo em vez de uma lista fixa de 4
+itens — consistente com o resto desta feature, e sem risco (o filtro só
+lê, nunca decide automaticamente nada).
+
+Os outros 5 pontos ficam documentados com comentário no código, no lugar
+onde o valor é salvo (`CamposFiscais.tsx` pro Grupo do Fiscal,
+`EmpresaContabilModal.tsx`/`EmpresaPessoalModal.tsx` pro Regime), listando
+exatamente quem depende do valor literal. Resolver isso de verdade —
+liberar o admin pra nomear grupos/regimes como quiser sem quebrar nada —
+é o mesmo trabalho da "Fase 2" já adiada (geração automática de tarefas a
+partir dos vínculos regime+grupo+atividade), pros itens #1 e #5; os
+demais (#2 dashboard, #3 relatórios) exigiriam redesenhar telas de 4
+categorias fixas pra N categorias dinâmicas — decisão de produto, não só
+código; e #4 (ferramenta de MEI) precisa de uma marcação explícita
+("é MEI?") no cadastro do Grupo em Configurações, não só um nome.

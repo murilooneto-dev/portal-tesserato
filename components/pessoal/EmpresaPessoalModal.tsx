@@ -209,6 +209,13 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
                 </select>
               </div>
               <div>
+                {/* O catálogo de Regimes deste setor (/admin/configuracoes) precisa
+                    conter exatamente 'normal', 'simples', 'mei', 'isento' (minúsculo,
+                    sem acento) — o filtro por Regime e a cor do badge na listagem
+                    (ClientesListaContabil.tsx / ClientesListaPessoal.tsx, via
+                    labelRegime()/CORES_REGIME) comparam contra esses 4 textos
+                    literais. Um regime com outro nome não quebra o formulário, mas
+                    perde o filtro e a cor no badge da listagem. */}
                 <label className={labelCls}>Regime</label>
                 <select className={selectCls} value={form.regime} onChange={e => set('regime', e.target.value)} disabled={readOnly}>
                   <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>

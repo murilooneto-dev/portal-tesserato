@@ -122,6 +122,14 @@ export default function CamposFiscais({ form, set, responsaveis, templates, cata
 
       {/* Grupo + Responsável */}
       <div className="grid grid-cols-2 gap-4">
+        {/* O catálogo de Grupos do Fiscal (setor='fiscal' em /admin/configuracoes)
+            precisa conter exatamente 'normal', 'simples', 'mei', 'isento'
+            (minúsculo, sem acento) — getTiposParaGrupoFiscal() (lib/tarefa-tipos.ts),
+            os contadores do dashboard Fiscal, as cores dos relatórios, a ferramenta
+            de MEI e "aplicar template por grupo" (fiscal/parametros) comparam o
+            valor salvo aqui contra esses 4 textos literais. Um grupo cadastrado com
+            outro nome (ex. "Simples Nacional") não quebra o formulário, mas o
+            cliente cai fora dessas 5 funcionalidades silenciosamente. */}
         <div>
           <label className={labelCls}>Grupo</label>
           <select className={selectCls} value={form.grupo} onChange={e => set('grupo', e.target.value)} disabled={readOnly}>
