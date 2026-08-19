@@ -85,8 +85,15 @@ sem forçar reescolha imediata. Generaliza esse mesmo padrão pros 7 campos:
   campo Regime.
 - `components/pessoal/EmpresaPessoalModal.tsx` — mesma mudança que
   Contábil, setor pessoal.
-- `lib/atividades-regimes.ts` — removido (sem mais consumidores depois da
-  mudança acima).
+- `lib/atividades-regimes.ts` — **não é removido** (correção encontrada no
+  planejamento): `components/contabil/ClientesListaContabil.tsx` e
+  `components/pessoal/ClientesListaPessoal.tsx` também importam `REGIMES`
+  (filtro da listagem) e `labelRegime` (badge da linha do cliente) desse
+  arquivo — um consumo separado do formulário de cadastro, fora do escopo
+  desta spec (fica pra um projeto futuro de "filtros também usam o
+  catálogo"). Só a constante `ATIVIDADES` desse arquivo é removida (fica
+  sem nenhum consumidor depois que Fiscal/Contábil/Pessoal passarem a usar
+  o catálogo) — `REGIMES`/`labelRegime` continuam intactos.
 
 ### Como as listas chegam no formulário
 
