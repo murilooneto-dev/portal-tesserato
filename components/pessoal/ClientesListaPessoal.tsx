@@ -6,6 +6,7 @@ import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComPessoal } from '@/lib/clientes-pessoal'
 import type { PendenciaVinculo } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
+import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import EmpresaPessoalModal from './EmpresaPessoalModal'
 import { REGIMES, labelRegime } from '@/lib/atividades-regimes'
 
@@ -31,12 +32,13 @@ interface Props {
   mes: number
   ano: number
   tarefasPadrao: string[]
+  catalogo: CatalogoCliente
   pendenciasVinculo: Record<string, PendenciaVinculo[]>
 }
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano, tarefasPadrao, pendenciasVinculo }: Props) {
+export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano, tarefasPadrao, catalogo, pendenciasVinculo }: Props) {
   const [busca, setBusca] = useFiltroPersistente('clientes-pessoal:busca', '')
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes-pessoal:responsavel', 'TODOS')
   const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientes-pessoal:regime', 'TODOS')
@@ -108,6 +110,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
           clienteId={null}
           responsaveis={responsaveis.slice(1)}
           tarefasPadrao={tarefasPadrao}
+          catalogo={catalogo}
           onClose={() => setModalNovoOpen(false)}
         />
       )}
