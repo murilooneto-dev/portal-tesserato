@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { MES_PARA_COLUNA, isoParaDdMm, ddMmParaIso, nomeTarefaParcelamento, nomesTarefaParcelamentos } from '../lib/parcelamento-tarefas'
+import { MES_PARA_COLUNA, isoParaDdMm, ddMmParaIso, nomeTarefaParcelamento, nomesTarefaParcelamentos, montarUpdateParcelamento } from '../lib/parcelamento-tarefas'
 
 test('MES_PARA_COLUNA mapeia os 12 meses pras colunas de parcelamentos (set, nao sep)', () => {
   assert.equal(MES_PARA_COLUNA[1], 'jan')
@@ -87,4 +87,26 @@ test('nomesTarefaParcelamentos: colisao so desempata dentro do mesmo cliente', (
   ])
   assert.equal(nomes.get('a'), 'Parcelamentos (PGFN - ECAC)')
   assert.equal(nomes.get('b'), 'Parcelamentos (PGFN - ECAC)')
+})
+
+test('montarUpdateParcelamento mantem os meses quando empresa_avulsa=true', () => {
+  const form = { empresa: 'Padaria X', secao: 'PGFN', jan: '10/01', fev: null, mar: '15/03' }
+  const resultado = montarUpdateParcelamento(form, true)
+  assert.deepEqual(resultado, form)
+})
+
+test('montarUpdateParcelamento remove os 12 campos de mes quando empresa_avulsa=false', () => {
+  const form = {
+    empresa: 'Cliente Y', secao: 'PGFN',
+    jan: '10/01', fev: null, mar: null, abr: null, mai: null, jun: null,
+    jul: null, ago: null, set: null, out: null, nov: null, dez: null,
+  }
+  const resultado = montarUpdateParcelamento(form, false)
+  assert.deepEqual(resultado, { empresa: 'Cliente Y', secao: 'PGFN' })
+})
+
+test('montarUpdateParcelamento nao muda o objeto original', () => {
+  const form = { empresa: 'Cliente Z', jan: '01/01' }
+  montarUpdateParcelamento(form, false)
+  assert.equal(form.jan, '01/01')
 })
