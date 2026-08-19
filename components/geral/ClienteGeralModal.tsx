@@ -10,6 +10,7 @@ import { flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
+import { excluirClienteGeral } from '@/app/(comum)/clientes/actions'
 
 interface FormData extends CamposFiscaisData {
   nome: string
@@ -53,6 +54,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
   const [saving, setSaving] = useState(false)
   const [loadingCnpj, setLoadingCnpj] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
   const [mostrarVinculos, setMostrarVinculos] = useState(false)
   const [catalogoNomes, setCatalogoNomes] = useState<string[]>([])
   const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
@@ -326,6 +328,21 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
     onClose()
   }
 
+  async function handleExcluir() {
+    if (!clienteId) return
+    if (!confirm(`Excluir "${form.nome}" do sistema? Essa ação não pode ser desfeita e remove o cliente de todos os setores (tarefas, arquivos e parcelamentos vinculados a ele também são apagados).`)) return
+    setExcluindo(true)
+    setErro(null)
+    const { error } = await excluirClienteGeral(clienteId)
+    if (error) {
+      setExcluindo(false)
+      setErro(error)
+      return
+    }
+    router.refresh()
+    onClose()
+  }
+
   const mostraFiscal = form.setores.includes('fiscal')
 
   return (
@@ -460,22 +477,31 @@ export default function ClienteGeralModal({ clienteId, responsaveis, templates, 
           </div>
         )}
 
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          {readOnly ? (
-            <button onClick={onClose}
-              className="px-6 py-2.5 rounded-xl bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-sm transition-colors">
-              Fechar
+        <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
+          {!readOnly && isEdit ? (
+            <button onClick={handleExcluir} disabled={excluindo}
+              className="px-4 py-2.5 rounded-xl text-red-400/70 hover:text-red-400 text-sm transition-colors disabled:opacity-50">
+              {excluindo ? 'Excluindo...' : 'Excluir cliente'}
             </button>
-          ) : (<>
-            <button onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-              Cancelar
-            </button>
-            <button onClick={handleSave} disabled={saving || !form.nome.trim() || form.setores.length === 0}
-              className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-              {saving ? 'Salvando...' : 'Salvar cliente'}
-            </button>
-          </>)}
+          ) : <span />}
+
+          <div className="flex gap-3">
+            {readOnly ? (
+              <button onClick={onClose}
+                className="px-6 py-2.5 rounded-xl bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-sm transition-colors">
+                Fechar
+              </button>
+            ) : (<>
+              <button onClick={onClose}
+                className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleSave} disabled={saving || !form.nome.trim() || form.setores.length === 0}
+                className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+                {saving ? 'Salvando...' : 'Salvar cliente'}
+              </button>
+            </>)}
+          </div>
         </div>
       </div>
     </div>
