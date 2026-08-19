@@ -7,7 +7,7 @@ import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
-import { ATIVIDADES, REGIMES } from '@/lib/atividades-regimes'
+import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface FormData {
   cnpj: string
@@ -26,6 +26,7 @@ interface Props {
   clienteId: string | null
   responsaveis: string[]
   tarefasPadrao: string[]
+  catalogo: CatalogoCliente
   onClose: () => void
   readOnly?: boolean
 }
@@ -39,7 +40,7 @@ const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[
 const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
-export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasPadrao, onClose, readOnly = false }: Props) {
+export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
@@ -201,17 +202,20 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
                 <label className={labelCls}>Atividade</label>
                 <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly}>
                   <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
-                  {form.atividade && !ATIVIDADES.includes(form.atividade) && (
+                  {form.atividade && !catalogo.atividades.includes(form.atividade) && (
                     <option value={form.atividade} className="bg-[var(--bg-surface)]">{form.atividade} (atual)</option>
                   )}
-                  {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
+                  {catalogo.atividades.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelCls}>Regime</label>
                 <select className={selectCls} value={form.regime} onChange={e => set('regime', e.target.value)} disabled={readOnly}>
                   <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
-                  {REGIMES.map(r => <option key={r.value} value={r.value} className="bg-[var(--bg-surface)]">{r.label}</option>)}
+                  {form.regime && !catalogo.regimes.includes(form.regime) && (
+                    <option value={form.regime} className="bg-[var(--bg-surface)]">{form.regime} (atual)</option>
+                  )}
+                  {catalogo.regimes.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
                 </select>
               </div>
             </div>
