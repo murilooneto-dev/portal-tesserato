@@ -1,17 +1,8 @@
-// Mesmos valores usados em components/fiscal/CamposFiscais.tsx (ATIVIDADES
-// e GRUPOS) — duplicados deliberadamente aqui em vez de importados de lá,
-// pra não criar acoplamento com o Fiscal (ver spec 2026-08-03).
-
-export const ATIVIDADES = [
-  'Serviço',
-  'Comércio',
-  'Indústria',
-  'Serviço e Comércio',
-  'Serviço e Indústria',
-  'Comércio e Indústria',
-  'Serviço, Comércio e Indústria',
-]
-
+// Usado pelo filtro e pelo badge de regime das telas de listagem do
+// Contábil e Pessoal (ClientesListaContabil.tsx/ClientesListaPessoal.tsx)
+// — o cadastro do cliente em si (EmpresaContabilModal/EmpresaPessoalModal)
+// passou a puxar as opções do catálogo (lib/catalogo-cliente.ts) em vez
+// dessa lista fixa; ela continua existindo só pra esses dois pontos.
 export const REGIMES = [
   { value: 'normal',  label: 'Regime Normal' },
   { value: 'simples', label: 'Simples Nacional' },

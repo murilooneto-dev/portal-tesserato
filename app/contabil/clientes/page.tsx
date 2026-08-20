@@ -4,6 +4,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
+import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa } from '@/lib/types'
 
 export const metadata = { title: 'Clientes — Tesserato Contábil' }
@@ -11,6 +12,7 @@ export const metadata = { title: 'Clientes — Tesserato Contábil' }
 export default async function ClientesContabilPage() {
   const supabase = await createClient()
   const { mes, ano } = await getMesAno()
+  const catalogo = await buscarCatalogoCliente(supabase, 'contabil')
 
   const [{ data: clientesRaw }, tarefas, { data: tiposRaw }] = await Promise.all([
     supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).order('nome'),
@@ -50,6 +52,7 @@ export default async function ClientesContabilPage() {
         mes={mes}
         ano={ano}
         tarefasPadrao={tarefasPadrao}
+        catalogo={catalogo}
         pendenciasVinculo={pendenciasVinculo}
       />
     </div>

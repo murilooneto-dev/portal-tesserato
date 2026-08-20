@@ -6,14 +6,16 @@ import { excluirClienteContabil, desabilitarCliente, reabilitarCliente } from '@
 import DesabilitarClienteModal from '@/components/geral/DesabilitarClienteModal'
 import EmpresaContabilModal from './EmpresaContabilModal'
 import type { ClienteComContabil } from '@/lib/clientes-contabil'
+import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface Props {
   cliente: ClienteComContabil
   responsaveis: string[]
   tarefasPadrao: string[]
+  catalogo: CatalogoCliente
 }
 
-export default function ClienteContabilAcoes({ cliente, responsaveis, tarefasPadrao }: Props) {
+export default function ClienteContabilAcoes({ cliente, responsaveis, tarefasPadrao, catalogo }: Props) {
   const router = useRouter()
   const [editando, setEditando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
@@ -107,6 +109,7 @@ export default function ClienteContabilAcoes({ cliente, responsaveis, tarefasPad
           clienteId={cliente.id}
           responsaveis={responsaveis}
           tarefasPadrao={tarefasPadrao}
+          catalogo={catalogo}
           onClose={() => setEditando(false)}
         />
       )}

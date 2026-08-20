@@ -5,6 +5,7 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import type { Tarefa } from '@/lib/types'
+import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 
 export const metadata = { title: 'Clientes — Tesserato Fiscal' }
 
@@ -12,6 +13,8 @@ export default async function ClientesPage() {
   const supabase = await createClient()
 
   const { mes, ano } = await getMesAno()
+
+  const catalogo = await buscarCatalogoCliente(supabase, 'fiscal')
 
   const clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
 
@@ -68,6 +71,7 @@ export default async function ClientesPage() {
         mes={mes}
         ano={ano}
         templates={templatesMap}
+        catalogo={catalogo}
         pendenciasVinculo={pendenciasVinculo}
       />
     </div>

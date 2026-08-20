@@ -8,6 +8,7 @@ import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fisc
 import CamposFiscais, { type CamposFiscaisData } from './CamposFiscais'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
+import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface FormData {
   cod: string
@@ -36,6 +37,7 @@ interface Props {
   onClose: () => void
   readOnly?: boolean
   templates: Record<string, string[]>
+  catalogo: CatalogoCliente
 }
 
 const emptyForm = (): FormData => ({
@@ -49,7 +51,7 @@ const emptyForm = (): FormData => ({
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
-export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnly = false, templates }: Props) {
+export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnly = false, templates, catalogo }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
@@ -251,6 +253,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               set={set as <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void}
               responsaveis={responsaveis}
               templates={templates}
+              catalogo={catalogo}
               isEdit={isEdit}
               readOnly={readOnly}
               novaTarefa={novaTarefa}
