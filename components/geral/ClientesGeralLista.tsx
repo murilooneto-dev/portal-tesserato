@@ -3,15 +3,17 @@
 import { useState, useMemo } from 'react'
 import type { Cliente, TarefaVinculo } from '@/lib/types'
 import ClienteGeralModal from './ClienteGeralModal'
+import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface Props {
   clientes: Cliente[]
   isAdmin: boolean
   responsaveis: string[]
   vinculosCatalogo: TarefaVinculo[]
+  catalogoFiscal: CatalogoCliente
 }
 
-export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, vinculosCatalogo }: Props) {
+export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, vinculosCatalogo, catalogoFiscal }: Props) {
   const [busca, setBusca] = useState('')
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
   const [clienteAbertoId, setClienteAbertoId] = useState<string | null>(null)
@@ -75,6 +77,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, vi
           clienteId={null}
           responsaveis={responsaveis}
           vinculosCatalogo={vinculosCatalogo}
+          catalogoFiscal={catalogoFiscal}
           onClose={() => setModalNovoOpen(false)}
         />
       )}
@@ -84,6 +87,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, vi
           clienteId={clienteAbertoId}
           responsaveis={responsaveis}
           vinculosCatalogo={vinculosCatalogo}
+          catalogoFiscal={catalogoFiscal}
           readOnly={!isAdmin}
           onClose={() => setClienteAbertoId(null)}
         />

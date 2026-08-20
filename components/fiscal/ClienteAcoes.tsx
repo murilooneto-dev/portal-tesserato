@@ -6,13 +6,15 @@ import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { excluirCliente, desabilitarCliente, reabilitarCliente } from '@/app/fiscal/clientes/actions'
 import DesabilitarClienteModal from '@/components/geral/DesabilitarClienteModal'
 import EmpresaModal from './EmpresaModal'
+import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface Props {
   cliente: ClienteComFiscal
   responsaveis: string[]
+  catalogo: CatalogoCliente
 }
 
-export default function ClienteAcoes({ cliente, responsaveis }: Props) {
+export default function ClienteAcoes({ cliente, responsaveis, catalogo }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [nomeDigitado, setNomeDigitado] = useState('')
@@ -104,6 +106,7 @@ export default function ClienteAcoes({ cliente, responsaveis }: Props) {
         <EmpresaModal
           clienteId={cliente.id}
           responsaveis={responsaveis}
+          catalogo={catalogo}
           onClose={() => setModalOpen(false)}
         />
       )}

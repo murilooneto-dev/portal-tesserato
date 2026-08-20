@@ -12,6 +12,7 @@ import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
 import { toggleTarefaContabil, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsContabil } from '../actions'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
+import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
@@ -71,6 +72,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
     }
   }
   const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
+  const catalogo = await buscarCatalogoCliente(supabase, 'contabil')
 
   const tarefaIds = (tarefas ?? []).map(t => t.id)
   const { data: etapas } = tarefaIds.length > 0
@@ -130,7 +132,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
                   </div>
                 )}
               </div>
-              {podeEditar && <ClienteContabilAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} />}
+              {podeEditar && <ClienteContabilAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} catalogo={catalogo} />}
             </div>
           </div>
         </div>

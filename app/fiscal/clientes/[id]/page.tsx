@@ -20,6 +20,7 @@ import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, gravarDataParcelamento, isoParaDdMm, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
+import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -125,6 +126,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const responsaveis = Array.from(new Set(
     (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
+  const catalogo = await buscarCatalogoCliente(supabase, 'fiscal')
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
     'use server'
@@ -215,7 +217,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                 <span className="text-[var(--fg)] font-medium text-sm">
                   {MESES_ABREV[mes-1]} / {ano}
                 </span>
-                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} />}
+                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} catalogo={catalogo} />}
               </div>
             </div>
           </div>

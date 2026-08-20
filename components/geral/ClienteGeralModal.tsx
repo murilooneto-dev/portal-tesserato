@@ -11,6 +11,7 @@ import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import { excluirClienteGeral } from '@/app/(comum)/clientes/actions'
+import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface FormData extends CamposFiscaisData {
   nome: string
@@ -26,6 +27,7 @@ interface Props {
   clienteId: string | null
   responsaveis: string[]
   vinculosCatalogo: TarefaVinculo[]
+  catalogoFiscal: CatalogoCliente
   onClose: () => void
   readOnly?: boolean
 }
@@ -42,7 +44,7 @@ const emptyForm = (): FormData => ({
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
-export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCatalogo, onClose, readOnly = false }: Props) {
+export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCatalogo, catalogoFiscal, onClose, readOnly = false }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
@@ -440,6 +442,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
                   form={form}
                   set={set as <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void}
                   responsaveis={responsaveis}
+                  catalogo={catalogoFiscal}
                   isEdit={isEdit}
                   readOnly={true}
                   novaTarefa={novaTarefa}
@@ -456,6 +459,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
                   form={form}
                   set={set as <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void}
                   responsaveis={responsaveis}
+                  catalogo={catalogoFiscal}
                   isEdit={isEdit}
                   readOnly={readOnly}
                   novaTarefa={novaTarefa}
