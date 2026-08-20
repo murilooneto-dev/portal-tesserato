@@ -7,6 +7,7 @@ import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
 import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
 export const metadata = { title: 'Dashboard — Tesserato Contábil' }
 
@@ -32,12 +33,13 @@ export default async function DashboardContabilPage() {
   const ts = tarefas
   const eventos = (eventosRaw ?? []) as CalendarioEvento[]
 
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
-    tiposMap[c.id] = new Set(c.tarefas_personalizadas ?? [])
+    tiposMap[c.id] = new Set(calcularTarefasEsperadas(c, mapaVinculos))
   }
 
-  const totalTarefas = cs.reduce((sum, c) => sum + (c.tarefas_personalizadas?.length ?? 0), 0)
+  const totalTarefas = cs.reduce((sum, c) => sum + (tiposMap[c.id]?.size ?? 0), 0)
   const concluidasTarefas = ts.filter(t => t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)).length
   const pct = totalTarefas > 0 ? Math.round((concluidasTarefas / totalTarefas) * 100) : 0
 
@@ -113,7 +115,7 @@ export default async function DashboardContabilPage() {
               const opClientes  = cs.filter(c => c.responsavel?.toUpperCase() === nome.toUpperCase())
               const opTarefas   = ts.filter(t => opClientes.some(c => c.id === t.cliente_id))
               const opConcluidas = opTarefas.filter(t => t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)).length
-              const opTotal     = opClientes.reduce((sum, c) => sum + (c.tarefas_personalizadas?.length ?? 0), 0)
+              const opTotal     = opClientes.reduce((sum, c) => sum + (tiposMap[c.id]?.size ?? 0), 0)
               const opPct       = opTotal > 0 ? Math.round((opConcluidas / opTotal) * 100) : 0
               return (
                 <div key={nome} className="rounded-2xl bg-[var(--fg)]/2 border border-[var(--fg)]/7 p-5">

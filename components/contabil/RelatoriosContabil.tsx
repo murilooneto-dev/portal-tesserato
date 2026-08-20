@@ -4,11 +4,12 @@ import { useRouter } from 'next/navigation'
 import type { Tarefa } from '@/lib/types'
 import type { ClienteComContabil } from '@/lib/clientes-contabil'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
+import { calcularTarefasEsperadas, type MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
-function progresso(cliente: ClienteComContabil, tarefas: Tarefa[]) {
-  const tipos = new Set(cliente.tarefas_personalizadas ?? [])
+function progresso(cliente: ClienteComContabil, tarefas: Tarefa[], mapa: MapaVinculosSetor) {
+  const tipos = new Set(calcularTarefasEsperadas(cliente, mapa))
   const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.has(t.tipo))
   const total = tipos.size
   const feitas = clienteTarefas.filter(t => t.concluida).length
@@ -24,9 +25,10 @@ interface Props {
   mes: number
   ano: number
   obsPorCliente: Record<string, string>
+  mapaVinculos: MapaVinculosSetor
 }
 
-export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, ano, obsPorCliente }: Props) {
+export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, ano, obsPorCliente, mapaVinculos }: Props) {
   const router = useRouter()
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios-contabil:responsavel', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('relatorios-contabil:atividade', 'TODAS')
@@ -38,13 +40,13 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
     : []
 
   const atividades = Array.from(new Set(clientes.map(c => c.atividade).filter(Boolean) as string[])).sort()
-  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => c.tarefas_personalizadas ?? []))).sort()
+  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
     .filter(c => filtroAtividade === 'TODAS' || c.atividade === filtroAtividade)
-    .filter(c => filtroTarefa === 'TODAS' || (c.tarefas_personalizadas ?? []).includes(filtroTarefa))
-    .map(c => ({ cliente: c, ...progresso(c, tarefas) }))
+    .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas(c, mapaVinculos).includes(filtroTarefa))
+    .map(c => ({ cliente: c, ...progresso(c, tarefas, mapaVinculos) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
     .sort((a, b) => a.pct - b.pct)
 

@@ -5,6 +5,7 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
 import type { Tarefa } from '@/lib/types'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
 export const metadata = { title: 'Clientes — Tesserato Contábil' }
 
@@ -21,11 +22,13 @@ export default async function ClientesContabilPage() {
   const clientes = (clientesRaw ?? []).map(flattenClienteContabil)
   const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
 
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
   const progressoMap: Record<string, { total: number; concluidas: number }> = {}
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of clientes) {
-    progressoMap[c.id] = { total: c.tarefas_personalizadas.length, concluidas: 0 }
-    tiposMap[c.id] = new Set(c.tarefas_personalizadas)
+    const esperadas = calcularTarefasEsperadas(c, mapaVinculos)
+    progressoMap[c.id] = { total: esperadas.length, concluidas: 0 }
+    tiposMap[c.id] = new Set(esperadas)
   }
   for (const t of tarefas) {
     if (t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)) {
