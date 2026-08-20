@@ -19,7 +19,7 @@ import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, gravarDataParcelamento, isoParaDdMm, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
-import { getTiposParaGrupoFiscal } from '@/lib/tarefa-tipos'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -54,10 +54,8 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const { data: tarefas } = await supabase
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
 
-  const tarefasPersonalizadasBrutas = cliente.tarefas_personalizadas ?? []
-  const tarefasBaseFiscal = tarefasPersonalizadasBrutas.length > 0
-    ? tarefasPersonalizadasBrutas
-    : getTiposParaGrupoFiscal(cliente.grupo ?? 'normal')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
+  const tarefasBaseFiscal = calcularTarefasEsperadas(cliente, mapaVinculos)
   const parcelamentoIdsDaFicha = Array.from(new Set(
     (tarefas ?? []).filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
   ))
