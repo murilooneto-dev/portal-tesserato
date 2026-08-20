@@ -4,6 +4,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import type { Tarefa } from '@/lib/types'
 
 export const metadata = { title: 'Clientes — Tesserato Fiscal' }
@@ -27,10 +28,12 @@ export default async function ClientesPage() {
     templatesMap[row.atividade] = row.tarefas ?? []
   }
 
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
+
   // Mapa de tipos por cliente
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of clientes) {
-    tiposMap[c.id] = new Set(c.tarefas_personalizadas ?? [])
+    tiposMap[c.id] = new Set(calcularTarefasEsperadas(c, mapaVinculos))
   }
 
   // Progresso por cliente
