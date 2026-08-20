@@ -15,6 +15,7 @@ import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
 import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsPessoal } from '../actions'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -53,7 +54,8 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   const tiposDeParcelamento = Array.from(new Set(
     (tarefas ?? []).filter(t => t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)).map(t => t.tipo)
   ))
-  const tarefasPersonalizadasEfetivas = Array.from(new Set([...cliente.tarefas_personalizadas, ...tiposDeParcelamento]))
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal')
+  const tarefasPersonalizadasEfetivas = Array.from(new Set([...calcularTarefasEsperadas(cliente, mapaVinculos), ...tiposDeParcelamento]))
 
   const { data: eventosCalRaw } = await supabase
     .from('calendario_eventos')
