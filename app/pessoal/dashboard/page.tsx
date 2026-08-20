@@ -7,6 +7,7 @@ import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { filtrarTarefasVisiveis } from '@/lib/tarefa-tipos'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 
@@ -45,9 +46,10 @@ export default async function DashboardPessoalPage() {
   ))
   const parcelamentosAtivos = await idsDeParcelamentosAtivos(supabase, parcelamentoIdsDoMes)
 
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal')
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
-    tiposMap[c.id] = new Set(filtrarTarefasVisiveis(c.tarefas_personalizadas ?? [], mesesVisiveisPorTipo, mes))
+    tiposMap[c.id] = new Set(filtrarTarefasVisiveis(calcularTarefasEsperadas(c, mapaVinculos), mesesVisiveisPorTipo, mes))
   }
   for (const t of ts) {
     if (t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)) tiposMap[t.cliente_id]?.add(t.tipo)

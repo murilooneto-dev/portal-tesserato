@@ -4,6 +4,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import type { Tarefa } from '@/lib/types'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 
@@ -18,22 +19,18 @@ export default async function ClientesPage() {
 
   const clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
 
-  const [{ data: clientesRaw }, tarefas, { data: atividadeTemplates }] = await Promise.all([
+  const [{ data: clientesRaw }, tarefas] = await Promise.all([
     clientesQ,
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo'>>(supabase, mes, ano, 'cliente_id, concluida, tipo'),
-    supabase.from('atividade_templates').select('atividade,tarefas'),
   ])
   const clientes = (clientesRaw ?? []).map(flattenClienteFiscal)
 
-  const templatesMap: Record<string, string[]> = {}
-  for (const row of atividadeTemplates ?? []) {
-    templatesMap[row.atividade] = row.tarefas ?? []
-  }
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
 
   // Mapa de tipos por cliente
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of clientes) {
-    tiposMap[c.id] = new Set(c.tarefas_personalizadas ?? [])
+    tiposMap[c.id] = new Set(calcularTarefasEsperadas(c, mapaVinculos))
   }
 
   // Progresso por cliente
@@ -70,7 +67,6 @@ export default async function ClientesPage() {
         progressoMap={progressoMap}
         mes={mes}
         ano={ano}
-        templates={templatesMap}
         catalogo={catalogo}
         pendenciasVinculo={pendenciasVinculo}
       />

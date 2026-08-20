@@ -9,12 +9,11 @@ interface Props {
   clientes: Cliente[]
   isAdmin: boolean
   responsaveis: string[]
-  templates: Record<string, string[]>
   vinculosCatalogo: TarefaVinculo[]
   catalogoFiscal: CatalogoCliente
 }
 
-export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, templates, vinculosCatalogo, catalogoFiscal }: Props) {
+export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, vinculosCatalogo, catalogoFiscal }: Props) {
   const [busca, setBusca] = useState('')
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
   const [clienteAbertoId, setClienteAbertoId] = useState<string | null>(null)
@@ -77,7 +76,6 @@ export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, te
         <ClienteGeralModal
           clienteId={null}
           responsaveis={responsaveis}
-          templates={templates}
           vinculosCatalogo={vinculosCatalogo}
           catalogoFiscal={catalogoFiscal}
           onClose={() => setModalNovoOpen(false)}
@@ -88,7 +86,6 @@ export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, te
         <ClienteGeralModal
           clienteId={clienteAbertoId}
           responsaveis={responsaveis}
-          templates={templates}
           vinculosCatalogo={vinculosCatalogo}
           catalogoFiscal={catalogoFiscal}
           readOnly={!isAdmin}

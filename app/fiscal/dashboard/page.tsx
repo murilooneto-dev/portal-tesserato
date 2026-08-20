@@ -7,6 +7,7 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
 
@@ -42,9 +43,10 @@ export default async function DashboardPage() {
   ))
   const parcelamentosAtivos = await idsDeParcelamentosAtivos(supabase, parcelamentoIdsDoMes)
 
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
-    tiposMap[c.id] = new Set(c.tarefas_personalizadas ?? [])
+    tiposMap[c.id] = new Set(calcularTarefasEsperadas(c, mapaVinculos))
   }
   for (const t of ts) {
     if (t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)) tiposMap[t.cliente_id]?.add(t.tipo)
@@ -148,7 +150,7 @@ export default async function DashboardPage() {
               const opClientes  = cs.filter(c => c.responsavel?.toUpperCase() === nome.toUpperCase())
               const opTarefas   = ts.filter(t => opClientes.some(c => c.id === t.cliente_id))
               const opConcluidas = opTarefas.filter(t => t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)).length
-              const opTotal     = opClientes.reduce((sum, c) => sum + (c.tarefas_personalizadas?.length ?? 0), 0)
+              const opTotal     = opClientes.reduce((sum, c) => sum + (tiposMap[c.id]?.size ?? 0), 0)
               const opPct       = opTotal > 0 ? Math.round((opConcluidas / opTotal) * 100) : 0
               return (
                 <div key={nome} className="rounded-2xl bg-[var(--fg)]/2 border border-[var(--fg)]/7 p-5">

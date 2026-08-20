@@ -5,11 +5,12 @@ import type { Tarefa } from '@/lib/types'
 import type { ClienteComPessoal } from '@/lib/clientes-pessoal'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { filtrarTarefasVisiveis } from '@/lib/tarefa-tipos'
+import { calcularTarefasEsperadas, type MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
-function progresso(cliente: ClienteComPessoal, tarefas: Tarefa[], mesesVisiveisPorTipo: Record<string, number[] | null>, mes: number) {
-  const tiposVisiveis = filtrarTarefasVisiveis(cliente.tarefas_personalizadas ?? [], mesesVisiveisPorTipo, mes)
+function progresso(cliente: ClienteComPessoal, tarefas: Tarefa[], mesesVisiveisPorTipo: Record<string, number[] | null>, mes: number, mapa: MapaVinculosSetor) {
+  const tiposVisiveis = filtrarTarefasVisiveis(calcularTarefasEsperadas(cliente, mapa), mesesVisiveisPorTipo, mes)
   const tipos = new Set(tiposVisiveis)
   const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.has(t.tipo))
   const total = tipos.size
@@ -27,9 +28,10 @@ interface Props {
   ano: number
   mesesVisiveisPorTipo: Record<string, number[] | null>
   obsPorCliente: Record<string, string>
+  mapaVinculos: MapaVinculosSetor
 }
 
-export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano, mesesVisiveisPorTipo, obsPorCliente }: Props) {
+export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano, mesesVisiveisPorTipo, obsPorCliente, mapaVinculos }: Props) {
   const router = useRouter()
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios-pessoal:responsavel', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('relatorios-pessoal:atividade', 'TODAS')
@@ -41,13 +43,13 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
     : []
 
   const atividades = Array.from(new Set(clientes.map(c => c.atividade).filter(Boolean) as string[])).sort()
-  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => c.tarefas_personalizadas ?? []))).sort()
+  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
     .filter(c => filtroAtividade === 'TODAS' || c.atividade === filtroAtividade)
-    .filter(c => filtroTarefa === 'TODAS' || (c.tarefas_personalizadas ?? []).includes(filtroTarefa))
-    .map(c => ({ cliente: c, ...progresso(c, tarefas, mesesVisiveisPorTipo, mes) }))
+    .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas(c, mapaVinculos).includes(filtroTarefa))
+    .map(c => ({ cliente: c, ...progresso(c, tarefas, mesesVisiveisPorTipo, mes, mapaVinculos) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
     .sort((a, b) => a.pct - b.pct)
 

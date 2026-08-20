@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { montarLinhasRelatorio } from '@/lib/relatorio-fiscal'
 import { gerarRelatorioFiscalPDF } from '@/lib/relatorio-fiscal-pdf'
+import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import type { Tarefa } from '@/lib/types'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, type ClienteComFiscal } from '@/lib/clientes-fiscal'
 
@@ -29,9 +30,10 @@ export async function POST() {
   const mes = agora.getMonth() + 1
   const ano = agora.getFullYear()
 
-  const [{ data: clientesRows, error: clientesErr }, tarefas] = await Promise.all([
+  const [{ data: clientesRows, error: clientesErr }, tarefas, mapaVinculos] = await Promise.all([
     admin.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('clientes_fiscal.ativo', true).order('nome'),
     buscarTodasTarefasDoMes<Tarefa>(admin, mes, ano),
+    buscarMapaVinculosSetor(admin, 'fiscal'),
   ])
   if (clientesErr) return NextResponse.json({ error: clientesErr.message }, { status: 500 })
 
@@ -44,7 +46,7 @@ export async function POST() {
 
   const mesNome = MESES_NOME[mes - 1]
   const anexos = await Promise.all(responsaveis.map(async responsavel => {
-    const linhas = montarLinhasRelatorio(clientes.filter(c => c.responsavel === responsavel), tarefas)
+    const linhas = montarLinhasRelatorio(clientes.filter(c => c.responsavel === responsavel), tarefas, mapaVinculos)
     const pdf = await gerarRelatorioFiscalPDF({ responsavel, mesNome, ano, linhas })
     return { filename: `relatorio-fiscal-${responsavel}-${mes}-${ano}.pdf`.replace(/\s+/g, '-'), content: pdf }
   }))

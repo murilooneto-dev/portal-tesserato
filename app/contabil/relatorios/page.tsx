@@ -4,6 +4,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
 import type { Tarefa } from '@/lib/types'
+import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
 
 export const metadata = { title: 'Relatórios — Tesserato Contábil' }
 
@@ -28,6 +29,7 @@ export default async function RelatoriosContabilPage() {
   ])
 
   const clientes = (clientesRaw ?? []).map(flattenClienteContabil)
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
 
   const obsPorCliente: Record<string, string> = {}
   for (const row of observacoes ?? []) {
@@ -42,6 +44,7 @@ export default async function RelatoriosContabilPage() {
       mes={mes}
       ano={ano}
       obsPorCliente={obsPorCliente}
+      mapaVinculos={mapaVinculos}
     />
   )
 }

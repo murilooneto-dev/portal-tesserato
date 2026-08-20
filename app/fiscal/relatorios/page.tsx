@@ -8,6 +8,7 @@ import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, type ClienteComFiscal } fr
 import { useMesAno } from '@/lib/mes-atual-context'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas, type MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 
 const TAREFAS: Record<string, string[]> = {
   normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
@@ -16,8 +17,8 @@ const TAREFAS: Record<string, string[]> = {
 }
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
-function progresso(cliente: ClienteComFiscal, tarefas: Tarefa[]) {
-  const tipos = new Set(cliente.tarefas_personalizadas ?? [])
+function progresso(cliente: ClienteComFiscal, tarefas: Tarefa[], mapa: MapaVinculosSetor) {
+  const tipos = new Set(calcularTarefasEsperadas(cliente, mapa))
   const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.has(t.tipo))
   const total = tipos.size
   const feitas = clienteTarefas.filter(t => t.concluida).length
@@ -32,6 +33,7 @@ export default function RelatoriosPage() {
   const [clientes, setClientes] = useState<ClienteComFiscal[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [obsPorCliente, setObsPorCliente] = useState<Record<string, string>>({})
+  const [mapaVinculos, setMapaVinculos] = useState<MapaVinculosSetor>({ porGrupo: {}, porRegime: {}, porAtividade: {} })
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('relatorios:grupo', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('relatorios:atividade', 'TODAS')
@@ -63,7 +65,8 @@ export default function RelatoriosPage() {
           clientesQ,
           buscarTodasTarefasDoMes<Tarefa>(sb, mes, ano),
           sb.from('observacoes_clientes').select('cliente_id,texto').eq('mes', mes).eq('ano', ano),
-        ]).then(([c, t, o]) => {
+          buscarMapaVinculosSetor(sb, 'fiscal'),
+        ]).then(([c, t, o, mapa]) => {
           setClientes((c.data ?? []).map(flattenClienteFiscal))
           setTarefas(t)
           const obsMap: Record<string, string> = {}
@@ -71,6 +74,7 @@ export default function RelatoriosPage() {
             if (row.texto?.trim()) obsMap[row.cliente_id] = row.texto
           }
           setObsPorCliente(obsMap)
+          setMapaVinculos(mapa)
         })
       })
     })
@@ -81,14 +85,14 @@ export default function RelatoriosPage() {
     : []
 
   const atividades = Array.from(new Set(clientes.map(c => c.atividade).filter(Boolean) as string[])).sort()
-  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => c.tarefas_personalizadas ?? []))).sort()
+  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
     .filter(c => filtroGrupo === 'TODOS' || c.grupo === filtroGrupo)
     .filter(c => filtroAtividade === 'TODAS' || c.atividade === filtroAtividade)
-    .filter(c => filtroTarefa === 'TODAS' || (c.tarefas_personalizadas ?? []).includes(filtroTarefa))
-    .map(c => ({ cliente: c, ...progresso(c, tarefas) }))
+    .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas(c, mapaVinculos).includes(filtroTarefa))
+    .map(c => ({ cliente: c, ...progresso(c, tarefas, mapaVinculos) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
     .sort((a, b) => {
       const cmp = ordenarPor === 'cliente'
