@@ -16,17 +16,11 @@ export default async function ClientesPage() {
 
   const clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
 
-  const [{ data: clientesRaw }, tarefas, { data: atividadeTemplates }] = await Promise.all([
+  const [{ data: clientesRaw }, tarefas] = await Promise.all([
     clientesQ,
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo'>>(supabase, mes, ano, 'cliente_id, concluida, tipo'),
-    supabase.from('atividade_templates').select('atividade,tarefas'),
   ])
   const clientes = (clientesRaw ?? []).map(flattenClienteFiscal)
-
-  const templatesMap: Record<string, string[]> = {}
-  for (const row of atividadeTemplates ?? []) {
-    templatesMap[row.atividade] = row.tarefas ?? []
-  }
 
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
 
@@ -70,7 +64,6 @@ export default async function ClientesPage() {
         progressoMap={progressoMap}
         mes={mes}
         ano={ano}
-        templates={templatesMap}
         pendenciasVinculo={pendenciasVinculo}
       />
     </div>

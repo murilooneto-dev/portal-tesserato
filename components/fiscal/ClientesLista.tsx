@@ -41,13 +41,12 @@ interface Props {
   progressoMap: Record<string, { total: number; concluidas: number }>
   mes: number
   ano: number
-  templates: Record<string, string[]>
   pendenciasVinculo: Record<string, PendenciaVinculo[]>
 }
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-export default function ClientesLista({ clientes, comPendencia, progressoMap, mes, ano, templates, pendenciasVinculo }: Props) {
+export default function ClientesLista({ clientes, comPendencia, progressoMap, mes, ano, pendenciasVinculo }: Props) {
   const [busca, setBusca] = useFiltroPersistente('clientes:busca', '')
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('clientes:grupo', 'TODOS')
@@ -148,7 +147,6 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
         <EmpresaModal
           clienteId={null}
           responsaveis={responsaveis.slice(1)}
-          templates={templates}
           onClose={() => setModalNovoOpen(false)}
         />
       )}

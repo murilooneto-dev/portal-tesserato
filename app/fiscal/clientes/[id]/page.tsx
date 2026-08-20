@@ -121,17 +121,10 @@ export default async function ClienteDetalhePage({ params }: Props) {
   }
 
   // Dados pro EmpresaModal (editar cliente)
-  const [{ data: usuariosFiscal }, { data: atividadeTemplates }] = await Promise.all([
-    supabase.from('profiles').select('nome').contains('setores', ['fiscal']),
-    supabase.from('atividade_templates').select('atividade,tarefas'),
-  ])
+  const { data: usuariosFiscal } = await supabase.from('profiles').select('nome').contains('setores', ['fiscal'])
   const responsaveis = Array.from(new Set(
     (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
-  const templatesMap: Record<string, string[]> = {}
-  for (const row of atividadeTemplates ?? []) {
-    templatesMap[row.atividade] = row.tarefas ?? []
-  }
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
     'use server'
@@ -222,7 +215,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                 <span className="text-[var(--fg)] font-medium text-sm">
                   {MESES_ABREV[mes-1]} / {ano}
                 </span>
-                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} templates={templatesMap} />}
+                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} />}
               </div>
             </div>
           </div>

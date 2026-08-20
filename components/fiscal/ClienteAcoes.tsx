@@ -10,10 +10,9 @@ import EmpresaModal from './EmpresaModal'
 interface Props {
   cliente: ClienteComFiscal
   responsaveis: string[]
-  templates: Record<string, string[]>
 }
 
-export default function ClienteAcoes({ cliente, responsaveis, templates }: Props) {
+export default function ClienteAcoes({ cliente, responsaveis }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [nomeDigitado, setNomeDigitado] = useState('')
@@ -105,7 +104,6 @@ export default function ClienteAcoes({ cliente, responsaveis, templates }: Props
         <EmpresaModal
           clienteId={cliente.id}
           responsaveis={responsaveis}
-          templates={templates}
           onClose={() => setModalOpen(false)}
         />
       )}
