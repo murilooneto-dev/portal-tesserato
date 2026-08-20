@@ -6,14 +6,16 @@ import { excluirClientePessoal, desabilitarCliente, reabilitarCliente } from '@/
 import DesabilitarClienteModal from '@/components/geral/DesabilitarClienteModal'
 import EmpresaPessoalModal from './EmpresaPessoalModal'
 import type { ClienteComPessoal } from '@/lib/clientes-pessoal'
+import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface Props {
   cliente: ClienteComPessoal
   responsaveis: string[]
   tarefasPadrao: string[]
+  catalogo: CatalogoCliente
 }
 
-export default function ClientePessoalAcoes({ cliente, responsaveis, tarefasPadrao }: Props) {
+export default function ClientePessoalAcoes({ cliente, responsaveis, tarefasPadrao, catalogo }: Props) {
   const router = useRouter()
   const [editando, setEditando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
@@ -107,6 +109,7 @@ export default function ClientePessoalAcoes({ cliente, responsaveis, tarefasPadr
           clienteId={cliente.id}
           responsaveis={responsaveis}
           tarefasPadrao={tarefasPadrao}
+          catalogo={catalogo}
           onClose={() => setEditando(false)}
         />
       )}

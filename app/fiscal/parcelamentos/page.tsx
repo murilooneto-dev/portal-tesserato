@@ -6,6 +6,7 @@ import { useMesAno } from '@/lib/mes-atual-context'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { StatusParcelamento } from '@/lib/parcelamentos-aviso'
 import { criarSecaoParcelamento } from '@/lib/parcelamento-secoes-actions'
+import { montarUpdateParcelamento } from '@/lib/parcelamento-campos'
 import GerenciarSecoesModal from '@/components/fiscal/GerenciarSecoesModal'
 
 interface SecaoParcelamento {
@@ -14,7 +15,7 @@ interface SecaoParcelamento {
 }
 
 const MESES_ABREV = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
-const MESES_COLS  = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+const MESES_COLS  = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
 const MESES_NOME  = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO']
 
 interface Parcelamento {
@@ -157,14 +158,27 @@ export default function ParcelamentosPage() {
   async function handleSave() {
     setSaving(true)
     if (editItem) {
-      // Meses sao somente leitura na UI (preenchidos pela tarefa na ficha do
-      // cliente) — nao reenviar, senao o save do admin sobrescreve com o
-      // valor capturado na abertura do modal e desfaz o que a ficha gravou
-      // enquanto o modal estava aberto.
-      const { jan, fev, mar, abr, mai, jun, jul, ago, set, out, nov, dez, ...formSemMeses } = form
-      await sb.from('parcelamentos').update(formSemMeses).eq('id', editItem.id)
+      // Vinculado a cliente: meses sao somente leitura na UI (preenchidos
+      // pela tarefa na ficha do cliente) — nao reenviar, senao o save do
+      // admin sobrescreve com o valor capturado na abertura do modal e
+      // desfaz o que a ficha gravou enquanto o modal estava aberto. Avulso:
+      // nunca tem tarefa (cnpj null nunca resolve cliente_id), entao os
+      // meses sao editados aqui e entram no update normalmente. Usa
+      // form.empresa_avulsa (valor ao vivo, editavel no modal) e nao
+      // editItem.empresa_avulsa (valor obsoleto capturado na abertura do
+      // modal) — senao alternar o checkbox durante a edicao de um vinculado
+      // e digitar meses faz o save descartar esses meses silenciosamente.
+      const payload = montarUpdateParcelamento(form, form.empresa_avulsa)
+      await sb.from('parcelamentos').update(payload).eq('id', editItem.id)
     } else {
-      await sb.from('parcelamentos').insert(form)
+      // Mesmo filtro do update (ver comentario acima): sem isso, marcar
+      // "Empresa Avulsa", digitar meses e desmarcar antes de salvar criaria
+      // um parcelamento vinculado ja com meses preenchidos, que
+      // sincronizarTarefasParcelamento tentaria depois sobrescrever. No caso
+      // comum (avulso permanece marcado) e um no-op, ja que
+      // montarUpdateParcelamento retorna o form inalterado quando
+      // empresaAvulsa e true.
+      await sb.from('parcelamentos').insert(montarUpdateParcelamento(form, form.empresa_avulsa))
     }
     await load(isAdmin, userNome)
     setModalOpen(false)
@@ -651,20 +665,40 @@ export default function ParcelamentosPage() {
                 <input className={inputCls} value={form.tarefa ?? ''} onChange={e => setF('tarefa', e.target.value || null)} />
               </div>
 
-              {/* Meses — somente leitura: preenchidos pela tarefa na ficha do cliente */}
+              {/* Meses — editavel se avulso (sem tarefa que preencha), somente leitura se vinculado a cliente */}
               <div>
-                <label className={labelCls}>Parcelas Mensais — data de emissão/envio (preenchido pela tarefa na ficha do cliente)</label>
+                <label className={labelCls}>
+                  Parcelas Mensais — data de emissão/envio
+                  {!form.empresa_avulsa && ' (preenchido pela tarefa na ficha do cliente)'}
+                </label>
                 <div className="grid grid-cols-6 gap-2">
                   {MESES_COLS.map((mes, i) => {
-                    const valor = (form as any)[mes] as string | null
+                    // Editando (avulso): mostra o que foi digitado (form).
+                    // Somente leitura (nao avulso): mostra o valor persistido
+                    // (editItem), nao o digitado — se o usuario marcou "Empresa
+                    // Avulsa", digitou meses e desmarcou de novo antes de
+                    // salvar, o save (montarUpdateParcelamento) descarta esses
+                    // meses, entao a tela nao deve sugerir que eles foram
+                    // salvos. form[mes] continua intacto (nao e limpo aqui),
+                    // entao remarcar a caixa traz o digitado de volta.
+                    const valor = form.empresa_avulsa ? form[mes] : (editItem?.[mes] ?? null)
                     return (
                       <div key={mes}>
                         <p className="text-[var(--fg)]/30 text-[10px] text-center mb-1">{MESES_ABREV[i]}</p>
-                        <div className={`w-full px-2 py-2 rounded-xl border text-xs text-center ${
-                          valor ? 'bg-blue-500/10 border-transparent text-[var(--fg)]' : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/20'
-                        }`}>
-                          {valor ?? '—'}
-                        </div>
+                        {form.empresa_avulsa ? (
+                          <input
+                            value={valor ?? ''}
+                            onChange={e => setF(mes, e.target.value || null)}
+                            placeholder="dd/mm"
+                            className="w-full px-2 py-2 rounded-xl border bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)] text-xs text-center focus:outline-none focus:border-[var(--accent)]/50"
+                          />
+                        ) : (
+                          <div className={`w-full px-2 py-2 rounded-xl border text-xs text-center ${
+                            valor ? 'bg-blue-500/10 border-transparent text-[var(--fg)]' : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/20'
+                          }`}>
+                            {valor ?? '—'}
+                          </div>
+                        )}
                       </div>
                     )
                   })}

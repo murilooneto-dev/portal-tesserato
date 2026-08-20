@@ -13,6 +13,7 @@ import ClientePessoalAcoes from '@/components/pessoal/ClientePessoalAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
 import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsPessoal } from '../actions'
+import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
 
@@ -85,6 +86,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
     }
   }
   const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
+  const catalogo = await buscarCatalogoCliente(supabase, 'pessoal')
 
   const tarefaIds = (tarefas ?? []).map(t => t.id)
   const { data: etapas } = tarefaIds.length > 0
@@ -144,7 +146,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
                   </div>
                 )}
               </div>
-              {podeEditar && <ClientePessoalAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} />}
+              {podeEditar && <ClientePessoalAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} catalogo={catalogo} />}
             </div>
           </div>
         </div>

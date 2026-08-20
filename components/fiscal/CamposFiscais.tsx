@@ -1,23 +1,7 @@
 'use client'
 
 import { resolverTemplate } from '@/lib/atividade-templates'
-
-const GRUPOS = [
-  { value: 'normal',  label: 'Regime Normal' },
-  { value: 'simples', label: 'Simples Nacional' },
-  { value: 'mei',     label: 'MEI' },
-  { value: 'isento',  label: 'Isento' },
-]
-
-const ATIVIDADES = [
-  'Serviço',
-  'Comércio',
-  'Indústria',
-  'Serviço e Comércio',
-  'Serviço e Indústria',
-  'Comércio e Indústria',
-  'Serviço, Comércio e Indústria',
-]
+import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 export interface CamposFiscaisData {
   cod: string
@@ -44,6 +28,7 @@ interface Props {
   set: <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void
   responsaveis: string[]
   templates: Record<string, string[]>
+  catalogo: CatalogoCliente
   isEdit: boolean
   readOnly: boolean
   novaTarefa: string
@@ -51,7 +36,7 @@ interface Props {
   addTarefa: () => void
 }
 
-export default function CamposFiscais({ form, set, responsaveis, templates, isEdit, readOnly, novaTarefa, setNovaTarefa, addTarefa }: Props) {
+export default function CamposFiscais({ form, set, responsaveis, templates, catalogo, isEdit, readOnly, novaTarefa, setNovaTarefa, addTarefa }: Props) {
   return (
     <>
       {/* Código + Regime */}
@@ -62,7 +47,13 @@ export default function CamposFiscais({ form, set, responsaveis, templates, isEd
         </div>
         <div>
           <label className={labelCls}>Regime</label>
-          <input className={inputCls} value={form.regime} onChange={e => set('regime', e.target.value)} placeholder="Ex: Isenta" disabled={readOnly} />
+          <select className={selectCls} value={form.regime} onChange={e => set('regime', e.target.value)} disabled={readOnly}>
+            <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
+            {form.regime && !catalogo.regimes.includes(form.regime) && (
+              <option value={form.regime} className="bg-[var(--bg-surface)]">{form.regime} (atual)</option>
+            )}
+            {catalogo.regimes.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
+          </select>
         </div>
       </div>
 
@@ -80,7 +71,10 @@ export default function CamposFiscais({ form, set, responsaveis, templates, isEd
           }
         }} disabled={readOnly}>
           <option value="">Selecionar...</option>
-          {ATIVIDADES.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
+          {form.atividade && !catalogo.atividades.includes(form.atividade) && (
+            <option value={form.atividade} className="bg-[var(--bg-surface)]">{form.atividade} (atual)</option>
+          )}
+          {catalogo.atividades.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
         </select>
       </div>
 
@@ -128,11 +122,22 @@ export default function CamposFiscais({ form, set, responsaveis, templates, isEd
 
       {/* Grupo + Responsável */}
       <div className="grid grid-cols-2 gap-4">
+        {/* O catálogo de Grupos do Fiscal (setor='fiscal' em /admin/configuracoes)
+            precisa conter exatamente 'normal', 'simples', 'mei', 'isento'
+            (minúsculo, sem acento) — getTiposParaGrupoFiscal() (lib/tarefa-tipos.ts),
+            os contadores do dashboard Fiscal, as cores dos relatórios, a ferramenta
+            de MEI e "aplicar template por grupo" (fiscal/parametros) comparam o
+            valor salvo aqui contra esses 4 textos literais. Um grupo cadastrado com
+            outro nome (ex. "Simples Nacional") não quebra o formulário, mas o
+            cliente cai fora dessas 5 funcionalidades silenciosamente. */}
         <div>
           <label className={labelCls}>Grupo</label>
           <select className={selectCls} value={form.grupo} onChange={e => set('grupo', e.target.value)} disabled={readOnly}>
             <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
-            {GRUPOS.map(g => <option key={g.value} value={g.value} className="bg-[var(--bg-surface)]">{g.label}</option>)}
+            {form.grupo && !catalogo.grupos.includes(form.grupo) && (
+              <option value={form.grupo} className="bg-[var(--bg-surface)]">{form.grupo} (atual)</option>
+            )}
+            {catalogo.grupos.map(g => <option key={g} value={g} className="bg-[var(--bg-surface)]">{g}</option>)}
           </select>
         </div>
         <div>
