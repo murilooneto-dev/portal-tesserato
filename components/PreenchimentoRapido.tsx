@@ -36,8 +36,12 @@ export default function PreenchimentoRapido({
   const [campo, setCampo] = useState<CampoFiltro | null>(null)
   const [valor, setValor] = useState<string | null>(null)
   const [tarefasSelecionadas, setTarefasSelecionadas] = useState<Set<string>>(new Set())
-  const [estado, setEstado] = useState(estadoInicial)
+  const [overlay, setOverlay] = useState<Record<string, Record<string, boolean>>>({})
   const [, startTransition] = useTransition()
+
+  function getConcluida(clienteId: string, tipo: string): boolean {
+    return overlay[clienteId]?.[tipo] ?? estadoInicial[clienteId]?.[tipo] ?? false
+  }
 
   const tiposDataSet = useMemo(() => new Set(tiposData), [tiposData])
 
@@ -77,9 +81,9 @@ export default function PreenchimentoRapido({
   }
 
   function handleCheckbox(clienteId: string, tipo: string) {
-    const concluidaAtual = estado[clienteId]?.[tipo] ?? false
+    const concluidaAtual = getConcluida(clienteId, tipo)
     const novaConcluida = !concluidaAtual
-    setEstado(prev => ({
+    setOverlay(prev => ({
       ...prev,
       [clienteId]: { ...prev[clienteId], [tipo]: novaConcluida },
     }))
@@ -123,6 +127,12 @@ export default function PreenchimentoRapido({
           </div>
         )}
       </div>
+
+      {campo && valores.length === 0 && (
+        <p className="text-sm text-[var(--fg)]/40">
+          Nenhum cliente tem {LABEL_CAMPO[campo].toLowerCase()} cadastrado.
+        </p>
+      )}
 
       {campo && valor && tarefasDisponiveis.length === 0 && (
         <p className="text-sm text-[var(--fg)]/40">
@@ -176,7 +186,7 @@ export default function PreenchimentoRapido({
                       <td key={tipo} className="text-center py-2 px-3">
                         <input
                           type="checkbox"
-                          checked={estado[cliente.id]?.[tipo] ?? false}
+                          checked={getConcluida(cliente.id, tipo)}
                           onChange={() => handleCheckbox(cliente.id, tipo)}
                           className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
                         />

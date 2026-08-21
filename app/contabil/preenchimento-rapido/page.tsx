@@ -60,8 +60,10 @@ export default async function PreenchimentoRapidoContabilPage() {
 
   const tiposData = nomesTarefaTipoData(tiposRaw ?? [])
 
+  const idsPermitidos = new Set(clientes.map(c => c.id))
   const estadoInicial: Record<string, Record<string, boolean>> = {}
   for (const t of tarefas) {
+    if (!idsPermitidos.has(t.cliente_id)) continue
     if (!estadoInicial[t.cliente_id]) estadoInicial[t.cliente_id] = {}
     estadoInicial[t.cliente_id][t.tipo] = t.concluida
   }
