@@ -39,6 +39,7 @@ export async function toggleTarefaPessoal(
 
   revalidatePath(`/pessoal/clientes/${clienteId}`)
   revalidatePath('/pessoal/clientes')
+  revalidatePath('/pessoal/preenchimento-rapido')
 }
 
 export async function atualizarEtapa(
