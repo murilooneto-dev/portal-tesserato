@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarCliente } from '@/lib/supabase/server'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
-import { gravarDataParcelamento } from '@/lib/parcelamento-tarefas'
+import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
 
 export async function desbloquearTarefa(
   tarefaId: string,
@@ -61,6 +61,48 @@ export async function salvarObs(clienteId: string, mes: number, ano: number, tex
   await supabase
     .from('observacoes_clientes')
     .upsert({ cliente_id: clienteId, mes, ano, texto }, { onConflict: 'cliente_id,mes,ano' })
+}
+
+export async function toggleTarefaFiscal(
+  clienteId: string,
+  tipo: string,
+  mes: number,
+  ano: number,
+  concluida: boolean,
+  data?: string,
+) {
+  if (!(await podeEditarCliente(clienteId))) return
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return
+
+  const concluida_em = concluida
+    ? (data ? new Date(data + 'T12:00:00').toISOString() : new Date().toISOString())
+    : null
+
+  const { data: existing } = await supabase
+    .from('tarefas').select('id, parcelamento_id')
+    .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'fiscal')
+    .maybeSingle()
+
+  if (existing?.id) {
+    await supabase.from('tarefas')
+      .update({ concluida, concluida_em })
+      .eq('id', existing.id)
+  } else {
+    await supabase.from('tarefas')
+      .insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, setor: 'fiscal', concluida, concluida_em })
+  }
+
+  if (existing?.parcelamento_id) {
+    await gravarDataParcelamento(supabase, existing.parcelamento_id, mes, concluida && data ? isoParaDdMm(data) : null)
+  }
+
+  revalidatePath(`/fiscal/clientes/${clienteId}`)
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/dashboard')
+  revalidatePath('/fiscal/relatorios')
+  revalidatePath('/fiscal/tarefas')
+  revalidatePath('/fiscal/preenchimento-rapido')
 }
 
 const TIPOS_PERMITIDOS = [
