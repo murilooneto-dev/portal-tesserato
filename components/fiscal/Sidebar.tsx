@@ -10,7 +10,7 @@ import MesSeletor from './MesSeletor'
 import {
   Zap, LayoutGrid, Users, Calendar,
   FileText, CreditCard, Wrench, Settings, SlidersHorizontal,
-  Sun, Moon, Link2,
+  Sun, Moon, Link2, ListChecks,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -28,6 +28,7 @@ const ICONES_PAGINA: Record<string, LucideIcon> = {
   calendario: Calendar,
   relatorios: FileText,
   parcelamentos: CreditCard,
+  'preenchimento-rapido': ListChecks,
 }
 
 function itensDoSetor(setor: UserSetor): NavItem[] {
