@@ -6,9 +6,8 @@ import type { Profile } from '@/lib/types'
 import { SETORES, SETOR_LABEL, type UserSetor } from '@/lib/types'
 import { PAGINAS_POR_SETOR } from '@/lib/paginas-setor'
 import { salvarComunicado, atualizarPerfil, criarUsuario, deletarUsuario, salvarConfiguracoes } from './actions'
-import { salvarTemplate, aplicarTemplateAClientes, salvarTemplateGrupo, aplicarTemplateGrupoAClientes, analisarParcelamentosDuplicados, limparParcelamentosDuplicados } from './actions'
+import { analisarParcelamentosDuplicados, limparParcelamentosDuplicados } from './actions'
 import type { GrupoParcelamentoDuplicado } from './actions'
-import { resolverTemplate } from '@/lib/atividade-templates'
 import DevLock from '@/components/fiscal/DevLock'
 
 interface TaskLog {
@@ -39,8 +38,6 @@ interface Props {
   taskLogs: TaskLog[]
   deletionLogs: DeletionLog[]
   emailSettings?: Record<string, string>
-  atividadeTemplates: Record<string, string[]>
-  grupoTemplates: Record<string, string[]>
 }
 
 function formatDate(s: string | null) {
@@ -65,7 +62,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   )
 }
 
-export default function ParametrosClient({ profiles, currentUserId, dashboardAnnouncement, taskLogs, deletionLogs, emailSettings = {}, atividadeTemplates, grupoTemplates }: Props) {
+export default function ParametrosClient({ profiles, currentUserId, dashboardAnnouncement, taskLogs, deletionLogs, emailSettings = {} }: Props) {
   const router = useRouter()
 
   // Comunicado
@@ -119,47 +116,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
   // Logs modais
   const [logModal, setLogModal] = useState<'tarefas' | 'exclusoes' | null>(null)
 
-  // Templates de atividade
-  const BASES = ['Serviço', 'Comércio', 'Indústria'] as const
-  const ATIVIDADES_COMBINADAS = [
-    'Serviço e Comércio',
-    'Serviço e Indústria',
-    'Comércio e Indústria',
-    'Serviço, Comércio e Indústria',
-  ]
-  const [templates, setTemplates] = useState<Record<string, string[]>>({
-    Serviço:   atividadeTemplates['Serviço']   ?? [],
-    Comércio:  atividadeTemplates['Comércio']  ?? [],
-    Indústria: atividadeTemplates['Indústria'] ?? [],
-  })
-  const [novasTarefas, setNovasTarefas] = useState<Record<string, string>>({
-    Serviço: '', Comércio: '', Indústria: '',
-  })
-  const [salvandoTemplate, setSalvandoTemplate] = useState<string | null>(null)
-  const [aplicandoTemplate, setAplicandoTemplate] = useState<string | null>(null)
-  const [templateMsg, setTemplateMsg] = useState<Record<string, string>>({})
-  const [templateAviso, setTemplateAviso] = useState<Record<string, string[]>>({})
-
-  // Templates de grupo
-  const GRUPOS_TEMPLATE = [
-    { value: 'normal',  label: 'Regime Normal' },
-    { value: 'simples', label: 'Simples Nacional' },
-    { value: 'mei',     label: 'MEI' },
-    { value: 'isento',  label: 'Isento' },
-  ]
-  const [templatesGrupo, setTemplatesGrupo] = useState<Record<string, string[]>>({
-    normal:  grupoTemplates['normal']  ?? [],
-    simples: grupoTemplates['simples'] ?? [],
-    mei:     grupoTemplates['mei']     ?? [],
-    isento:  grupoTemplates['isento']  ?? [],
-  })
-  const [novasTarefasGrupo, setNovasTarefasGrupo] = useState<Record<string, string>>({
-    normal: '', simples: '', mei: '', isento: '',
-  })
-  const [salvandoTemplateGrupo, setSalvandoTemplateGrupo] = useState<string | null>(null)
-  const [aplicandoTemplateGrupo, setAplicandoTemplateGrupo] = useState<string | null>(null)
-  const [templateGrupoMsg, setTemplateGrupoMsg] = useState<Record<string, string>>({})
-  const [templateGrupoAviso, setTemplateGrupoAviso] = useState<Record<string, string[]>>({})
   // Parcelamentos duplicados
   const [analisandoParcelamentos, setAnalisandoParcelamentos] = useState(false)
   const [analiseParcelamentos, setAnaliseParcelamentos] = useState<{ grupos: GrupoParcelamentoDuplicado[] } | null>(null)
@@ -332,74 +288,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
       }
       return removendo ? prev.filter(s => s !== setor) : [...prev, setor]
     })
-  }
-
-  async function handleSalvarTemplate(base: string) {
-    setSalvandoTemplate(base)
-    const result = await salvarTemplate(base, templates[base])
-    setSalvandoTemplate(null)
-    setTemplateMsg(prev => ({ ...prev, [base]: result.error ? `Erro: ${result.error}` : 'Salvo!' }))
-    setTimeout(() => setTemplateMsg(prev => ({ ...prev, [base]: '' })), 3000)
-  }
-
-  async function handleAplicarTemplate(base: string) {
-    setAplicandoTemplate(base)
-    const result = await aplicarTemplateAClientes(base)
-    setAplicandoTemplate(null)
-    const msg = result.error
-      ? `Erro: ${result.error}`
-      : `${result.atualizados} cliente(s) atualizados`
-    setTemplateMsg(prev => ({ ...prev, [base + '_aplicar']: msg }))
-    setTemplateAviso(prev => ({ ...prev, [base]: result.avisoForaCatalogo ?? [] }))
-    setTimeout(() => setTemplateMsg(prev => ({ ...prev, [base + '_aplicar']: '' })), 4000)
-  }
-
-  function addTarefaTemplate(base: string) {
-    const t = (novasTarefas[base] ?? '').trim().toUpperCase()
-    if (!t || templates[base].includes(t)) return
-    setTemplates(prev => ({ ...prev, [base]: [...prev[base], t] }))
-    setNovasTarefas(prev => ({ ...prev, [base]: '' }))
-  }
-
-  function removeTarefaTemplate(base: string, idx: number) {
-    setTemplates(prev => ({
-      ...prev,
-      [base]: prev[base].filter((_, i) => i !== idx),
-    }))
-  }
-
-  async function handleSalvarTemplateGrupo(grupo: string) {
-    setSalvandoTemplateGrupo(grupo)
-    const result = await salvarTemplateGrupo(grupo, templatesGrupo[grupo])
-    setSalvandoTemplateGrupo(null)
-    setTemplateGrupoMsg(prev => ({ ...prev, [grupo]: result.error ? `Erro: ${result.error}` : 'Salvo!' }))
-    setTimeout(() => setTemplateGrupoMsg(prev => ({ ...prev, [grupo]: '' })), 3000)
-  }
-
-  async function handleAplicarTemplateGrupo(grupo: string) {
-    setAplicandoTemplateGrupo(grupo)
-    const result = await aplicarTemplateGrupoAClientes(grupo)
-    setAplicandoTemplateGrupo(null)
-    const msg = result.error
-      ? `Erro: ${result.error}`
-      : `${result.atualizados} cliente(s) atualizados`
-    setTemplateGrupoMsg(prev => ({ ...prev, [grupo + '_aplicar']: msg }))
-    setTemplateGrupoAviso(prev => ({ ...prev, [grupo]: result.avisoForaCatalogo ?? [] }))
-    setTimeout(() => setTemplateGrupoMsg(prev => ({ ...prev, [grupo + '_aplicar']: '' })), 4000)
-  }
-
-  function addTarefaTemplateGrupo(grupo: string) {
-    const t = (novasTarefasGrupo[grupo] ?? '').trim().toUpperCase()
-    if (!t || templatesGrupo[grupo].includes(t)) return
-    setTemplatesGrupo(prev => ({ ...prev, [grupo]: [...prev[grupo], t] }))
-    setNovasTarefasGrupo(prev => ({ ...prev, [grupo]: '' }))
-  }
-
-  function removeTarefaTemplateGrupo(grupo: string, idx: number) {
-    setTemplatesGrupo(prev => ({
-      ...prev,
-      [grupo]: prev[grupo].filter((_, i) => i !== idx),
-    }))
   }
 
   const sectionHeader = (title: string) => (
@@ -752,179 +640,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
         </div>
 
         <DevLock>
-        {/* Templates de Tarefas por Atividade */}
-        <div className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-6">
-          {sectionHeader('Templates de Tarefas por Atividade')}
-          <p className="text-[var(--fg)]/30 text-xs mb-5">
-            Configure as tarefas padrão para cada atividade base. Atividades combinadas são geradas automaticamente pela união das bases.
-          </p>
-
-          {/* 3 cards editáveis */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {BASES.map(base => (
-              <div key={base} className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-xl p-4 flex flex-col gap-3">
-                <p className="text-[var(--fg)] font-semibold text-sm">{base}</p>
-
-                {/* Lista de tarefas */}
-                <div className="flex flex-wrap gap-1.5 min-h-[40px]">
-                  {templates[base].length === 0 && (
-                    <p className="text-[var(--fg)]/20 text-xs">Nenhuma tarefa</p>
-                  )}
-                  {templates[base].map((t, i) => (
-                    <span key={i} className="flex items-center gap-1 text-xs bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] px-2 py-0.5 rounded-md">
-                      {t}
-                      <button
-                        onClick={() => removeTarefaTemplate(base, i)}
-                        className="text-[var(--fg)]/30 hover:text-red-400 transition-colors font-bold ml-0.5">×</button>
-                    </span>
-                  ))}
-                </div>
-
-                {/* Input nova tarefa */}
-                <div className="flex gap-1.5">
-                  <input
-                    value={novasTarefas[base] ?? ''}
-                    onChange={e => setNovasTarefas(prev => ({ ...prev, [base]: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefaTemplate(base))}
-                    placeholder="Nova tarefa..."
-                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50"
-                  />
-                  <button
-                    onClick={() => addTarefaTemplate(base)}
-                    className="px-2.5 py-1.5 rounded-lg bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] text-xs font-bold hover:bg-[var(--accent)]/30 transition-colors">
-                    +
-                  </button>
-                </div>
-
-                {/* Botões */}
-                <div className="flex flex-col gap-1.5 mt-auto pt-1">
-                  <button
-                    onClick={() => handleSalvarTemplate(base)}
-                    disabled={salvandoTemplate === base}
-                    className="w-full py-1.5 rounded-lg bg-[var(--accent)] text-[var(--fg)] text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-                    {salvandoTemplate === base ? 'Salvando...' : 'Salvar template'}
-                  </button>
-                  <button
-                    onClick={() => handleAplicarTemplate(base)}
-                    disabled={aplicandoTemplate === base}
-                    className="w-full py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/60 text-xs hover:bg-[var(--fg)]/10 transition-colors disabled:opacity-50">
-                    {aplicandoTemplate === base ? 'Aplicando...' : 'Aplicar a clientes existentes'}
-                  </button>
-                  {templateMsg[base] && (
-                    <p className={`text-xs text-center ${templateMsg[base].startsWith('Erro') ? 'text-red-400' : 'text-green-400'}`}>
-                      {templateMsg[base]}
-                    </p>
-                  )}
-                  {templateMsg[base + '_aplicar'] && (
-                    <p className="text-xs text-center text-blue-400">{templateMsg[base + '_aplicar']}</p>
-                  )}
-                  {(templateAviso[base]?.length ?? 0) > 0 && (
-                    <p className="text-xs text-center text-amber-400">
-                      Fora do catálogo: {templateAviso[base].join(', ')}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Preview atividades combinadas */}
-          <div>
-            <p className="text-[10px] font-bold text-[var(--fg)]/30 uppercase tracking-widest mb-3">Preview — Atividades Combinadas (somente leitura)</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {ATIVIDADES_COMBINADAS.map(ativ => {
-                const tarefas = resolverTemplate(ativ, templates)
-                return (
-                  <div key={ativ} className="rounded-xl border border-[var(--fg)]/6 bg-[var(--fg)]/2 px-4 py-3">
-                    <p className="text-[var(--fg)]/50 text-xs font-semibold mb-2">{ativ}</p>
-                    <p className="text-[var(--fg)]/30 text-xs">
-                      {tarefas.length === 0
-                        ? 'Nenhuma tarefa'
-                        : tarefas.join(' · ')}
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Templates de Tarefas por Grupo */}
-        <div className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-6">
-          {sectionHeader('Templates de Tarefas por Grupo')}
-          <p className="text-[var(--fg)]/30 text-xs mb-5">
-            Configure as tarefas padrão para cada grupo (Regime Normal, Simples Nacional, MEI, Isento).
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {GRUPOS_TEMPLATE.map(({ value: grupo, label }) => (
-              <div key={grupo} className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-xl p-4 flex flex-col gap-3">
-                <p className="text-[var(--fg)] font-semibold text-sm">{label}</p>
-
-                {/* Lista de tarefas */}
-                <div className="flex flex-wrap gap-1.5 min-h-[40px]">
-                  {templatesGrupo[grupo].length === 0 && (
-                    <p className="text-[var(--fg)]/20 text-xs">Nenhuma tarefa</p>
-                  )}
-                  {templatesGrupo[grupo].map((t, i) => (
-                    <span key={i} className="flex items-center gap-1 text-xs bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] px-2 py-0.5 rounded-md">
-                      {t}
-                      <button
-                        onClick={() => removeTarefaTemplateGrupo(grupo, i)}
-                        className="text-[var(--fg)]/30 hover:text-red-400 transition-colors font-bold ml-0.5">×</button>
-                    </span>
-                  ))}
-                </div>
-
-                {/* Input nova tarefa */}
-                <div className="flex gap-1.5">
-                  <input
-                    value={novasTarefasGrupo[grupo] ?? ''}
-                    onChange={e => setNovasTarefasGrupo(prev => ({ ...prev, [grupo]: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefaTemplateGrupo(grupo))}
-                    placeholder="Nova tarefa..."
-                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50"
-                  />
-                  <button
-                    onClick={() => addTarefaTemplateGrupo(grupo)}
-                    className="px-2.5 py-1.5 rounded-lg bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] text-xs font-bold hover:bg-[var(--accent)]/30 transition-colors">
-                    +
-                  </button>
-                </div>
-
-                {/* Botões */}
-                <div className="flex flex-col gap-1.5 mt-auto pt-1">
-                  <button
-                    onClick={() => handleSalvarTemplateGrupo(grupo)}
-                    disabled={salvandoTemplateGrupo === grupo}
-                    className="w-full py-1.5 rounded-lg bg-[var(--accent)] text-[var(--fg)] text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-                    {salvandoTemplateGrupo === grupo ? 'Salvando...' : 'Salvar template'}
-                  </button>
-                  <button
-                    onClick={() => handleAplicarTemplateGrupo(grupo)}
-                    disabled={aplicandoTemplateGrupo === grupo}
-                    className="w-full py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/60 text-xs hover:bg-[var(--fg)]/10 transition-colors disabled:opacity-50">
-                    {aplicandoTemplateGrupo === grupo ? 'Aplicando...' : 'Aplicar a clientes existentes'}
-                  </button>
-                  {templateGrupoMsg[grupo] && (
-                    <p className={`text-xs text-center ${templateGrupoMsg[grupo].startsWith('Erro') ? 'text-red-400' : 'text-green-400'}`}>
-                      {templateGrupoMsg[grupo]}
-                    </p>
-                  )}
-                  {templateGrupoMsg[grupo + '_aplicar'] && (
-                    <p className="text-xs text-center text-blue-400">{templateGrupoMsg[grupo + '_aplicar']}</p>
-                  )}
-                  {(templateGrupoAviso[grupo]?.length ?? 0) > 0 && (
-                    <p className="text-xs text-center text-amber-400">
-                      Fora do catálogo: {templateGrupoAviso[grupo].join(', ')}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Manutenção de Dados */}
         <div className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-6">
           {sectionHeader('Manutenção de Dados')}

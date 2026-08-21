@@ -19,7 +19,7 @@ import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, gravarDataParcelamento, isoParaDdMm, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
-import { getTiposParaGrupoFiscal } from '@/lib/tarefa-tipos'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface Props {
@@ -55,10 +55,8 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const { data: tarefas } = await supabase
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
 
-  const tarefasPersonalizadasBrutas = cliente.tarefas_personalizadas ?? []
-  const tarefasBaseFiscal = tarefasPersonalizadasBrutas.length > 0
-    ? tarefasPersonalizadasBrutas
-    : getTiposParaGrupoFiscal(cliente.grupo ?? 'normal')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
+  const tarefasBaseFiscal = calcularTarefasEsperadas(cliente, mapaVinculos)
   const parcelamentoIdsDaFicha = Array.from(new Set(
     (tarefas ?? []).filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
   ))
@@ -124,17 +122,10 @@ export default async function ClienteDetalhePage({ params }: Props) {
   }
 
   // Dados pro EmpresaModal (editar cliente)
-  const [{ data: usuariosFiscal }, { data: atividadeTemplates }] = await Promise.all([
-    supabase.from('profiles').select('nome').contains('setores', ['fiscal']),
-    supabase.from('atividade_templates').select('atividade,tarefas'),
-  ])
+  const { data: usuariosFiscal } = await supabase.from('profiles').select('nome').contains('setores', ['fiscal'])
   const responsaveis = Array.from(new Set(
     (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
-  const templatesMap: Record<string, string[]> = {}
-  for (const row of atividadeTemplates ?? []) {
-    templatesMap[row.atividade] = row.tarefas ?? []
-  }
   const catalogo = await buscarCatalogoCliente(supabase, 'fiscal')
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
@@ -226,7 +217,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                 <span className="text-[var(--fg)] font-medium text-sm">
                   {MESES_ABREV[mes-1]} / {ano}
                 </span>
-                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} templates={templatesMap} catalogo={catalogo} />}
+                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} catalogo={catalogo} />}
               </div>
             </div>
           </div>

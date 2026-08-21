@@ -1,6 +1,5 @@
 'use client'
 
-import { resolverTemplate } from '@/lib/atividade-templates'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 export interface CamposFiscaisData {
@@ -27,7 +26,6 @@ interface Props {
   form: CamposFiscaisData
   set: <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void
   responsaveis: string[]
-  templates: Record<string, string[]>
   catalogo: CatalogoCliente
   isEdit: boolean
   readOnly: boolean
@@ -36,7 +34,7 @@ interface Props {
   addTarefa: () => void
 }
 
-export default function CamposFiscais({ form, set, responsaveis, templates, catalogo, isEdit, readOnly, novaTarefa, setNovaTarefa, addTarefa }: Props) {
+export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdit, readOnly, novaTarefa, setNovaTarefa, addTarefa }: Props) {
   return (
     <>
       {/* Código + Regime */}
@@ -60,16 +58,7 @@ export default function CamposFiscais({ form, set, responsaveis, templates, cata
       {/* Atividade */}
       <div>
         <label className={labelCls}>Atividade</label>
-        <select className={selectCls} value={form.atividade} onChange={e => {
-          const novaAtividade = e.target.value
-          set('atividade', novaAtividade)
-          if (!isEdit && novaAtividade) {
-            const tarefasTemplate = resolverTemplate(novaAtividade, templates)
-            if (tarefasTemplate.length > 0) {
-              set('tarefas_personalizadas', tarefasTemplate)
-            }
-          }
-        }} disabled={readOnly}>
+        <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly}>
           <option value="">Selecionar...</option>
           {form.atividade && !catalogo.atividades.includes(form.atividade) && (
             <option value={form.atividade} className="bg-[var(--bg-surface)]">{form.atividade} (atual)</option>
@@ -170,20 +159,11 @@ export default function CamposFiscais({ form, set, responsaveis, templates, cata
           <label className={labelCls + ' mb-0'}>
             Tarefas ({form.tarefas_personalizadas.length})
           </label>
-          {!readOnly && !isEdit && form.atividade && (
-            <button type="button"
-              onClick={() => set('tarefas_personalizadas', resolverTemplate(form.atividade, templates))}
-              className="text-xs text-[var(--fg)]/30 hover:text-[var(--fg)]/60 transition-colors border border-[var(--fg)]/10 px-2 py-1 rounded-lg">
-              Restaurar padrão da atividade
-            </button>
-          )}
         </div>
 
         <div className="flex flex-wrap gap-1.5 mb-3 min-h-[32px]">
           {form.tarefas_personalizadas.length === 0 && (
-            <p className="text-[var(--fg)]/20 text-xs">
-              {form.atividade ? 'Selecione a atividade acima para pré-preencher as tarefas padrão.' : 'Nenhuma tarefa adicionada.'}
-            </p>
+            <p className="text-[var(--fg)]/20 text-xs">Nenhuma tarefa adicionada.</p>
           )}
           {form.tarefas_personalizadas.map((t, i) => (
             <span key={i} className="flex items-center gap-1.5 text-xs bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] px-2.5 py-1 rounded-lg">

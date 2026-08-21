@@ -15,6 +15,7 @@ import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -36,6 +37,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
   const { mes, ano } = await getMesAno()
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }, labelsParcelamento] = await Promise.all([
@@ -137,7 +139,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
       </div>
 
       <TarefaChecklistContabil
-        tarefasPersonalizadas={cliente.tarefas_personalizadas}
+        tarefasPersonalizadas={calcularTarefasEsperadas(cliente, mapaVinculos)}
         tarefaTipos={tarefaTipos}
         tarefas={(tarefas ?? []) as Tarefa[]}
         etapas={(etapas ?? []) as TarefaEtapa[]}

@@ -5,6 +5,7 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { filtrarTarefasVisiveis } from '@/lib/tarefa-tipos'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa } from '@/lib/types'
 
@@ -27,10 +28,11 @@ export default async function ClientesPessoalPage() {
   const mesesVisiveisPorTipo: Record<string, number[] | null> = {}
   for (const t of tiposRaw ?? []) mesesVisiveisPorTipo[t.nome as string] = t.meses_visiveis as number[] | null
 
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal')
   const progressoMap: Record<string, { total: number; concluidas: number }> = {}
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of clientes) {
-    const visiveis = filtrarTarefasVisiveis(c.tarefas_personalizadas, mesesVisiveisPorTipo, mes)
+    const visiveis = filtrarTarefasVisiveis(calcularTarefasEsperadas(c, mapaVinculos), mesesVisiveisPorTipo, mes)
     progressoMap[c.id] = { total: visiveis.length, concluidas: 0 }
     tiposMap[c.id] = new Set(visiveis)
   }

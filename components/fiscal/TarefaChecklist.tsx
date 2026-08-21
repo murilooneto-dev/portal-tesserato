@@ -6,7 +6,6 @@ import type { VinculoStatus } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
 import { desbloquearTarefa, salvarMIT } from '@/app/fiscal/clientes/actions'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
-import { getTiposParaGrupoFiscal } from '@/lib/tarefa-tipos'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -108,7 +107,7 @@ export default function TarefaChecklist({
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null)
   const [erroUpload, setErroUpload] = useState<Record<string, string>>({})
 
-  const tipos = tarefasPersonalizadas.length > 0 ? tarefasPersonalizadas : getTiposParaGrupoFiscal(grupo)
+  const tipos = tarefasPersonalizadas
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
   const total = tipos.length
 
