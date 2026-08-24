@@ -15,20 +15,30 @@ interface TarefaRow {
   setor: string
   tipo: string
   concluida: boolean
+  recebido: boolean | null
+  importado: boolean | null
+  conferido: boolean | null
+  resposta_texto: string | null
 }
 
 async function main() {
   const apply = process.argv.includes('--apply')
 
+  console.log(`Alvo: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`)
+
   const { data, error } = await supabase
     .from('tarefas')
-    .select('id, parcelamento_id, mes, ano, setor, tipo, concluida')
+    .select('id, parcelamento_id, mes, ano, setor, tipo, concluida, recebido, importado, conferido, resposta_texto')
     .not('parcelamento_id', 'is', null)
+    .limit(10000)
 
   if (error) { console.error(error.message); process.exit(1) }
 
   const tarefas = (data ?? []) as TarefaRow[]
   console.log(`\n${tarefas.length} tarefas com parcelamento_id carregadas\n`)
+  if (tarefas.length === 10000) {
+    console.warn('⚠ Limite de 10000 linhas atingido — pode haver mais tarefas nao carregadas. Aumente o .limit() ou pagine a consulta.')
+  }
 
   const grupos = new Map<string, TarefaRow[]>()
   for (const t of tarefas) {
@@ -42,18 +52,35 @@ async function main() {
   console.log(`${duplicados.length} grupo(s) duplicado(s) encontrado(s)\n`)
 
   let totalApagadas = 0
+  let gruposPulados = 0
+
+  const precisaRevisaoManual = (t: TarefaRow) =>
+    t.recebido === true ||
+    t.importado === true ||
+    t.conferido === true ||
+    (typeof t.resposta_texto === 'string' && t.resposta_texto.trim() !== '')
 
   for (const grupo of duplicados) {
     const ordenado = [...grupo].sort((a, b) => a.id.localeCompare(b.id))
+
+    if (grupo.some(precisaRevisaoManual)) {
+      gruposPulados++
+      console.log(`⚠ REVISAR MANUALMENTE — grupo parcelamento_id=${ordenado[0].parcelamento_id} mes=${ordenado[0].mes}/${ordenado[0].ano} setor=${ordenado[0].setor}: pelo menos uma tarefa tem recebido/importado/conferido/resposta_texto preenchido. Nenhuma tarefa deste grupo sera apagada automaticamente.`)
+      for (const t of ordenado) {
+        console.log(`  ${t.id} ("${t.tipo}", concluida=${t.concluida}, recebido=${t.recebido}, importado=${t.importado}, conferido=${t.conferido}, resposta_texto=${JSON.stringify(t.resposta_texto)})`)
+      }
+      continue
+    }
+
     // Sobrevivente: prioriza a que ja esta concluida (nunca perde progresso
     // ja marcado); empate ou nenhuma concluida, fica a de menor id.
     const sobrevivente = ordenado.find(t => t.concluida) ?? ordenado[0]
     const restante = ordenado.filter(t => t.id !== sobrevivente.id)
 
     console.log(`Grupo parcelamento_id=${sobrevivente.parcelamento_id} mes=${sobrevivente.mes}/${sobrevivente.ano} setor=${sobrevivente.setor}:`)
-    console.log(`  sobrevive: ${sobrevivente.id} ("${sobrevivente.tipo}", concluida=${sobrevivente.concluida})`)
+    console.log(`  sobrevive: ${sobrevivente.id} ("${sobrevivente.tipo}", concluida=${sobrevivente.concluida}, recebido=${sobrevivente.recebido}, importado=${sobrevivente.importado}, conferido=${sobrevivente.conferido}, resposta_texto=${JSON.stringify(sobrevivente.resposta_texto)})`)
     for (const t of restante) {
-      console.log(`  apaga:     ${t.id} ("${t.tipo}", concluida=${t.concluida})`)
+      console.log(`  apaga:     ${t.id} ("${t.tipo}", concluida=${t.concluida}, recebido=${t.recebido}, importado=${t.importado}, conferido=${t.conferido}, resposta_texto=${JSON.stringify(t.resposta_texto)})`)
     }
 
     if (apply) {
@@ -67,7 +94,7 @@ async function main() {
     }
   }
 
-  console.log(`\n${apply ? 'Aplicado' : 'Dry-run (nada foi alterado)'}: ${duplicados.length} grupo(s), ${totalApagadas} tarefa(s) apagada(s).`)
+  console.log(`\n${apply ? 'Aplicado' : 'Dry-run (nada foi alterado)'}: ${duplicados.length} grupo(s), ${totalApagadas} tarefa(s) apagada(s), ${gruposPulados} grupo(s) pulado(s) pra revisao manual.`)
   if (!apply && duplicados.length > 0) {
     console.log('\nRode de novo com --apply pra aplicar de verdade.')
   }
