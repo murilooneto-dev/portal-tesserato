@@ -34,6 +34,7 @@ export async function toggleTarefaContabil(
 
   revalidatePath(`/contabil/clientes/${clienteId}`)
   revalidatePath('/contabil/clientes')
+  revalidatePath('/contabil/preenchimento-rapido')
 }
 
 export async function atualizarEtapa(

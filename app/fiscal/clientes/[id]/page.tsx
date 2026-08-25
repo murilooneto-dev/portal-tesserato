@@ -1,7 +1,6 @@
 ﻿import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { revalidatePath } from 'next/cache'
-import { createClient, getAuthenticatedAdmin, podeEditarCliente } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
@@ -11,15 +10,15 @@ import { buscarLabelsParcelamentoAtivo } from '@/lib/parcelamentos-aviso'
 import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import type { CalendarioEvento } from '@/lib/types'
 import TarefaChecklist from '@/components/fiscal/TarefaChecklist'
-import { atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa } from '../actions'
+import { atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, toggleTarefaFiscal } from '../actions'
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
 import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
 import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
-import { sincronizarTarefasParcelamento, gravarDataParcelamento, isoParaDdMm, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
-import { getTiposParaGrupoFiscal } from '@/lib/tarefa-tipos'
+import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface Props {
@@ -55,10 +54,8 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const { data: tarefas } = await supabase
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
 
-  const tarefasPersonalizadasBrutas = cliente.tarefas_personalizadas ?? []
-  const tarefasBaseFiscal = tarefasPersonalizadasBrutas.length > 0
-    ? tarefasPersonalizadasBrutas
-    : getTiposParaGrupoFiscal(cliente.grupo ?? 'normal')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
+  const tarefasBaseFiscal = calcularTarefasEsperadas(cliente, mapaVinculos)
   const parcelamentoIdsDaFicha = Array.from(new Set(
     (tarefas ?? []).filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
   ))
@@ -124,47 +121,15 @@ export default async function ClienteDetalhePage({ params }: Props) {
   }
 
   // Dados pro EmpresaModal (editar cliente)
-  const [{ data: usuariosFiscal }, { data: atividadeTemplates }] = await Promise.all([
-    supabase.from('profiles').select('nome').contains('setores', ['fiscal']),
-    supabase.from('atividade_templates').select('atividade,tarefas'),
-  ])
+  const { data: usuariosFiscal } = await supabase.from('profiles').select('nome').contains('setores', ['fiscal'])
   const responsaveis = Array.from(new Set(
     (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
-  const templatesMap: Record<string, string[]> = {}
-  for (const row of atividadeTemplates ?? []) {
-    templatesMap[row.atividade] = row.tarefas ?? []
-  }
   const catalogo = await buscarCatalogoCliente(supabase, 'fiscal')
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
     'use server'
-    if (!(await podeEditarCliente(id))) return
-    const { user, supabase } = await getAuthenticatedAdmin()
-    if (!supabase) return
-    const concluida_em = concluida
-      ? (data ? new Date(data + 'T12:00:00').toISOString() : new Date().toISOString())
-      : null
-    const { data: existing } = await supabase
-      .from('tarefas').select('id, parcelamento_id')
-      .eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'fiscal')
-      .maybeSingle()
-    if (existing?.id) {
-      await supabase.from('tarefas')
-        .update({ concluida, concluida_em })
-        .eq('id', existing.id)
-    } else {
-      await supabase.from('tarefas')
-        .insert({ cliente_id: id, usuario_id: user!.id, mes, ano, tipo, setor: 'fiscal', concluida, concluida_em })
-    }
-    if (existing?.parcelamento_id) {
-      await gravarDataParcelamento(supabase, existing.parcelamento_id, mes, concluida && data ? isoParaDdMm(data) : null)
-    }
-    revalidatePath(`/fiscal/clientes/${id}`)
-    revalidatePath('/fiscal/clientes')
-    revalidatePath('/fiscal/dashboard')
-    revalidatePath('/fiscal/relatorios')
-    revalidatePath('/fiscal/tarefas')
+    await toggleTarefaFiscal(id, tipo, mes, ano, concluida, data)
   }
 
   async function onAtualizarEtapa(tipo: string, etapaNome: string, concluida: boolean, data?: string) {
@@ -226,7 +191,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                 <span className="text-[var(--fg)] font-medium text-sm">
                   {MESES_ABREV[mes-1]} / {ano}
                 </span>
-                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} templates={templatesMap} catalogo={catalogo} />}
+                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} catalogo={catalogo} />}
               </div>
             </div>
           </div>

@@ -11,11 +11,10 @@ import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 interface Props {
   cliente: ClienteComFiscal
   responsaveis: string[]
-  templates: Record<string, string[]>
   catalogo: CatalogoCliente
 }
 
-export default function ClienteAcoes({ cliente, responsaveis, templates, catalogo }: Props) {
+export default function ClienteAcoes({ cliente, responsaveis, catalogo }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [nomeDigitado, setNomeDigitado] = useState('')
@@ -107,7 +106,6 @@ export default function ClienteAcoes({ cliente, responsaveis, templates, catalog
         <EmpresaModal
           clienteId={cliente.id}
           responsaveis={responsaveis}
-          templates={templates}
           catalogo={catalogo}
           onClose={() => setModalOpen(false)}
         />
