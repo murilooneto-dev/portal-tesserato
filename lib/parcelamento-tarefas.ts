@@ -94,6 +94,44 @@ export function nomesTarefaParcelamentos(itens: ParcelamentoParaNome[]): Map<str
   return new Map(comNome.map(item => [item.id, item.tipo]))
 }
 
+interface TarefaExistenteParcelamento {
+  id: string
+  parcelamento_id: string
+  tipo: string
+}
+
+// Decide, pra cada parcelamento resolvido, se a tarefa dele precisa ser
+// renomeada (ja existe uma linha em `tarefas` pro parcelamento_id neste
+// mes/ano/setor, mas com um `tipo` diferente do calculado agora por
+// nomesTarefaParcelamentos) ou inserida (ainda nao existe nenhuma linha).
+// Sem isso, o upsert com ignoreDuplicates (mais abaixo) trata um `tipo`
+// novo como uma tarefa nova em vez de renomear a existente, duplicando a
+// tarefa toda vez que a desambiguacao muda o nome de um parcelamento ja
+// sincronizado (bug confirmado no banco de dev 2026-08-19: duas linhas em
+// `tarefas` com o mesmo parcelamento_id, uma com nome sem sufixo orfa).
+export function separarRenomeacoesEInsercoes(
+  parcelamentoIds: string[],
+  nomes: Map<string, string>,
+  tarefasExistentes: TarefaExistenteParcelamento[],
+): { renomear: { tarefaId: string; novoTipo: string }[]; inserirIds: string[] } {
+  const existentePorParcelamento = new Map(
+    tarefasExistentes.map(t => [t.parcelamento_id, t]),
+  )
+  const renomear: { tarefaId: string; novoTipo: string }[] = []
+  const inserirIds: string[] = []
+  for (const id of parcelamentoIds) {
+    const nomeAtual = nomes.get(id)
+    if (!nomeAtual) continue
+    const existente = existentePorParcelamento.get(id)
+    if (!existente) {
+      inserirIds.push(id)
+    } else if (existente.tipo !== nomeAtual) {
+      renomear.push({ tarefaId: existente.id, novoTipo: nomeAtual })
+    }
+  }
+  return { renomear, inserirIds }
+}
+
 // Grava (ou limpa, se valorDdMm=null) a data de um mes de parcelamento —
 // chamado depois que uma tarefa com parcelamento_id é marcada/desmarcada
 // no checklist da ficha (spec item 5).
@@ -165,25 +203,46 @@ export async function sincronizarTarefasParcelamento(
     localTipo: parcelamento.local_tipo,
   })))
 
-  const novasTarefas = resolvidos.map(({ parcelamento, clienteId }) => {
-    const valorMes = (parcelamento[coluna] as string | null) ?? null
-    const concluida = !!valorMes
-    const concluida_em = concluida ? ddMmParaIso(valorMes!, ano) : null
-    return {
-      cliente_id: clienteId,
-      usuario_id: null,
-      mes,
-      ano,
-      tipo: nomes.get(parcelamento.id)!,
-      setor,
-      concluida,
-      concluida_em,
-      parcelamento_id: parcelamento.id,
-    }
-  })
-
   const { supabase: admin } = await getAuthenticatedAdmin()
   if (!admin) return
+
+  const parcelamentoIds = resolvidos.map(({ parcelamento }) => parcelamento.id)
+  const { data: tarefasExistentesRaw } = await admin
+    .from('tarefas')
+    .select('id, parcelamento_id, tipo')
+    .in('parcelamento_id', parcelamentoIds)
+    .eq('mes', mes)
+    .eq('ano', ano)
+    .eq('setor', setor)
+
+  const tarefasExistentes = (tarefasExistentesRaw ?? []) as TarefaExistenteParcelamento[]
+  const { renomear, inserirIds } = separarRenomeacoesEInsercoes(parcelamentoIds, nomes, tarefasExistentes)
+
+  for (const { tarefaId, novoTipo } of renomear) {
+    await admin.from('tarefas').update({ tipo: novoTipo }).eq('id', tarefaId)
+  }
+
+  if (inserirIds.length === 0) return
+
+  const idsParaInserir = new Set(inserirIds)
+  const novasTarefas = resolvidos
+    .filter(({ parcelamento }) => idsParaInserir.has(parcelamento.id))
+    .map(({ parcelamento, clienteId }) => {
+      const valorMes = (parcelamento[coluna] as string | null) ?? null
+      const concluida = !!valorMes
+      const concluida_em = concluida ? ddMmParaIso(valorMes!, ano) : null
+      return {
+        cliente_id: clienteId,
+        usuario_id: null,
+        mes,
+        ano,
+        tipo: nomes.get(parcelamento.id)!,
+        setor,
+        concluida,
+        concluida_em,
+        parcelamento_id: parcelamento.id,
+      }
+    })
 
   await admin.from('tarefas').upsert(novasTarefas, {
     onConflict: 'cliente_id,mes,ano,tipo,setor',

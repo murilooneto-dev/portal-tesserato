@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { MES_PARA_COLUNA, isoParaDdMm, ddMmParaIso, nomeTarefaParcelamento, nomesTarefaParcelamentos, montarUpdateParcelamento } from '../lib/parcelamento-tarefas'
+import { MES_PARA_COLUNA, isoParaDdMm, ddMmParaIso, nomeTarefaParcelamento, nomesTarefaParcelamentos, montarUpdateParcelamento, separarRenomeacoesEInsercoes } from '../lib/parcelamento-tarefas'
 
 test('MES_PARA_COLUNA mapeia os 12 meses pras colunas de parcelamentos (set, nao sep)', () => {
   assert.equal(MES_PARA_COLUNA[1], 'jan')
@@ -109,4 +109,42 @@ test('montarUpdateParcelamento nao muda o objeto original', () => {
   const form = { empresa: 'Cliente Z', jan: '01/01' }
   montarUpdateParcelamento(form, false)
   assert.equal(form.jan, '01/01')
+})
+
+test('separarRenomeacoesEInsercoes: sem tarefas existentes, tudo vai pra insercao', () => {
+  const nomes = new Map([['p1', 'Parcelamentos (PGFN)'], ['p2', 'Parcelamentos (DETRAN)']])
+  const resultado = separarRenomeacoesEInsercoes(['p1', 'p2'], nomes, [])
+  assert.deepEqual(resultado.inserirIds, ['p1', 'p2'])
+  assert.deepEqual(resultado.renomear, [])
+})
+
+test('separarRenomeacoesEInsercoes: tarefa existente com mesmo tipo calculado nao aparece em nenhuma lista', () => {
+  const nomes = new Map([['p1', 'Parcelamentos (PGFN)']])
+  const tarefasExistentes = [{ id: 't1', parcelamento_id: 'p1', tipo: 'Parcelamentos (PGFN)' }]
+  const resultado = separarRenomeacoesEInsercoes(['p1'], nomes, tarefasExistentes)
+  assert.deepEqual(resultado.inserirIds, [])
+  assert.deepEqual(resultado.renomear, [])
+})
+
+test('separarRenomeacoesEInsercoes: tarefa existente com tipo diferente vai pra renomear', () => {
+  const nomes = new Map([['p1', 'Parcelamentos (PGFN) (1)']])
+  const tarefasExistentes = [{ id: 't1', parcelamento_id: 'p1', tipo: 'Parcelamentos (PGFN)' }]
+  const resultado = separarRenomeacoesEInsercoes(['p1'], nomes, tarefasExistentes)
+  assert.deepEqual(resultado.inserirIds, [])
+  assert.deepEqual(resultado.renomear, [{ tarefaId: 't1', novoTipo: 'Parcelamentos (PGFN) (1)' }])
+})
+
+test('separarRenomeacoesEInsercoes: mistura de inserir, renomear e no-op', () => {
+  const nomes = new Map([
+    ['p1', 'Parcelamentos (PGFN) (1)'],  // vai renomear (tipo antigo diferente)
+    ['p2', 'Parcelamentos (DETRAN)'],     // no-op (tipo ja bate)
+    ['p3', 'Parcelamentos (ICMS)'],       // vai inserir (sem tarefa ainda)
+  ])
+  const tarefasExistentes = [
+    { id: 't1', parcelamento_id: 'p1', tipo: 'Parcelamentos (PGFN)' },
+    { id: 't2', parcelamento_id: 'p2', tipo: 'Parcelamentos (DETRAN)' },
+  ]
+  const resultado = separarRenomeacoesEInsercoes(['p1', 'p2', 'p3'], nomes, tarefasExistentes)
+  assert.deepEqual(resultado.inserirIds, ['p3'])
+  assert.deepEqual(resultado.renomear, [{ tarefaId: 't1', novoTipo: 'Parcelamentos (PGFN) (1)' }])
 })
