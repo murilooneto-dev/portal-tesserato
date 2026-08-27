@@ -15,7 +15,7 @@ interface ClienteRow {
   nome: string
   clientes_pessoal: {
     regime: string | null
-    atividade: string | null
+    atividade: string[]
     responsavel: string | null
   }
 }

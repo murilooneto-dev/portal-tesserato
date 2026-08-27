@@ -16,7 +16,7 @@ interface ClienteRow {
   clientes_fiscal: {
     grupo: string | null
     regime: string | null
-    atividade: string | null
+    atividade: string[]
     responsavel: string | null
   }
 }
