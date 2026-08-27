@@ -1,11 +1,12 @@
 'use client'
 
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import SeletorAtividades from '@/components/geral/SeletorAtividades'
 
 export interface CamposFiscaisData {
   cod: string
   regime: string
-  atividade: string
+  atividade: string[]
   grupo: string
   responsavel: string
   prioridade: number
@@ -58,13 +59,12 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
       {/* Atividade */}
       <div>
         <label className={labelCls}>Atividade</label>
-        <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly}>
-          <option value="">Selecionar...</option>
-          {form.atividade && !catalogo.atividades.includes(form.atividade) && (
-            <option value={form.atividade} className="bg-[var(--bg-surface)]">{form.atividade} (atual)</option>
-          )}
-          {catalogo.atividades.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
-        </select>
+        <SeletorAtividades
+          valores={form.atividade}
+          opcoes={catalogo.atividades}
+          onChange={v => set('atividade', v)}
+          readOnly={readOnly}
+        />
       </div>
 
       {/* Checkbox Envia ISS */}
