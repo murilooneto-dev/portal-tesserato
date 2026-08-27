@@ -167,11 +167,11 @@ export default function ClientesListaContabil({ clientes, progressoMap, mes, ano
                     {labelRegime(cliente.regime)}
                   </span>
                 )}
-                {cliente.atividade && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-                    {cliente.atividade}
+                {(cliente.atividade ?? []).map(a => (
+                  <span key={a} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+                    {a}
                   </span>
-                )}
+                ))}
                 {cliente.responsavel && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
                     style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
