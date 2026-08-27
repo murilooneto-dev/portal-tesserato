@@ -1,16 +1,11 @@
-// app/admin/configuracoes/ConfiguracoesClient.tsx
+// app/admin/configuracoes/_tarefas/SetorConfigClient.tsx
 'use client'
 
 import { useState } from 'react'
 import type { UserSetor } from '@/lib/types'
+import { SETOR_LABEL } from '@/lib/types'
 import EntidadeListaTab from './EntidadeListaTab'
 import TarefasTab from './TarefasTab'
-
-const SETORES: { value: UserSetor; label: string }[] = [
-  { value: 'fiscal', label: 'Fiscal' },
-  { value: 'contabil', label: 'Contábil' },
-  { value: 'pessoal', label: 'Pessoal' },
-]
 
 type Categoria = 'grupos' | 'regimes' | 'atividades' | 'tarefas'
 
@@ -28,24 +23,19 @@ const botaoCls = (ativo: boolean) =>
       : 'bg-[var(--fg)]/5 text-[var(--fg)]/50 hover:text-[var(--fg)]'
   }`
 
-export default function ConfiguracoesClient() {
-  const [setor, setSetor] = useState<UserSetor>('fiscal')
+interface Props {
+  setor: UserSetor
+}
+
+export default function SetorConfigClient({ setor }: Props) {
   const [categoria, setCategoria] = useState<Categoria>('grupos')
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10">
-      <h1 className="text-[var(--fg)] font-bold text-2xl mb-1">Configurações</h1>
+      <h1 className="text-[var(--fg)] font-bold text-2xl mb-1">Configurações — {SETOR_LABEL[setor]}</h1>
       <p className="text-[var(--fg)]/50 text-sm mb-8">
-        Grupos, Regimes, Atividades e Tarefas por setor.
+        Grupos, Regimes, Atividades e Tarefas do setor {SETOR_LABEL[setor]}.
       </p>
-
-      <div className="flex gap-2 mb-4">
-        {SETORES.map(s => (
-          <button key={s.value} onClick={() => setSetor(s.value)} className={botaoCls(setor === s.value)}>
-            {s.label}
-          </button>
-        ))}
-      </div>
 
       <div className="flex gap-2 mb-8 border-b border-[var(--fg)]/8 pb-4">
         {CATEGORIAS.map(c => (

@@ -5,6 +5,7 @@ const TABELAS: Record<string, string> = {
   tarefa: 'tarefa_arquivos',
   client: 'client_files',
   evento: 'evento_arquivos',
+  documentacao: 'documentacao_modelos',
 }
 
 function tipoContent(nome: string): string {
