@@ -64,7 +64,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
 
 
   const atividades = useMemo(() => ['TODOS', ...Array.from(new Set(
-    clientes.map(c => c.atividade ?? '').filter(Boolean)
+    clientes.flatMap(c => c.atividade ?? [])
   )).sort()], [clientes])
 
   const prioridades = useMemo(() => Array.from(new Set(
@@ -82,7 +82,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     }
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
     if (filtroGrupo !== 'TODOS' && c.grupo !== filtroGrupo) return false
-    if (filtroAtividade !== 'TODOS' && c.atividade !== filtroAtividade) return false
+    if (filtroAtividade !== 'TODOS' && !(c.atividade ?? []).includes(filtroAtividade)) return false
     if (filtroPrioridade !== 'TODOS' && String(c.prioridade ?? '') !== filtroPrioridade) return false
     if (filtroPendencia && !comPendencia.has(c.id)) return false
     if (!mostrarDesabilitados && c.ativo === false) return false
@@ -214,11 +214,11 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
                     {cliente.regime.split('/')[0].trim()}
                   </span>
                 )}
-                {cliente.atividade && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-                    {cliente.atividade}
+                {(cliente.atividade ?? []).map(a => (
+                  <span key={a} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+                    {a}
                   </span>
-                )}
+                ))}
                 {cliente.responsavel && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
                     style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
