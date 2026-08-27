@@ -15,7 +15,7 @@ interface FormData {
   cnpj: string
   nome: string
   regime: string
-  atividade: string
+  atividade: string[]
   grupo: string
   municipio: string
   uf: string
@@ -40,7 +40,7 @@ interface Props {
 }
 
 const emptyForm = (): FormData => ({
-  cod: '', cnpj: '', nome: '', regime: '', atividade: '', grupo: '',
+  cod: '', cnpj: '', nome: '', regime: '', atividade: [], grupo: '',
   municipio: '', uf: '', responsavel: '', contato_chat: '', prioridade: 3,
   declaracao_anual: false, envia_iss: false, confere_siga: false,
   login_iss: '', senha_iss: '', email_envio_iss: '',
@@ -87,7 +87,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
         cnpj: data.cnpj ?? '',
         nome: data.nome ?? '',
         regime: data.regime ?? '',
-        atividade: data.atividade ?? '',
+        atividade: data.atividade ?? [],
         grupo: data.grupo ?? '',
         municipio: mitParts[0] ?? '',
         uf: mitParts[1] ?? '',
@@ -165,7 +165,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
     const fiscalPayload = {
       cod:                    form.cod || null,
       regime:                 form.regime || null,
-      atividade:              form.atividade || null,
+      atividade:              form.atividade,
       grupo:                  form.grupo || null,
       responsavel:            form.responsavel || null,
       prioridade:             form.prioridade,
