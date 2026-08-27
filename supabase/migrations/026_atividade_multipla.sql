@@ -8,18 +8,18 @@
 
 alter table clientes_fiscal
   alter column atividade type text[]
-  using case when atividade is null then '{}'::text[] else array[atividade] end;
+  using case when atividade is null or btrim(atividade) = '' then '{}'::text[] else array[btrim(atividade)] end;
 alter table clientes_fiscal alter column atividade set default '{}'::text[];
 alter table clientes_fiscal alter column atividade set not null;
 
 alter table clientes_contabil
   alter column atividade type text[]
-  using case when atividade is null then '{}'::text[] else array[atividade] end;
+  using case when atividade is null or btrim(atividade) = '' then '{}'::text[] else array[btrim(atividade)] end;
 alter table clientes_contabil alter column atividade set default '{}'::text[];
 alter table clientes_contabil alter column atividade set not null;
 
 alter table clientes_pessoal
   alter column atividade type text[]
-  using case when atividade is null then '{}'::text[] else array[atividade] end;
+  using case when atividade is null or btrim(atividade) = '' then '{}'::text[] else array[btrim(atividade)] end;
 alter table clientes_pessoal alter column atividade set default '{}'::text[];
 alter table clientes_pessoal alter column atividade set not null;
