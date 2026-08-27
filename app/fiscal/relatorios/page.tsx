@@ -84,13 +84,13 @@ export default function RelatoriosPage() {
     ? ['TODOS', ...Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[]))]
     : []
 
-  const atividades = Array.from(new Set(clientes.map(c => c.atividade).filter(Boolean) as string[])).sort()
+  const atividades = Array.from(new Set(clientes.flatMap(c => c.atividade ?? []))).sort()
   const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
     .filter(c => filtroGrupo === 'TODOS' || c.grupo === filtroGrupo)
-    .filter(c => filtroAtividade === 'TODAS' || c.atividade === filtroAtividade)
+    .filter(c => filtroAtividade === 'TODAS' || (c.atividade ?? []).includes(filtroAtividade))
     .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas(c, mapaVinculos).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas, mapaVinculos) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
