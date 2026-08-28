@@ -17,7 +17,7 @@ export const SETOR_HOME: Record<UserSetor, string> = {
   fiscal: '/fiscal/dashboard',
   contabil: '/contabil/dashboard',
   pessoal: '/pessoal/dashboard',
-  societario: '/societario',
+  societario: '/societario/procedimentos',
   financeiro: '/financeiro',
 }
 
