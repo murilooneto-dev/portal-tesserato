@@ -33,6 +33,8 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'calendario', label: 'Calendário' },
     { slug: 'preenchimento-rapido', label: 'Preenchimento Rápido' },
   ],
-  societario: [],
+  societario: [
+    { slug: 'procedimentos', label: 'Procedimentos' },
+  ],
   financeiro: [],
 }
