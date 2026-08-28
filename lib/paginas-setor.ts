@@ -35,6 +35,7 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
   ],
   societario: [
     { slug: 'procedimentos', label: 'Procedimentos' },
+    { slug: 'clientes', label: 'Clientes' },
   ],
   financeiro: [],
 }
