@@ -7,12 +7,13 @@ import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
+import SeletorAtividades from '@/components/geral/SeletorAtividades'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface FormData {
   cnpj: string
   nome: string
-  atividade: string
+  atividade: string[]
   regime: string
   municipio: string
   uf: string
@@ -32,7 +33,7 @@ interface Props {
 }
 
 const emptyForm = (tarefasPadrao: string[]): FormData => ({
-  cnpj: '', nome: '', atividade: '', regime: '', municipio: '', uf: '', responsavel: '', contato_chat: '',
+  cnpj: '', nome: '', atividade: [], regime: '', municipio: '', uf: '', responsavel: '', contato_chat: '',
   prioridade: 3, tarefas_personalizadas: tarefasPadrao,
 })
 
@@ -62,7 +63,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
       setForm({
         cnpj: data.cnpj ?? '',
         nome: data.nome ?? '',
-        atividade: data.atividade ?? '',
+        atividade: data.atividade ?? [],
         regime: data.regime ?? '',
         municipio: data.municipio ?? '',
         uf: data.uf ?? '',
@@ -124,7 +125,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
       contato_chat: form.contato_chat || null,
     }
     const pessoalPayload = {
-      atividade: form.atividade || null,
+      atividade: form.atividade,
       regime: form.regime || null,
       responsavel: form.responsavel || null,
       prioridade: form.prioridade,
@@ -200,13 +201,12 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Atividade</label>
-                <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly}>
-                  <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
-                  {form.atividade && !catalogo.atividades.includes(form.atividade) && (
-                    <option value={form.atividade} className="bg-[var(--bg-surface)]">{form.atividade} (atual)</option>
-                  )}
-                  {catalogo.atividades.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
-                </select>
+                <SeletorAtividades
+                  valores={form.atividade}
+                  opcoes={catalogo.atividades}
+                  onChange={v => set('atividade', v)}
+                  readOnly={readOnly}
+                />
               </div>
               <div>
                 {/* O catálogo de Regimes deste setor (/admin/configuracoes) precisa

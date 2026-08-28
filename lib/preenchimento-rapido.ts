@@ -8,7 +8,7 @@ export interface ClienteFiltro {
   nome: string
   grupo?: string | null
   regime?: string | null
-  atividade?: string | null
+  atividade?: string[] | null
 }
 
 export interface TarefaTipoRaw {
@@ -30,6 +30,10 @@ export function nomesTarefaTipoData(tipos: TarefaTipoRaw[]): string[] {
 export function valoresDistintos(clientes: ClienteFiltro[], campo: CampoFiltro): string[] {
   const valores = new Set<string>()
   for (const c of clientes) {
+    if (campo === 'atividade') {
+      for (const v of c.atividade ?? []) valores.add(v)
+      continue
+    }
     const v = c[campo]
     if (v) valores.add(v)
   }
@@ -41,6 +45,9 @@ export function clientesPorValor(
   campo: CampoFiltro,
   valor: string,
 ): ClienteFiltro[] {
+  if (campo === 'atividade') {
+    return clientes.filter(c => (c.atividade ?? []).includes(valor))
+  }
   return clientes.filter(c => c[campo] === valor)
 }
 

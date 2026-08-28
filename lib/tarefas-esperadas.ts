@@ -58,13 +58,13 @@ export async function buscarMapaVinculosSetor(
 // contribui nada desses 3 — a lista vira só tarefas_personalizadas, igual
 // hoje sem nenhum fallback.
 export function calcularTarefasEsperadas(
-  cliente: { grupo?: string | null; regime?: string | null; atividade?: string | null; tarefas_personalizadas: string[] },
+  cliente: { grupo?: string | null; regime?: string | null; atividade?: string[] | null; tarefas_personalizadas: string[] },
   mapa: MapaVinculosSetor,
 ): string[] {
   const automaticas = [
     ...(mapa.porGrupo[cliente.grupo ?? ''] ?? []),
     ...(mapa.porRegime[cliente.regime ?? ''] ?? []),
-    ...(mapa.porAtividade[cliente.atividade ?? ''] ?? []),
+    ...(cliente.atividade ?? []).flatMap(a => mapa.porAtividade[a] ?? []),
   ]
   return Array.from(new Set([...automaticas, ...cliente.tarefas_personalizadas]))
 }

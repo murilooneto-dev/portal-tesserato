@@ -35,7 +35,7 @@ interface Props {
 const emptyForm = (): FormData => ({
   nome: '', cnpj: '', municipio: '', uf: '', contato_chat: '', setores: ['fiscal'],
   vinculosAtivos: [],
-  cod: '', regime: '', atividade: '', grupo: '', responsavel: '', prioridade: 3,
+  cod: '', regime: '', atividade: [], grupo: '', responsavel: '', prioridade: 3,
   declaracao_anual: false, envia_iss: false, confere_siga: false,
   login_iss: '', senha_iss: '', email_envio_iss: '',
   tarefas_personalizadas: [],
@@ -78,7 +78,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         vinculosAtivos: data.tarefas_vinculadas_ativas ?? [],
         cod: data.cod ?? '',
         regime: data.regime ?? '',
-        atividade: data.atividade ?? '',
+        atividade: data.atividade ?? [],
         grupo: data.grupo ?? '',
         responsavel: data.responsavel ?? '',
         prioridade: data.prioridade ?? 3,
@@ -178,7 +178,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
     const fiscalPayload = {
       cod:                    form.cod || null,
       regime:                 form.regime || null,
-      atividade:              form.atividade || null,
+      atividade:              form.atividade,
       grupo:                  form.grupo || null,
       responsavel:            form.responsavel || null,
       prioridade:             form.prioridade,

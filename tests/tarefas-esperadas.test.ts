@@ -5,7 +5,7 @@ import { calcularTarefasEsperadas, type MapaVinculosSetor } from '../lib/tarefas
 const mapaVazio: MapaVinculosSetor = { porGrupo: {}, porRegime: {}, porAtividade: {} }
 
 test('calcularTarefasEsperadas: sem vínculo nenhum, devolve só tarefas_personalizadas', () => {
-  const cliente = { grupo: 'simples', regime: null, atividade: 'Serviço', tarefas_personalizadas: ['DAS', 'ISS'] }
+  const cliente = { grupo: 'simples', regime: null, atividade: ['Serviço'], tarefas_personalizadas: ['DAS', 'ISS'] }
   const resultado = calcularTarefasEsperadas(cliente, mapaVazio)
   assert.deepEqual(resultado.sort(), ['DAS', 'ISS'])
 })
@@ -26,7 +26,7 @@ test('calcularTarefasEsperadas: vínculo só por regime', () => {
 
 test('calcularTarefasEsperadas: vínculo só por atividade', () => {
   const mapa: MapaVinculosSetor = { porGrupo: {}, porRegime: {}, porAtividade: { Serviço: ['ISS'] } }
-  const cliente = { grupo: null, regime: null, atividade: 'Serviço', tarefas_personalizadas: [] }
+  const cliente = { grupo: null, regime: null, atividade: ['Serviço'], tarefas_personalizadas: [] }
   const resultado = calcularTarefasEsperadas(cliente, mapa)
   assert.deepEqual(resultado.sort(), ['ISS'])
 })
@@ -37,7 +37,7 @@ test('calcularTarefasEsperadas: combinação dos 3 sem duplicar', () => {
     porRegime: { Normal: ['IRPJ/CSLL'] },
     porAtividade: { Serviço: ['ISS', 'DAS'] },
   }
-  const cliente = { grupo: 'simples', regime: 'Normal', atividade: 'Serviço', tarefas_personalizadas: ['ISS'] }
+  const cliente = { grupo: 'simples', regime: 'Normal', atividade: ['Serviço'], tarefas_personalizadas: ['ISS'] }
   const resultado = calcularTarefasEsperadas(cliente, mapa)
   assert.deepEqual(resultado.sort(), ['DAS', 'FECHAMENTO SIMPLES', 'IRPJ/CSLL', 'ISS'])
 })
@@ -54,4 +54,15 @@ test('calcularTarefasEsperadas: grupo do cliente sem entrada no mapa (não cadas
   const cliente = { grupo: 'nome-que-nao-existe-no-catalogo', regime: null, atividade: null, tarefas_personalizadas: ['MANUAL'] }
   const resultado = calcularTarefasEsperadas(cliente, mapa)
   assert.deepEqual(resultado, ['MANUAL'])
+})
+
+test('calcularTarefasEsperadas: cliente com 2 atividades soma os vínculos das duas sem duplicar', () => {
+  const mapa: MapaVinculosSetor = {
+    porGrupo: {},
+    porRegime: {},
+    porAtividade: { Serviço: ['ISS', 'DAS'], Comércio: ['DAS', 'ICMS'] },
+  }
+  const cliente = { grupo: null, regime: null, atividade: ['Serviço', 'Comércio'], tarefas_personalizadas: [] }
+  const resultado = calcularTarefasEsperadas(cliente, mapa)
+  assert.deepEqual(resultado.sort(), ['DAS', 'ICMS', 'ISS'])
 })

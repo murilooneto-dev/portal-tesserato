@@ -15,7 +15,7 @@ interface ClienteRow {
   nome: string
   clientes_contabil: {
     regime: string | null
-    atividade: string | null
+    atividade: string[]
     responsavel: string | null
   }
 }

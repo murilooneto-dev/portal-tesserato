@@ -48,7 +48,7 @@ export interface ClienteFiscal {
   cliente_id: string
   cod: string | null
   regime: string | null
-  atividade: string | null
+  atividade: string[]
   responsavel: string | null
   grupo: string | null
   obs: string | null
@@ -110,7 +110,7 @@ export interface BotEvento {
 
 export interface ClienteContabil {
   cliente_id: string
-  atividade: string | null
+  atividade: string[]
   regime: string | null
   responsavel: string | null
   prioridade: number
@@ -121,7 +121,7 @@ export interface ClienteContabil {
 
 export interface ClientePessoal {
   cliente_id: string
-  atividade: string | null
+  atividade: string[]
   regime: string | null
   responsavel: string | null
   prioridade: number
