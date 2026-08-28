@@ -3,7 +3,14 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { UserSetor } from '@/lib/types'
-import { listarTarefaTiposDoSetor, excluirTarefaTipo, type TarefaTipoResumo } from '@/lib/tarefa-tipo-vinculos-actions'
+import {
+  listarTarefaTiposDoSetor,
+  excluirTarefaTipo,
+  listarUsuariosDoSetor,
+  atualizarResponsavelTarefaTipo,
+  type TarefaTipoResumo,
+  type UsuarioDoSetor,
+} from '@/lib/tarefa-tipo-vinculos-actions'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 
 interface Props {
@@ -14,20 +21,38 @@ const inputCls = "px-3 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)
 
 export default function TarefasTab({ setor }: Props) {
   const [itens, setItens] = useState<TarefaTipoResumo[]>([])
+  const [usuarios, setUsuarios] = useState<UsuarioDoSetor[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [novoNome, setNovoNome] = useState('')
   const [mostrarModal, setMostrarModal] = useState(false)
+  const [salvandoResponsavel, setSalvandoResponsavel] = useState<string | null>(null)
 
   const recarregar = useCallback(async () => {
     setCarregando(true)
-    const { data, error } = await listarTarefaTiposDoSetor(setor)
+    const [{ data, error }, { data: usuariosData }] = await Promise.all([
+      listarTarefaTiposDoSetor(setor),
+      listarUsuariosDoSetor(setor),
+    ])
     if (error) setErro(error)
     else { setItens(data); setErro(null) }
+    setUsuarios(usuariosData)
     setCarregando(false)
   }, [setor])
 
   useEffect(() => { recarregar() }, [recarregar])
+
+  async function handleResponsavelChange(item: TarefaTipoResumo, responsavelId: string) {
+    setSalvandoResponsavel(item.id)
+    const valor = responsavelId === '' ? null : responsavelId
+    const { error } = await atualizarResponsavelTarefaTipo(item.id, valor)
+    if (error) setErro(error)
+    else {
+      setErro(null)
+      setItens(prev => prev.map(i => i.id === item.id ? { ...i, responsavelId: valor } : i))
+    }
+    setSalvandoResponsavel(null)
+  }
 
   async function handleExcluir(item: TarefaTipoResumo) {
     if (!confirm(`Excluir a tarefa "${item.nome}"? Essa ação não pode ser desfeita e remove também os vínculos dela com regimes/grupos/atividades.`)) return
@@ -73,6 +98,19 @@ export default function TarefasTab({ setor }: Props) {
               <span className={`flex-1 text-sm ${item.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
                 {item.nome}
               </span>
+
+              <select
+                value={item.responsavelId ?? ''}
+                onChange={e => handleResponsavelChange(item, e.target.value)}
+                disabled={salvandoResponsavel === item.id}
+                className={inputCls + ' text-xs py-1.5 disabled:opacity-50'}
+                title="Responsável exclusivo por esse tipo de tarefa, em todos os clientes"
+              >
+                <option value="">— Ninguém (regra normal) —</option>
+                {usuarios.map(u => (
+                  <option key={u.id} value={u.id}>{u.nome}</option>
+                ))}
+              </select>
 
               <button onClick={() => handleExcluir(item)} className="text-xs text-red-400/70 hover:text-red-400">
                 Excluir

@@ -16,6 +16,12 @@ export interface TarefaTipoResumo {
   id: string
   nome: string
   ativo: boolean
+  responsavelId: string | null
+}
+
+export interface UsuarioDoSetor {
+  id: string
+  nome: string
 }
 
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
@@ -38,12 +44,53 @@ export async function listarTarefaTiposDoSetor(
 
   const { data, error: queryError } = await supabase
     .from('tarefa_tipos')
-    .select('id, nome, ativo')
+    .select('id, nome, ativo, responsavel_id')
     .eq('setor', setor)
     .order('nome')
 
   if (queryError) return { data: [], error: queryError.message }
-  return { data: (data ?? []) as TarefaTipoResumo[], error: null }
+  return {
+    data: (data ?? []).map(t => ({
+      id: t.id as string,
+      nome: t.nome as string,
+      ativo: t.ativo as boolean,
+      responsavelId: t.responsavel_id as string | null,
+    })),
+    error: null,
+  }
+}
+
+export async function listarUsuariosDoSetor(
+  setor: UserSetor,
+): Promise<{ data: UsuarioDoSetor[]; error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { data: [], error }
+
+  const { data, error: queryError } = await supabase
+    .from('profiles')
+    .select('id, nome')
+    .contains('setores', [setor])
+    .order('nome')
+
+  if (queryError) return { data: [], error: queryError.message }
+  return { data: (data ?? []) as UsuarioDoSetor[], error: null }
+}
+
+export async function atualizarResponsavelTarefaTipo(
+  id: string,
+  responsavelId: string | null,
+): Promise<{ error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { error }
+
+  const { error: updateError } = await supabase
+    .from('tarefa_tipos').update({ responsavel_id: responsavelId }).eq('id', id)
+  if (updateError) return { error: updateError.message }
+
+  revalidatePath('/admin/configuracoes')
+  revalidatePath('/fiscal/minhas-tarefas')
+  revalidatePath('/fiscal/tarefas')
+  return { error: null }
 }
 
 export async function alternarAtivoTarefaTipo(id: string, ativo: boolean): Promise<{ error: string | null }> {
