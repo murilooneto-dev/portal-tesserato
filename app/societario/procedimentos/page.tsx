@@ -3,8 +3,12 @@
 import React, { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
-
-type StatusProcedimento = 'ABERTO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO'
+import { uploadArquivoProcedimento, excluirArquivoProcedimento } from '@/lib/procedimento-arquivos-actions'
+import {
+  STATUS_PROCEDIMENTO_OPCOES as STATUS_OPCOES,
+  statusProcedimentoBadge as statusBadge,
+  type StatusProcedimento,
+} from '@/lib/status-procedimento'
 
 interface ProcessoTipo {
   id: string
@@ -17,9 +21,21 @@ interface DocumentacaoModelo {
   nome: string
 }
 
+interface ClienteResumo {
+  id: string
+  nome: string
+}
+
+interface ProcedimentoArquivoResumo {
+  id: string
+  name: string
+  size: number
+}
+
 interface Procedimento {
   id: string
   processo_tipo_id: string
+  cliente_id: string | null
   empresa: string
   status: StatusProcedimento
   campos: Record<string, string>
@@ -27,20 +43,13 @@ interface Procedimento {
   responsavel: string | null
   processo_tipos: { nome: string } | null
   documentacao_modelos: { nome: string } | null
+  procedimento_arquivos: ProcedimentoArquivoResumo[]
 }
 
-const STATUS_OPCOES: { valor: StatusProcedimento; label: string }[] = [
-  { valor: 'ABERTO', label: 'Aberto' },
-  { valor: 'EM_ANDAMENTO', label: 'Em Andamento' },
-  { valor: 'CONCLUIDO', label: 'Concluído' },
-  { valor: 'CANCELADO', label: 'Cancelado' },
-]
-
-function statusBadge(status: StatusProcedimento): { bg: string; text: string; label: string } {
-  if (status === 'CONCLUIDO') return { bg: 'bg-green-500/20', text: 'text-green-300', label: 'CONCLUÍDO' }
-  if (status === 'CANCELADO') return { bg: 'bg-red-500/20', text: 'text-red-300', label: 'CANCELADO' }
-  if (status === 'EM_ANDAMENTO') return { bg: 'bg-yellow-500/20', text: 'text-yellow-300', label: 'EM ANDAMENTO' }
-  return { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'ABERTO' }
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50"
@@ -48,6 +57,8 @@ const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase trac
 
 interface FormState {
   processo_tipo_id: string
+  clienteCadastrado: boolean
+  cliente_id: string
   empresa: string
   responsavel: string
   status: StatusProcedimento
@@ -58,6 +69,8 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   processo_tipo_id: '',
+  clienteCadastrado: false,
+  cliente_id: '',
   empresa: '',
   responsavel: '',
   status: 'ABERTO',
@@ -70,6 +83,7 @@ export default function ProcedimentosSocietarioPage() {
   const [items, setItems] = useState<Procedimento[]>([])
   const [tipos, setTipos] = useState<ProcessoTipo[]>([])
   const [modelos, setModelos] = useState<DocumentacaoModelo[]>([])
+  const [clientes, setClientes] = useState<ClienteResumo[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useFiltroPersistente('procedimentos:busca', '')
   const [statusFiltro, setStatusFiltro] = useFiltroPersistente<'TODOS' | StatusProcedimento>('procedimentos:status', 'TODOS')
@@ -77,6 +91,8 @@ export default function ProcedimentosSocietarioPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editItem, setEditItem] = useState<Procedimento | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [arquivosNovos, setArquivosNovos] = useState<File[]>([])
+  const [arquivosExistentes, setArquivosExistentes] = useState<ProcedimentoArquivoResumo[]>([])
   const [saving, setSaving] = useState(false)
   const [gerando, setGerando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -87,19 +103,21 @@ export default function ProcedimentosSocietarioPage() {
     setLoading(true)
     const { data } = await sb
       .from('procedimentos_societario')
-      .select('*, processo_tipos(nome), documentacao_modelos(nome)')
+      .select('*, processo_tipos(nome), documentacao_modelos(nome), procedimento_arquivos(id, name, size)')
       .order('created_at', { ascending: false })
     setItems((data ?? []) as unknown as Procedimento[])
     setLoading(false)
   }
 
   async function loadCatalogos() {
-    const [{ data: tiposData }, { data: modelosData }] = await Promise.all([
+    const [{ data: tiposData }, { data: modelosData }, { data: clientesData }] = await Promise.all([
       sb.from('processo_tipos').select('id, nome, etapas').order('nome'),
       sb.from('documentacao_modelos').select('id, nome').order('nome'),
+      sb.from('clientes').select('id, nome').order('nome'),
     ])
     setTipos(tiposData ?? [])
     setModelos(modelosData ?? [])
+    setClientes(clientesData ?? [])
   }
 
   useEffect(() => {
@@ -115,6 +133,8 @@ export default function ProcedimentosSocietarioPage() {
     setEditItem(null)
     setErro(null)
     setForm(EMPTY_FORM)
+    setArquivosNovos([])
+    setArquivosExistentes([])
     setModalOpen(true)
   }
 
@@ -123,6 +143,8 @@ export default function ProcedimentosSocietarioPage() {
     setErro(null)
     setForm({
       processo_tipo_id: item.processo_tipo_id,
+      clienteCadastrado: !!item.cliente_id,
+      cliente_id: item.cliente_id ?? '',
       empresa: item.empresa,
       responsavel: item.responsavel ?? '',
       status: item.status,
@@ -130,12 +152,38 @@ export default function ProcedimentosSocietarioPage() {
       preencherDocumento: !!item.documentacao_modelo_id,
       documentacao_modelo_id: item.documentacao_modelo_id ?? '',
     })
+    setArquivosNovos([])
+    setArquivosExistentes(item.procedimento_arquivos ?? [])
     setModalOpen(true)
   }
 
   function fecharModal() {
     setModalOpen(false)
     setErro(null)
+  }
+
+  function selecionarCliente(clienteId: string) {
+    const cliente = clientes.find(c => c.id === clienteId)
+    setForm(prev => ({ ...prev, cliente_id: clienteId, empresa: cliente?.nome ?? '' }))
+  }
+
+  function toggleClienteCadastrado(cadastrado: boolean) {
+    setForm(prev => ({ ...prev, clienteCadastrado: cadastrado, cliente_id: '', empresa: '' }))
+  }
+
+  function handleSelecionarArquivos(files: FileList | null) {
+    if (!files) return
+    setArquivosNovos(prev => [...prev, ...Array.from(files)])
+  }
+
+  function handleRemoverArquivoNovo(idx: number) {
+    setArquivosNovos(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  async function handleExcluirArquivoExistente(arquivoId: string) {
+    const { error } = await excluirArquivoProcedimento(arquivoId)
+    if (error) { setErro(error); return }
+    setArquivosExistentes(prev => prev.filter(a => a.id !== arquivoId))
   }
 
   async function handleDelete(id: string, empresa: string) {
@@ -165,6 +213,7 @@ export default function ProcedimentosSocietarioPage() {
 
     const payload = {
       processo_tipo_id: form.processo_tipo_id,
+      cliente_id: form.clienteCadastrado ? (form.cliente_id || null) : null,
       empresa: form.empresa.trim(),
       responsavel: form.responsavel.trim() || null,
       status: form.status,
@@ -173,13 +222,24 @@ export default function ProcedimentosSocietarioPage() {
       updated_at: new Date().toISOString(),
     }
 
-    const { error } = editItem
-      ? await sb.from('procedimentos_societario').update(payload).eq('id', editItem.id)
-      : await sb.from('procedimentos_societario').insert(payload)
+    const { data: salvo, error } = editItem
+      ? await sb.from('procedimentos_societario').update(payload).eq('id', editItem.id).select('id').single()
+      : await sb.from('procedimentos_societario').insert(payload).select('id').single()
+
+    if (error || !salvo) {
+      setSaving(false)
+      setErro(error?.message ?? 'Falha ao salvar o procedimento.')
+      return
+    }
+
+    for (const arquivo of arquivosNovos) {
+      const formData = new FormData()
+      formData.append('arquivo', arquivo)
+      const uploadResult = await uploadArquivoProcedimento(salvo.id, formData)
+      if (uploadResult.error) setErro(prev => prev ? `${prev} · ${uploadResult.error}` : uploadResult.error)
+    }
 
     setSaving(false)
-    if (error) { setErro(error.message); return }
-
     await load()
     setModalOpen(false)
   }
@@ -293,6 +353,16 @@ export default function ProcedimentosSocietarioPage() {
                               {item.documentacao_modelos?.nome && (
                                 <p className="text-xs text-[var(--fg)]/50 mb-2">Documento vinculado: <span className="text-[var(--fg)]">{item.documentacao_modelos.nome}</span></p>
                               )}
+                              {(item.procedimento_arquivos ?? []).length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                  {item.procedimento_arquivos.map(arq => (
+                                    <a key={arq.id} href={`/api/arquivos/procedimento/${arq.id}`} target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 hover:underline px-2 py-1 rounded-lg">
+                                      📎 {arq.name} · {formatBytes(arq.size)}
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
                               {Object.keys(item.campos ?? {}).length > 0 && (
                                 <div className="grid grid-cols-3 gap-2">
                                   {Object.entries(item.campos).map(([etapa, valor]) => (
@@ -346,8 +416,29 @@ export default function ProcedimentosSocietarioPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>Empresa</label>
-                  <input className={inputCls} value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))} />
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className={labelCls + ' mb-0'}>Empresa</label>
+                    <label className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--fg)]/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.clienteCadastrado}
+                        onChange={e => toggleClienteCadastrado(e.target.checked)}
+                        className="accent-[var(--accent)]"
+                      />
+                      Cliente cadastrado
+                    </label>
+                  </div>
+                  {form.clienteCadastrado ? (
+                    <select
+                      value={form.cliente_id}
+                      onChange={e => selecionarCliente(e.target.value)}
+                      className={inputCls + ' bg-[var(--bg-surface)]'}>
+                      <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
+                      {clientes.map(c => <option key={c.id} value={c.id} className="bg-[var(--bg-surface)]">{c.nome}</option>)}
+                    </select>
+                  ) : (
+                    <input className={inputCls} value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))} placeholder="Digite o nome da empresa..." />
+                  )}
                 </div>
                 <div>
                   <label className={labelCls}>Responsável</label>
@@ -415,6 +506,41 @@ export default function ProcedimentosSocietarioPage() {
                     <option value="" className="bg-[var(--bg-surface)]">Selecionar modelo...</option>
                     {modelos.map(m => <option key={m.id} value={m.id} className="bg-[var(--bg-surface)]">{m.nome}</option>)}
                   </select>
+                )}
+              </div>
+
+              <div>
+                <label className={labelCls}>Anexos</label>
+                <label className="inline-block text-xs px-3 py-2 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/60 hover:text-[var(--fg)] cursor-pointer transition-colors">
+                  + Selecionar arquivo(s)
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
+                    multiple
+                    className="hidden"
+                    onChange={e => handleSelecionarArquivos(e.target.files)}
+                  />
+                </label>
+                {(arquivosExistentes.length > 0 || arquivosNovos.length > 0) && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {arquivosExistentes.map(arq => (
+                      <span key={arq.id} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
+                        <a href={`/api/arquivos/procedimento/${arq.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                          📎 {arq.name}
+                        </a>
+                        · {formatBytes(arq.size)}
+                        <button type="button" onClick={() => handleExcluirArquivoExistente(arq.id)}
+                          className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
+                      </span>
+                    ))}
+                    {arquivosNovos.map((arq, idx) => (
+                      <span key={idx} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
+                        📎 {arq.name}
+                        <button type="button" onClick={() => handleRemoverArquivoNovo(idx)}
+                          className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
 

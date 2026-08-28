@@ -207,3 +207,12 @@ export interface EventoArquivo {
   content_base64: string
   uploaded_at: string
 }
+
+export interface ProcedimentoArquivo {
+  id: string
+  procedimento_id: string
+  name: string
+  size: number
+  content_base64: string
+  uploaded_at: string
+}
