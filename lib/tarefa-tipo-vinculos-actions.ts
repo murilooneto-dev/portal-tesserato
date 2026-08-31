@@ -208,3 +208,89 @@ export async function alternarVinculo(
   revalidatePath('/admin/configuracoes')
   return { error: null }
 }
+
+export interface VinculoAtividadeRegime {
+  tarefaTipoId: string
+  regimeId: string | null
+}
+
+// Igual a listarTarefaTipoIdsVinculados, mas só pra vínculos de atividade —
+// traz junto o regime_id de cada um (null = "todos os regimes"), pra
+// VincularTarefasModal.tsx pré-preencher o select de regime por tarefa.
+export async function listarVinculosAtividadeComRegime(
+  atividadeId: string,
+): Promise<{ data: VinculoAtividadeRegime[]; error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { data: [], error }
+
+  const { data, error: queryError } = await supabase
+    .from('tarefa_tipo_vinculos')
+    .select('tarefa_tipo_id, regime_id')
+    .eq('entidade_tipo', 'atividade')
+    .eq('entidade_id', atividadeId)
+
+  if (queryError) return { data: [], error: queryError.message }
+  return {
+    data: (data ?? []).map(row => ({
+      tarefaTipoId: row.tarefa_tipo_id as string,
+      regimeId: row.regime_id as string | null,
+    })),
+    error: null,
+  }
+}
+
+// Vínculo atividade+regime: no máximo 1 linha por par (tarefaTipoId,
+// atividadeId) — trocar o regime apaga a linha anterior e insere a nova,
+// em vez de depender de constraint única (null não colide com null em
+// unique index do Postgres, então não dava pra confiar nisso aqui).
+export async function definirVinculoAtividadeRegime(
+  tarefaTipoId: string,
+  atividadeId: string,
+  regimeId: string | null,
+  vincular: boolean,
+): Promise<{ error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { error }
+
+  const { error: deleteError } = await supabase
+    .from('tarefa_tipo_vinculos')
+    .delete()
+    .eq('tarefa_tipo_id', tarefaTipoId)
+    .eq('entidade_tipo', 'atividade')
+    .eq('entidade_id', atividadeId)
+  if (deleteError) return { error: deleteError.message }
+
+  if (vincular) {
+    // Mesma validação de setor de alternarVinculo — a entidade (e o
+    // regime, quando escolhido) precisam pertencer ao mesmo setor do tipo
+    // de tarefa, senão o vínculo geraria dado errado silenciosamente no
+    // cálculo de tarefas esperadas.
+    const { data: tarefaTipo, error: tarefaTipoError } = await supabase
+      .from('tarefa_tipos').select('setor').eq('id', tarefaTipoId).single()
+    if (tarefaTipoError || !tarefaTipo) return { error: 'Tipo de tarefa não encontrado.' }
+
+    const { data: atividade, error: atividadeError } = await supabase
+      .from('atividades').select('setor').eq('id', atividadeId).single()
+    if (atividadeError || !atividade) return { error: 'Atividade não encontrada.' }
+    if (atividade.setor !== tarefaTipo.setor) {
+      return { error: 'A atividade pertence a um setor diferente do tipo de tarefa.' }
+    }
+
+    if (regimeId) {
+      const { data: regime, error: regimeError } = await supabase
+        .from('regimes').select('setor').eq('id', regimeId).single()
+      if (regimeError || !regime) return { error: 'Regime não encontrado.' }
+      if (regime.setor !== tarefaTipo.setor) {
+        return { error: 'O regime pertence a um setor diferente do tipo de tarefa.' }
+      }
+    }
+
+    const { error: insertError } = await supabase
+      .from('tarefa_tipo_vinculos')
+      .insert({ tarefa_tipo_id: tarefaTipoId, entidade_tipo: 'atividade', entidade_id: atividadeId, regime_id: regimeId })
+    if (insertError) return { error: insertError.message }
+  }
+
+  revalidatePath('/admin/configuracoes')
+  return { error: null }
+}
