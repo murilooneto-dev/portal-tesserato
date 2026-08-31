@@ -83,6 +83,28 @@ export async function podeEditarCliente(clienteId: string): Promise<boolean> {
   return !!profile?.nome && !!cliente?.responsavel && profile.nome.toLowerCase() === cliente.responsavel.toLowerCase()
 }
 
+// Igual a podeEditarCliente, mas primeiro confere se o TIPO da tarefa tem um
+// responsável exclusivo (tarefa_tipos.responsavel_id) — quando tem, só essa
+// pessoa (ou admin) pode editar essa tarefa em qualquer cliente do Fiscal,
+// mesmo que ela não seja a responsável geral do cliente. Sem responsável
+// exclusivo no tipo, cai no comportamento de sempre (podeEditarCliente).
+export async function podeEditarTarefaTipo(clienteId: string, tipo: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (profile?.role === 'admin') return true
+
+  const { data: tarefaTipo } = await supabase
+    .from('tarefa_tipos').select('responsavel_id')
+    .eq('setor', 'fiscal').eq('nome', tipo).maybeSingle()
+
+  if (tarefaTipo?.responsavel_id) return tarefaTipo.responsavel_id === user.id
+
+  return podeEditarCliente(clienteId)
+}
+
 // Mesma lógica de podeEditarCliente, mas pro setor Contábil (consulta
 // clientes_contabil em vez de clientes_fiscal). Função irmã, não
 // parametrizada — cada setor tem a sua, mesmo padrão de clientes_fiscal.

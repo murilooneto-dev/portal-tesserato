@@ -66,14 +66,31 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const tarefasPersonalizadasEfetivas = Array.from(new Set([...tarefasBaseFiscal, ...tiposDeParcelamento]))
 
   const { data: tiposRaw } = await supabase
-    .from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'fiscal')
+    .from('tarefa_tipos').select('nome, etapas, tipo_resposta, responsavel_id').eq('setor', 'fiscal')
 
   const tarefaTipos: Record<string, { etapas: string[] | null; tipoResposta: TipoResposta }> = {}
+  const responsavelIdPorTipo: Record<string, string | null> = {}
   for (const t of tiposRaw ?? []) {
     tarefaTipos[t.nome as string] = {
       etapas: t.etapas as string[] | null,
       tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
     }
+    responsavelIdPorTipo[t.nome as string] = t.responsavel_id as string | null
+  }
+
+  // Um tipo com responsável exclusivo some da ficha (e da % de progresso)
+  // pra quem não é o dono nem admin — ver lib/supabase/server.ts:podeEditarTarefaTipo,
+  // que faz a mesma checagem no servidor pra cada escrita.
+  const ehDonoOuAdmin = (tipo: string) =>
+    profile?.role === 'admin' || !responsavelIdPorTipo[tipo] || responsavelIdPorTipo[tipo] === user.id
+
+  const tarefasPersonalizadasVisiveis = tarefasPersonalizadasEfetivas.filter(ehDonoOuAdmin)
+
+  const podeEditarPorTipo: Record<string, boolean> = {}
+  for (const tipo of tarefasPersonalizadasVisiveis) {
+    podeEditarPorTipo[tipo] = responsavelIdPorTipo[tipo]
+      ? (profile?.role === 'admin' || responsavelIdPorTipo[tipo] === user.id)
+      : podeEditar
   }
 
   const tarefaIds = (tarefas ?? []).map(t => t.id)
@@ -92,7 +109,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   // Todas as tarefas do ano para o histórico
   const { data: tarefasAno } = await supabase
-    .from('tarefas').select('mes,concluida').eq('cliente_id', id).eq('ano', ano).eq('setor', 'fiscal')
+    .from('tarefas').select('mes,concluida,tipo').eq('cliente_id', id).eq('ano', ano).eq('setor', 'fiscal')
 
   // Arquivos do cliente (inclui content_base64 para conferência)
   const { data: arquivos } = await supabase
@@ -152,11 +169,15 @@ export default async function ClienteDetalhePage({ params }: Props) {
     await excluirArquivoTarefa(arquivoId)
   }
 
-  // Histórico por mês
+  // Histórico por mês — só conta os tipos visíveis pro usuário atual, senão
+  // uma tarefa de responsável exclusivo alheio continuaria influenciando a %
+  // de quem não deveria nem ver essa tarefa.
   const historicoMeses = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
-    const total = tarefasPersonalizadasEfetivas.length
-    const feitas = (tarefasAno ?? []).filter(t => t.mes === m && t.concluida).length
+    const total = tarefasPersonalizadasVisiveis.length
+    const feitas = (tarefasAno ?? []).filter(
+      t => t.mes === m && t.concluida && tarefasPersonalizadasVisiveis.includes(t.tipo as string)
+    ).length
     const pct = total > 0 ? Math.round((feitas / total) * 100) : 0
     return { m, total, feitas, pct }
   })
@@ -205,7 +226,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
         clienteId={id}
         clienteNome={cliente.nome}
         grupo={cliente.grupo ?? 'normal'}
-        tarefasPersonalizadas={tarefasPersonalizadasEfetivas}
+        tarefasPersonalizadas={tarefasPersonalizadasVisiveis}
         tarefas={tarefas ?? []}
         vinculos={vinculos}
         mes={mes}
@@ -215,6 +236,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
         mitInicial={cliente.mit ?? ''}
         onToggle={toggleTarefa}
         podeEditar={podeEditar}
+        podeEditarPorTipo={podeEditarPorTipo}
         tarefaTipos={tarefaTipos}
         etapas={(etapasCatalogo ?? []) as TarefaEtapa[]}
         arquivos={(arquivosCatalogo ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}

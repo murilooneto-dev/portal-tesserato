@@ -10,7 +10,7 @@ import MesSeletor from './MesSeletor'
 import {
   Zap, LayoutGrid, Users, Calendar,
   FileText, CreditCard, Wrench, Settings, SlidersHorizontal,
-  Sun, Moon, Link2, ListChecks, Building2,
+  Sun, Moon, Link2, ListChecks, Building2, UserCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -29,6 +29,7 @@ const ICONES_PAGINA: Record<string, LucideIcon> = {
   relatorios: FileText,
   parcelamentos: CreditCard,
   'preenchimento-rapido': ListChecks,
+  'minhas-tarefas': UserCheck,
   procedimentos: Building2,
 }
 

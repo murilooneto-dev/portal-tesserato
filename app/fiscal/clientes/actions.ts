@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getAuthenticatedAdmin, podeEditarCliente } from '@/lib/supabase/server'
+import { getAuthenticatedAdmin, podeEditarCliente, podeEditarTarefaTipo } from '@/lib/supabase/server'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
@@ -17,8 +17,8 @@ export async function desbloquearTarefa(
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
 
-  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, mes, parcelamento_id').eq('id', tarefaId).single()
-  if (!tarefa || !(await podeEditarCliente(tarefa.cliente_id))) return
+  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, mes, parcelamento_id, tipo').eq('id', tarefaId).single()
+  if (!tarefa || !(await podeEditarTarefaTipo(tarefa.cliente_id, tarefa.tipo))) return
 
   await supabase
     .from('tarefas')
@@ -45,6 +45,7 @@ export async function desbloquearTarefa(
   revalidatePath('/fiscal/dashboard')
   revalidatePath('/fiscal/relatorios')
   revalidatePath('/fiscal/tarefas')
+  revalidatePath('/fiscal/minhas-tarefas')
 }
 
 export async function salvarMIT(clienteId: string, valor: string) {
@@ -71,7 +72,7 @@ export async function toggleTarefaFiscal(
   concluida: boolean,
   data?: string,
 ) {
-  if (!(await podeEditarCliente(clienteId))) return
+  if (!(await podeEditarTarefaTipo(clienteId, tipo))) return
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
 
@@ -102,6 +103,7 @@ export async function toggleTarefaFiscal(
   revalidatePath('/fiscal/dashboard')
   revalidatePath('/fiscal/relatorios')
   revalidatePath('/fiscal/tarefas')
+  revalidatePath('/fiscal/minhas-tarefas')
   revalidatePath('/fiscal/preenchimento-rapido')
 }
 
@@ -176,7 +178,7 @@ export async function atualizarEtapa(
   concluida: boolean,
   data?: string,
 ) {
-  if (!(await podeEditarCliente(clienteId))) return
+  if (!(await podeEditarTarefaTipo(clienteId, tipo))) return
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
 
@@ -235,6 +237,7 @@ export async function atualizarEtapa(
   revalidatePath('/fiscal/dashboard')
   revalidatePath('/fiscal/relatorios')
   revalidatePath('/fiscal/tarefas')
+  revalidatePath('/fiscal/minhas-tarefas')
 }
 
 export async function salvarRespostaTexto(
@@ -244,7 +247,7 @@ export async function salvarRespostaTexto(
   ano: number,
   texto: string,
 ) {
-  if (!(await podeEditarCliente(clienteId))) return
+  if (!(await podeEditarTarefaTipo(clienteId, tipo))) return
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase) return
 
@@ -288,7 +291,7 @@ export async function uploadArquivoTarefa(
   ano: number,
   formData: FormData,
 ) {
-  if (!(await podeEditarCliente(clienteId))) return { error: 'Não autorizado' }
+  if (!(await podeEditarTarefaTipo(clienteId, tipo))) return { error: 'Não autorizado' }
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase) return { error: 'Não autorizado' }
 
@@ -346,8 +349,8 @@ export async function excluirArquivoTarefa(arquivoId: string) {
   const { data: arquivo } = await supabase.from('tarefa_arquivos').select('tarefa_id').eq('id', arquivoId).single()
   if (!arquivo) return
 
-  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, resposta_texto, setor').eq('id', arquivo.tarefa_id).single()
-  if (!tarefa || tarefa.setor !== 'fiscal' || !(await podeEditarCliente(tarefa.cliente_id))) return
+  const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, resposta_texto, setor, tipo').eq('id', arquivo.tarefa_id).single()
+  if (!tarefa || tarefa.setor !== 'fiscal' || !(await podeEditarTarefaTipo(tarefa.cliente_id, tarefa.tipo))) return
 
   await supabase.from('tarefa_arquivos').delete().eq('id', arquivoId)
 
@@ -383,6 +386,7 @@ export async function desabilitarCliente(clienteId: string, senha: string): Prom
   revalidatePath('/fiscal/dashboard')
   revalidatePath('/fiscal/relatorios')
   revalidatePath('/fiscal/tarefas')
+  revalidatePath('/fiscal/minhas-tarefas')
   revalidatePath('/ferramentas')
   return {}
 }
@@ -401,6 +405,7 @@ export async function reabilitarCliente(clienteId: string): Promise<{ error?: st
   revalidatePath('/fiscal/dashboard')
   revalidatePath('/fiscal/relatorios')
   revalidatePath('/fiscal/tarefas')
+  revalidatePath('/fiscal/minhas-tarefas')
   revalidatePath('/ferramentas')
   return {}
 }

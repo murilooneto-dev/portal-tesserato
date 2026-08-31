@@ -23,6 +23,18 @@ export default async function TarefasPage() {
     .eq('id', user.id)
     .single()
 
+  const { data: tarefaTiposRaw } = await supabase
+    .from('tarefa_tipos').select('nome, responsavel_id').eq('setor', 'fiscal')
+  const responsavelIdPorTipo = new Map(
+    (tarefaTiposRaw ?? []).map(t => [t.nome as string, t.responsavel_id as string | null])
+  )
+  // Tarefa de tipo com responsável exclusivo não conta na % de quem não é
+  // o dono nem admin — ver lib/supabase/server.ts:podeEditarTarefaTipo.
+  const tipoVisivelParaUsuario = (tipo: string) => {
+    const responsavelId = responsavelIdPorTipo.get(tipo)
+    return profile?.role === 'admin' || !responsavelId || responsavelId === user.id
+  }
+
   const { data: clientes } = await supabase
     .from('clientes')
     .select('id, nome, clientes_fiscal!inner(cod, grupo, responsavel)')
@@ -63,7 +75,7 @@ export default async function TarefasPage() {
 
       <div className="flex flex-col gap-2">
         {clientesFiltrados.map(cliente => {
-          const ts = tarefasPorCliente.get(cliente.id) ?? []
+          const ts = (tarefasPorCliente.get(cliente.id) ?? []).filter(t => tipoVisivelParaUsuario(t.tipo))
           const concluidas = ts.filter(t => t.concluida).length
           const total = ts.length
           const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
