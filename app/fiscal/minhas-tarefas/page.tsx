@@ -3,7 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { atualizarEtapa, toggleTarefaFiscal } from '@/app/fiscal/clientes/actions'
+import { atualizarStatusDossie, atualizarFinalizadoDossie } from '@/lib/dossie-actions'
 import MinhasTarefasSecao from '@/components/fiscal/MinhasTarefasSecao'
+import MinhasTarefasTabs from '@/components/fiscal/MinhasTarefasTabs'
+import DossieSecao from '@/components/fiscal/DossieSecao'
+import type { StatusDossie } from '@/lib/status-dossie'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
 
 export const metadata = { title: 'Minhas Tarefas — Tesserato Fiscal' }
@@ -53,13 +57,19 @@ export default async function MinhasTarefasPage() {
     )
   }
 
-  const [{ data: clientesRaw }, mapaVinculos] = await Promise.all([
+  const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }] = await Promise.all([
     supabase
       .from('clientes')
       .select('id, nome, clientes_fiscal!inner(grupo, regime, atividade, tarefas_personalizadas, ativo)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'fiscal'),
+    supabase
+      .from('clientes')
+      .select('id, nome, cnpj, clientes_fiscal!inner(dossie_status, dossie_finalizado, ativo, faz_dossie)')
+      .eq('clientes_fiscal.ativo', true)
+      .eq('clientes_fiscal.faz_dossie', true)
+      .order('nome'),
   ])
 
   const clientesTodos = (clientesRaw ?? []).map(row => {
@@ -91,6 +101,23 @@ export default async function MinhasTarefasPage() {
     : { data: [] as TarefaEtapa[] }
   const etapas = (etapasRaw ?? []) as TarefaEtapa[]
 
+  interface DossieRow {
+    id: string
+    nome: string
+    cnpj: string | null
+    clientes_fiscal: { dossie_status: StatusDossie; dossie_finalizado: boolean }
+  }
+  const clientesDossie = (dossieRaw ?? []).map(row => {
+    const r = row as unknown as DossieRow
+    return {
+      id: r.id,
+      nome: r.nome,
+      cnpj: r.cnpj,
+      dossieStatus: r.clientes_fiscal.dossie_status,
+      dossieFinalizado: r.clientes_fiscal.dossie_finalizado,
+    }
+  })
+
   async function onToggle(clienteId: string, tipo: string, concluida: boolean, data?: string) {
     'use server'
     await toggleTarefaFiscal(clienteId, tipo, mes, ano, concluida, data)
@@ -99,6 +126,16 @@ export default async function MinhasTarefasPage() {
   async function onAtualizarEtapa(clienteId: string, tipo: string, etapaNome: string, concluida: boolean, data?: string) {
     'use server'
     await atualizarEtapa(clienteId, mes, ano, tipo, etapaNome, concluida, data)
+  }
+
+  async function onAtualizarStatusDossie(clienteId: string, status: StatusDossie) {
+    'use server'
+    return await atualizarStatusDossie(clienteId, status)
+  }
+
+  async function onAtualizarFinalizadoDossie(clienteId: string, finalizado: boolean) {
+    'use server'
+    return await atualizarFinalizadoDossie(clienteId, finalizado)
   }
 
   return (
@@ -110,28 +147,39 @@ export default async function MinhasTarefasPage() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-8">
-        {meusTipos.map(tipoInfo => {
-          const clientesDoTipo = clientesTodos.filter(c => c.esperadas.includes(tipoInfo.nome))
-          const tarefasDoTipo = tarefas.filter(t => t.tipo === tipoInfo.nome)
-          return (
-            <MinhasTarefasSecao
-              key={tipoInfo.nome}
-              tipo={tipoInfo.nome}
-              tipoResposta={tipoInfo.tipo_resposta}
-              etapasDefinidas={tipoInfo.etapas}
-              clientes={clientesDoTipo}
-              tarefas={tarefasDoTipo}
-              etapas={etapas}
-              mes={mes}
-              ano={ano}
-              usuarioNome={profile?.nome ?? user.email ?? ''}
-              onToggle={onToggle}
-              onAtualizarEtapa={onAtualizarEtapa}
-            />
-          )
-        })}
-      </div>
+      <MinhasTarefasTabs
+        tarefasContent={
+          <div className="flex flex-col gap-8">
+            {meusTipos.map(tipoInfo => {
+              const clientesDoTipo = clientesTodos.filter(c => c.esperadas.includes(tipoInfo.nome))
+              const tarefasDoTipo = tarefas.filter(t => t.tipo === tipoInfo.nome)
+              return (
+                <MinhasTarefasSecao
+                  key={tipoInfo.nome}
+                  tipo={tipoInfo.nome}
+                  tipoResposta={tipoInfo.tipo_resposta}
+                  etapasDefinidas={tipoInfo.etapas}
+                  clientes={clientesDoTipo}
+                  tarefas={tarefasDoTipo}
+                  etapas={etapas}
+                  mes={mes}
+                  ano={ano}
+                  usuarioNome={profile?.nome ?? user.email ?? ''}
+                  onToggle={onToggle}
+                  onAtualizarEtapa={onAtualizarEtapa}
+                />
+              )
+            })}
+          </div>
+        }
+        dossieContent={
+          <DossieSecao
+            clientes={clientesDossie}
+            onAtualizarStatus={onAtualizarStatusDossie}
+            onAtualizarFinalizado={onAtualizarFinalizadoDossie}
+          />
+        }
+      />
     </div>
   )
 }

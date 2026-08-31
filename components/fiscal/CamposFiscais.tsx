@@ -13,6 +13,7 @@ export interface CamposFiscaisData {
   declaracao_anual: boolean
   envia_iss: boolean
   confere_siga: boolean
+  faz_dossie: boolean
   login_iss: string
   senha_iss: string
   email_envio_iss: string
@@ -106,6 +107,14 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
         <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 transition-all">
           <input type="checkbox" checked={form.confere_siga} onChange={e => set('confere_siga', e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" disabled={readOnly} />
           <span className="text-xs font-bold uppercase tracking-widest text-[var(--fg)]/40">Confere SIGA?</span>
+        </label>
+      </div>
+
+      {/* Checkbox Faz Dossiê */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 transition-all">
+          <input type="checkbox" checked={form.faz_dossie} onChange={e => set('faz_dossie', e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" disabled={readOnly} />
+          <span className="text-xs font-bold uppercase tracking-widest text-[var(--fg)]/40">Faz Dossiê?</span>
         </label>
       </div>
 

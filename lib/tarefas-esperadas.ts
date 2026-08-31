@@ -3,8 +3,11 @@ import type { UserSetor } from './types'
 
 export interface MapaVinculosSetor {
   porGrupo: Record<string, string[]>
+  // Não é mais populado — vínculo solto de regime (sem atividade) foi
+  // retirado, ver migration 031. Mantido no tipo só pra não quebrar
+  // lib/preenchimento-rapido.ts, que também lê esse campo.
   porRegime: Record<string, string[]>
-  porAtividade: Record<string, string[]>
+  porAtividade: Record<string, { tarefa: string; regimeNome: string | null }[]>
 }
 
 // Uma consulta em lote por carregamento de página (nunca por cliente) —
@@ -22,7 +25,7 @@ export async function buscarMapaVinculosSetor(
     supabase.from('atividades').select('id, nome').eq('setor', setor),
     supabase
       .from('tarefa_tipo_vinculos')
-      .select('entidade_tipo, entidade_id, tarefa_tipos!inner(nome, setor)')
+      .select('entidade_tipo, entidade_id, regime_id, tarefa_tipos!inner(nome, setor)')
       .eq('tarefa_tipos.setor', setor),
   ])
 
@@ -32,20 +35,24 @@ export async function buscarMapaVinculosSetor(
   for (const a of atividades ?? []) nomePorId[a.id as string] = a.nome as string
 
   const mapa: MapaVinculosSetor = { porGrupo: {}, porRegime: {}, porAtividade: {} }
-  const chavePorTipo: Record<string, keyof MapaVinculosSetor> = {
-    grupo: 'porGrupo',
-    regime: 'porRegime',
-    atividade: 'porAtividade',
-  }
 
   for (const v of vinculos ?? []) {
     const nomeEntidade = nomePorId[v.entidade_id as string]
     if (!nomeEntidade) continue
-    const chave = chavePorTipo[v.entidade_tipo as string]
-    if (!chave) continue
     const nomeTarefa = (v.tarefa_tipos as unknown as { nome: string }).nome
-    if (!mapa[chave][nomeEntidade]) mapa[chave][nomeEntidade] = []
-    mapa[chave][nomeEntidade].push(nomeTarefa)
+
+    if (v.entidade_tipo === 'grupo') {
+      if (!mapa.porGrupo[nomeEntidade]) mapa.porGrupo[nomeEntidade] = []
+      mapa.porGrupo[nomeEntidade].push(nomeTarefa)
+    } else if (v.entidade_tipo === 'atividade') {
+      const regimeId = v.regime_id as string | null
+      const regimeNome = regimeId ? (nomePorId[regimeId] ?? null) : null
+      if (!mapa.porAtividade[nomeEntidade]) mapa.porAtividade[nomeEntidade] = []
+      mapa.porAtividade[nomeEntidade].push({ tarefa: nomeTarefa, regimeNome })
+    }
+    // entidade_tipo === 'regime': vínculo solto retirado (migration 031),
+    // ignorado aqui de propósito — ver VincularTarefasModal.tsx pra
+    // remoção assistida dos que ainda existem.
   }
 
   return mapa
@@ -61,10 +68,17 @@ export function calcularTarefasEsperadas(
   cliente: { grupo?: string | null; regime?: string | null; atividade?: string[] | null; tarefas_personalizadas: string[] },
   mapa: MapaVinculosSetor,
 ): string[] {
+  // Vínculo de atividade: regimeNome null = "todos os regimes" (aplica
+  // sempre); regimeNome preenchido = só aplica se bater com o regime do
+  // cliente (AND atividade+regime).
+  const doAtividade = (cliente.atividade ?? []).flatMap(a =>
+    (mapa.porAtividade[a] ?? [])
+      .filter(e => e.regimeNome === null || e.regimeNome === cliente.regime)
+      .map(e => e.tarefa)
+  )
   const automaticas = [
     ...(mapa.porGrupo[cliente.grupo ?? ''] ?? []),
-    ...(mapa.porRegime[cliente.regime ?? ''] ?? []),
-    ...(cliente.atividade ?? []).flatMap(a => mapa.porAtividade[a] ?? []),
+    ...doAtividade,
   ]
   return Array.from(new Set([...automaticas, ...cliente.tarefas_personalizadas]))
 }

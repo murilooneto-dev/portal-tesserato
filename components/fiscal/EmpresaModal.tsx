@@ -25,6 +25,7 @@ interface FormData {
   declaracao_anual: boolean
   envia_iss: boolean
   confere_siga: boolean
+  faz_dossie: boolean
   login_iss: string
   senha_iss: string
   email_envio_iss: string
@@ -42,7 +43,7 @@ interface Props {
 const emptyForm = (): FormData => ({
   cod: '', cnpj: '', nome: '', regime: '', atividade: [], grupo: '',
   municipio: '', uf: '', responsavel: '', contato_chat: '', prioridade: 3,
-  declaracao_anual: false, envia_iss: false, confere_siga: false,
+  declaracao_anual: false, envia_iss: false, confere_siga: false, faz_dossie: false,
   login_iss: '', senha_iss: '', email_envio_iss: '',
   tarefas_personalizadas: [],
 })
@@ -97,6 +98,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
         declaracao_anual: data.declaracao_anual ?? false,
         envia_iss: data.envia_iss ?? false,
         confere_siga: data.confere_siga ?? false,
+        faz_dossie: data.faz_dossie ?? false,
         login_iss: data.login_iss ?? '',
         senha_iss: data.senha_iss ?? '',
         email_envio_iss: data.email_envio_iss ?? '',
@@ -172,6 +174,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
       declaracao_anual:       form.declaracao_anual,
       envia_iss:              form.envia_iss,
       confere_siga:           form.confere_siga,
+      faz_dossie:             form.faz_dossie,
       login_iss:              form.envia_iss ? form.login_iss || null : null,
       senha_iss:              form.envia_iss ? form.senha_iss || null : null,
       email_envio_iss:        form.envia_iss ? form.email_envio_iss || null : null,

@@ -12,6 +12,7 @@ import {
   type UsuarioDoSetor,
 } from '@/lib/tarefa-tipo-vinculos-actions'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
+import EditarTipoTarefaModal from '@/components/geral/EditarTipoTarefaModal'
 
 interface Props {
   setor: UserSetor
@@ -27,6 +28,7 @@ export default function TarefasTab({ setor }: Props) {
   const [novoNome, setNovoNome] = useState('')
   const [mostrarModal, setMostrarModal] = useState(false)
   const [salvandoResponsavel, setSalvandoResponsavel] = useState<string | null>(null)
+  const [editando, setEditando] = useState<TarefaTipoResumo | null>(null)
 
   const recarregar = useCallback(async () => {
     setCarregando(true)
@@ -112,6 +114,10 @@ export default function TarefasTab({ setor }: Props) {
                 ))}
               </select>
 
+              <button onClick={() => setEditando(item)} className="text-xs text-[var(--fg)]/50 hover:text-[var(--fg)]">
+                Editar
+              </button>
+
               <button onClick={() => handleExcluir(item)} className="text-xs text-red-400/70 hover:text-red-400">
                 Excluir
               </button>
@@ -127,6 +133,17 @@ export default function TarefasTab({ setor }: Props) {
           padrao={true}
           onCancel={() => setMostrarModal(false)}
           onCriado={() => { setMostrarModal(false); setNovoNome(''); recarregar() }}
+        />
+      )}
+
+      {editando && (
+        <EditarTipoTarefaModal
+          id={editando.id}
+          nome={editando.nome}
+          tipoResposta={editando.tipoResposta}
+          etapas={editando.etapas}
+          onCancel={() => setEditando(null)}
+          onSalvo={() => { setEditando(null); recarregar() }}
         />
       )}
     </div>

@@ -5,10 +5,13 @@ import type { UserSetor } from '@/lib/types'
 import {
   listarTarefaTiposDoSetor,
   listarTarefaTipoIdsVinculados,
+  listarVinculosAtividadeComRegime,
+  definirVinculoAtividadeRegime,
   alternarVinculo,
   type TipoEntidadeVinculo,
   type TarefaTipoResumo,
 } from '@/lib/tarefa-tipo-vinculos-actions'
+import { listarEntidades, type EntidadeConfig } from '@/lib/config-entidades-actions'
 
 interface Props {
   entidadeTipo: TipoEntidadeVinculo
@@ -18,34 +21,60 @@ interface Props {
   onClose: () => void
 }
 
+const selectCls = "text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)]/70 focus:outline-none focus:border-[var(--accent)]/50 disabled:opacity-40"
+
 export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidadeNome, setor, onClose }: Props) {
   const [tarefas, setTarefas] = useState<TarefaTipoResumo[]>([])
-  const [vinculadas, setVinculadas] = useState<Set<string>>(new Set())
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+
+  // grupo (vínculo normal) e regime (visão legada, só remoção)
+  const [vinculadas, setVinculadas] = useState<Set<string>>(new Set())
+
+  // atividade: tarefaTipoId -> regimeId vinculado (null = todos os regimes)
+  const [vinculosAtividade, setVinculosAtividade] = useState<Map<string, string | null>>(new Map())
+  const [regimes, setRegimes] = useState<EntidadeConfig[]>([])
 
   useEffect(() => {
     async function carregar() {
       setCarregando(true)
-      const [tarefasRes, vinculosRes] = await Promise.all([
-        listarTarefaTiposDoSetor(setor),
-        listarTarefaTipoIdsVinculados(entidadeTipo, entidadeId),
-      ])
-      if (tarefasRes.error) setErro(tarefasRes.error)
-      else if (vinculosRes.error) setErro(vinculosRes.error)
-      else {
-        setTarefas(tarefasRes.data)
-        setVinculadas(new Set(vinculosRes.data))
-        setErro(null)
+
+      if (entidadeTipo === 'atividade') {
+        const [tarefasRes, vinculosRes, regimesRes] = await Promise.all([
+          listarTarefaTiposDoSetor(setor),
+          listarVinculosAtividadeComRegime(entidadeId),
+          listarEntidades('regimes', setor),
+        ])
+        if (tarefasRes.error) setErro(tarefasRes.error)
+        else if (vinculosRes.error) setErro(vinculosRes.error)
+        else if (regimesRes.error) setErro(regimesRes.error)
+        else {
+          setTarefas(tarefasRes.data)
+          setVinculosAtividade(new Map(vinculosRes.data.map(v => [v.tarefaTipoId, v.regimeId])))
+          setRegimes(regimesRes.data)
+          setErro(null)
+        }
+      } else {
+        const [tarefasRes, vinculosRes] = await Promise.all([
+          listarTarefaTiposDoSetor(setor),
+          listarTarefaTipoIdsVinculados(entidadeTipo, entidadeId),
+        ])
+        if (tarefasRes.error) setErro(tarefasRes.error)
+        else if (vinculosRes.error) setErro(vinculosRes.error)
+        else {
+          setTarefas(tarefasRes.data)
+          setVinculadas(new Set(vinculosRes.data))
+          setErro(null)
+        }
       }
+
       setCarregando(false)
     }
     carregar()
   }, [setor, entidadeTipo, entidadeId])
 
-  async function toggle(tarefaTipoId: string) {
+  async function toggleGrupo(tarefaTipoId: string) {
     const jaVinculada = vinculadas.has(tarefaTipoId)
-    // Otimista: atualiza a UI antes da resposta, reverte se der erro.
     setVinculadas(prev => {
       const novo = new Set(prev)
       jaVinculada ? novo.delete(tarefaTipoId) : novo.add(tarefaTipoId)
@@ -62,6 +91,38 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
       })
     }
   }
+
+  async function handleRemoverLegado(tarefaTipoId: string) {
+    const anterior = new Set(vinculadas)
+    setVinculadas(prev => { const novo = new Set(prev); novo.delete(tarefaTipoId); return novo })
+
+    const { error } = await alternarVinculo(tarefaTipoId, 'regime', entidadeId, false)
+    if (error) { setErro(error); setVinculadas(anterior) }
+  }
+
+  async function handleToggleAtividade(tarefaTipoId: string) {
+    const jaVinculada = vinculosAtividade.has(tarefaTipoId)
+    const anterior = new Map(vinculosAtividade)
+    setVinculosAtividade(prev => {
+      const novo = new Map(prev)
+      jaVinculada ? novo.delete(tarefaTipoId) : novo.set(tarefaTipoId, null)
+      return novo
+    })
+
+    const { error } = await definirVinculoAtividadeRegime(tarefaTipoId, entidadeId, null, !jaVinculada)
+    if (error) { setErro(error); setVinculosAtividade(anterior) }
+  }
+
+  async function handleRegimeChange(tarefaTipoId: string, regimeId: string) {
+    const valor = regimeId === '' ? null : regimeId
+    const anterior = new Map(vinculosAtividade)
+    setVinculosAtividade(prev => new Map(prev).set(tarefaTipoId, valor))
+
+    const { error } = await definirVinculoAtividadeRegime(tarefaTipoId, entidadeId, valor, true)
+    if (error) { setErro(error); setVinculosAtividade(anterior) }
+  }
+
+  const tarefasLegadoRegime = tarefas.filter(t => vinculadas.has(t.id))
 
   return (
     <div
@@ -83,8 +144,68 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
 
           {carregando ? (
             <p className="text-[var(--fg)]/40 text-sm">Carregando...</p>
+
+          ) : entidadeTipo === 'regime' ? (
+            <>
+              <p className="text-[var(--fg)]/50 text-xs mb-4">
+                Vínculo direto por regime foi descontinuado — essas tarefas ainda usam o mecanismo antigo.
+                Recrie pela aba Atividade escolhendo a atividade certa e este regime, depois remova daqui.
+              </p>
+              {tarefasLegadoRegime.length === 0 ? (
+                <p className="text-[var(--fg)]/40 text-sm">Nenhum vínculo antigo restante.</p>
+              ) : (
+                <div className="space-y-2">
+                  {tarefasLegadoRegime.map(t => (
+                    <div key={t.id} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[var(--fg)]/3">
+                      <span className={`flex-1 text-sm ${t.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
+                        {t.nome}
+                      </span>
+                      <button onClick={() => handleRemoverLegado(t.id)} className="text-xs text-red-400/70 hover:text-red-400">
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+
           ) : tarefas.length === 0 ? (
             <p className="text-[var(--fg)]/40 text-sm">Nenhuma tarefa cadastrada no catálogo desse setor ainda.</p>
+
+          ) : entidadeTipo === 'atividade' ? (
+            <div className="space-y-2">
+              {tarefas.map(t => {
+                const regimeId = vinculosAtividade.get(t.id)
+                const vinculada = vinculosAtividade.has(t.id)
+                return (
+                  <div key={t.id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--fg)]/5">
+                    <label className="flex items-center gap-3 cursor-pointer flex-1">
+                      <input
+                        type="checkbox"
+                        checked={vinculada}
+                        onChange={() => handleToggleAtividade(t.id)}
+                        className="accent-[var(--accent)]"
+                      />
+                      <span className={`text-sm ${t.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
+                        {t.nome}
+                      </span>
+                    </label>
+                    <select
+                      value={regimeId ?? ''}
+                      onChange={e => handleRegimeChange(t.id, e.target.value)}
+                      disabled={!vinculada}
+                      className={selectCls}
+                    >
+                      <option value="">Todos os regimes</option>
+                      {regimes.map(r => (
+                        <option key={r.id} value={r.id}>{r.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              })}
+            </div>
+
           ) : (
             <div className="space-y-2">
               {tarefas.map(t => (
@@ -92,7 +213,7 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
                   <input
                     type="checkbox"
                     checked={vinculadas.has(t.id)}
-                    onChange={() => toggle(t.id)}
+                    onChange={() => toggleGrupo(t.id)}
                     className="accent-[var(--accent)]"
                   />
                   <span className={`text-sm ${t.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
