@@ -61,6 +61,9 @@ export interface ClienteFiscal {
   declaracao_anual: boolean
   tarefas_personalizadas: string[]
   ativo: boolean
+  faz_dossie: boolean
+  dossie_status: 'NAO_POSSUI' | 'EM_ATUALIZACAO' | 'CONCLUIDO'
+  dossie_finalizado: boolean
 }
 
 export interface Tarefa {

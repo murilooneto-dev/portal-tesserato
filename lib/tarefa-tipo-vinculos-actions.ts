@@ -2,7 +2,7 @@
 
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { UserSetor } from '@/lib/types'
+import type { UserSetor, TipoResposta } from '@/lib/types'
 
 export type TipoEntidadeVinculo = 'regime' | 'grupo' | 'atividade'
 
@@ -17,6 +17,8 @@ export interface TarefaTipoResumo {
   nome: string
   ativo: boolean
   responsavelId: string | null
+  tipoResposta: TipoResposta
+  etapas: string[] | null
 }
 
 export interface UsuarioDoSetor {
@@ -44,7 +46,7 @@ export async function listarTarefaTiposDoSetor(
 
   const { data, error: queryError } = await supabase
     .from('tarefa_tipos')
-    .select('id, nome, ativo, responsavel_id')
+    .select('id, nome, ativo, responsavel_id, tipo_resposta, etapas')
     .eq('setor', setor)
     .order('nome')
 
@@ -55,6 +57,8 @@ export async function listarTarefaTiposDoSetor(
       nome: t.nome as string,
       ativo: t.ativo as boolean,
       responsavelId: t.responsavel_id as string | null,
+      tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
+      etapas: t.etapas as string[] | null,
     })),
     error: null,
   }
@@ -90,6 +94,26 @@ export async function atualizarResponsavelTarefaTipo(
   revalidatePath('/admin/configuracoes')
   revalidatePath('/fiscal/minhas-tarefas')
   revalidatePath('/fiscal/tarefas')
+  return { error: null }
+}
+
+// Só o formato (tipo_resposta/etapas) é editável — o nome fica fixo porque
+// `tarefas.tipo` e `clientes_fiscal.tarefas_personalizadas` guardam esse
+// nome como texto livre, sem FK; renomear aqui deixaria esses registros
+// órfãos silenciosamente.
+export async function atualizarFormatoTarefaTipo(
+  id: string,
+  tipoResposta: TipoResposta,
+  etapas: string[] | null,
+): Promise<{ error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { error }
+
+  const { error: updateError } = await supabase
+    .from('tarefa_tipos').update({ tipo_resposta: tipoResposta, etapas }).eq('id', id)
+  if (updateError) return { error: updateError.message }
+
+  revalidatePath('/admin/configuracoes')
   return { error: null }
 }
 
