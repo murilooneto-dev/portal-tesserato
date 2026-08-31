@@ -8,6 +8,7 @@ import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, ClienteComFiscal } from '@
 import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } from '@/lib/calendario'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
+import { bucketDoRegime } from '@/lib/regime-bucket'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
 
@@ -46,7 +47,8 @@ export default async function DashboardPage() {
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
-    tiposMap[c.id] = new Set(calcularTarefasEsperadas(c, mapaVinculos))
+    // Vínculo por Grupo agora deriva do Regime — ver lib/regime-bucket.ts.
+    tiposMap[c.id] = new Set(calcularTarefasEsperadas({ ...c, grupo: bucketDoRegime(c.regime) }, mapaVinculos))
   }
   for (const t of ts) {
     if (t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)) tiposMap[t.cliente_id]?.add(t.tipo)
@@ -56,10 +58,10 @@ export default async function DashboardPage() {
   const concluidasTarefas = ts.filter(t => t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)).length
   const pct = totalTarefas > 0 ? Math.round((concluidasTarefas / totalTarefas) * 100) : 0
 
-  const normal  = cs.filter(c => (c.grupo ?? 'normal') === 'normal').length
-  const simples = cs.filter(c => c.grupo === 'simples').length
-  const mei     = cs.filter(c => c.grupo === 'mei').length
-  const isento  = cs.filter(c => c.grupo === 'isento').length
+  const normal  = cs.filter(c => bucketDoRegime(c.regime) === 'normal').length
+  const simples = cs.filter(c => bucketDoRegime(c.regime) === 'simples').length
+  const mei     = cs.filter(c => bucketDoRegime(c.regime) === 'mei').length
+  const isento  = cs.filter(c => bucketDoRegime(c.regime) === 'isento').length
 
   const alertas = ehMesAtual
     ? eventos
