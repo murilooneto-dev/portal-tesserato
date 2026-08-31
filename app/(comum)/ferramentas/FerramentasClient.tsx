@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
+import { bucketDoRegime } from '@/lib/regime-bucket'
 
 interface Props {
   clientes: ClienteComFiscal[]
@@ -37,7 +38,7 @@ function filtrarClientes(clientes: ClienteComFiscal[], tipo: Ferramenta): Client
   switch (tipo) {
     case 'SIGA': return clientes.filter(c => c.confere_siga)
     case 'ISS':  return clientes.filter(c => c.envia_iss)
-    case 'MEI':  return clientes.filter(c => c.grupo?.toLowerCase() === 'mei')
+    case 'MEI':  return clientes.filter(c => bucketDoRegime(c.regime) === 'mei')
   }
 }
 

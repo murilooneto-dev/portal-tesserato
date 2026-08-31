@@ -9,6 +9,14 @@ import type { PendenciaVinculo } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
 import EmpresaModal from './EmpresaModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import { bucketDoRegime, type GrupoBucket } from '@/lib/regime-bucket'
+
+const LABEL_BUCKET: Record<GrupoBucket, string> = {
+  normal: 'Regime Normal',
+  simples: 'Simples Nacional',
+  mei: 'MEI',
+  isento: 'Isento',
+}
 
 const CORES_REGIME: Record<string, string> = {
   simples:   '#10b981',
@@ -81,7 +89,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
       ) return false
     }
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
-    if (filtroGrupo !== 'TODOS' && c.grupo !== filtroGrupo) return false
+    if (filtroGrupo !== 'TODOS' && bucketDoRegime(c.regime) !== filtroGrupo) return false
     if (filtroAtividade !== 'TODOS' && !(c.atividade ?? []).includes(filtroAtividade)) return false
     if (filtroPrioridade !== 'TODOS' && String(c.prioridade ?? '') !== filtroPrioridade) return false
     if (filtroPendencia && !comPendencia.has(c.id)) return false
@@ -107,7 +115,9 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
         </select>
         <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todos</option>
-          {catalogo.grupos.map(g => <option key={g} value={g} className="bg-[var(--bg-surface)]">{g}</option>)}
+          {(Object.keys(LABEL_BUCKET) as GrupoBucket[]).map(b => (
+            <option key={b} value={b} className="bg-[var(--bg-surface)]">{LABEL_BUCKET[b]}</option>
+          ))}
         </select>
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as atividades</option>

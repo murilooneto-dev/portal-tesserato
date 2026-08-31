@@ -7,6 +7,7 @@ import { nomesTarefaTipoData, type ClienteFiltro } from '@/lib/preenchimento-rap
 import { toggleTarefaFiscal } from '@/app/fiscal/clientes/actions'
 import PreenchimentoRapido from '@/components/PreenchimentoRapido'
 import type { Tarefa } from '@/lib/types'
+import { bucketDoRegime } from '@/lib/regime-bucket'
 
 export const metadata = { title: 'Preenchimento Rápido — Tesserato Fiscal' }
 
@@ -49,7 +50,8 @@ export default async function PreenchimentoRapidoFiscalPage() {
     return {
       id: r.id,
       nome: r.nome,
-      grupo: r.clientes_fiscal.grupo,
+      // Vínculo por Grupo agora deriva do Regime — ver lib/regime-bucket.ts.
+      grupo: bucketDoRegime(r.clientes_fiscal.regime),
       regime: r.clientes_fiscal.regime,
       atividade: r.clientes_fiscal.atividade,
       responsavel: r.clientes_fiscal.responsavel,

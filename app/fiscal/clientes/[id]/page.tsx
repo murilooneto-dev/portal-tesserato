@@ -20,6 +20,7 @@ import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
+import { bucketDoRegime } from '@/lib/regime-bucket'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -55,7 +56,9 @@ export default async function ClienteDetalhePage({ params }: Props) {
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
 
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
-  const tarefasBaseFiscal = calcularTarefasEsperadas(cliente, mapaVinculos)
+  // Vínculo por Grupo agora deriva do Regime (texto livre) em vez do campo
+  // Grupo em si — ver lib/regime-bucket.ts pro porquê.
+  const tarefasBaseFiscal = calcularTarefasEsperadas({ ...cliente, grupo: bucketDoRegime(cliente.regime) }, mapaVinculos)
   const parcelamentoIdsDaFicha = Array.from(new Set(
     (tarefas ?? []).filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
   ))
@@ -225,7 +228,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
       <TarefaChecklist
         clienteId={id}
         clienteNome={cliente.nome}
-        grupo={cliente.grupo ?? 'normal'}
+        grupo={bucketDoRegime(cliente.regime)}
         tarefasPersonalizadas={tarefasPersonalizadasVisiveis}
         tarefas={tarefas ?? []}
         vinculos={vinculos}
