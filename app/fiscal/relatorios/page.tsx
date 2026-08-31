@@ -9,6 +9,7 @@ import { useMesAno } from '@/lib/mes-atual-context'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas, type MapaVinculosSetor } from '@/lib/tarefas-esperadas'
+import { bucketDoRegime } from '@/lib/regime-bucket'
 
 const TAREFAS: Record<string, string[]> = {
   normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
@@ -18,7 +19,8 @@ const TAREFAS: Record<string, string[]> = {
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
 function progresso(cliente: ClienteComFiscal, tarefas: Tarefa[], mapa: MapaVinculosSetor) {
-  const tipos = new Set(calcularTarefasEsperadas(cliente, mapa))
+  // Vínculo por Grupo agora deriva do Regime — ver lib/regime-bucket.ts.
+  const tipos = new Set(calcularTarefasEsperadas({ ...cliente, grupo: bucketDoRegime(cliente.regime) }, mapa))
   const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.has(t.tipo))
   const total = tipos.size
   const feitas = clienteTarefas.filter(t => t.concluida).length
@@ -84,14 +86,14 @@ export default function RelatoriosPage() {
     ? ['TODOS', ...Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[]))]
     : []
 
-  const atividades = Array.from(new Set(clientes.map(c => c.atividade).filter(Boolean) as string[])).sort()
-  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
+  const atividades = Array.from(new Set(clientes.flatMap(c => c.atividade ?? []))).sort()
+  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas({ ...c, grupo: bucketDoRegime(c.regime) }, mapaVinculos)))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
-    .filter(c => filtroGrupo === 'TODOS' || c.grupo === filtroGrupo)
-    .filter(c => filtroAtividade === 'TODAS' || c.atividade === filtroAtividade)
-    .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas(c, mapaVinculos).includes(filtroTarefa))
+    .filter(c => filtroGrupo === 'TODOS' || bucketDoRegime(c.regime) === filtroGrupo)
+    .filter(c => filtroAtividade === 'TODAS' || (c.atividade ?? []).includes(filtroAtividade))
+    .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas({ ...c, grupo: bucketDoRegime(c.regime) }, mapaVinculos).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas, mapaVinculos) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
     .sort((a, b) => {
@@ -149,7 +151,7 @@ export default function RelatoriosPage() {
       <td>${i+1}</td>
       <td><strong>${r.cliente.nome}</strong></td>
       <td>${r.cliente.cnpj ?? '—'}</td>
-      <td><span class="badge ${r.cliente.grupo ?? 'normal'}">${r.cliente.regime ?? r.cliente.grupo ?? '—'}</span></td>
+      <td><span class="badge ${bucketDoRegime(r.cliente.regime)}">${r.cliente.regime ?? r.cliente.grupo ?? '—'}</span></td>
       <td>${r.cliente.responsavel ?? '—'}</td>
       <td><span class="bar-bg"><span class="bar-fill" style="width:${r.pct}%"></span></span>${r.pct}%</td>
       <td>${r.pct === 100 ? '✓ Concluído' : r.pendentes.join(', ')}</td>
@@ -266,9 +268,9 @@ export default function RelatoriosPage() {
                 <td className="px-4 py-3 text-[var(--fg)]/50 text-xs font-mono">{r.cliente.cnpj ?? '—'}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    r.cliente.grupo === 'simples' ? 'bg-green-500/15 text-green-400' :
-                    r.cliente.grupo === 'mei' ? 'bg-amber-500/15 text-amber-400' :
-                    r.cliente.grupo === 'isento' ? 'bg-slate-500/15 text-slate-400' :
+                    bucketDoRegime(r.cliente.regime) === 'simples' ? 'bg-green-500/15 text-green-400' :
+                    bucketDoRegime(r.cliente.regime) === 'mei' ? 'bg-amber-500/15 text-amber-400' :
+                    bucketDoRegime(r.cliente.regime) === 'isento' ? 'bg-slate-500/15 text-slate-400' :
                     'bg-blue-500/15 text-blue-400'
                   }`}>{r.cliente.regime ?? r.cliente.grupo ?? '—'}</span>
                 </td>

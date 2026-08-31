@@ -17,7 +17,7 @@ export const SETOR_HOME: Record<UserSetor, string> = {
   fiscal: '/fiscal/dashboard',
   contabil: '/contabil/dashboard',
   pessoal: '/pessoal/dashboard',
-  societario: '/societario',
+  societario: '/societario/procedimentos',
   financeiro: '/financeiro',
 }
 
@@ -48,7 +48,7 @@ export interface ClienteFiscal {
   cliente_id: string
   cod: string | null
   regime: string | null
-  atividade: string | null
+  atividade: string[]
   responsavel: string | null
   grupo: string | null
   obs: string | null
@@ -61,6 +61,9 @@ export interface ClienteFiscal {
   declaracao_anual: boolean
   tarefas_personalizadas: string[]
   ativo: boolean
+  faz_dossie: boolean
+  dossie_status: 'NAO_POSSUI' | 'EM_ATUALIZACAO' | 'CONCLUIDO'
+  dossie_finalizado: boolean
 }
 
 export interface Tarefa {
@@ -110,7 +113,7 @@ export interface BotEvento {
 
 export interface ClienteContabil {
   cliente_id: string
-  atividade: string | null
+  atividade: string[]
   regime: string | null
   responsavel: string | null
   prioridade: number
@@ -121,7 +124,7 @@ export interface ClienteContabil {
 
 export interface ClientePessoal {
   cliente_id: string
-  atividade: string | null
+  atividade: string[]
   regime: string | null
   responsavel: string | null
   prioridade: number
@@ -202,6 +205,15 @@ export interface TarefaArquivo {
 export interface EventoArquivo {
   id: string
   evento_id: string
+  name: string
+  size: number
+  content_base64: string
+  uploaded_at: string
+}
+
+export interface ProcedimentoArquivo {
+  id: string
+  procedimento_id: string
   name: string
   size: number
   content_base64: string

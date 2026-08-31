@@ -1,10 +1,5 @@
-export const metadata = { title: 'Societário — Tesserato' }
+import { redirect } from 'next/navigation'
 
 export default function SocietarioPage() {
-  return (
-    <div className="p-8 max-w-2xl mx-auto text-center mt-20">
-      <h1 className="text-2xl font-bold text-[var(--fg)] mb-2">Setor Societário</h1>
-      <p className="text-[var(--fg)]/50">Em construção — as telas deste setor chegam em breve.</p>
-    </div>
-  )
+  redirect('/societario/procedimentos')
 }

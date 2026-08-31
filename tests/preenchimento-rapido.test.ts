@@ -71,3 +71,25 @@ test('tarefasTipoDataVinculadas: valor sem vínculo cadastrado devolve lista vaz
   const tarefas = tarefasTipoDataVinculadas(mapa, 'regime', 'Inexistente', new Set(['DAS']))
   assert.deepEqual(tarefas, [])
 })
+
+test('valoresDistintos: campo atividade achata os arrays e ordena', () => {
+  const valores = valoresDistintos(
+    [
+      { id: '1', nome: 'A', atividade: ['Serviço', 'Comércio'] },
+      { id: '2', nome: 'B', atividade: ['Comércio'] },
+      { id: '3', nome: 'C', atividade: null },
+    ],
+    'atividade',
+  )
+  assert.deepEqual(valores, ['Comércio', 'Serviço'])
+})
+
+test('clientesPorValor: campo atividade filtra quem tem aquele valor entre as suas', () => {
+  const clientes = [
+    { id: '1', nome: 'A', atividade: ['Serviço', 'Comércio'] },
+    { id: '2', nome: 'B', atividade: ['Comércio'] },
+    { id: '3', nome: 'C', atividade: ['Indústria'] },
+  ]
+  const filtrados = clientesPorValor(clientes, 'atividade', 'Comércio')
+  assert.deepEqual(filtrados.map(c => c.id), ['1', '2'])
+})

@@ -8,7 +8,7 @@ export interface ClienteFiltro {
   nome: string
   grupo?: string | null
   regime?: string | null
-  atividade?: string | null
+  atividade?: string[] | null
 }
 
 export interface TarefaTipoRaw {
@@ -30,6 +30,10 @@ export function nomesTarefaTipoData(tipos: TarefaTipoRaw[]): string[] {
 export function valoresDistintos(clientes: ClienteFiltro[], campo: CampoFiltro): string[] {
   const valores = new Set<string>()
   for (const c of clientes) {
+    if (campo === 'atividade') {
+      for (const v of c.atividade ?? []) valores.add(v)
+      continue
+    }
     const v = c[campo]
     if (v) valores.add(v)
   }
@@ -41,13 +45,15 @@ export function clientesPorValor(
   campo: CampoFiltro,
   valor: string,
 ): ClienteFiltro[] {
+  if (campo === 'atividade') {
+    return clientes.filter(c => (c.atividade ?? []).includes(valor))
+  }
   return clientes.filter(c => c[campo] === valor)
 }
 
-const CHAVE_MAPA: Record<CampoFiltro, keyof MapaVinculosSetor> = {
+const CHAVE_MAPA: Record<'grupo' | 'regime', keyof Pick<MapaVinculosSetor, 'porGrupo' | 'porRegime'>> = {
   grupo: 'porGrupo',
   regime: 'porRegime',
-  atividade: 'porAtividade',
 }
 
 export function tarefasTipoDataVinculadas(
@@ -56,7 +62,14 @@ export function tarefasTipoDataVinculadas(
   valor: string,
   tiposData: Set<string>,
 ): string[] {
-  const nomes = mapa[CHAVE_MAPA[campo]][valor] ?? []
+  // porAtividade guarda { tarefa, regimeNome } (suporte a vínculo
+  // atividade+regime, ver lib/tarefas-esperadas.ts) — aqui não filtramos
+  // por regime, mesmo comportamento de sempre desta tela (agrupa por
+  // atividade/grupo/regime do cliente, nunca foi regime-consciente pro
+  // caso de vínculo de atividade).
+  const nomes = campo === 'atividade'
+    ? (mapa.porAtividade[valor] ?? []).map(e => e.tarefa)
+    : (mapa[CHAVE_MAPA[campo]][valor] ?? [])
   const filtradas = new Set(nomes.filter(n => tiposData.has(n)))
   return Array.from(filtradas).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }

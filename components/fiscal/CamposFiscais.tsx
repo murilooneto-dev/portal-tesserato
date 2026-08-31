@@ -1,17 +1,19 @@
 'use client'
 
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import SeletorAtividades from '@/components/geral/SeletorAtividades'
 
 export interface CamposFiscaisData {
   cod: string
   regime: string
-  atividade: string
+  atividade: string[]
   grupo: string
   responsavel: string
   prioridade: number
   declaracao_anual: boolean
   envia_iss: boolean
   confere_siga: boolean
+  faz_dossie: boolean
   login_iss: string
   senha_iss: string
   email_envio_iss: string
@@ -58,13 +60,12 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
       {/* Atividade */}
       <div>
         <label className={labelCls}>Atividade</label>
-        <select className={selectCls} value={form.atividade} onChange={e => set('atividade', e.target.value)} disabled={readOnly}>
-          <option value="">Selecionar...</option>
-          {form.atividade && !catalogo.atividades.includes(form.atividade) && (
-            <option value={form.atividade} className="bg-[var(--bg-surface)]">{form.atividade} (atual)</option>
-          )}
-          {catalogo.atividades.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
-        </select>
+        <SeletorAtividades
+          valores={form.atividade}
+          opcoes={catalogo.atividades}
+          onChange={v => set('atividade', v)}
+          readOnly={readOnly}
+        />
       </div>
 
       {/* Checkbox Envia ISS */}
@@ -106,6 +107,14 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
         <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 transition-all">
           <input type="checkbox" checked={form.confere_siga} onChange={e => set('confere_siga', e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" disabled={readOnly} />
           <span className="text-xs font-bold uppercase tracking-widest text-[var(--fg)]/40">Confere SIGA?</span>
+        </label>
+      </div>
+
+      {/* Checkbox Faz Dossiê */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 transition-all">
+          <input type="checkbox" checked={form.faz_dossie} onChange={e => set('faz_dossie', e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" disabled={readOnly} />
+          <span className="text-xs font-bold uppercase tracking-widest text-[var(--fg)]/40">Faz Dossiê?</span>
         </label>
       </div>
 

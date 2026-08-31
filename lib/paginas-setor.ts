@@ -18,6 +18,7 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'relatorios', label: 'Relatórios' },
     { slug: 'parcelamentos', label: 'Parcelamentos' },
     { slug: 'preenchimento-rapido', label: 'Preenchimento Rápido' },
+    { slug: 'minhas-tarefas', label: 'Minhas Tarefas' },
   ],
   contabil: [
     { slug: 'dashboard', label: 'Dashboard' },
@@ -33,6 +34,9 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'calendario', label: 'Calendário' },
     { slug: 'preenchimento-rapido', label: 'Preenchimento Rápido' },
   ],
-  societario: [],
+  societario: [
+    { slug: 'procedimentos', label: 'Procedimentos' },
+    { slug: 'clientes', label: 'Clientes' },
+  ],
   financeiro: [],
 }

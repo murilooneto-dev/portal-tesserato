@@ -9,6 +9,14 @@ import type { PendenciaVinculo } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
 import EmpresaModal from './EmpresaModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import { bucketDoRegime, type GrupoBucket } from '@/lib/regime-bucket'
+
+const LABEL_BUCKET: Record<GrupoBucket, string> = {
+  normal: 'Regime Normal',
+  simples: 'Simples Nacional',
+  mei: 'MEI',
+  isento: 'Isento',
+}
 
 const CORES_REGIME: Record<string, string> = {
   simples:   '#10b981',
@@ -64,7 +72,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
 
 
   const atividades = useMemo(() => ['TODOS', ...Array.from(new Set(
-    clientes.map(c => c.atividade ?? '').filter(Boolean)
+    clientes.flatMap(c => c.atividade ?? [])
   )).sort()], [clientes])
 
   const prioridades = useMemo(() => Array.from(new Set(
@@ -81,8 +89,8 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
       ) return false
     }
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
-    if (filtroGrupo !== 'TODOS' && c.grupo !== filtroGrupo) return false
-    if (filtroAtividade !== 'TODOS' && c.atividade !== filtroAtividade) return false
+    if (filtroGrupo !== 'TODOS' && bucketDoRegime(c.regime) !== filtroGrupo) return false
+    if (filtroAtividade !== 'TODOS' && !(c.atividade ?? []).includes(filtroAtividade)) return false
     if (filtroPrioridade !== 'TODOS' && String(c.prioridade ?? '') !== filtroPrioridade) return false
     if (filtroPendencia && !comPendencia.has(c.id)) return false
     if (!mostrarDesabilitados && c.ativo === false) return false
@@ -107,7 +115,9 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
         </select>
         <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todos</option>
-          {catalogo.grupos.map(g => <option key={g} value={g} className="bg-[var(--bg-surface)]">{g}</option>)}
+          {(Object.keys(LABEL_BUCKET) as GrupoBucket[]).map(b => (
+            <option key={b} value={b} className="bg-[var(--bg-surface)]">{LABEL_BUCKET[b]}</option>
+          ))}
         </select>
         <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as atividades</option>
@@ -214,11 +224,11 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
                     {cliente.regime.split('/')[0].trim()}
                   </span>
                 )}
-                {cliente.atividade && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-                    {cliente.atividade}
+                {(cliente.atividade ?? []).map(a => (
+                  <span key={a} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+                    {a}
                   </span>
-                )}
+                ))}
                 {cliente.responsavel && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
                     style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>

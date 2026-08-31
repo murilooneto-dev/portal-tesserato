@@ -6,6 +6,7 @@ import type { VinculoStatus } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
 import { desbloquearTarefa, salvarMIT } from '@/app/fiscal/clientes/actions'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
+import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -29,6 +30,7 @@ interface Props {
   onToggle: (tipo: string, concluida: boolean, data?: string) => Promise<void>
   onOptimisticUnlock?: (tipo: string) => void
   podeEditar: boolean
+  podeEditarPorTipo?: Record<string, boolean>
   tarefaTipos?: Record<string, TipoInfo>
   etapas?: TarefaEtapa[]
   arquivos?: Omit<TarefaArquivo, 'content_base64'>[]
@@ -37,32 +39,6 @@ interface Props {
   onSalvarTexto?: (tipo: string, texto: string) => Promise<void>
   onUploadArquivo?: (tipo: string, formData: FormData) => Promise<{ error: string | null }>
   onExcluirArquivo?: (arquivoId: string) => Promise<void>
-}
-
-function isoParaDisplay(iso: string): string {
-  if (!iso) return ''
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
-}
-
-function displayParaIso(display: string): string | null {
-  const digits = display.replace(/\D/g, '')
-  if (digits.length !== 8) return null
-  const d = digits.slice(0, 2)
-  const m = digits.slice(2, 4)
-  const y = digits.slice(4, 8)
-  if (parseInt(y, 10) < 1000) return null
-  const iso = `${y}-${m}-${d}`
-  const dateObj = new Date(iso + 'T12:00:00')
-  if (isNaN(dateObj.getTime())) return null
-  return iso
-}
-
-function autoFormatarData(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 8)
-  if (digits.length > 4) return `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`
-  if (digits.length > 2) return `${digits.slice(0,2)}/${digits.slice(2)}`
-  return digits
 }
 
 function formatBytes(bytes: number) {
@@ -85,6 +61,7 @@ export default function TarefaChecklist({
   onToggle,
   onOptimisticUnlock,
   podeEditar,
+  podeEditarPorTipo,
   tarefaTipos = {},
   etapas = [],
   arquivos = [],
@@ -110,6 +87,10 @@ export default function TarefaChecklist({
   const tipos = tarefasPersonalizadas
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
   const total = tipos.length
+
+  function podeEditarTipo(tipo: string): boolean {
+    return podeEditarPorTipo?.[tipo] ?? podeEditar
+  }
 
   function getSavedIso(tipo: string): string {
     if (tipo in optimisticDates) return optimisticDates[tipo] ?? ''
@@ -316,7 +297,7 @@ export default function TarefaChecklist({
                     value={displayVal}
                     onChange={e => handleTextChange(tipo, e.target.value)}
                     onBlur={() => handleTextBlur(tipo)}
-                    disabled={!podeEditar || isPending || isUnlocking}
+                    disabled={!podeEditarTipo(tipo) || isPending || isUnlocking}
                     placeholder="DD/MM/AAAA"
                     maxLength={10}
                     className={`text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
@@ -327,7 +308,7 @@ export default function TarefaChecklist({
                   />
                 ) : null}
 
-                {feito && podeEditar && !etapasDefinidas && tipoResposta === 'data' && (
+                {feito && podeEditarTipo(tipo) && !etapasDefinidas && tipoResposta === 'data' && (
                   <button
                     onClick={() => setUnlockingTipo(isUnlocking ? null : tipo)}
                     className="text-xs text-[var(--fg)]/30 hover:text-[var(--fg)]/60 px-2 py-1 rounded-lg border border-[var(--fg)]/8 hover:border-[var(--fg)]/20 transition-all whitespace-nowrap"
@@ -370,7 +351,7 @@ export default function TarefaChecklist({
                           value={etapaDisplay}
                           onChange={e => handleEtapaTextChange(tipo, etapaNome, e.target.value)}
                           onBlur={() => handleEtapaTextBlur(tipo, etapaNome)}
-                          disabled={!podeEditar || isPending}
+                          disabled={!podeEditarTipo(tipo) || isPending}
                           placeholder="DD/MM/AAAA"
                           maxLength={10}
                           className={inputCls(etapaFeita)}
@@ -387,13 +368,13 @@ export default function TarefaChecklist({
                     value={getRespostaTexto(tipo)}
                     onChange={e => handleRespostaTextoChange(tipo, e.target.value)}
                     onBlur={() => handleRespostaTextoBlur(tipo)}
-                    disabled={!podeEditar || isPending}
+                    disabled={!podeEditarTipo(tipo) || isPending}
                     placeholder="Digite a resposta..."
                     rows={2}
                     className="w-full px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50 disabled:opacity-40"
                   />
                   <div className="flex items-center gap-2 flex-wrap">
-                    {podeEditar && (
+                    {podeEditarTipo(tipo) && (
                       <label className={`text-[10px] px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
                         uploadingTipo === tipo
                           ? 'opacity-50 pointer-events-none'
@@ -416,7 +397,7 @@ export default function TarefaChecklist({
                           📎 {arq.name}
                         </a>
                         · {formatBytes(arq.size)}
-                        {podeEditar && (
+                        {podeEditarTipo(tipo) && (
                           <button type="button" onClick={() => handleExcluirArquivo(arq.id)}
                             className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
                         )}
