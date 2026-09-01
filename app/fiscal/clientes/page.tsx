@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import ClientesLista from '@/components/fiscal/ClientesLista'
 import { getMesAno } from '@/lib/mes-atual-server'
@@ -5,6 +6,7 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
+import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import type { Tarefa } from '@/lib/types'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 
@@ -13,24 +15,40 @@ export const metadata = { title: 'Clientes — Tesserato Fiscal' }
 export default async function ClientesPage() {
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+
   const { mes, ano } = await getMesAno()
 
   const catalogo = await buscarCatalogoCliente(supabase, 'fiscal')
 
   const clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
+  const tarefaTiposQ = supabase.from('tarefa_tipos').select('nome, responsavel_id').eq('setor', 'fiscal')
 
-  const [{ data: clientesRaw }, tarefas] = await Promise.all([
+  const [{ data: clientesRaw }, tarefas, { data: tarefaTiposRaw }] = await Promise.all([
     clientesQ,
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo'>>(supabase, mes, ano, 'cliente_id, concluida, tipo'),
+    tarefaTiposQ,
   ])
   const clientes = (clientesRaw ?? []).map(flattenClienteFiscal)
 
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
 
-  // Mapa de tipos por cliente
+  const responsavelIdPorTipo = new Map(
+    (tarefaTiposRaw ?? []).map(t => [t.nome as string, t.responsavel_id as string | null])
+  )
+
+  // Mapa de tipos por cliente — só os visíveis pro usuário logado, senão
+  // uma tarefa de responsável exclusivo alheio infla a % e a pendência de
+  // quem não deveria nem ver essa tarefa (ver app/fiscal/tarefas/page.tsx
+  // e app/fiscal/clientes/[id]/page.tsx, que já fazem esse filtro).
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of clientes) {
-    tiposMap[c.id] = new Set(calcularTarefasEsperadas(c, mapaVinculos))
+    const tipos = calcularTarefasEsperadas(c, mapaVinculos)
+      .filter(tipo => tipoVisivelParaUsuario(responsavelIdPorTipo.get(tipo), user.id, profile?.role))
+    tiposMap[c.id] = new Set(tipos)
   }
 
   // Progresso por cliente

@@ -5,6 +5,7 @@ import { Fragment, useState, useTransition } from 'react'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
 import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
 import { desbloquearTarefa, marcarSemMovimento } from '@/app/fiscal/clientes/actions'
+import type { StatusFiltroMinhasTarefas } from './MinhasTarefasFiltro'
 
 interface Props {
   tipo: string
@@ -16,6 +17,8 @@ interface Props {
   mes: number
   ano: number
   usuarioNome: string
+  busca: string
+  statusFiltro: StatusFiltroMinhasTarefas
   onToggle: (clienteId: string, tipo: string, concluida: boolean, data?: string) => Promise<void>
   onAtualizarEtapa: (clienteId: string, tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
 }
@@ -36,6 +39,8 @@ export default function MinhasTarefasSecao({
   mes,
   ano,
   usuarioNome,
+  busca,
+  statusFiltro,
   onToggle,
   onAtualizarEtapa,
 }: Props) {
@@ -124,6 +129,18 @@ export default function MinhasTarefasSecao({
     startTransition(() => { marcarSemMovimento(clienteId, tipo, mes, ano, novo) })
   }
 
+  function statusBate(clienteId: string): boolean {
+    if (statusFiltro === 'TODOS') return true
+    if (statusFiltro === 'SEM_MOVIMENTO') return getSemMovimento(clienteId)
+    const concluida = !!mapaTarefa.get(clienteId)?.concluida
+    if (statusFiltro === 'CONCLUIDA') return concluida && !getSemMovimento(clienteId)
+    return !concluida // PENDENTE
+  }
+
+  const clientesFiltrados = clientes.filter(c =>
+    c.nome.toLowerCase().includes(busca.toLowerCase()) && statusBate(c.id)
+  )
+
   async function handleUnlock(clienteId: string, clienteNome: string) {
     const motivoTrim = motivo.trim()
     if (!motivoTrim) return
@@ -155,6 +172,8 @@ export default function MinhasTarefasSecao({
         <p className="text-sm text-[var(--fg)]/40">
           Esse tipo não é de data/etapas — edite pela ficha de cada cliente.
         </p>
+      ) : clientesFiltrados.length === 0 ? (
+        <p className="text-sm text-[var(--fg)]/40">Nenhum cliente encontrado com esse filtro.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -170,7 +189,7 @@ export default function MinhasTarefasSecao({
               </tr>
             </thead>
             <tbody>
-              {clientes.map(cliente => {
+              {clientesFiltrados.map(cliente => {
                 const semMovimentoAtivo = getSemMovimento(cliente.id)
                 return (
                 <Fragment key={cliente.id}>
