@@ -142,7 +142,7 @@ export default function MinhasTarefasSecao({
   const clientesFiltrados = clientes.filter(c =>
     c.nome.toLowerCase().includes(busca.toLowerCase())
     && statusBate(c.id)
-    && (atividadeFiltro.length === 0 || atividadeFiltro.every(a => c.atividade.includes(a)))
+    && (atividadeFiltro.length === 0 || (c.atividade.length === atividadeFiltro.length && atividadeFiltro.every(a => c.atividade.includes(a))))
   )
 
   async function handleUnlock(clienteId: string, clienteNome: string) {

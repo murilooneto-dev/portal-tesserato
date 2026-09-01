@@ -96,7 +96,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     }
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
     if (filtroGrupo !== 'TODOS' && bucketDoRegime(c.regime) !== filtroGrupo) return false
-    if (filtroAtividade.length > 0 && !filtroAtividade.every(a => (c.atividade ?? []).includes(a))) return false
+    if (filtroAtividade.length > 0 && !((c.atividade ?? []).length === filtroAtividade.length && filtroAtividade.every(a => (c.atividade ?? []).includes(a)))) return false
     if (filtroPrioridade !== 'TODOS' && String(c.prioridade ?? '') !== filtroPrioridade) return false
     if (filtroPendencia && !comPendencia.has(c.id)) return false
     if (!mostrarDesabilitados && c.ativo === false) return false
