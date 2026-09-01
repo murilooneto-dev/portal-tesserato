@@ -104,9 +104,9 @@ export default function PreenchimentoRapido({
             onChange={e => handleCampoChange(e.target.value as CampoFiltro)}
             className="bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
           >
-            <option value="" disabled>Selecione...</option>
+            <option value="" disabled className="bg-[var(--bg-surface)]">Selecione...</option>
             {camposDisponiveis.map(c => (
-              <option key={c} value={c}>{LABEL_CAMPO[c]}</option>
+              <option key={c} value={c} className="bg-[var(--bg-surface)]">{LABEL_CAMPO[c]}</option>
             ))}
           </select>
         </div>
@@ -119,9 +119,9 @@ export default function PreenchimentoRapido({
               onChange={e => handleValorChange(e.target.value)}
               className="bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
             >
-              <option value="" disabled>Selecione...</option>
+              <option value="" disabled className="bg-[var(--bg-surface)]">Selecione...</option>
               {valores.map(v => (
-                <option key={v} value={v}>{v}</option>
+                <option key={v} value={v} className="bg-[var(--bg-surface)]">{v}</option>
               ))}
             </select>
           </div>

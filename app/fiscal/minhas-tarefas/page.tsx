@@ -4,7 +4,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { atualizarEtapa, toggleTarefaFiscal } from '@/app/fiscal/clientes/actions'
 import { atualizarStatusDossie, atualizarFinalizadoDossie } from '@/lib/dossie-actions'
-import MinhasTarefasSecao from '@/components/fiscal/MinhasTarefasSecao'
+import MinhasTarefasFiltro from '@/components/fiscal/MinhasTarefasFiltro'
 import MinhasTarefasTabs from '@/components/fiscal/MinhasTarefasTabs'
 import DossieSecao from '@/components/fiscal/DossieSecao'
 import type { StatusDossie } from '@/lib/status-dossie'
@@ -151,28 +151,21 @@ export default async function MinhasTarefasPage() {
 
       <MinhasTarefasTabs
         tarefasContent={
-          <div className="flex flex-col gap-8">
-            {meusTipos.map(tipoInfo => {
-              const clientesDoTipo = clientesTodos.filter(c => c.esperadas.includes(tipoInfo.nome))
-              const tarefasDoTipo = tarefas.filter(t => t.tipo === tipoInfo.nome)
-              return (
-                <MinhasTarefasSecao
-                  key={tipoInfo.nome}
-                  tipo={tipoInfo.nome}
-                  tipoResposta={tipoInfo.tipo_resposta}
-                  etapasDefinidas={tipoInfo.etapas}
-                  clientes={clientesDoTipo}
-                  tarefas={tarefasDoTipo}
-                  etapas={etapas}
-                  mes={mes}
-                  ano={ano}
-                  usuarioNome={profile?.nome ?? user.email ?? ''}
-                  onToggle={onToggle}
-                  onAtualizarEtapa={onAtualizarEtapa}
-                />
-              )
-            })}
-          </div>
+          <MinhasTarefasFiltro
+            secoes={meusTipos.map(tipoInfo => ({
+              tipo: tipoInfo.nome,
+              tipoResposta: tipoInfo.tipo_resposta,
+              etapasDefinidas: tipoInfo.etapas,
+              clientes: clientesTodos.filter(c => c.esperadas.includes(tipoInfo.nome)),
+              tarefas: tarefas.filter(t => t.tipo === tipoInfo.nome),
+            }))}
+            etapas={etapas}
+            mes={mes}
+            ano={ano}
+            usuarioNome={profile?.nome ?? user.email ?? ''}
+            onToggle={onToggle}
+            onAtualizarEtapa={onAtualizarEtapa}
+          />
         }
         dossieContent={
           <DossieSecao
