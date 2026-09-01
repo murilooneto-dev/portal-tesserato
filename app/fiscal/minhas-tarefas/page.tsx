@@ -20,6 +20,7 @@ interface ClienteRow {
     regime: string | null
     atividade: string[] | null
     tarefas_personalizadas: string[] | null
+    tarefas_excluidas: string[] | null
   }
 }
 
@@ -60,7 +61,7 @@ export default async function MinhasTarefasPage() {
   const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_fiscal!inner(grupo, regime, atividade, tarefas_personalizadas, ativo)')
+      .select('id, nome, clientes_fiscal!inner(grupo, regime, atividade, tarefas_personalizadas, tarefas_excluidas, ativo)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'fiscal'),
@@ -80,6 +81,7 @@ export default async function MinhasTarefasPage() {
         regime: r.clientes_fiscal.regime,
         atividade: r.clientes_fiscal.atividade,
         tarefas_personalizadas: r.clientes_fiscal.tarefas_personalizadas ?? [],
+        tarefas_excluidas: r.clientes_fiscal.tarefas_excluidas ?? [],
       },
       mapaVinculos,
     )
