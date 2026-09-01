@@ -4,14 +4,14 @@ import Link from 'next/link'
 import { Fragment, useState, useTransition } from 'react'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
 import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
-import { desbloquearTarefa } from '@/app/fiscal/clientes/actions'
+import { desbloquearTarefa, marcarSemMovimento } from '@/app/fiscal/clientes/actions'
 
 interface Props {
   tipo: string
   tipoResposta: TipoResposta
   etapasDefinidas: string[] | null
   clientes: { id: string; nome: string }[]
-  tarefas: Pick<Tarefa, 'id' | 'cliente_id' | 'tipo' | 'concluida' | 'concluida_em'>[]
+  tarefas: Pick<Tarefa, 'id' | 'cliente_id' | 'tipo' | 'concluida' | 'concluida_em' | 'sem_movimento'>[]
   etapas: TarefaEtapa[]
   mes: number
   ano: number
@@ -42,6 +42,7 @@ export default function MinhasTarefasSecao({
   const [, startTransition] = useTransition()
   const [overlay, setOverlay] = useState<Record<string, string | null>>({})
   const [localText, setLocalText] = useState<Record<string, string>>({})
+  const [optimisticSemMovimento, setOptimisticSemMovimento] = useState<Record<string, boolean>>({})
   const [unlockingCliente, setUnlockingCliente] = useState<string | null>(null)
   const [motivo, setMotivo] = useState('')
   const [unlockPending, setUnlockPending] = useState(false)
@@ -111,6 +112,18 @@ export default function MinhasTarefasSecao({
     setLocalText(prev => { const n = { ...prev }; delete n[key]; return n })
   }
 
+  function getSemMovimento(clienteId: string): boolean {
+    if (clienteId in optimisticSemMovimento) return optimisticSemMovimento[clienteId]
+    return !!mapaTarefa.get(clienteId)?.sem_movimento
+  }
+
+  function handleToggleSemMovimento(clienteId: string) {
+    const novo = !getSemMovimento(clienteId)
+    setOptimisticSemMovimento(prev => ({ ...prev, [clienteId]: novo }))
+    setOverlay(prev => ({ ...prev, [chave(clienteId, null)]: novo ? new Date().toISOString().slice(0, 10) : null }))
+    startTransition(() => { marcarSemMovimento(clienteId, tipo, mes, ano, novo) })
+  }
+
   async function handleUnlock(clienteId: string, clienteNome: string) {
     const motivoTrim = motivo.trim()
     if (!motivoTrim) return
@@ -153,10 +166,13 @@ export default function MinhasTarefasSecao({
                     {etapasDefinidas ? col : 'Data'}
                   </th>
                 ))}
+                <th className="text-center py-2 px-3 text-[var(--fg)]/40 font-medium whitespace-nowrap">Sem mov.</th>
               </tr>
             </thead>
             <tbody>
-              {clientes.map(cliente => (
+              {clientes.map(cliente => {
+                const semMovimentoAtivo = getSemMovimento(cliente.id)
+                return (
                 <Fragment key={cliente.id}>
                   <tr className="border-b border-[var(--fg)]/5">
                     <td className="py-2 px-3 text-[var(--fg)]">
@@ -164,7 +180,13 @@ export default function MinhasTarefasSecao({
                         {cliente.nome}
                       </Link>
                     </td>
-                    {(etapasDefinidas ?? [null]).map(etapaNome => {
+                    {semMovimentoAtivo ? (
+                      <td colSpan={(etapasDefinidas ?? [null]).length} className="text-center py-2 px-3">
+                        <span className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
+                          SEM MOVIMENTO
+                        </span>
+                      </td>
+                    ) : (etapasDefinidas ?? [null]).map(etapaNome => {
                       const iso = getSavedIso(cliente.id, etapaNome)
                       return (
                         <td key={etapaNome ?? '_'} className="text-center py-2 px-3">
@@ -180,10 +202,18 @@ export default function MinhasTarefasSecao({
                         </td>
                       )
                     })}
+                    <td className="text-center py-2 px-3">
+                      <input
+                        type="checkbox"
+                        checked={semMovimentoAtivo}
+                        onChange={() => handleToggleSemMovimento(cliente.id)}
+                        className="w-3.5 h-3.5 accent-[var(--fg)]/50 cursor-pointer"
+                      />
+                    </td>
                   </tr>
                   {!etapasDefinidas && unlockingCliente === cliente.id && (
                     <tr className="border-b border-[var(--fg)]/5">
-                      <td colSpan={2} className="px-3 pb-3">
+                      <td colSpan={3} className="px-3 pb-3">
                         <div className="p-3 bg-[var(--fg)]/3 border border-[var(--fg)]/10 rounded-xl flex flex-col gap-2">
                           <p className="text-xs text-[var(--fg)]/50">Informe o motivo para desbloquear esta tarefa:</p>
                           <textarea
@@ -213,7 +243,7 @@ export default function MinhasTarefasSecao({
                     </tr>
                   )}
                 </Fragment>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

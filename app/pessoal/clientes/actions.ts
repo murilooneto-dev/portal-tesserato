@@ -42,6 +42,45 @@ export async function toggleTarefaPessoal(
   revalidatePath('/pessoal/preenchimento-rapido')
 }
 
+// Marca a tarefa como concluída sem exigir data/etapas/texto — pra cliente
+// que não teve movimento naquela tarefa no mês. Desmarcar é direto, sem
+// motivo (Pessoal já não tem cerimônia de desbloqueio pra nada).
+export async function marcarSemMovimento(
+  clienteId: string,
+  tipo: string,
+  mes: number,
+  ano: number,
+  semMovimento: boolean,
+) {
+  if (!(await podeEditarClientePessoal(clienteId))) return
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return
+
+  const { data: existing } = await supabase
+    .from('tarefas').select('id, parcelamento_id')
+    .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'pessoal')
+    .maybeSingle()
+
+  const payload = semMovimento
+    ? { sem_movimento: true, concluida: true, concluida_em: new Date().toISOString() }
+    : { sem_movimento: false, concluida: false, concluida_em: null }
+
+  if (existing?.id) {
+    await supabase.from('tarefas').update(payload).eq('id', existing.id)
+  } else {
+    await supabase.from('tarefas')
+      .insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, setor: 'pessoal', ...payload })
+  }
+
+  if (existing?.parcelamento_id) {
+    await gravarDataParcelamento(supabase, existing.parcelamento_id, mes, null)
+  }
+
+  revalidatePath(`/pessoal/clientes/${clienteId}`)
+  revalidatePath('/pessoal/clientes')
+  revalidatePath('/pessoal/preenchimento-rapido')
+}
+
 export async function atualizarEtapa(
   clienteId: string,
   mes: number,

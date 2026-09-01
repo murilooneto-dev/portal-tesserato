@@ -24,6 +24,7 @@ interface Props {
   mes: number
   ano: number
   onToggleSimples: (tipo: string, concluida: boolean, data?: string) => Promise<void>
+  onMarcarSemMovimento: (tipo: string, semMovimento: boolean) => Promise<void>
   onAtualizarEtapa: (tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
   onSalvarTexto: (tipo: string, texto: string) => Promise<void>
   onUploadArquivo: (tipo: string, formData: FormData) => Promise<{ error: string | null }>
@@ -74,6 +75,7 @@ export default function TarefaChecklistContabil({
   mes,
   ano,
   onToggleSimples,
+  onMarcarSemMovimento,
   onAtualizarEtapa,
   onSalvarTexto,
   onUploadArquivo,
@@ -82,6 +84,7 @@ export default function TarefaChecklistContabil({
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [localText, setLocalText] = useState<Record<string, string>>({})
+  const [optimisticSemMovimento, setOptimisticSemMovimento] = useState<Record<string, boolean>>({})
   const [localResposta, setLocalResposta] = useState<Record<string, string>>({})
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null)
   const [erroUpload, setErroUpload] = useState<Record<string, string>>({})
@@ -185,6 +188,17 @@ export default function TarefaChecklistContabil({
     startTransition(() => { onExcluirArquivo(arquivoId) })
   }
 
+  function getSemMovimento(tipo: string): boolean {
+    if (tipo in optimisticSemMovimento) return optimisticSemMovimento[tipo]
+    return !!mapaTarefa.get(tipo)?.sem_movimento
+  }
+
+  function handleToggleSemMovimento(tipo: string) {
+    const novo = !getSemMovimento(tipo)
+    setOptimisticSemMovimento(prev => ({ ...prev, [tipo]: novo }))
+    startTransition(() => { onMarcarSemMovimento(tipo, novo) })
+  }
+
   const inputCls = (feito: boolean) => `text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
     feito
       ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] focus:border-[var(--accent)]/60'
@@ -213,6 +227,8 @@ export default function TarefaChecklistContabil({
           const etapasDefinidas = info?.etapas ?? null
           const tipoResposta: TipoResposta = info?.tipoResposta ?? 'data'
           const feito = !!mapaTarefa.get(tipo)?.concluida
+          const semMovimentoAtivo = getSemMovimento(tipo)
+          const mostrarCheckboxSemMovimento = podeEditar && !(feito && !semMovimentoAtivo)
           const displayVal = getDisplayValue(tipo)
           const diasPrazo = !feito ? (prazosPorTipo[normalizarTitulo(tipo)] ?? null) : null
 
@@ -236,7 +252,7 @@ export default function TarefaChecklistContabil({
                   )}
                 </span>
 
-                {tipoResposta === 'data' && !etapasDefinidas && (
+                {tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo && (
                   <input
                     type="text"
                     value={displayVal}
@@ -248,9 +264,28 @@ export default function TarefaChecklistContabil({
                     className={inputCls(feito)}
                   />
                 )}
+
+                {semMovimentoAtivo && (
+                  <span className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
+                    SEM MOVIMENTO
+                  </span>
+                )}
+
+                {mostrarCheckboxSemMovimento && (
+                  <label className="flex items-center gap-1 text-[10px] text-[var(--fg)]/40 whitespace-nowrap cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={semMovimentoAtivo}
+                      onChange={() => handleToggleSemMovimento(tipo)}
+                      disabled={isPending}
+                      className="w-3 h-3 accent-[var(--fg)]/50"
+                    />
+                    Sem mov.
+                  </label>
+                )}
               </div>
 
-              {etapasDefinidas && (
+              {etapasDefinidas && !semMovimentoAtivo && (
                 <div className="ml-5 mt-1 grid grid-cols-2 gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
                   {etapasDefinidas.map(etapaNome => {
                     const etapaFeita = !!etapasDaTarefa(tipo).find(e => e.nome === etapaNome)?.concluida
@@ -274,7 +309,7 @@ export default function TarefaChecklistContabil({
                 </div>
               )}
 
-              {tipoResposta === 'texto' && !etapasDefinidas && (
+              {tipoResposta === 'texto' && !etapasDefinidas && !semMovimentoAtivo && (
                 <div className="ml-5 mt-1 flex flex-col gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
                   <textarea
                     value={getRespostaTexto(tipo)}
