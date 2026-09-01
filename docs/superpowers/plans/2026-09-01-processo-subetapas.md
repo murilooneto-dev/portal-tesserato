@@ -4,7 +4,7 @@
 
 **Goal:** Let each etapa in a "Cadastro de Processos" tipo de processo have zero or more subetapas, each with its own formato de resposta (texto+anexo / checklist / data).
 
-**Architecture:** Normalize `processo_tipos.etapas` (today a flat `text[]`) into two new relational tables, `processo_etapas` and `processo_subetapas`. Extract the row-shaping and form-state logic into a pure module (`lib/processo-tipos.ts`) that's unit tested in isolation; the `'use server'` actions file stays thin CRUD glue (matches the existing pattern in this codebase — server actions touching Supabase are verified manually, not unit tested); the UI component composes the pure helpers.
+**Architecture:** `processo_tipos.etapas` stays exactly as it is today (a flat `text[]`) — a different, already-merged feature (`app/societario/procedimentos/page.tsx`, migration `027_procedimentos_societario.sql`) reads that column directly and keys a jsonb field by etapa NAME, so normalizing it would break shipped code. Subetapas hang off a new `processo_subetapas` table keyed by `(processo_tipo_id, etapa_nome)` instead of a normalized etapa entity. The row-shaping and form-state logic lives in a pure module (`lib/processo-tipos.ts`) unit tested in isolation; the `'use server'` actions file stays thin CRUD glue (matches the existing pattern in this codebase — server actions touching Supabase are verified manually, not unit tested); the UI component composes the pure helpers.
 
 **Tech Stack:** Next.js App Router (server actions), Supabase (Postgres + RLS), TypeScript, `node:test` + `node:assert/strict` for unit tests.
 
@@ -12,81 +12,73 @@
 
 - Spec: `docs/superpowers/specs/2026-09-01-processo-subetapas-design.md` — follow it exactly; this plan implements it.
 - No edit of etapas/subetapas after a tipo de processo is created — only create-all-at-once or delete-the-whole-tipo (spec's explicit out-of-scope).
-- `processo_tipos.etapas` (old `text[]` column) is dropped; confirmed empty in dev before this plan was written — no data migration needed.
+- `processo_tipos.etapas` (the `text[]` column) is NOT touched — no drop, no rename, no type change. `app/societario/procedimentos/page.tsx` reads it directly and must keep working unmodified.
 - Reuse the existing `exigirAdmin()` pattern (see `lib/tarefa-tipos-actions.ts`) for every server action — never skip the admin check.
 - Tailwind classes and visual style must match the existing `inputCls`/`labelCls` constants and button styles already used in `ProcessosTab.tsx` and `NovoTipoTarefaModal.tsx` — this is a catalog admin screen, not a place for new visual patterns.
 - Migrations are applied manually against the dev Supabase project (no CLI/automated pipeline in this repo) — the plan pauses for that; do not attempt to script it.
 
 ---
 
-### Task 1: Migration — `processo_etapas` and `processo_subetapas` tables
+### Task 1: Migration — `processo_subetapas` table
 
 **Files:**
-- Create: `supabase/migrations/027_processo_etapas_subetapas.sql`
+- Create: `supabase/migrations/034_processo_subetapas.sql` (next free number — `027` through `033` are already used by other merged work; verify with `ls supabase/migrations | sort -V | tail -5` before writing, in case more have landed since this plan was written, and bump the number accordingly)
 
 **Interfaces:**
-- Produces: tables `processo_etapas(id, processo_tipo_id, nome, ordem)` and `processo_subetapas(id, etapa_id, nome, tipo_resposta, ordem)`, both RLS-enabled with the same `is_admin()` policy pattern as every other catalog table in this repo (see `024_config_regimes_grupos_atividades.sql`). `processo_tipos.etapas` column is dropped.
+- Produces: table `processo_subetapas(id, processo_tipo_id, etapa_nome, nome, tipo_resposta, ordem)`, RLS-enabled with the same `is_admin()` policy pattern as every other catalog table in this repo (see `024_config_regimes_grupos_atividades.sql`). `processo_tipos` is untouched — no column added, dropped, or renamed.
 
 - [ ] **Step 1: Write the migration file**
 
 ```sql
--- supabase/migrations/027_processo_etapas_subetapas.sql
+-- supabase/migrations/034_processo_subetapas.sql
 
 -- Cada etapa de um tipo de processo (Societário) ganha subetapas com
 -- formato de resposta próprio (texto+anexo / checklist / data) — mesma
 -- linguagem visual do formulário de tipo de tarefa
 -- (components/geral/NovoTipoTarefaModal.tsx), mas um conceito próprio da
--- subetapa. Isso exige normalizar "etapas" de text[] solto pra entidades
--- com ID (senão não dá pra pendurar subetapas nelas). Ver
--- docs/superpowers/specs/2026-09-01-processo-subetapas-design.md.
+-- subetapa.
+--
+-- processo_tipos.etapas (text[]) NÃO é alterada aqui, de propósito:
+-- 027_procedimentos_societario.sql já shippou uma tela de execução
+-- (app/societario/procedimentos/page.tsx) que lê esse array direto e usa
+-- o NOME de cada etapa como chave do jsonb `campos`. Normalizar etapas
+-- numa tabela própria quebraria essa tela já em uso. Em vez disso, a
+-- subetapa referencia a etapa pelo nome dela (junto com o tipo de
+-- processo) — como não há edição de etapa depois de criada, esse nome é
+-- estável. Ver docs/superpowers/specs/2026-09-01-processo-subetapas-design.md.
+--
 -- Mesmo padrão de RLS de 024_config_regimes_grupos_atividades.sql: leitura
 -- livre pra autenticado, escrita só admin via is_admin().
 
-create table processo_etapas (
+create table processo_subetapas (
   id                uuid primary key default gen_random_uuid(),
   processo_tipo_id  uuid references processo_tipos(id) on delete cascade not null,
+  etapa_nome        text not null,
   nome              text not null,
+  tipo_resposta     text not null check (tipo_resposta in ('texto', 'checklist', 'data')),
   ordem             integer not null default 0
 );
 
-create table processo_subetapas (
-  id             uuid primary key default gen_random_uuid(),
-  etapa_id       uuid references processo_etapas(id) on delete cascade not null,
-  nome           text not null,
-  tipo_resposta  text not null check (tipo_resposta in ('texto', 'checklist', 'data')),
-  ordem          integer not null default 0
-);
-
--- Tabela vazia em dev no momento desta migration (nenhum tipo de processo
--- real cadastrado ainda) — drop direto, sem backfill.
-alter table processo_tipos drop column etapas;
-
-alter table processo_etapas    enable row level security;
 alter table processo_subetapas enable row level security;
-
-create policy "Autenticados leem processo_etapas" on processo_etapas for select using (auth.uid() is not null);
-create policy "Admin gerencia processo_etapas" on processo_etapas for all using (is_admin());
 
 create policy "Autenticados leem processo_subetapas" on processo_subetapas for select using (auth.uid() is not null);
 create policy "Admin gerencia processo_subetapas" on processo_subetapas for all using (is_admin());
 ```
 
-- [ ] **Step 2: Confirm `processo_tipos` is empty in dev, then ask the user to apply the migration**
+- [ ] **Step 2: Ask the user to apply the migration**
 
-Before applying, run this read-only check against the dev Supabase project (via whatever method was used to verify earlier migrations in this branch — there is no local psql/CLI connection, so this is a manual check, e.g. Supabase Studio's table view or a `select count(*) from processo_tipos;` in the SQL Editor). If it returns 0 rows, proceed. If it returns any rows, stop and ask the user how to handle the existing data before dropping the column (do not silently drop real data).
-
-Once confirmed empty, ask the user to run the migration SQL from Step 1 in the Supabase SQL Editor for the dev project (same flow used for migration 026 earlier in this branch's history — the assistant does not have DDL execution access to that database).
+There is no local psql/CLI connection to the dev Supabase project. Ask the user to run the migration SQL from Step 1 in the Supabase SQL Editor for the dev project (same flow used for earlier migrations in this branch's history — the assistant does not have DDL execution access to that database). This migration only creates a new table — nothing to check for existing data first (unlike the earlier, now-abandoned version of this task).
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add supabase/migrations/027_processo_etapas_subetapas.sql
-git commit -m "feat: migration de processo_etapas e processo_subetapas"
+git add supabase/migrations/034_processo_subetapas.sql
+git commit -m "feat: migration de processo_subetapas"
 ```
 
 ---
 
-### Task 2: Pure module `lib/processo-tipos.ts` — types, row mapping, form helpers
+### Task 2: Pure module `lib/processo-tipos.ts` — types, row assembly, form helpers
 
 **Files:**
 - Create: `lib/processo-tipos.ts`
@@ -99,10 +91,11 @@ git commit -m "feat: migration de processo_etapas e processo_subetapas"
   - `interface SubetapaForm { nome: string; tipoResposta: SubetapaTipoResposta }`
   - `interface EtapaForm { nome: string; subetapas: SubetapaForm[] }`
   - `interface ProcessoSubetapaResumo { id: string; nome: string; tipoResposta: SubetapaTipoResposta }`
-  - `interface ProcessoEtapaResumo { id: string; nome: string; subetapas: ProcessoSubetapaResumo[] }`
+  - `interface ProcessoEtapaResumo { nome: string; subetapas: ProcessoSubetapaResumo[] }` (no `id` — etapas are still plain names, not a normalized entity)
   - `interface ProcessoTipoResumo { id: string; nome: string; etapas: ProcessoEtapaResumo[] }`
-  - `interface ProcessoTipoRow { id: string; nome: string; processo_etapas: { id: string; nome: string; ordem: number; processo_subetapas: { id: string; nome: string; tipo_resposta: SubetapaTipoResposta; ordem: number }[] }[] }`
-  - `mapProcessoTipoRow(row: ProcessoTipoRow): ProcessoTipoResumo`
+  - `interface ProcessoTipoRow { id: string; nome: string; etapas: string[] | null }` (raw shape from `select('id, nome, etapas')` on `processo_tipos` — unchanged column)
+  - `interface ProcessoSubetapaRow { id: string; processo_tipo_id: string; etapa_nome: string; nome: string; tipo_resposta: SubetapaTipoResposta; ordem: number }` (raw shape from `processo_subetapas`)
+  - `montarProcessoTipos(tipos: ProcessoTipoRow[], subetapas: ProcessoSubetapaRow[]): ProcessoTipoResumo[]`
   - `adicionarEtapa(etapas: EtapaForm[], nome: string): EtapaForm[]`
   - `removerEtapa(etapas: EtapaForm[], index: number): EtapaForm[]`
   - `adicionarSubetapa(etapas: EtapaForm[], etapaIndex: number, nome: string, tipoResposta: SubetapaTipoResposta): EtapaForm[]`
@@ -116,64 +109,68 @@ Create `tests/processo-tipos.test.ts`:
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  mapProcessoTipoRow,
+  montarProcessoTipos,
   adicionarEtapa,
   removerEtapa,
   adicionarSubetapa,
   removerSubetapa,
   type EtapaForm,
   type ProcessoTipoRow,
+  type ProcessoSubetapaRow,
 } from '../lib/processo-tipos'
 
-test('mapProcessoTipoRow: ordena etapas e subetapas por "ordem" e remapeia tipo_resposta pra camelCase', () => {
-  const row: ProcessoTipoRow = {
-    id: 'tipo-1',
-    nome: 'Abertura de empresa',
-    processo_etapas: [
-      {
-        id: 'etapa-2',
-        nome: 'Registro na junta',
-        ordem: 1,
-        processo_subetapas: [],
-      },
-      {
-        id: 'etapa-1',
-        nome: 'Consulta de viabilidade',
-        ordem: 0,
-        processo_subetapas: [
-          { id: 'sub-2', nome: 'Anexar comprovante', ordem: 1, tipo_resposta: 'texto' },
-          { id: 'sub-1', nome: 'Data da consulta', ordem: 0, tipo_resposta: 'data' },
-        ],
-      },
-    ],
-  }
+test('montarProcessoTipos: agrupa subetapas por etapa (nome) e ordena por "ordem"', () => {
+  const tipos: ProcessoTipoRow[] = [
+    { id: 'tipo-1', nome: 'Abertura de empresa', etapas: ['Consulta de viabilidade', 'Registro na junta'] },
+  ]
+  const subetapas: ProcessoSubetapaRow[] = [
+    { id: 'sub-2', processo_tipo_id: 'tipo-1', etapa_nome: 'Consulta de viabilidade', nome: 'Anexar comprovante', tipo_resposta: 'texto', ordem: 1 },
+    { id: 'sub-1', processo_tipo_id: 'tipo-1', etapa_nome: 'Consulta de viabilidade', nome: 'Data da consulta', tipo_resposta: 'data', ordem: 0 },
+  ]
 
-  const resultado = mapProcessoTipoRow(row)
+  const resultado = montarProcessoTipos(tipos, subetapas)
 
-  assert.deepEqual(resultado, {
-    id: 'tipo-1',
-    nome: 'Abertura de empresa',
-    etapas: [
-      {
-        id: 'etapa-1',
-        nome: 'Consulta de viabilidade',
-        subetapas: [
-          { id: 'sub-1', nome: 'Data da consulta', tipoResposta: 'data' },
-          { id: 'sub-2', nome: 'Anexar comprovante', tipoResposta: 'texto' },
-        ],
-      },
-      {
-        id: 'etapa-2',
-        nome: 'Registro na junta',
-        subetapas: [],
-      },
-    ],
-  })
+  assert.deepEqual(resultado, [
+    {
+      id: 'tipo-1',
+      nome: 'Abertura de empresa',
+      etapas: [
+        {
+          nome: 'Consulta de viabilidade',
+          subetapas: [
+            { id: 'sub-1', nome: 'Data da consulta', tipoResposta: 'data' },
+            { id: 'sub-2', nome: 'Anexar comprovante', tipoResposta: 'texto' },
+          ],
+        },
+        { nome: 'Registro na junta', subetapas: [] },
+      ],
+    },
+  ])
 })
 
-test('mapProcessoTipoRow: tipo sem nenhuma etapa devolve lista vazia', () => {
-  const row: ProcessoTipoRow = { id: 'tipo-1', nome: 'Vazio', processo_etapas: [] }
-  assert.deepEqual(mapProcessoTipoRow(row), { id: 'tipo-1', nome: 'Vazio', etapas: [] })
+test('montarProcessoTipos: tipo sem nenhuma etapa devolve lista vazia', () => {
+  const tipos: ProcessoTipoRow[] = [{ id: 'tipo-1', nome: 'Vazio', etapas: [] }]
+  assert.deepEqual(montarProcessoTipos(tipos, []), [{ id: 'tipo-1', nome: 'Vazio', etapas: [] }])
+})
+
+test('montarProcessoTipos: etapas=null (nunca deveria acontecer, mas não deve quebrar) vira lista vazia', () => {
+  const tipos: ProcessoTipoRow[] = [{ id: 'tipo-1', nome: 'Sem etapas', etapas: null }]
+  assert.deepEqual(montarProcessoTipos(tipos, []), [{ id: 'tipo-1', nome: 'Sem etapas', etapas: [] }])
+})
+
+test('montarProcessoTipos: subetapa de outro tipo não vaza pro tipo errado', () => {
+  const tipos: ProcessoTipoRow[] = [
+    { id: 'tipo-1', nome: 'A', etapas: ['Etapa X'] },
+    { id: 'tipo-2', nome: 'B', etapas: ['Etapa X'] },
+  ]
+  const subetapas: ProcessoSubetapaRow[] = [
+    { id: 'sub-1', processo_tipo_id: 'tipo-2', etapa_nome: 'Etapa X', nome: 'Só do tipo B', tipo_resposta: 'checklist', ordem: 0 },
+  ]
+
+  const resultado = montarProcessoTipos(tipos, subetapas)
+
+  assert.deepEqual(resultado[0].etapas[0].subetapas, [])
+  assert.deepEqual(resultado[1].etapas[0].subetapas, [{ id: 'sub-1', nome: 'Só do tipo B', tipoResposta: 'checklist' }])
 })
 
 test('adicionarEtapa: acrescenta etapa nova sem subetapas', () => {
@@ -264,7 +261,6 @@ export interface ProcessoSubetapaResumo {
 }
 
 export interface ProcessoEtapaResumo {
-  id: string
   nome: string
   subetapas: ProcessoSubetapaResumo[]
 }
@@ -275,39 +271,39 @@ export interface ProcessoTipoResumo {
   etapas: ProcessoEtapaResumo[]
 }
 
-// Shape cru devolvido pela query aninhada do Supabase (select com
-// processo_etapas(...processo_subetapas(...))) — antes de ordenar por
-// "ordem" e remapear tipo_resposta pra camelCase.
+// Shape cru de `processo_tipos` (select('id, nome, etapas')) — a coluna
+// etapas (text[]) não muda, é a mesma lida por
+// app/societario/procedimentos/page.tsx.
 export interface ProcessoTipoRow {
   id: string
   nome: string
-  processo_etapas: {
-    id: string
-    nome: string
-    ordem: number
-    processo_subetapas: {
-      id: string
-      nome: string
-      tipo_resposta: SubetapaTipoResposta
-      ordem: number
-    }[]
-  }[]
+  etapas: string[] | null
 }
 
-export function mapProcessoTipoRow(row: ProcessoTipoRow): ProcessoTipoResumo {
-  return {
-    id: row.id,
-    nome: row.nome,
-    etapas: [...row.processo_etapas]
-      .sort((a, b) => a.ordem - b.ordem)
-      .map(etapa => ({
-        id: etapa.id,
-        nome: etapa.nome,
-        subetapas: [...etapa.processo_subetapas]
-          .sort((a, b) => a.ordem - b.ordem)
-          .map(sub => ({ id: sub.id, nome: sub.nome, tipoResposta: sub.tipo_resposta })),
-      })),
-  }
+// Shape cru de `processo_subetapas` — não tem relação de FK direta com
+// uma "etapa" (que não existe como entidade), por isso o agrupamento é
+// feito aqui em JS por (processo_tipo_id, etapa_nome).
+export interface ProcessoSubetapaRow {
+  id: string
+  processo_tipo_id: string
+  etapa_nome: string
+  nome: string
+  tipo_resposta: SubetapaTipoResposta
+  ordem: number
+}
+
+export function montarProcessoTipos(tipos: ProcessoTipoRow[], subetapas: ProcessoSubetapaRow[]): ProcessoTipoResumo[] {
+  return tipos.map(tipo => ({
+    id: tipo.id,
+    nome: tipo.nome,
+    etapas: (tipo.etapas ?? []).map(etapaNome => ({
+      nome: etapaNome,
+      subetapas: subetapas
+        .filter(s => s.processo_tipo_id === tipo.id && s.etapa_nome === etapaNome)
+        .sort((a, b) => a.ordem - b.ordem)
+        .map(s => ({ id: s.id, nome: s.nome, tipoResposta: s.tipo_resposta })),
+    })),
+  }))
 }
 
 export function adicionarEtapa(etapas: EtapaForm[], nome: string): EtapaForm[] {
@@ -343,18 +339,18 @@ export function removerSubetapa(etapas: EtapaForm[], etapaIndex: number, subetap
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `node --import tsx --test tests/processo-tipos.test.ts`
-Expected: PASS — all 9 tests green.
+Expected: PASS — all 11 tests green.
 
 - [ ] **Step 5: Run the full suite to check for regressions**
 
 Run: `node --import tsx --test "tests/**/*.test.ts"`
-Expected: PASS — all tests green (existing + the 9 new ones).
+Expected: PASS — all tests green (existing + the 11 new ones).
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add lib/processo-tipos.ts tests/processo-tipos.test.ts
-git commit -m "feat: módulo puro de mapeamento e helpers de formulário pra etapas/subetapas"
+git commit -m "feat: módulo puro de montagem e helpers de formulário pra etapas/subetapas"
 ```
 
 ---
@@ -365,7 +361,7 @@ git commit -m "feat: módulo puro de mapeamento e helpers de formulário pra eta
 - Modify: `lib/processo-tipos-actions.ts` (full rewrite — current content only has `nome, etapas: string[]`, replaced entirely)
 
 **Interfaces:**
-- Consumes: `mapProcessoTipoRow`, `ProcessoTipoRow`, `ProcessoTipoResumo`, `EtapaForm` from `lib/processo-tipos.ts` (Task 2). `getAuthenticatedAdmin` from `@/lib/supabase/server` (existing).
+- Consumes: `montarProcessoTipos`, `ProcessoTipoRow`, `ProcessoSubetapaRow`, `ProcessoTipoResumo`, `EtapaForm` from `lib/processo-tipos.ts` (Task 2). `getAuthenticatedAdmin` from `@/lib/supabase/server` (existing).
 - Produces (consumed by Task 4):
   - `listarProcessoTipos(): Promise<{ data: ProcessoTipoResumo[]; error: string | null }>`
   - `criarProcessoTipo(nome: string, etapas: EtapaForm[]): Promise<{ error: string | null }>`
@@ -380,7 +376,13 @@ Replace the entire contents of `lib/processo-tipos-actions.ts` with:
 
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { mapProcessoTipoRow, type ProcessoTipoResumo, type ProcessoTipoRow, type EtapaForm } from '@/lib/processo-tipos'
+import {
+  montarProcessoTipos,
+  type ProcessoTipoResumo,
+  type ProcessoTipoRow,
+  type ProcessoSubetapaRow,
+  type EtapaForm,
+} from '@/lib/processo-tipos'
 
 export type { ProcessoTipoResumo } from '@/lib/processo-tipos'
 
@@ -400,13 +402,30 @@ export async function listarProcessoTipos(): Promise<{ data: ProcessoTipoResumo[
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { data: [], error }
 
-  const { data, error: queryError } = await supabase
+  const { data: tipos, error: tiposError } = await supabase
     .from('processo_tipos')
-    .select('id, nome, processo_etapas(id, nome, ordem, processo_subetapas(id, nome, tipo_resposta, ordem))')
+    .select('id, nome, etapas')
     .order('nome')
 
-  if (queryError) return { data: [], error: queryError.message }
-  return { data: (data ?? []).map(row => mapProcessoTipoRow(row as unknown as ProcessoTipoRow)), error: null }
+  if (tiposError) return { data: [], error: tiposError.message }
+
+  const tipoIds = (tipos ?? []).map(t => t.id as string)
+  if (tipoIds.length === 0) return { data: [], error: null }
+
+  const { data: subetapas, error: subetapasError } = await supabase
+    .from('processo_subetapas')
+    .select('id, processo_tipo_id, etapa_nome, nome, tipo_resposta, ordem')
+    .in('processo_tipo_id', tipoIds)
+
+  if (subetapasError) return { data: [], error: subetapasError.message }
+
+  return {
+    data: montarProcessoTipos(
+      tipos as unknown as ProcessoTipoRow[],
+      (subetapas ?? []) as unknown as ProcessoSubetapaRow[],
+    ),
+    error: null,
+  }
 }
 
 export async function criarProcessoTipo(nome: string, etapas: EtapaForm[]): Promise<{ error: string | null }> {
@@ -415,7 +434,7 @@ export async function criarProcessoTipo(nome: string, etapas: EtapaForm[]): Prom
 
   const { data: tipoInserido, error: insertError } = await supabase
     .from('processo_tipos')
-    .insert({ nome: nome.trim() })
+    .insert({ nome: nome.trim(), etapas: etapas.map(etapa => etapa.nome) })
     .select('id')
     .single()
 
@@ -428,35 +447,23 @@ export async function criarProcessoTipo(nome: string, etapas: EtapaForm[]): Prom
 
   const processoTipoId = tipoInserido.id as string
 
-  if (etapas.length > 0) {
-    const { data: etapasInseridas, error: etapasError } = await supabase
-      .from('processo_etapas')
-      .insert(etapas.map((etapa, index) => ({ processo_tipo_id: processoTipoId, nome: etapa.nome, ordem: index })))
-      .select('id')
+  const subetapasParaInserir = etapas.flatMap(etapa =>
+    etapa.subetapas.map((sub, subIndex) => ({
+      processo_tipo_id: processoTipoId,
+      etapa_nome: etapa.nome,
+      nome: sub.nome,
+      tipo_resposta: sub.tipoResposta,
+      ordem: subIndex,
+    }))
+  )
 
-    if (etapasError || !etapasInseridas) {
+  if (subetapasParaInserir.length > 0) {
+    const { error: subetapasError } = await supabase.from('processo_subetapas').insert(subetapasParaInserir)
+    if (subetapasError) {
+      // Sem transação client-side no supabase-js — desfaz manualmente pra
+      // não deixar um processo_tipo órfão sem as subetapas que pediram.
       await supabase.from('processo_tipos').delete().eq('id', processoTipoId)
-      return { error: etapasError?.message ?? 'Não foi possível salvar as etapas.' }
-    }
-
-    // Postgres preserva a ordem das linhas retornadas por RETURNING (via
-    // .select() aqui) igual à ordem de inserção de um INSERT multi-linha —
-    // por isso é seguro casar etapasInseridas[i] com etapas[i] pelo índice.
-    const subetapasParaInserir = etapas.flatMap((etapa, etapaIndex) =>
-      etapa.subetapas.map((sub, subIndex) => ({
-        etapa_id: etapasInseridas[etapaIndex].id as string,
-        nome: sub.nome,
-        tipo_resposta: sub.tipoResposta,
-        ordem: subIndex,
-      }))
-    )
-
-    if (subetapasParaInserir.length > 0) {
-      const { error: subetapasError } = await supabase.from('processo_subetapas').insert(subetapasParaInserir)
-      if (subetapasError) {
-        await supabase.from('processo_tipos').delete().eq('id', processoTipoId)
-        return { error: subetapasError.message }
-      }
+      return { error: subetapasError.message }
     }
   }
 
@@ -485,7 +492,7 @@ Expected: no errors. (This file has no automated tests of its own — it's thin 
 
 ```bash
 git add lib/processo-tipos-actions.ts
-git commit -m "feat: server actions de processo_tipos passam a lidar com etapas/subetapas aninhadas"
+git commit -m "feat: server actions de processo_tipos passam a lidar com subetapas"
 ```
 
 ---
@@ -719,8 +726,8 @@ export default function ProcessosTab() {
 
               {expandidos[item.id] && (
                 <div className="mt-3 pt-3 border-t border-[var(--fg)]/8 space-y-2">
-                  {item.etapas.map(etapa => (
-                    <div key={etapa.id}>
+                  {item.etapas.map((etapa, etapaIndex) => (
+                    <div key={etapaIndex}>
                       <span className="block text-xs font-semibold text-[var(--fg)]/70">{etapa.nome}</span>
                       {etapa.subetapas.length > 0 && (
                         <ul className="mt-1 space-y-0.5 pl-3">
@@ -796,11 +803,15 @@ Confirm the create succeeds and the new item appears in the list with "2 etapas"
 
 Click the item to expand it. Confirm both etapas show, the first with its two subetapas and their correct formato labels (Data / Texto + anexo), the second with no subetapas section.
 
-- [ ] **Step 5: Delete and confirm cascade cleanup**
+- [ ] **Step 5: Confirm the already-shipped Procedimentos screen still works**
 
-Click "Excluir", confirm the dialog, confirm the item disappears from the list. (The `on delete cascade` on both new tables means the etapas/subetapas rows are gone too — no separate check needed beyond the UI no longer showing them.)
+Go to `http://localhost:3001/societario/procedimentos`. Confirm the page loads without error and the tipo de processo created in Step 3 appears as a selectable option with its etapas rendering as text fields (unchanged behavior — this screen was not touched by this plan).
 
-- [ ] **Step 6: Stop the dev server**
+- [ ] **Step 6: Delete and confirm cascade cleanup**
+
+Back in `/admin/configuracoes/societario` → Processos, click "Excluir" on the tipo created in Step 3, confirm the dialog, confirm the item disappears from the list. (The `on delete cascade` on `processo_subetapas` means its subetapas rows are gone too — no separate check needed beyond the UI no longer showing them.)
+
+- [ ] **Step 7: Stop the dev server**
 
 Kill the process started in Step 1.
 
@@ -808,6 +819,7 @@ Kill the process started in Step 1.
 
 ## Self-Review Notes
 
-- **Spec coverage:** Banco de dados section → Task 1. Server actions section → Task 3 (with the pure mapping/shaping logic pulled into Task 2 for testability, which the spec's "Server actions" section describes conceptually without mandating a specific file split). UI section → Task 4. Verification section → Task 5. Fora de escopo items (no edit/reorder, no execução screen) are not implemented anywhere in this plan, matching the spec.
+- **Spec coverage:** Banco de dados section → Task 1. Server actions section → Task 3 (with the pure mapping/shaping logic pulled into Task 2 for testability, which the spec's "Server actions" section describes conceptually without mandating a specific file split). UI section → Task 4. Verification section → Task 5, with an added step confirming `/societario/procedimentos` (the already-shipped, must-not-break screen) still works. Fora de escopo items (no edit/reorder, no changes to the execução screen) are not implemented anywhere in this plan, matching the spec.
 - **Placeholder scan:** none found — every step has real code or a concrete manual instruction.
-- **Type consistency:** `EtapaForm`/`SubetapaForm`/`SubetapaTipoResposta`/`ProcessoTipoResumo`/`ProcessoEtapaResumo`/`ProcessoSubetapaResumo` are defined once in Task 2 and imported by name (not redefined) in Tasks 3 and 4. `criarProcessoTipo(nome: string, etapas: EtapaForm[])` signature matches between Task 3's definition and Task 4's call site. `mapProcessoTipoRow` is defined in Task 2 and consumed only in Task 3.
+- **Type consistency:** `EtapaForm`/`SubetapaForm`/`SubetapaTipoResposta`/`ProcessoTipoResumo`/`ProcessoEtapaResumo`/`ProcessoSubetapaResumo`/`ProcessoTipoRow`/`ProcessoSubetapaRow` are defined once in Task 2 and imported by name (not redefined) in Tasks 3 and 4. `criarProcessoTipo(nome: string, etapas: EtapaForm[])` signature matches between Task 3's definition and Task 4's call site. `montarProcessoTipos` is defined in Task 2 and consumed only in Task 3. `ProcessoEtapaResumo` has no `id` field (etapas aren't a normalized entity) — Task 4's expanded-listing `key` uses the array index, not `etapa.id`, consistent with that.
+- **Revision note:** this plan originally normalized etapas into a `processo_etapas` table (see git history / superseded Task 1). That was abandoned mid-implementation after discovering `app/societario/procedimentos/page.tsx` (merged to `dev` after this plan's spec was first written) reads `processo_tipos.etapas` directly. The human partner chose to keep `etapas` untouched and reference subetapas by etapa name instead — this revision reflects that decision throughout Tasks 1-4.
