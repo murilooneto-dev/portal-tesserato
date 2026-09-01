@@ -2,6 +2,7 @@
 
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import SeletorAtividades from '@/components/geral/SeletorAtividades'
+import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
 
 export interface CamposFiscaisData {
   cod: string
@@ -18,6 +19,7 @@ export interface CamposFiscaisData {
   senha_iss: string
   email_envio_iss: string
   tarefas_personalizadas: string[]
+  tarefas_excluidas: string[]
 }
 
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
@@ -198,6 +200,17 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
             </button>
           </div>
         )}
+
+        <TarefasAutomaticasCampo
+          setor="fiscal"
+          grupo={form.grupo}
+          regime={form.regime}
+          atividade={form.atividade}
+          personalizadas={form.tarefas_personalizadas}
+          excluidas={form.tarefas_excluidas}
+          onChangeExcluidas={v => set('tarefas_excluidas', v)}
+          readOnly={readOnly}
+        />
       </div>
     </>
   )

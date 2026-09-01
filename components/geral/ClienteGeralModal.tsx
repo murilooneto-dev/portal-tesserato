@@ -38,7 +38,7 @@ const emptyForm = (): FormData => ({
   cod: '', regime: '', atividade: [], grupo: '', responsavel: '', prioridade: 3,
   declaracao_anual: false, envia_iss: false, confere_siga: false, faz_dossie: false,
   login_iss: '', senha_iss: '', email_envio_iss: '',
-  tarefas_personalizadas: [],
+  tarefas_personalizadas: [], tarefas_excluidas: [],
 })
 
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
@@ -90,6 +90,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         senha_iss: data.senha_iss ?? '',
         email_envio_iss: data.email_envio_iss ?? '',
         tarefas_personalizadas: data.tarefas_personalizadas ?? [],
+        tarefas_excluidas: data.tarefas_excluidas ?? [],
       })
       setMostrarVinculos((data.tarefas_vinculadas_ativas ?? []).length > 0)
       setLoading(false)
@@ -191,6 +192,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
       senha_iss:              form.envia_iss ? form.senha_iss || null : null,
       email_envio_iss:        form.envia_iss ? form.email_envio_iss || null : null,
       tarefas_personalizadas: form.tarefas_personalizadas,
+      tarefas_excluidas:      form.tarefas_excluidas,
     }
 
     if (isEdit) {
