@@ -11,7 +11,7 @@ interface Props {
   tipo: string
   tipoResposta: TipoResposta
   etapasDefinidas: string[] | null
-  clientes: { id: string; nome: string }[]
+  clientes: { id: string; nome: string; atividade: string[] }[]
   tarefas: Pick<Tarefa, 'id' | 'cliente_id' | 'tipo' | 'concluida' | 'concluida_em' | 'sem_movimento'>[]
   etapas: TarefaEtapa[]
   mes: number
@@ -19,6 +19,7 @@ interface Props {
   usuarioNome: string
   busca: string
   statusFiltro: StatusFiltroMinhasTarefas
+  atividadeFiltro: string[]
   onToggle: (clienteId: string, tipo: string, concluida: boolean, data?: string) => Promise<void>
   onAtualizarEtapa: (clienteId: string, tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
 }
@@ -41,6 +42,7 @@ export default function MinhasTarefasSecao({
   usuarioNome,
   busca,
   statusFiltro,
+  atividadeFiltro,
   onToggle,
   onAtualizarEtapa,
 }: Props) {
@@ -138,7 +140,9 @@ export default function MinhasTarefasSecao({
   }
 
   const clientesFiltrados = clientes.filter(c =>
-    c.nome.toLowerCase().includes(busca.toLowerCase()) && statusBate(c.id)
+    c.nome.toLowerCase().includes(busca.toLowerCase())
+    && statusBate(c.id)
+    && (atividadeFiltro.length === 0 || atividadeFiltro.every(a => c.atividade.includes(a)))
   )
 
   async function handleUnlock(clienteId: string, clienteNome: string) {

@@ -4,6 +4,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { atualizarEtapa, toggleTarefaFiscal } from '@/app/fiscal/clientes/actions'
 import { atualizarStatusDossie, atualizarFinalizadoDossie } from '@/lib/dossie-actions'
+import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import MinhasTarefasFiltro from '@/components/fiscal/MinhasTarefasFiltro'
 import MinhasTarefasTabs from '@/components/fiscal/MinhasTarefasTabs'
 import DossieSecao from '@/components/fiscal/DossieSecao'
@@ -58,7 +59,7 @@ export default async function MinhasTarefasPage() {
     )
   }
 
-  const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }] = await Promise.all([
+  const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }, catalogo] = await Promise.all([
     supabase
       .from('clientes')
       .select('id, nome, clientes_fiscal!inner(grupo, regime, atividade, tarefas_personalizadas, tarefas_excluidas, ativo)')
@@ -71,6 +72,7 @@ export default async function MinhasTarefasPage() {
       .eq('clientes_fiscal.ativo', true)
       .eq('clientes_fiscal.faz_dossie', true)
       .order('nome'),
+    buscarCatalogoCliente(supabase, 'fiscal'),
   ])
 
   const clientesTodos = (clientesRaw ?? []).map(row => {
@@ -85,7 +87,7 @@ export default async function MinhasTarefasPage() {
       },
       mapaVinculos,
     )
-    return { id: r.id, nome: r.nome, esperadas }
+    return { id: r.id, nome: r.nome, atividade: r.clientes_fiscal.atividade ?? [], esperadas }
   })
 
   const nomesMeusTipos = meusTipos.map(t => t.nome)
@@ -159,6 +161,7 @@ export default async function MinhasTarefasPage() {
               clientes: clientesTodos.filter(c => c.esperadas.includes(tipoInfo.nome)),
               tarefas: tarefas.filter(t => t.tipo === tipoInfo.nome),
             }))}
+            atividadesCatalogo={catalogo.atividades}
             etapas={etapas}
             mes={mes}
             ano={ano}
