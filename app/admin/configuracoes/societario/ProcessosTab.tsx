@@ -8,6 +8,7 @@ import {
   excluirProcessoTipo,
   type ProcessoTipoResumo,
 } from '@/lib/processo-tipos-actions'
+import type { EtapaForm } from '@/lib/processo-tipos'
 
 const inputCls = "px-3 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
@@ -42,7 +43,11 @@ export default function ProcessosTab() {
   async function handleCriar() {
     if (!novoNome.trim() || etapas.length === 0) return
     setSalvando(true)
-    const { error } = await criarProcessoTipo(novoNome, etapas)
+    const etapasForm: EtapaForm[] = etapas.map(nome => ({
+      nome,
+      subetapas: [],
+    }))
+    const { error } = await criarProcessoTipo(novoNome, etapasForm)
     if (error) { setErro(error); setSalvando(false); return }
     setErro(null)
     setNovoNome('')
