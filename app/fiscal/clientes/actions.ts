@@ -107,6 +107,51 @@ export async function toggleTarefaFiscal(
   revalidatePath('/fiscal/preenchimento-rapido')
 }
 
+// Marca a tarefa como concluída sem exigir data/etapas/texto — pra cliente
+// que não teve movimento naquela tarefa no mês. Não mexe em tarefa_etapas
+// nem resposta_texto/anexos já gravados: eles ficam intocados "por baixo",
+// sem efeito enquanto sem_movimento estiver ativo. Desmarcar é direto
+// (decisão do usuário) — não passa pela cerimônia de desbloqueio/motivo.
+export async function marcarSemMovimento(
+  clienteId: string,
+  tipo: string,
+  mes: number,
+  ano: number,
+  semMovimento: boolean,
+) {
+  if (!(await podeEditarTarefaTipo(clienteId, tipo))) return
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return
+
+  const { data: existing } = await supabase
+    .from('tarefas').select('id, parcelamento_id')
+    .eq('cliente_id', clienteId).eq('mes', mes).eq('ano', ano).eq('tipo', tipo).eq('setor', 'fiscal')
+    .maybeSingle()
+
+  const payload = semMovimento
+    ? { sem_movimento: true, concluida: true, concluida_em: new Date().toISOString() }
+    : { sem_movimento: false, concluida: false, concluida_em: null }
+
+  if (existing?.id) {
+    await supabase.from('tarefas').update(payload).eq('id', existing.id)
+  } else {
+    await supabase.from('tarefas')
+      .insert({ cliente_id: clienteId, usuario_id: user!.id, mes, ano, tipo, setor: 'fiscal', ...payload })
+  }
+
+  if (existing?.parcelamento_id) {
+    await gravarDataParcelamento(supabase, existing.parcelamento_id, mes, null)
+  }
+
+  revalidatePath(`/fiscal/clientes/${clienteId}`)
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/dashboard')
+  revalidatePath('/fiscal/relatorios')
+  revalidatePath('/fiscal/tarefas')
+  revalidatePath('/fiscal/minhas-tarefas')
+  revalidatePath('/fiscal/preenchimento-rapido')
+}
+
 const TIPOS_PERMITIDOS = [
   'application/pdf',
   'image/png',
