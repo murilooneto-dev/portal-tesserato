@@ -10,7 +10,7 @@ import TarefaChecklistContabil from '@/components/contabil/TarefaChecklistContab
 import ClienteContabilAcoes from '@/components/contabil/ClienteContabilAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
-import { toggleTarefaContabil, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsContabil } from '../actions'
+import { toggleTarefaContabil, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsContabil, marcarSemMovimento } from '../actions'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
@@ -87,6 +87,11 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
     await toggleTarefaContabil(id, tipo, mes, ano, concluida, data)
   }
 
+  async function onMarcarSemMovimento(tipo: string, semMovimento: boolean) {
+    'use server'
+    await marcarSemMovimento(id, tipo, mes, ano, semMovimento)
+  }
+
   async function onAtualizarEtapa(tipo: string, etapaNome: string, concluida: boolean, data?: string) {
     'use server'
     await atualizarEtapa(id, mes, ano, tipo, etapaNome, concluida, data)
@@ -150,6 +155,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
         mes={mes}
         ano={ano}
         onToggleSimples={onToggleSimples}
+        onMarcarSemMovimento={onMarcarSemMovimento}
         onAtualizarEtapa={onAtualizarEtapa}
         onSalvarTexto={onSalvarTexto}
         onUploadArquivo={onUploadArquivo}

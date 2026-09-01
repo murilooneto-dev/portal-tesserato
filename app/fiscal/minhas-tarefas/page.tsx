@@ -91,11 +91,11 @@ export default async function MinhasTarefasPage() {
   const nomesMeusTipos = meusTipos.map(t => t.nome)
   const { data: tarefasRaw } = await supabase
     .from('tarefas')
-    .select('id, cliente_id, tipo, concluida, concluida_em')
+    .select('id, cliente_id, tipo, concluida, concluida_em, sem_movimento')
     .eq('setor', 'fiscal').eq('mes', mes).eq('ano', ano)
     .in('tipo', nomesMeusTipos)
 
-  const tarefas = (tarefasRaw ?? []) as Pick<Tarefa, 'id' | 'cliente_id' | 'tipo' | 'concluida' | 'concluida_em'>[]
+  const tarefas = (tarefasRaw ?? []) as Pick<Tarefa, 'id' | 'cliente_id' | 'tipo' | 'concluida' | 'concluida_em' | 'sem_movimento'>[]
   const tarefaIds = tarefas.map(t => t.id)
 
   const { data: etapasRaw } = tarefaIds.length > 0

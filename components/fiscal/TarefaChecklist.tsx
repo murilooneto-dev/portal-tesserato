@@ -4,7 +4,7 @@ import { useTransition, useState } from 'react'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
-import { desbloquearTarefa, salvarMIT } from '@/app/fiscal/clientes/actions'
+import { desbloquearTarefa, salvarMIT, marcarSemMovimento } from '@/app/fiscal/clientes/actions'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
 import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
 
@@ -73,6 +73,7 @@ export default function TarefaChecklist({
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [optimisticDates, setOptimisticDates] = useState<Record<string, string | null>>({})
+  const [optimisticSemMovimento, setOptimisticSemMovimento] = useState<Record<string, boolean>>({})
   const [localText, setLocalText] = useState<Record<string, string>>({})
   const [unlockingTipo, setUnlockingTipo] = useState<string | null>(null)
   const [motivoMap, setMotivoMap] = useState<Record<string, string>>({})
@@ -102,6 +103,18 @@ export default function TarefaChecklist({
   function getDisplayValue(tipo: string): string {
     if (tipo in localText) return localText[tipo]
     return isoParaDisplay(getSavedIso(tipo))
+  }
+
+  function getSemMovimento(tipo: string): boolean {
+    if (tipo in optimisticSemMovimento) return optimisticSemMovimento[tipo]
+    return !!mapaTarefa.get(tipo)?.sem_movimento
+  }
+
+  function handleToggleSemMovimento(tipo: string) {
+    const novo = !getSemMovimento(tipo)
+    setOptimisticSemMovimento(prev => ({ ...prev, [tipo]: novo }))
+    setOptimisticDates(prev => ({ ...prev, [tipo]: novo ? new Date().toISOString().slice(0, 10) : null }))
+    startTransition(() => { marcarSemMovimento(clienteId, tipo, mes, ano, novo) })
   }
 
   const concluidas = tipos.filter(t => getSavedIso(t) !== '').length
@@ -264,6 +277,8 @@ export default function TarefaChecklist({
           const tipoResposta: TipoResposta = tarefaTipos[tipo]?.tipoResposta ?? 'data'
           const savedIso = getSavedIso(tipo)
           const feito = savedIso !== ''
+          const semMovimentoAtivo = getSemMovimento(tipo)
+          const mostrarCheckboxSemMovimento = podeEditarTipo(tipo) && !(feito && !semMovimentoAtivo)
           const isUnlocking = unlockingTipo === tipo
           const displayVal = getDisplayValue(tipo)
           const diasPrazo = !feito ? (prazosPorTipo[normalizarTitulo(tipo)] ?? null) : null
@@ -291,7 +306,7 @@ export default function TarefaChecklist({
                   )}
                 </span>
 
-                {tipoResposta === 'data' && !etapasDefinidas ? (
+                {tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo ? (
                   <input
                     type="text"
                     value={displayVal}
@@ -308,7 +323,26 @@ export default function TarefaChecklist({
                   />
                 ) : null}
 
-                {feito && podeEditarTipo(tipo) && !etapasDefinidas && tipoResposta === 'data' && (
+                {semMovimentoAtivo && (
+                  <span className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
+                    SEM MOVIMENTO
+                  </span>
+                )}
+
+                {mostrarCheckboxSemMovimento && (
+                  <label className="flex items-center gap-1 text-[10px] text-[var(--fg)]/40 whitespace-nowrap cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={semMovimentoAtivo}
+                      onChange={() => handleToggleSemMovimento(tipo)}
+                      disabled={isPending}
+                      className="w-3 h-3 accent-[var(--fg)]/50"
+                    />
+                    Sem mov.
+                  </label>
+                )}
+
+                {feito && podeEditarTipo(tipo) && !etapasDefinidas && tipoResposta === 'data' && !semMovimentoAtivo && (
                   <button
                     onClick={() => setUnlockingTipo(isUnlocking ? null : tipo)}
                     className="text-xs text-[var(--fg)]/30 hover:text-[var(--fg)]/60 px-2 py-1 rounded-lg border border-[var(--fg)]/8 hover:border-[var(--fg)]/20 transition-all whitespace-nowrap"
@@ -338,7 +372,7 @@ export default function TarefaChecklist({
                 </div>
               )}
 
-              {etapasDefinidas && (
+              {etapasDefinidas && !semMovimentoAtivo && (
                 <div className="ml-5 mt-1 grid grid-cols-2 gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
                   {etapasDefinidas.map(etapaNome => {
                     const etapaFeita = !!etapasDaTarefa(tipo).find(e => e.nome === etapaNome)?.concluida
@@ -362,7 +396,7 @@ export default function TarefaChecklist({
                 </div>
               )}
 
-              {tipoResposta === 'texto' && !etapasDefinidas && (
+              {tipoResposta === 'texto' && !etapasDefinidas && !semMovimentoAtivo && (
                 <div className="ml-5 mt-1 flex flex-col gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
                   <textarea
                     value={getRespostaTexto(tipo)}
