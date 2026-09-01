@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [v0.7.5] - 2026-09-01
+
+### Corrigido
+- Fiscal: um tipo de tarefa com responsável exclusivo (`tarefa_tipos.responsavel_id`) já era escondido corretamente na ficha do cliente e na tela "Tarefas" pra quem não é o dono nem admin, mas ainda contava na % de progresso e no filtro de pendência da listagem principal `/fiscal/clientes` — inflando esses números pra qualquer usuário. Extraída a checagem de visibilidade pra um helper único e aplicada nas 3 telas.
+
+### Arquivos alterados
+- `lib/tarefa-tipo-visibilidade.ts` — novo helper `tipoVisivelParaUsuario`
+- `app/fiscal/clientes/page.tsx` — filtra `tiposMap`/`progressoMap`/pendência pelo usuário logado
+- `app/fiscal/clientes/[id]/page.tsx` — passa a usar o helper compartilhado
+- `app/fiscal/tarefas/page.tsx` — passa a usar o helper compartilhado
+
+---
+
 ## [v0.7.4] - 2026-07-23
 
 ### Adicionado

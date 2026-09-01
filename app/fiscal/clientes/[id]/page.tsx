@@ -19,6 +19,7 @@ import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
+import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { bucketDoRegime } from '@/lib/regime-bucket'
 
@@ -85,7 +86,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
   // pra quem não é o dono nem admin — ver lib/supabase/server.ts:podeEditarTarefaTipo,
   // que faz a mesma checagem no servidor pra cada escrita.
   const ehDonoOuAdmin = (tipo: string) =>
-    profile?.role === 'admin' || !responsavelIdPorTipo[tipo] || responsavelIdPorTipo[tipo] === user.id
+    tipoVisivelParaUsuario(responsavelIdPorTipo[tipo], user.id, profile?.role)
 
   const tarefasPersonalizadasVisiveis = tarefasPersonalizadasEfetivas.filter(ehDonoOuAdmin)
 

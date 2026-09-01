@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
+import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import type { Tarefa } from '@/lib/types'
 
 export const metadata = { title: 'Tarefas — Tesserato Fiscal' }
@@ -30,10 +31,8 @@ export default async function TarefasPage() {
   )
   // Tarefa de tipo com responsável exclusivo não conta na % de quem não é
   // o dono nem admin — ver lib/supabase/server.ts:podeEditarTarefaTipo.
-  const tipoVisivelParaUsuario = (tipo: string) => {
-    const responsavelId = responsavelIdPorTipo.get(tipo)
-    return profile?.role === 'admin' || !responsavelId || responsavelId === user.id
-  }
+  const tipoVisivel = (tipo: string) =>
+    tipoVisivelParaUsuario(responsavelIdPorTipo.get(tipo), user.id, profile?.role)
 
   const { data: clientes } = await supabase
     .from('clientes')
@@ -75,7 +74,7 @@ export default async function TarefasPage() {
 
       <div className="flex flex-col gap-2">
         {clientesFiltrados.map(cliente => {
-          const ts = (tarefasPorCliente.get(cliente.id) ?? []).filter(t => tipoVisivelParaUsuario(t.tipo))
+          const ts = (tarefasPorCliente.get(cliente.id) ?? []).filter(t => tipoVisivel(t.tipo))
           const concluidas = ts.filter(t => t.concluida).length
           const total = ts.length
           const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
