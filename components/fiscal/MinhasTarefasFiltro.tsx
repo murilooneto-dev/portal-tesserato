@@ -18,12 +18,13 @@ interface Secao {
   tipo: string
   tipoResposta: TipoResposta
   etapasDefinidas: string[] | null
-  clientes: { id: string; nome: string }[]
+  clientes: { id: string; nome: string; atividade: string[] }[]
   tarefas: Pick<Tarefa, 'id' | 'cliente_id' | 'tipo' | 'concluida' | 'concluida_em' | 'sem_movimento'>[]
 }
 
 interface Props {
   secoes: Secao[]
+  atividadesCatalogo: string[]
   etapas: TarefaEtapa[]
   mes: number
   ano: number
@@ -35,15 +36,22 @@ interface Props {
 const inputCls = "flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 const selectCls = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
-export default function MinhasTarefasFiltro({ secoes, etapas, mes, ano, usuarioNome, onToggle, onAtualizarEtapa }: Props) {
+export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas, mes, ano, usuarioNome, onToggle, onAtualizarEtapa }: Props) {
   const [busca, setBusca] = useFiltroPersistente('minhas-tarefas:busca', '')
   const [statusFiltro, setStatusFiltro] = useFiltroPersistente<StatusFiltroMinhasTarefas>('minhas-tarefas:status', 'TODOS')
   const [tarefaFiltro, setTarefaFiltro] = useFiltroPersistente('minhas-tarefas:tarefa', 'TODAS')
+  const [atividadeFiltro, setAtividadeFiltro] = useFiltroPersistente<string[]>('minhas-tarefas:atividade', [])
 
   const secoesFiltradas = useMemo(
     () => secoes.filter(s => tarefaFiltro === 'TODAS' || s.tipo === tarefaFiltro),
     [secoes, tarefaFiltro],
   )
+
+  function toggleAtividade(nome: string) {
+    setAtividadeFiltro(
+      atividadeFiltro.includes(nome) ? atividadeFiltro.filter(a => a !== nome) : [...atividadeFiltro, nome]
+    )
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -68,6 +76,26 @@ export default function MinhasTarefasFiltro({ secoes, etapas, mes, ano, usuarioN
         </select>
       </div>
 
+      {atividadesCatalogo.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 -mt-4">
+          <span className="text-xs text-[var(--fg)]/40">Atividade:</span>
+          {atividadesCatalogo.map(nome => (
+            <button
+              key={nome}
+              type="button"
+              onClick={() => toggleAtividade(nome)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                atividadeFiltro.includes(nome)
+                  ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
+                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
+              }`}
+            >
+              {nome}
+            </button>
+          ))}
+        </div>
+      )}
+
       {secoesFiltradas.map(secao => (
         <MinhasTarefasSecao
           key={secao.tipo}
@@ -82,6 +110,7 @@ export default function MinhasTarefasFiltro({ secoes, etapas, mes, ano, usuarioN
           usuarioNome={usuarioNome}
           busca={busca}
           statusFiltro={statusFiltro}
+          atividadeFiltro={atividadeFiltro}
           onToggle={onToggle}
           onAtualizarEtapa={onAtualizarEtapa}
         />
