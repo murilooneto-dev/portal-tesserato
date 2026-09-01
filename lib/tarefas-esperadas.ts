@@ -58,16 +58,17 @@ export async function buscarMapaVinculosSetor(
   return mapa
 }
 
-// Função pura, testável: soma o que os vínculos do grupo/regime/atividade
-// do cliente geram com tarefas_personalizadas dele. Nunca duplica (Set).
-// Cliente sem grupo/regime/atividade preenchido (ou com um valor que não
-// bate com nada do mapa — não cadastrado, renomeado etc.) simplesmente não
-// contribui nada desses 3 — a lista vira só tarefas_personalizadas, igual
-// hoje sem nenhum fallback.
-export function calcularTarefasEsperadas(
-  cliente: { grupo?: string | null; regime?: string | null; atividade?: string[] | null; tarefas_personalizadas: string[] },
-  mapa: MapaVinculosSetor,
-): string[] {
+interface ClienteVinculo {
+  grupo?: string | null
+  regime?: string | null
+  atividade?: string[] | null
+}
+
+// Só a parte automática (grupo + atividade/regime), sem tarefas_personalizadas
+// nem tarefas_excluidas — reaproveitada tanto por calcularTarefasEsperadas
+// quanto pela UI do cadastro (tarefasAutomaticasVisiveis), que precisa saber
+// quais tarefas automáticas existem pra poder oferecer excluir uma delas.
+function tarefasAutomaticas(cliente: ClienteVinculo, mapa: MapaVinculosSetor): string[] {
   // Vínculo de atividade: regimeNome null = "todos os regimes" (aplica
   // sempre); regimeNome preenchido = só aplica se bater com o regime do
   // cliente (AND atividade+regime).
@@ -76,9 +77,38 @@ export function calcularTarefasEsperadas(
       .filter(e => e.regimeNome === null || e.regimeNome === cliente.regime)
       .map(e => e.tarefa)
   )
-  const automaticas = [
+  return Array.from(new Set([
     ...(mapa.porGrupo[cliente.grupo ?? ''] ?? []),
     ...doAtividade,
-  ]
-  return Array.from(new Set([...automaticas, ...cliente.tarefas_personalizadas]))
+  ]))
+}
+
+// Função pura, testável: soma o que os vínculos do grupo/atividade do
+// cliente geram (menos o que estiver em tarefas_excluidas) com
+// tarefas_personalizadas dele. Nunca duplica (Set). Cliente sem
+// grupo/regime/atividade preenchido (ou com um valor que não bate com nada
+// do mapa — não cadastrado, renomeado etc.) simplesmente não contribui nada
+// desses 2 — a lista vira só tarefas_personalizadas, igual hoje sem nenhum
+// fallback. tarefas_excluidas nunca afeta tarefas_personalizadas — readicionar
+// manualmente algo excluído já faz ele voltar a aparecer, sem precisar
+// "desexcluir" antes.
+export function calcularTarefasEsperadas(
+  cliente: ClienteVinculo & { tarefas_personalizadas: string[]; tarefas_excluidas?: string[] },
+  mapa: MapaVinculosSetor,
+): string[] {
+  const excluidas = new Set(cliente.tarefas_excluidas ?? [])
+  const automaticasAtivas = tarefasAutomaticas(cliente, mapa).filter(t => !excluidas.has(t))
+  return Array.from(new Set([...automaticasAtivas, ...cliente.tarefas_personalizadas]))
+}
+
+// Pra UI do cadastro: as tarefas automáticas ainda ativas (não excluídas) e
+// que não são já uma tarefa personalizada (evita mostrar a mesma tarefa
+// duas vezes no campo "Tarefas" do formulário de cliente).
+export function tarefasAutomaticasVisiveis(
+  cliente: ClienteVinculo & { tarefas_personalizadas?: string[]; tarefas_excluidas?: string[] },
+  mapa: MapaVinculosSetor,
+): string[] {
+  const excluidas = new Set(cliente.tarefas_excluidas ?? [])
+  const personalizadas = new Set(cliente.tarefas_personalizadas ?? [])
+  return tarefasAutomaticas(cliente, mapa).filter(t => !excluidas.has(t) && !personalizadas.has(t))
 }

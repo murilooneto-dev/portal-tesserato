@@ -60,6 +60,7 @@ export interface ClienteFiscal {
   email_envio_iss: string | null
   declaracao_anual: boolean
   tarefas_personalizadas: string[]
+  tarefas_excluidas: string[]
   ativo: boolean
   faz_dossie: boolean
   dossie_status: 'NAO_POSSUI' | 'EM_ATUALIZACAO' | 'CONCLUIDO'
@@ -119,6 +120,7 @@ export interface ClienteContabil {
   prioridade: number
   obs: string | null
   tarefas_personalizadas: string[]
+  tarefas_excluidas: string[]
   ativo: boolean
 }
 
@@ -130,6 +132,7 @@ export interface ClientePessoal {
   prioridade: number
   obs: string | null
   tarefas_personalizadas: string[]
+  tarefas_excluidas: string[]
   ativo: boolean
 }
 

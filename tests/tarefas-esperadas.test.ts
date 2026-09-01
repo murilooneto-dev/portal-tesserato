@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calcularTarefasEsperadas, type MapaVinculosSetor } from '../lib/tarefas-esperadas'
+import { calcularTarefasEsperadas, tarefasAutomaticasVisiveis, type MapaVinculosSetor } from '../lib/tarefas-esperadas'
 
 const mapaVazio: MapaVinculosSetor = { porGrupo: {}, porRegime: {}, porAtividade: {} }
 
@@ -81,4 +81,49 @@ test('calcularTarefasEsperadas: cliente com 2 atividades soma os vínculos das d
   const cliente = { grupo: null, regime: null, atividade: ['Serviço', 'Comércio'], tarefas_personalizadas: [] }
   const resultado = calcularTarefasEsperadas(cliente, mapa)
   assert.deepEqual(resultado.sort(), ['DAS', 'ICMS', 'ISS'])
+})
+
+test('calcularTarefasEsperadas: tarefas_excluidas some da lista final, mesmo vindo de grupo ou atividade', () => {
+  const mapa: MapaVinculosSetor = {
+    porGrupo: { simples: ['DAS', 'FECHAMENTO SIMPLES'] },
+    porRegime: {},
+    porAtividade: { Comércio: [{ tarefa: 'ICMS ST', regimeNome: null }] },
+  }
+  const cliente = {
+    grupo: 'simples', regime: null, atividade: ['Comércio'],
+    tarefas_personalizadas: [], tarefas_excluidas: ['DAS', 'ICMS ST'],
+  }
+  const resultado = calcularTarefasEsperadas(cliente, mapa)
+  assert.deepEqual(resultado.sort(), ['FECHAMENTO SIMPLES'])
+})
+
+test('calcularTarefasEsperadas: tarefas_excluidas nunca afeta tarefas_personalizadas — readicionar manualmente sempre mostra', () => {
+  const mapa: MapaVinculosSetor = { porGrupo: { simples: ['DAS'] }, porRegime: {}, porAtividade: {} }
+  const cliente = {
+    grupo: 'simples', regime: null, atividade: null,
+    tarefas_personalizadas: ['DAS'], tarefas_excluidas: ['DAS'],
+  }
+  const resultado = calcularTarefasEsperadas(cliente, mapa)
+  assert.deepEqual(resultado, ['DAS'])
+})
+
+test('calcularTarefasEsperadas: sem tarefas_excluidas (undefined) se comporta igual a hoje', () => {
+  const mapa: MapaVinculosSetor = { porGrupo: { simples: ['DAS'] }, porRegime: {}, porAtividade: {} }
+  const cliente = { grupo: 'simples', regime: null, atividade: null, tarefas_personalizadas: ['ISS'] }
+  const resultado = calcularTarefasEsperadas(cliente, mapa)
+  assert.deepEqual(resultado.sort(), ['DAS', 'ISS'])
+})
+
+test('tarefasAutomaticasVisiveis: mostra as automáticas, tira as excluídas e as que já são personalizada', () => {
+  const mapa: MapaVinculosSetor = {
+    porGrupo: { simples: ['DAS', 'FECHAMENTO SIMPLES'] },
+    porRegime: {},
+    porAtividade: { Comércio: [{ tarefa: 'ICMS ST', regimeNome: null }] },
+  }
+  const cliente = {
+    grupo: 'simples', regime: null, atividade: ['Comércio'],
+    tarefas_personalizadas: ['FECHAMENTO SIMPLES'], tarefas_excluidas: ['ICMS ST'],
+  }
+  const resultado = tarefasAutomaticasVisiveis(cliente, mapa)
+  assert.deepEqual(resultado.sort(), ['DAS'])
 })
