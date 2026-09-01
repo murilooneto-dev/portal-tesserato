@@ -60,7 +60,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
   const [busca, setBusca] = useFiltroPersistente('clientes:busca', '')
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('clientes:grupo', 'TODOS')
-  const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('clientes:atividade', 'TODOS')
+  const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('clientes:atividade', [])
   const [filtroPrioridade, setFiltroPrioridade] = useFiltroPersistente('clientes:prioridade', 'TODOS')
   const [filtroPendencia, setFiltroPendencia] = useFiltroPersistente('clientes:pendencia', false)
   const [mostrarDesabilitados, setMostrarDesabilitados] = useFiltroPersistente('clientes:mostrarDesabilitados', false)
@@ -71,9 +71,15 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
   )).sort()], [clientes])
 
 
-  const atividades = useMemo(() => ['TODOS', ...Array.from(new Set(
+  const atividades = useMemo(() => Array.from(new Set(
     clientes.flatMap(c => c.atividade ?? [])
-  )).sort()], [clientes])
+  )).sort(), [clientes])
+
+  function toggleAtividade(nome: string) {
+    setFiltroAtividade(
+      filtroAtividade.includes(nome) ? filtroAtividade.filter(a => a !== nome) : [...filtroAtividade, nome]
+    )
+  }
 
   const prioridades = useMemo(() => Array.from(new Set(
     clientes.map(c => c.prioridade).filter((p): p is number => !!p && p > 0)
@@ -90,7 +96,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     }
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
     if (filtroGrupo !== 'TODOS' && bucketDoRegime(c.regime) !== filtroGrupo) return false
-    if (filtroAtividade !== 'TODOS' && !(c.atividade ?? []).includes(filtroAtividade)) return false
+    if (filtroAtividade.length > 0 && !filtroAtividade.every(a => (c.atividade ?? []).includes(a))) return false
     if (filtroPrioridade !== 'TODOS' && String(c.prioridade ?? '') !== filtroPrioridade) return false
     if (filtroPendencia && !comPendencia.has(c.id)) return false
     if (!mostrarDesabilitados && c.ativo === false) return false
@@ -118,10 +124,6 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
           {(Object.keys(LABEL_BUCKET) as GrupoBucket[]).map(b => (
             <option key={b} value={b} className="bg-[var(--bg-surface)]">{LABEL_BUCKET[b]}</option>
           ))}
-        </select>
-        <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as atividades</option>
-          {atividades.slice(1).map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
         </select>
         <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} className={selectClass}>
           <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as prioridades</option>
@@ -151,6 +153,26 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
           + Novo Cliente
         </button>
       </div>
+
+      {atividades.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="text-xs text-[var(--fg)]/40">Atividade:</span>
+          {atividades.map(nome => (
+            <button
+              key={nome}
+              type="button"
+              onClick={() => toggleAtividade(nome)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                filtroAtividade.includes(nome)
+                  ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
+                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
+              }`}
+            >
+              {nome}
+            </button>
+          ))}
+        </div>
+      )}
 
       {modalNovoOpen && (
         <EmpresaModal

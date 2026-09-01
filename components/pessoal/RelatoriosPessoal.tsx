@@ -34,9 +34,15 @@ interface Props {
 export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano, mesesVisiveisPorTipo, obsPorCliente, mapaVinculos }: Props) {
   const router = useRouter()
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios-pessoal:responsavel', 'TODOS')
-  const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente('relatorios-pessoal:atividade', 'TODAS')
+  const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('relatorios-pessoal:atividade', [])
   const [filtroTarefa, setFiltroTarefa] = useFiltroPersistente('relatorios-pessoal:tarefa', 'TODAS')
   const [apenasP, setApenasP] = useFiltroPersistente('relatorios-pessoal:pendencia', false)
+
+  function toggleAtividade(nome: string) {
+    setFiltroAtividade(
+      filtroAtividade.includes(nome) ? filtroAtividade.filter(a => a !== nome) : [...filtroAtividade, nome]
+    )
+  }
 
   const responsaveis = isAdmin
     ? ['TODOS', ...Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[]))]
@@ -47,7 +53,7 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
-    .filter(c => filtroAtividade === 'TODAS' || (c.atividade ?? []).includes(filtroAtividade))
+    .filter(c => filtroAtividade.length === 0 || filtroAtividade.every(a => (c.atividade ?? []).includes(a)))
     .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas(c, mapaVinculos).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas, mesesVisiveisPorTipo, mes, mapaVinculos) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
@@ -127,12 +133,6 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
           </select>
         )}
 
-        <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)}
-          className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
-          <option value="TODAS" className="bg-[var(--bg-surface)]">Todas as atividades</option>
-          {atividades.map(a => <option key={a} value={a} className="bg-[var(--bg-surface)]">{a}</option>)}
-        </select>
-
         <select value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)}
           className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
           <option value="TODAS" className="bg-[var(--bg-surface)]">Todas as tarefas</option>
@@ -151,6 +151,26 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
           🖨 Imprimir / Salvar PDF
         </button>
       </div>
+
+      {atividades.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <span className="text-xs text-[var(--fg)]/40">Atividade:</span>
+          {atividades.map(nome => (
+            <button
+              key={nome}
+              type="button"
+              onClick={() => toggleAtividade(nome)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                filtroAtividade.includes(nome)
+                  ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
+                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
+              }`}
+            >
+              {nome}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
