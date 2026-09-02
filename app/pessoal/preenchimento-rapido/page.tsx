@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
+import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { nomesTarefaTipoData, type ClienteFiltro } from '@/lib/preenchimento-rapido'
 import { toggleTarefaPessoal } from '@/app/pessoal/clientes/actions'
@@ -16,6 +17,8 @@ interface ClienteRow {
     regime: string | null
     atividade: string[]
     responsavel: string | null
+    tarefas_personalizadas: string[]
+    tarefas_excluidas: string[]
   }
 }
 
@@ -29,12 +32,13 @@ export default async function PreenchimentoRapidoPessoalPage() {
   const { data: profile } = await supabase
     .from('profiles').select('role, nome').eq('id', user.id).single()
 
-  const [{ data: clientesRaw }, { data: tiposRaw }, tarefas] = await Promise.all([
+  const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_pessoal!inner(regime, atividade, responsavel, ativo)')
+      .select('id, nome, clientes_pessoal!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_pessoal.ativo', true)
       .order('nome'),
+    buscarMapaVinculosSetor(supabase, 'pessoal'),
     supabase.from('tarefa_tipos').select('nome, tipo_resposta, etapas').eq('setor', 'pessoal'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'tipo' | 'concluida'>>(
       supabase, mes, ano, 'cliente_id, tipo, concluida', 'pessoal',
@@ -49,6 +53,8 @@ export default async function PreenchimentoRapidoPessoalPage() {
       regime: r.clientes_pessoal.regime,
       atividade: r.clientes_pessoal.atividade,
       responsavel: r.clientes_pessoal.responsavel,
+      tarefas_personalizadas: r.clientes_pessoal.tarefas_personalizadas,
+      tarefas_excluidas: r.clientes_pessoal.tarefas_excluidas,
     }
   })
 
@@ -82,6 +88,7 @@ export default async function PreenchimentoRapidoPessoalPage() {
       <PreenchimentoRapido
         camposDisponiveis={[]}
         clientes={clientes}
+        mapaVinculos={mapaVinculos}
         tiposData={tiposData}
         estadoInicial={estadoInicial}
         onToggle={onToggle}

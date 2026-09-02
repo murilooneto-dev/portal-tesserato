@@ -6,7 +6,8 @@ import {
   type ClienteFiltro,
   valoresDistintos,
   clientesPorValor,
-  tarefasTipoDataVinculadas,
+  tarefasAplicaveisCliente,
+  tarefasDisponiveisParaClientes,
 } from '@/lib/preenchimento-rapido'
 import type { MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 
@@ -18,7 +19,7 @@ const LABEL_CAMPO: Record<CampoFiltro, string> = {
 interface Props {
   camposDisponiveis: CampoFiltro[]
   clientes: ClienteFiltro[]
-  mapaVinculos?: MapaVinculosSetor
+  mapaVinculos: MapaVinculosSetor
   tiposData: string[]
   estadoInicial: Record<string, Record<string, boolean>>
   onToggle: (clienteId: string, tipo: string, concluida: boolean) => Promise<void>
@@ -51,15 +52,27 @@ export default function PreenchimentoRapido({
     [clientes, campo],
   )
 
-  const tarefasDisponiveis = useMemo(() => {
-    if (modoDireto) return [...tiposData].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-    return campo && valor && mapaVinculos ? tarefasTipoDataVinculadas(mapaVinculos, campo, valor, tiposDataSet) : []
-  }, [modoDireto, tiposData, mapaVinculos, campo, valor, tiposDataSet])
-
   const clientesFiltrados = useMemo(() => {
     if (modoDireto) return clientes
     return campo && valor ? clientesPorValor(clientes, campo, valor) : []
   }, [modoDireto, clientes, campo, valor])
+
+  // Por cliente, o conjunto real de tarefas tipo DATA que se aplicam a ele
+  // (vínculo automático atividade+regime menos exclusões, mais
+  // personalizadas) — fonte de verdade tanto pros botões de tarefa quanto
+  // pra decidir quais linhas/células aparecem na grade.
+  const tarefasAplicaveisPorCliente = useMemo(() => {
+    const porCliente: Record<string, Set<string>> = {}
+    for (const c of clientesFiltrados) {
+      porCliente[c.id] = tarefasAplicaveisCliente(c, mapaVinculos, tiposDataSet)
+    }
+    return porCliente
+  }, [clientesFiltrados, mapaVinculos, tiposDataSet])
+
+  const tarefasDisponiveis = useMemo(
+    () => tarefasDisponiveisParaClientes(clientesFiltrados, mapaVinculos, tiposDataSet),
+    [clientesFiltrados, mapaVinculos, tiposDataSet],
+  )
 
   function handleCampoChange(novoCampo: CampoFiltro) {
     setCampo(novoCampo)
@@ -94,6 +107,14 @@ export default function PreenchimentoRapido({
   }
 
   const colunas = Array.from(tarefasSelecionadas).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+
+  // Só entra na grade quem tem pelo menos uma das tarefas marcadas
+  // realmente aplicável — cliente sem nenhuma delas não aparece nem como
+  // linha vazia (ex: AB Preço Único não deve aparecer pra "Distribuição
+  // de Lucros" se essa tarefa não é dela).
+  const linhasVisiveis = clientesFiltrados.filter(c =>
+    colunas.some(tipo => tarefasAplicaveisPorCliente[c.id]?.has(tipo)),
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -172,8 +193,8 @@ export default function PreenchimentoRapido({
       )}
 
       {colunas.length > 0 && (
-        clientesFiltrados.length === 0 ? (
-          <p className="text-sm text-[var(--fg)]/40">Nenhum cliente encontrado para esse filtro.</p>
+        linhasVisiveis.length === 0 ? (
+          <p className="text-sm text-[var(--fg)]/40">Nenhum cliente tem essa(s) tarefa(s) aplicável(is).</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -188,17 +209,21 @@ export default function PreenchimentoRapido({
                 </tr>
               </thead>
               <tbody>
-                {clientesFiltrados.map(cliente => (
+                {linhasVisiveis.map(cliente => (
                   <tr key={cliente.id} className="border-b border-[var(--fg)]/5">
                     <td className="py-2 px-3 text-[var(--fg)]">{cliente.nome}</td>
                     {colunas.map(tipo => (
                       <td key={tipo} className="text-center py-2 px-3">
-                        <input
-                          type="checkbox"
-                          checked={getConcluida(cliente.id, tipo)}
-                          onChange={() => handleCheckbox(cliente.id, tipo)}
-                          className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
-                        />
+                        {tarefasAplicaveisPorCliente[cliente.id]?.has(tipo) ? (
+                          <input
+                            type="checkbox"
+                            checked={getConcluida(cliente.id, tipo)}
+                            onChange={() => handleCheckbox(cliente.id, tipo)}
+                            className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
+                          />
+                        ) : (
+                          <span className="text-[var(--fg)]/20">—</span>
+                        )}
                       </td>
                     ))}
                   </tr>

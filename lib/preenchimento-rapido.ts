@@ -1,5 +1,5 @@
 // lib/preenchimento-rapido.ts
-import type { MapaVinculosSetor } from './tarefas-esperadas'
+import { calcularTarefasEsperadas, type MapaVinculosSetor } from './tarefas-esperadas'
 
 export type CampoFiltro = 'regime' | 'atividade'
 
@@ -8,6 +8,8 @@ export interface ClienteFiltro {
   nome: string
   regime?: string | null
   atividade?: string[] | null
+  tarefas_personalizadas?: string[]
+  tarefas_excluidas?: string[]
 }
 
 export interface TarefaTipoRaw {
@@ -50,20 +52,33 @@ export function clientesPorValor(
   return clientes.filter(c => c[campo] === valor)
 }
 
-export function tarefasTipoDataVinculadas(
+// Tarefas tipo DATA que de fato se aplicam a esse cliente — mesma conta de
+// calcularTarefasEsperadas (vínculo automático atividade+regime menos
+// tarefas_excluidas, mais tarefas_personalizadas), restrita ao conjunto de
+// tarefas tipo DATA sem etapas (as únicas que viram checkbox nesta tela).
+export function tarefasAplicaveisCliente(
+  cliente: ClienteFiltro,
   mapa: MapaVinculosSetor,
-  campo: CampoFiltro,
-  valor: string,
+  tiposData: Set<string>,
+): Set<string> {
+  const esperadas = calcularTarefasEsperadas(
+    { ...cliente, tarefas_personalizadas: cliente.tarefas_personalizadas ?? [] },
+    mapa,
+  )
+  return new Set(esperadas.filter(t => tiposData.has(t)))
+}
+
+// União das tarefas aplicáveis de todo um grupo de clientes — usada pra
+// montar os botões de tarefa disponíveis (catálogo automático +
+// personalizadas de qualquer cliente do grupo).
+export function tarefasDisponiveisParaClientes(
+  clientes: ClienteFiltro[],
+  mapa: MapaVinculosSetor,
   tiposData: Set<string>,
 ): string[] {
-  // porAtividade guarda { tarefa, regimeNome } (suporte a vínculo
-  // atividade+regime, ver lib/tarefas-esperadas.ts) — aqui não filtramos
-  // por regime, mesmo comportamento de sempre desta tela (agrupa por
-  // atividade/regime do cliente, nunca foi regime-consciente pro
-  // caso de vínculo de atividade).
-  const nomes = campo === 'atividade'
-    ? (mapa.porAtividade[valor] ?? []).map(e => e.tarefa)
-    : (mapa.porRegime[valor] ?? [])
-  const filtradas = new Set(nomes.filter(n => tiposData.has(n)))
-  return Array.from(filtradas).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const nomes = new Set<string>()
+  for (const c of clientes) {
+    for (const t of tarefasAplicaveisCliente(c, mapa, tiposData)) nomes.add(t)
+  }
+  return Array.from(nomes).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }
