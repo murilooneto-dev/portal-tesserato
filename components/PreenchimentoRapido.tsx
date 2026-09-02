@@ -18,7 +18,7 @@ const LABEL_CAMPO: Record<CampoFiltro, string> = {
 interface Props {
   camposDisponiveis: CampoFiltro[]
   clientes: ClienteFiltro[]
-  mapaVinculos: MapaVinculosSetor
+  mapaVinculos?: MapaVinculosSetor
   tiposData: string[]
   estadoInicial: Record<string, Record<string, boolean>>
   onToggle: (clienteId: string, tipo: string, concluida: boolean) => Promise<void>
@@ -42,6 +42,8 @@ export default function PreenchimentoRapido({
     return overlay[clienteId]?.[tipo] ?? estadoInicial[clienteId]?.[tipo] ?? false
   }
 
+  const modoDireto = camposDisponiveis.length === 0
+
   const tiposDataSet = useMemo(() => new Set(tiposData), [tiposData])
 
   const valores = useMemo(
@@ -49,15 +51,15 @@ export default function PreenchimentoRapido({
     [clientes, campo],
   )
 
-  const tarefasDisponiveis = useMemo(
-    () => (campo && valor ? tarefasTipoDataVinculadas(mapaVinculos, campo, valor, tiposDataSet) : []),
-    [mapaVinculos, campo, valor, tiposDataSet],
-  )
+  const tarefasDisponiveis = useMemo(() => {
+    if (modoDireto) return [...tiposData].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    return campo && valor && mapaVinculos ? tarefasTipoDataVinculadas(mapaVinculos, campo, valor, tiposDataSet) : []
+  }, [modoDireto, tiposData, mapaVinculos, campo, valor, tiposDataSet])
 
-  const clientesFiltrados = useMemo(
-    () => (campo && valor ? clientesPorValor(clientes, campo, valor) : []),
-    [clientes, campo, valor],
-  )
+  const clientesFiltrados = useMemo(() => {
+    if (modoDireto) return clientes
+    return campo && valor ? clientesPorValor(clientes, campo, valor) : []
+  }, [modoDireto, clientes, campo, valor])
 
   function handleCampoChange(novoCampo: CampoFiltro) {
     setCampo(novoCampo)
@@ -95,51 +97,59 @@ export default function PreenchimentoRapido({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap gap-4">
-        <div>
-          <label className="block text-xs text-[var(--fg)]/40 mb-1">Filtrar por</label>
-          <select
-            value={campo ?? ''}
-            onChange={e => handleCampoChange(e.target.value as CampoFiltro)}
-            className="bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
-          >
-            <option value="" disabled className="bg-[var(--bg-surface)]">Selecione...</option>
-            {camposDisponiveis.map(c => (
-              <option key={c} value={c} className="bg-[var(--bg-surface)]">{LABEL_CAMPO[c]}</option>
-            ))}
-          </select>
-        </div>
-
-        {campo && (
+      {!modoDireto && (
+        <div className="flex flex-wrap gap-4">
           <div>
-            <label className="block text-xs text-[var(--fg)]/40 mb-1">{LABEL_CAMPO[campo]}</label>
+            <label className="block text-xs text-[var(--fg)]/40 mb-1">Filtrar por</label>
             <select
-              value={valor ?? ''}
-              onChange={e => handleValorChange(e.target.value)}
+              value={campo ?? ''}
+              onChange={e => handleCampoChange(e.target.value as CampoFiltro)}
               className="bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
             >
               <option value="" disabled className="bg-[var(--bg-surface)]">Selecione...</option>
-              {valores.map(v => (
-                <option key={v} value={v} className="bg-[var(--bg-surface)]">{v}</option>
+              {camposDisponiveis.map(c => (
+                <option key={c} value={c} className="bg-[var(--bg-surface)]">{LABEL_CAMPO[c]}</option>
               ))}
             </select>
           </div>
-        )}
-      </div>
 
-      {campo && valores.length === 0 && (
+          {campo && (
+            <div>
+              <label className="block text-xs text-[var(--fg)]/40 mb-1">{LABEL_CAMPO[campo]}</label>
+              <select
+                value={valor ?? ''}
+                onChange={e => handleValorChange(e.target.value)}
+                className="bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
+              >
+                <option value="" disabled className="bg-[var(--bg-surface)]">Selecione...</option>
+                {valores.map(v => (
+                  <option key={v} value={v} className="bg-[var(--bg-surface)]">{v}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!modoDireto && campo && valores.length === 0 && (
         <p className="text-sm text-[var(--fg)]/40">
           Nenhum cliente tem {LABEL_CAMPO[campo].toLowerCase()} cadastrado.
         </p>
       )}
 
-      {campo && valor && tarefasDisponiveis.length === 0 && (
+      {!modoDireto && campo && valor && tarefasDisponiveis.length === 0 && (
         <p className="text-sm text-[var(--fg)]/40">
           Nenhuma tarefa do tipo data vinculada a {LABEL_CAMPO[campo].toLowerCase()} &quot;{valor}&quot;.
         </p>
       )}
 
-      {campo && valor && tarefasDisponiveis.length > 0 && (
+      {modoDireto && tarefasDisponiveis.length === 0 && (
+        <p className="text-sm text-[var(--fg)]/40">
+          Nenhuma tarefa tipo data cadastrada nesse setor.
+        </p>
+      )}
+
+      {(modoDireto || (campo && valor)) && tarefasDisponiveis.length > 0 && (
         <div>
           <label className="block text-xs text-[var(--fg)]/40 mb-2">Tarefas</label>
           <div className="flex flex-wrap gap-2">

@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
-import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { nomesTarefaTipoData, type ClienteFiltro } from '@/lib/preenchimento-rapido'
 import { toggleTarefaContabil } from '@/app/contabil/clientes/actions'
@@ -30,13 +29,12 @@ export default async function PreenchimentoRapidoContabilPage() {
   const { data: profile } = await supabase
     .from('profiles').select('role, nome').eq('id', user.id).single()
 
-  const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas] = await Promise.all([
+  const [{ data: clientesRaw }, { data: tiposRaw }, tarefas] = await Promise.all([
     supabase
       .from('clientes')
       .select('id, nome, clientes_contabil!inner(regime, atividade, responsavel, ativo)')
       .eq('clientes_contabil.ativo', true)
       .order('nome'),
-    buscarMapaVinculosSetor(supabase, 'contabil'),
     supabase.from('tarefa_tipos').select('nome, tipo_resposta, etapas').eq('setor', 'contabil'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'tipo' | 'concluida'>>(
       supabase, mes, ano, 'cliente_id, tipo, concluida', 'contabil',
@@ -82,9 +80,8 @@ export default async function PreenchimentoRapidoContabilPage() {
         </p>
       </div>
       <PreenchimentoRapido
-        camposDisponiveis={['regime', 'atividade']}
+        camposDisponiveis={[]}
         clientes={clientes}
-        mapaVinculos={mapaVinculos}
         tiposData={tiposData}
         estadoInicial={estadoInicial}
         onToggle={onToggle}
