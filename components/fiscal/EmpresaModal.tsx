@@ -16,7 +16,6 @@ interface FormData {
   nome: string
   regime: string
   atividade: string[]
-  grupo: string
   municipio: string
   uf: string
   responsavel: string
@@ -42,7 +41,7 @@ interface Props {
 }
 
 const emptyForm = (): FormData => ({
-  cod: '', cnpj: '', nome: '', regime: '', atividade: [], grupo: '',
+  cod: '', cnpj: '', nome: '', regime: '', atividade: [],
   municipio: '', uf: '', responsavel: '', contato_chat: '', prioridade: 3,
   declaracao_anual: false, envia_iss: false, confere_siga: false, faz_dossie: false,
   login_iss: '', senha_iss: '', email_envio_iss: '',
@@ -78,7 +77,6 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
         nome: data.nome ?? '',
         regime: data.regime ?? '',
         atividade: data.atividade ?? [],
-        grupo: data.grupo ?? '',
         municipio: mitParts[0] ?? '',
         uf: mitParts[1] ?? '',
         responsavel: data.responsavel ?? '',
@@ -158,7 +156,6 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
       cod:                    form.cod || null,
       regime:                 form.regime || null,
       atividade:              form.atividade,
-      grupo:                  form.grupo || null,
       responsavel:            form.responsavel || null,
       prioridade:             form.prioridade,
       declaracao_anual:       form.declaracao_anual,

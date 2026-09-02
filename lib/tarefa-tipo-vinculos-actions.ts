@@ -4,11 +4,10 @@ import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { UserSetor, TipoResposta } from '@/lib/types'
 
-export type TipoEntidadeVinculo = 'regime' | 'grupo' | 'atividade'
+export type TipoEntidadeVinculo = 'regime' | 'atividade'
 
-const TABELA_POR_TIPO: Record<TipoEntidadeVinculo, 'regimes' | 'grupos' | 'atividades'> = {
+const TABELA_POR_TIPO: Record<TipoEntidadeVinculo, 'regimes' | 'atividades'> = {
   regime: 'regimes',
-  grupo: 'grupos',
   atividade: 'atividades',
 }
 

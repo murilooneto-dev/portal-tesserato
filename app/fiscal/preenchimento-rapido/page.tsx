@@ -7,7 +7,6 @@ import { nomesTarefaTipoData, type ClienteFiltro } from '@/lib/preenchimento-rap
 import { toggleTarefaFiscal } from '@/app/fiscal/clientes/actions'
 import PreenchimentoRapido from '@/components/PreenchimentoRapido'
 import type { Tarefa } from '@/lib/types'
-import { bucketDoRegime } from '@/lib/regime-bucket'
 
 export const metadata = { title: 'Preenchimento Rápido — Tesserato Fiscal' }
 
@@ -15,7 +14,6 @@ interface ClienteRow {
   id: string
   nome: string
   clientes_fiscal: {
-    grupo: string | null
     regime: string | null
     atividade: string[]
     responsavel: string | null
@@ -35,7 +33,7 @@ export default async function PreenchimentoRapidoFiscalPage() {
   const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_fiscal!inner(grupo, regime, atividade, responsavel, ativo)')
+      .select('id, nome, clientes_fiscal!inner(regime, atividade, responsavel, ativo)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'fiscal'),
@@ -50,8 +48,6 @@ export default async function PreenchimentoRapidoFiscalPage() {
     return {
       id: r.id,
       nome: r.nome,
-      // Vínculo por Grupo agora deriva do Regime — ver lib/regime-bucket.ts.
-      grupo: bucketDoRegime(r.clientes_fiscal.regime),
       regime: r.clientes_fiscal.regime,
       atividade: r.clientes_fiscal.atividade,
       responsavel: r.clientes_fiscal.responsavel,
@@ -86,7 +82,7 @@ export default async function PreenchimentoRapidoFiscalPage() {
         </p>
       </div>
       <PreenchimentoRapido
-        camposDisponiveis={['grupo', 'regime', 'atividade']}
+        camposDisponiveis={['regime', 'atividade']}
         clientes={clientes}
         mapaVinculos={mapaVinculos}
         tiposData={tiposData}

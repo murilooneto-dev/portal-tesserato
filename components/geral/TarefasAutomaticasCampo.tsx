@@ -7,7 +7,6 @@ import type { UserSetor } from '@/lib/types'
 
 interface Props {
   setor: UserSetor
-  grupo?: string | null
   regime: string | null
   atividade: string[]
   personalizadas: string[]
@@ -16,11 +15,10 @@ interface Props {
   readOnly?: boolean
 }
 
-const mapaVazio: MapaVinculosSetor = { porGrupo: {}, porRegime: {}, porAtividade: {} }
+const mapaVazio: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
 
 export default function TarefasAutomaticasCampo({
   setor,
-  grupo,
   regime,
   atividade,
   personalizadas,
@@ -36,8 +34,8 @@ export default function TarefasAutomaticasCampo({
   }, [setor])
 
   const automaticasAtivas = useMemo(
-    () => tarefasAutomaticasVisiveis({ grupo, regime, atividade, tarefas_personalizadas: personalizadas, tarefas_excluidas: excluidas }, mapaVinculos),
-    [grupo, regime, atividade, personalizadas, excluidas, mapaVinculos],
+    () => tarefasAutomaticasVisiveis({ regime, atividade, tarefas_personalizadas: personalizadas, tarefas_excluidas: excluidas }, mapaVinculos),
+    [regime, atividade, personalizadas, excluidas, mapaVinculos],
   )
 
   function excluir(nome: string) {
@@ -52,7 +50,7 @@ export default function TarefasAutomaticasCampo({
     <div className="mt-4 space-y-3">
       <div>
         <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">
-          Automáticas (vínculo de grupo/atividade) ({automaticasAtivas.length})
+          Automáticas (vínculo de atividade) ({automaticasAtivas.length})
         </label>
         <div className="flex flex-wrap gap-1.5 min-h-[32px]">
           {automaticasAtivas.length === 0 && (

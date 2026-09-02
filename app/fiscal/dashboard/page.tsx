@@ -47,8 +47,7 @@ export default async function DashboardPage() {
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
-    // Vínculo por Grupo agora deriva do Regime — ver lib/regime-bucket.ts.
-    tiposMap[c.id] = new Set(calcularTarefasEsperadas({ ...c, grupo: bucketDoRegime(c.regime) }, mapaVinculos))
+    tiposMap[c.id] = new Set(calcularTarefasEsperadas(c, mapaVinculos))
   }
   for (const t of ts) {
     if (t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)) tiposMap[t.cliente_id]?.add(t.tipo)

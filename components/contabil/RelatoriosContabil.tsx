@@ -26,9 +26,10 @@ interface Props {
   ano: number
   obsPorCliente: Record<string, string>
   mapaVinculos: MapaVinculosSetor
+  atividadesCatalogo: string[]
 }
 
-export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, ano, obsPorCliente, mapaVinculos }: Props) {
+export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, ano, obsPorCliente, mapaVinculos, atividadesCatalogo }: Props) {
   const router = useRouter()
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios-contabil:responsavel', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('relatorios-contabil:atividade', [])
@@ -45,7 +46,7 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
     ? ['TODOS', ...Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[]))]
     : []
 
-  const atividades = Array.from(new Set(clientes.flatMap(c => c.atividade ?? []))).sort()
+  const atividades = atividadesCatalogo
   const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
 
   const filtrados = clientes

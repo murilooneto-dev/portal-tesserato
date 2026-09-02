@@ -19,8 +19,7 @@ const TAREFAS: Record<string, string[]> = {
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
 function progresso(cliente: ClienteComFiscal, tarefas: Tarefa[], mapa: MapaVinculosSetor) {
-  // Vínculo por Grupo agora deriva do Regime — ver lib/regime-bucket.ts.
-  const tipos = new Set(calcularTarefasEsperadas({ ...cliente, grupo: bucketDoRegime(cliente.regime) }, mapa))
+  const tipos = new Set(calcularTarefasEsperadas(cliente, mapa))
   const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.has(t.tipo))
   const total = tipos.size
   const feitas = clienteTarefas.filter(t => t.concluida).length
@@ -35,7 +34,8 @@ export default function RelatoriosPage() {
   const [clientes, setClientes] = useState<ClienteComFiscal[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [obsPorCliente, setObsPorCliente] = useState<Record<string, string>>({})
-  const [mapaVinculos, setMapaVinculos] = useState<MapaVinculosSetor>({ porGrupo: {}, porRegime: {}, porAtividade: {} })
+  const [mapaVinculos, setMapaVinculos] = useState<MapaVinculosSetor>({ porRegime: {}, porAtividade: {} })
+  const [atividadesCatalogo, setAtividadesCatalogo] = useState<string[]>([])
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('relatorios:grupo', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('relatorios:atividade', [])
@@ -74,7 +74,8 @@ export default function RelatoriosPage() {
           buscarTodasTarefasDoMes<Tarefa>(sb, mes, ano),
           sb.from('observacoes_clientes').select('cliente_id,texto').eq('mes', mes).eq('ano', ano),
           buscarMapaVinculosSetor(sb, 'fiscal'),
-        ]).then(([c, t, o, mapa]) => {
+          sb.from('atividades').select('nome').eq('setor', 'fiscal').eq('ativo', true).order('nome'),
+        ]).then(([c, t, o, mapa, at]) => {
           setClientes((c.data ?? []).map(flattenClienteFiscal))
           setTarefas(t)
           const obsMap: Record<string, string> = {}
@@ -83,6 +84,7 @@ export default function RelatoriosPage() {
           }
           setObsPorCliente(obsMap)
           setMapaVinculos(mapa)
+          setAtividadesCatalogo((at.data ?? []).map(a => a.nome as string))
         })
       })
     })
@@ -92,14 +94,14 @@ export default function RelatoriosPage() {
     ? ['TODOS', ...Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[]))]
     : []
 
-  const atividades = Array.from(new Set(clientes.flatMap(c => c.atividade ?? []))).sort()
-  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas({ ...c, grupo: bucketDoRegime(c.regime) }, mapaVinculos)))).sort()
+  const atividades = atividadesCatalogo
+  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
     .filter(c => filtroGrupo === 'TODOS' || bucketDoRegime(c.regime) === filtroGrupo)
     .filter(c => filtroAtividade.length === 0 || ((c.atividade ?? []).length === filtroAtividade.length && filtroAtividade.every(a => (c.atividade ?? []).includes(a))))
-    .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas({ ...c, grupo: bucketDoRegime(c.regime) }, mapaVinculos).includes(filtroTarefa))
+    .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas(c, mapaVinculos).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas, mapaVinculos) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
     .sort((a, b) => {
@@ -157,7 +159,7 @@ export default function RelatoriosPage() {
       <td>${i+1}</td>
       <td><strong>${r.cliente.nome}</strong></td>
       <td>${r.cliente.cnpj ?? '—'}</td>
-      <td><span class="badge ${bucketDoRegime(r.cliente.regime)}">${r.cliente.regime ?? r.cliente.grupo ?? '—'}</span></td>
+      <td><span class="badge ${bucketDoRegime(r.cliente.regime)}">${r.cliente.regime ?? '—'}</span></td>
       <td>${r.cliente.responsavel ?? '—'}</td>
       <td><span class="bar-bg"><span class="bar-fill" style="width:${r.pct}%"></span></span>${r.pct}%</td>
       <td>${r.pct === 100 ? '✓ Concluído' : r.pendentes.join(', ')}</td>
@@ -292,7 +294,7 @@ export default function RelatoriosPage() {
                     bucketDoRegime(r.cliente.regime) === 'mei' ? 'bg-amber-500/15 text-amber-400' :
                     bucketDoRegime(r.cliente.regime) === 'isento' ? 'bg-slate-500/15 text-slate-400' :
                     'bg-blue-500/15 text-blue-400'
-                  }`}>{r.cliente.regime ?? r.cliente.grupo ?? '—'}</span>
+                  }`}>{r.cliente.regime ?? '—'}</span>
                 </td>
                 <td className="px-4 py-3 text-[var(--fg)]/60 text-xs">{r.cliente.responsavel ?? '—'}</td>
                 <td className="px-4 py-3">
