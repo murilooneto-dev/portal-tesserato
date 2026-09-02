@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
+import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { nomesTarefaTipoData, type ClienteFiltro } from '@/lib/preenchimento-rapido'
 import { toggleTarefaContabil } from '@/app/contabil/clientes/actions'
@@ -16,6 +17,8 @@ interface ClienteRow {
     regime: string | null
     atividade: string[]
     responsavel: string | null
+    tarefas_personalizadas: string[]
+    tarefas_excluidas: string[]
   }
 }
 
@@ -29,12 +32,13 @@ export default async function PreenchimentoRapidoContabilPage() {
   const { data: profile } = await supabase
     .from('profiles').select('role, nome').eq('id', user.id).single()
 
-  const [{ data: clientesRaw }, { data: tiposRaw }, tarefas] = await Promise.all([
+  const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_contabil!inner(regime, atividade, responsavel, ativo)')
+      .select('id, nome, clientes_contabil!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_contabil.ativo', true)
       .order('nome'),
+    buscarMapaVinculosSetor(supabase, 'contabil'),
     supabase.from('tarefa_tipos').select('nome, tipo_resposta, etapas').eq('setor', 'contabil'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'tipo' | 'concluida'>>(
       supabase, mes, ano, 'cliente_id, tipo, concluida', 'contabil',
@@ -49,6 +53,8 @@ export default async function PreenchimentoRapidoContabilPage() {
       regime: r.clientes_contabil.regime,
       atividade: r.clientes_contabil.atividade,
       responsavel: r.clientes_contabil.responsavel,
+      tarefas_personalizadas: r.clientes_contabil.tarefas_personalizadas,
+      tarefas_excluidas: r.clientes_contabil.tarefas_excluidas,
     }
   })
 
@@ -82,6 +88,7 @@ export default async function PreenchimentoRapidoContabilPage() {
       <PreenchimentoRapido
         camposDisponiveis={[]}
         clientes={clientes}
+        mapaVinculos={mapaVinculos}
         tiposData={tiposData}
         estadoInicial={estadoInicial}
         onToggle={onToggle}

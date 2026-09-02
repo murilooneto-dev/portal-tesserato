@@ -5,7 +5,8 @@ import {
   nomesTarefaTipoData,
   valoresDistintos,
   clientesPorValor,
-  tarefasTipoDataVinculadas,
+  tarefasAplicaveisCliente,
+  tarefasDisponiveisParaClientes,
 } from '../lib/preenchimento-rapido'
 import type { MapaVinculosSetor } from '../lib/tarefas-esperadas'
 
@@ -46,21 +47,42 @@ test('clientesPorValor: filtra só quem tem exatamente aquele valor', () => {
   assert.deepEqual(filtrados.map(c => c.id), ['1', '3'])
 })
 
-test('tarefasTipoDataVinculadas: cruza vínculo do valor com o conjunto de tipos DATA', () => {
+test('tarefasAplicaveisCliente: soma vínculo automático (respeitando regime) com personalizadas, menos excluídas', () => {
   const mapa: MapaVinculosSetor = {
-    porRegime: { 'Simples Nacional': ['DAS', 'FECHAMENTO SIMPLES', 'RELATORIO'] },
-    porAtividade: {},
+    porRegime: {},
+    porAtividade: {
+      Comércio: [
+        { tarefa: 'DAS', regimeNome: null },
+        { tarefa: 'DISTRIBUICAO LUCROS', regimeNome: 'Lucro Presumido' },
+      ],
+    },
   }
-  const tarefas = tarefasTipoDataVinculadas(
-    mapa, 'regime', 'Simples Nacional', new Set(['DAS', 'FECHAMENTO SIMPLES']),
-  )
-  assert.deepEqual(tarefas, ['DAS', 'FECHAMENTO SIMPLES'])
+  const cliente = {
+    id: '1',
+    nome: 'AB Preço Único',
+    regime: 'Simples Nacional',
+    atividade: ['Comércio'],
+    tarefas_personalizadas: ['RELATORIO EXTRA'],
+    tarefas_excluidas: ['DAS'],
+  }
+  const tiposData = new Set(['DAS', 'DISTRIBUICAO LUCROS', 'RELATORIO EXTRA'])
+  const tarefas = tarefasAplicaveisCliente(cliente, mapa, tiposData)
+  // DAS foi excluído manualmente; DISTRIBUICAO LUCROS exige Lucro Presumido
+  // e o cliente é Simples Nacional — nenhum dos dois se aplica.
+  assert.deepEqual(Array.from(tarefas).sort(), ['RELATORIO EXTRA'])
 })
 
-test('tarefasTipoDataVinculadas: valor sem vínculo cadastrado devolve lista vazia', () => {
-  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
-  const tarefas = tarefasTipoDataVinculadas(mapa, 'regime', 'Inexistente', new Set(['DAS']))
-  assert.deepEqual(tarefas, [])
+test('tarefasDisponiveisParaClientes: une as tarefas aplicáveis de todos os clientes do grupo', () => {
+  const mapa: MapaVinculosSetor = {
+    porRegime: {},
+    porAtividade: { Comércio: [{ tarefa: 'DAS', regimeNome: null }] },
+  }
+  const clientes = [
+    { id: '1', nome: 'A', atividade: ['Comércio'], tarefas_personalizadas: [] },
+    { id: '2', nome: 'B', atividade: ['Comércio'], tarefas_personalizadas: ['ISS AVULSO'] },
+  ]
+  const tarefas = tarefasDisponiveisParaClientes(clientes, mapa, new Set(['DAS', 'ISS AVULSO']))
+  assert.deepEqual(tarefas, ['DAS', 'ISS AVULSO'])
 })
 
 test('valoresDistintos: campo atividade achata os arrays e ordena', () => {
