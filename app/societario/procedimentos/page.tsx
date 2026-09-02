@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { uploadArquivoProcedimento, excluirArquivoProcedimento } from '@/lib/procedimento-arquivos-actions'
@@ -9,11 +9,26 @@ import {
   statusProcedimentoBadge as statusBadge,
   type StatusProcedimento,
 } from '@/lib/status-procedimento'
+import { montarProcessoTipos, type ProcessoSubetapaRow, type SubetapaTipoResposta } from '@/lib/processo-tipos'
 
 interface ProcessoTipo {
   id: string
   nome: string
   etapas: string[] | null
+}
+
+type SubetapaValor = string | boolean | null
+
+function defaultValorSubetapa(tipo: SubetapaTipoResposta): SubetapaValor {
+  if (tipo === 'checklist') return false
+  if (tipo === 'data') return null
+  return ''
+}
+
+function formatarValorSubetapa(valor: SubetapaValor | undefined, tipo: SubetapaTipoResposta): string {
+  if (tipo === 'checklist') return valor ? 'Sim' : 'Não'
+  if (tipo === 'data') return valor ? new Date(valor as string).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—'
+  return (valor as string) || '—'
 }
 
 interface DocumentacaoModelo {
@@ -39,6 +54,7 @@ interface Procedimento {
   empresa: string
   status: StatusProcedimento
   campos: Record<string, string>
+  subetapas: Record<string, SubetapaValor>
   documentacao_modelo_id: string | null
   responsavel: string | null
   processo_tipos: { nome: string } | null
@@ -63,6 +79,7 @@ interface FormState {
   responsavel: string
   status: StatusProcedimento
   campos: Record<string, string>
+  subetapasValores: Record<string, SubetapaValor>
   preencherDocumento: boolean
   documentacao_modelo_id: string
 }
@@ -75,6 +92,7 @@ const EMPTY_FORM: FormState = {
   responsavel: '',
   status: 'ABERTO',
   campos: {},
+  subetapasValores: {},
   preencherDocumento: false,
   documentacao_modelo_id: '',
 }
@@ -82,6 +100,7 @@ const EMPTY_FORM: FormState = {
 export default function ProcedimentosSocietarioPage() {
   const [items, setItems] = useState<Procedimento[]>([])
   const [tipos, setTipos] = useState<ProcessoTipo[]>([])
+  const [subetapas, setSubetapas] = useState<ProcessoSubetapaRow[]>([])
   const [modelos, setModelos] = useState<DocumentacaoModelo[]>([])
   const [clientes, setClientes] = useState<ClienteResumo[]>([])
   const [loading, setLoading] = useState(true)
@@ -110,14 +129,19 @@ export default function ProcedimentosSocietarioPage() {
   }
 
   async function loadCatalogos() {
-    const [{ data: tiposData }, { data: modelosData }, { data: clientesData }] = await Promise.all([
+    const [{ data: tiposData }, { data: modelosData }, { data: clientesData }, { data: subetapasData }] = await Promise.all([
       sb.from('processo_tipos').select('id, nome, etapas').order('nome'),
       sb.from('documentacao_modelos').select('id, nome').order('nome'),
       sb.from('clientes').select('id, nome').order('nome'),
+      // Query direta (RLS: leitura livre pra autenticado), não passa pela
+      // server action listarProcessoTipos (essa é admin-only e quebraria
+      // esta tela pra operadores comuns).
+      sb.from('processo_subetapas').select('id, processo_tipo_id, etapa_nome, nome, tipo_resposta, ordem'),
     ])
     setTipos(tiposData ?? [])
     setModelos(modelosData ?? [])
     setClientes(clientesData ?? [])
+    setSubetapas((subetapasData ?? []) as ProcessoSubetapaRow[])
   }
 
   useEffect(() => {
@@ -141,6 +165,12 @@ export default function ProcedimentosSocietarioPage() {
   function openEdit(item: Procedimento) {
     setEditItem(item)
     setErro(null)
+    const subetapasValores: Record<string, SubetapaValor> = {}
+    for (const etapa of tiposResumoPorId.get(item.processo_tipo_id)?.etapas ?? []) {
+      for (const sub of etapa.subetapas) {
+        subetapasValores[sub.id] = item.subetapas?.[sub.id] ?? defaultValorSubetapa(sub.tipoResposta)
+      }
+    }
     setForm({
       processo_tipo_id: item.processo_tipo_id,
       clienteCadastrado: !!item.cliente_id,
@@ -149,6 +179,7 @@ export default function ProcedimentosSocietarioPage() {
       responsavel: item.responsavel ?? '',
       status: item.status,
       campos: { ...item.campos },
+      subetapasValores,
       preencherDocumento: !!item.documentacao_modelo_id,
       documentacao_modelo_id: item.documentacao_modelo_id ?? '',
     })
@@ -199,11 +230,21 @@ export default function ProcedimentosSocietarioPage() {
     for (const etapa of tipo?.etapas ?? []) {
       campos[etapa] = form.campos[etapa] ?? ''
     }
-    setForm(prev => ({ ...prev, processo_tipo_id: tipoId, campos }))
+    const subetapasValores: Record<string, SubetapaValor> = {}
+    for (const etapa of tiposResumoPorId.get(tipoId)?.etapas ?? []) {
+      for (const sub of etapa.subetapas) {
+        subetapasValores[sub.id] = form.subetapasValores[sub.id] ?? defaultValorSubetapa(sub.tipoResposta)
+      }
+    }
+    setForm(prev => ({ ...prev, processo_tipo_id: tipoId, campos, subetapasValores }))
   }
 
   function setCampo(etapa: string, valor: string) {
     setForm(prev => ({ ...prev, campos: { ...prev.campos, [etapa]: valor } }))
+  }
+
+  function setSubetapaValor(subetapaId: string, valor: SubetapaValor) {
+    setForm(prev => ({ ...prev, subetapasValores: { ...prev.subetapasValores, [subetapaId]: valor } }))
   }
 
   async function handleSave() {
@@ -218,6 +259,7 @@ export default function ProcedimentosSocietarioPage() {
       responsavel: form.responsavel.trim() || null,
       status: form.status,
       campos: form.campos,
+      subetapas: form.subetapasValores,
       documentacao_modelo_id: form.preencherDocumento ? (form.documentacao_modelo_id || null) : null,
       updated_at: new Date().toISOString(),
     }
@@ -279,7 +321,11 @@ export default function ProcedimentosSocietarioPage() {
     }
   }
 
+  const tiposComSubetapas = useMemo(() => montarProcessoTipos(tipos, subetapas), [tipos, subetapas])
+  const tiposResumoPorId = useMemo(() => new Map(tiposComSubetapas.map(t => [t.id, t])), [tiposComSubetapas])
+
   const tipoSelecionado = tipos.find(t => t.id === form.processo_tipo_id)
+  const tipoResumoSelecionado = tiposResumoPorId.get(form.processo_tipo_id)
 
   const filtered = items.filter(p => {
     const q = search.toLowerCase()
@@ -365,12 +411,24 @@ export default function ProcedimentosSocietarioPage() {
                               )}
                               {Object.keys(item.campos ?? {}).length > 0 && (
                                 <div className="grid grid-cols-3 gap-2">
-                                  {Object.entries(item.campos).map(([etapa, valor]) => (
-                                    <div key={etapa} className="rounded-lg border border-[var(--fg)]/8 bg-[var(--fg)]/2 px-3 py-2">
-                                      <p className="text-[9px] font-bold uppercase text-[var(--fg)]/30">{etapa}</p>
-                                      <p className="text-sm text-[var(--fg)]">{valor || '—'}</p>
-                                    </div>
-                                  ))}
+                                  {Object.entries(item.campos).map(([etapa, valor]) => {
+                                    const subetapasDaEtapa = tiposResumoPorId.get(item.processo_tipo_id)?.etapas.find(e => e.nome === etapa)?.subetapas ?? []
+                                    return (
+                                      <div key={etapa} className="rounded-lg border border-[var(--fg)]/8 bg-[var(--fg)]/2 px-3 py-2">
+                                        <p className="text-[9px] font-bold uppercase text-[var(--fg)]/30">{etapa}</p>
+                                        <p className="text-sm text-[var(--fg)]">{valor || '—'}</p>
+                                        {subetapasDaEtapa.length > 0 && (
+                                          <div className="mt-1.5 pt-1.5 border-t border-[var(--fg)]/8 space-y-0.5">
+                                            {subetapasDaEtapa.map(sub => (
+                                              <p key={sub.id} className="text-[11px] text-[var(--fg)]/50">
+                                                {sub.nome}: <span className="text-[var(--fg)]/70">{formatarValorSubetapa(item.subetapas?.[sub.id], sub.tipoResposta)}</span>
+                                              </p>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
                                 </div>
                               )}
                             </td>
@@ -462,16 +520,69 @@ export default function ProcedimentosSocietarioPage() {
                 <div>
                   <label className={labelCls}>Campos do processo</label>
                   <div className="space-y-3">
-                    {(tipoSelecionado.etapas ?? []).map(etapa => (
-                      <div key={etapa}>
-                        <p className="text-[var(--fg)]/50 text-xs mb-1">{etapa}</p>
-                        <input
-                          className={inputCls}
-                          value={form.campos[etapa] ?? ''}
-                          onChange={e => setCampo(etapa, e.target.value)}
-                        />
-                      </div>
-                    ))}
+                    {(tipoSelecionado.etapas ?? []).map(etapa => {
+                      const subetapasDaEtapa = tipoResumoSelecionado?.etapas.find(e => e.nome === etapa)?.subetapas ?? []
+                      return (
+                        <div key={etapa}>
+                          <p className="text-[var(--fg)]/50 text-xs mb-1">{etapa}</p>
+                          <input
+                            className={inputCls}
+                            value={form.campos[etapa] ?? ''}
+                            onChange={e => setCampo(etapa, e.target.value)}
+                          />
+                          {subetapasDaEtapa.length > 0 && (
+                            <div className="mt-2 pl-3 space-y-2 border-l-2 border-[var(--fg)]/8">
+                              {subetapasDaEtapa.map(sub => (
+                                <div key={sub.id}>
+                                  {sub.tipoResposta === 'texto' && (
+                                    <>
+                                      <p className="text-[var(--fg)]/40 text-[11px] mb-1">{sub.nome}</p>
+                                      <input
+                                        className={inputCls}
+                                        value={(form.subetapasValores[sub.id] as string) ?? ''}
+                                        onChange={e => setSubetapaValor(sub.id, e.target.value)}
+                                      />
+                                    </>
+                                  )}
+                                  {sub.tipoResposta === 'checklist' && (
+                                    <label className="flex items-center gap-2 text-sm text-[var(--fg)]/70 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={!!form.subetapasValores[sub.id]}
+                                        onChange={e => setSubetapaValor(sub.id, e.target.checked)}
+                                        className="accent-[var(--accent)]"
+                                      />
+                                      {sub.nome}
+                                    </label>
+                                  )}
+                                  {sub.tipoResposta === 'data' && (
+                                    <div className="flex items-center gap-2">
+                                      <label className="flex items-center gap-2 text-sm text-[var(--fg)]/70 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={form.subetapasValores[sub.id] != null}
+                                          onChange={e => setSubetapaValor(sub.id, e.target.checked ? new Date().toISOString().slice(0, 10) : null)}
+                                          className="accent-[var(--accent)]"
+                                        />
+                                        {sub.nome}
+                                      </label>
+                                      {form.subetapasValores[sub.id] != null && (
+                                        <input
+                                          type="date"
+                                          className={inputCls + ' w-auto'}
+                                          value={(form.subetapasValores[sub.id] as string) ?? ''}
+                                          onChange={e => setSubetapaValor(sub.id, e.target.value)}
+                                        />
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
