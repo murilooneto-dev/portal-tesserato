@@ -68,22 +68,10 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
 
   useEffect(() => {
     if (!clienteId) return
-    Promise.all([
-      sb.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('id', clienteId).single(),
-      sb.from('tarefas').select('tipo').eq('cliente_id', clienteId).eq('setor', 'fiscal'),
-    ]).then(([{ data: raw }, { data: tarefasDB }]) => {
+    sb.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('id', clienteId).single().then(({ data: raw }) => {
       if (!raw) return
       const data = flattenClienteFiscal(raw)
       const mitParts = (data.mit ?? '').split('/')
-      // Tipos únicos já existentes no banco para esse cliente (da tabela tarefas)
-      const tiposExistentes = Array.from(new Set(
-        (tarefasDB ?? []).map((t: { tipo: string }) => t.tipo).filter(Boolean)
-      )).sort() as string[]
-      // Se já tem tarefas_personalizadas salvas usa elas, senão usa os tipos do banco
-      const personalizadas: string[] =
-        (data.tarefas_personalizadas && data.tarefas_personalizadas.length > 0)
-          ? data.tarefas_personalizadas
-          : tiposExistentes
       setForm({
         cod: data.cod ?? '',
         cnpj: data.cnpj ?? '',
@@ -103,7 +91,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
         login_iss: data.login_iss ?? '',
         senha_iss: data.senha_iss ?? '',
         email_envio_iss: data.email_envio_iss ?? '',
-        tarefas_personalizadas: personalizadas,
+        tarefas_personalizadas: data.tarefas_personalizadas ?? [],
         tarefas_excluidas: data.tarefas_excluidas ?? [],
       })
       setLoading(false)

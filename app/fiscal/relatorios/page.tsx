@@ -98,7 +98,7 @@ export default function RelatoriosPage() {
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
     .filter(c => filtroGrupo === 'TODOS' || bucketDoRegime(c.regime) === filtroGrupo)
-    .filter(c => filtroAtividade.length === 0 || filtroAtividade.every(a => (c.atividade ?? []).includes(a)))
+    .filter(c => filtroAtividade.length === 0 || ((c.atividade ?? []).length === filtroAtividade.length && filtroAtividade.every(a => (c.atividade ?? []).includes(a))))
     .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas({ ...c, grupo: bucketDoRegime(c.regime) }, mapaVinculos).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas, mapaVinculos) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
