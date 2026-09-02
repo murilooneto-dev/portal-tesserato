@@ -244,6 +244,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               responsaveis={responsaveis}
               catalogo={catalogo}
               isEdit={isEdit}
+              clienteId={clienteId}
               readOnly={readOnly}
               novaTarefa={novaTarefa}
               setNovaTarefa={setNovaTarefa}

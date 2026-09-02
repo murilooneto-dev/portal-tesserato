@@ -446,6 +446,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
                   responsaveis={responsaveis}
                   catalogo={catalogoFiscal}
                   isEdit={isEdit}
+                  clienteId={clienteId}
                   readOnly={true}
                   novaTarefa={novaTarefa}
                   setNovaTarefa={setNovaTarefa}
@@ -463,6 +464,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
                   responsaveis={responsaveis}
                   catalogo={catalogoFiscal}
                   isEdit={isEdit}
+                  clienteId={clienteId}
                   readOnly={readOnly}
                   novaTarefa={novaTarefa}
                   setNovaTarefa={setNovaTarefa}

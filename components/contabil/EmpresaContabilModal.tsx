@@ -9,6 +9,7 @@ import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import SeletorAtividades from '@/components/geral/SeletorAtividades'
 import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
+import GruposTarefasModal from '@/components/geral/GruposTarefasModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface FormData {
@@ -52,6 +53,7 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
   const [novaTarefa, setNovaTarefa] = useState('')
   const [catalogoNomes, setCatalogoNomes] = useState<string[]>(tarefasPadrao)
   const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
+  const [gruposAberto, setGruposAberto] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [loadingCnpj, setLoadingCnpj] = useState(false)
@@ -247,7 +249,15 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
             </div>
 
             <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4">
-              <label className={labelCls}>Tarefas ({form.tarefas_personalizadas.length})</label>
+              <div className="flex items-center justify-between mb-0">
+                <label className={labelCls}>Tarefas ({form.tarefas_personalizadas.length})</label>
+                {isEdit && clienteId && !readOnly && (
+                  <button type="button" onClick={() => setGruposAberto(true)}
+                    className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] hover:border-[var(--fg)]/25 transition-colors">
+                    Agrupar tarefas
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-1.5 mb-3 mt-2 min-h-[32px]">
                 {form.tarefas_personalizadas.map((t, i) => (
                   <span key={i} className="flex items-center gap-1.5 text-xs bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] px-2.5 py-1 rounded-lg">
@@ -318,6 +328,14 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
         setor="contabil"
         onCancel={() => setNomeParaCriar(null)}
         onCriado={handleTipoCriado}
+      />
+    )}
+    {gruposAberto && clienteId && (
+      <GruposTarefasModal
+        clienteId={clienteId}
+        setor="contabil"
+        tarefasDisponiveis={form.tarefas_personalizadas}
+        onClose={() => setGruposAberto(false)}
       />
     )}
     </>
