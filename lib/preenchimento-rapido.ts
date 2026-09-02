@@ -1,12 +1,11 @@
 // lib/preenchimento-rapido.ts
 import type { MapaVinculosSetor } from './tarefas-esperadas'
 
-export type CampoFiltro = 'grupo' | 'regime' | 'atividade'
+export type CampoFiltro = 'regime' | 'atividade'
 
 export interface ClienteFiltro {
   id: string
   nome: string
-  grupo?: string | null
   regime?: string | null
   atividade?: string[] | null
 }
@@ -51,11 +50,6 @@ export function clientesPorValor(
   return clientes.filter(c => c[campo] === valor)
 }
 
-const CHAVE_MAPA: Record<'grupo' | 'regime', keyof Pick<MapaVinculosSetor, 'porGrupo' | 'porRegime'>> = {
-  grupo: 'porGrupo',
-  regime: 'porRegime',
-}
-
 export function tarefasTipoDataVinculadas(
   mapa: MapaVinculosSetor,
   campo: CampoFiltro,
@@ -65,11 +59,11 @@ export function tarefasTipoDataVinculadas(
   // porAtividade guarda { tarefa, regimeNome } (suporte a vínculo
   // atividade+regime, ver lib/tarefas-esperadas.ts) — aqui não filtramos
   // por regime, mesmo comportamento de sempre desta tela (agrupa por
-  // atividade/grupo/regime do cliente, nunca foi regime-consciente pro
+  // atividade/regime do cliente, nunca foi regime-consciente pro
   // caso de vínculo de atividade).
   const nomes = campo === 'atividade'
     ? (mapa.porAtividade[valor] ?? []).map(e => e.tarefa)
-    : (mapa[CHAVE_MAPA[campo]][valor] ?? [])
+    : (mapa.porRegime[valor] ?? [])
   const filtradas = new Set(nomes.filter(n => tiposData.has(n)))
   return Array.from(filtradas).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }

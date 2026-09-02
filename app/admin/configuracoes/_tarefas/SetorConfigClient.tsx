@@ -7,10 +7,9 @@ import { SETOR_LABEL } from '@/lib/types'
 import EntidadeListaTab from './EntidadeListaTab'
 import TarefasTab from './TarefasTab'
 
-type Categoria = 'grupos' | 'regimes' | 'atividades' | 'tarefas'
+type Categoria = 'regimes' | 'atividades' | 'tarefas'
 
 const CATEGORIAS: { value: Categoria; label: string }[] = [
-  { value: 'grupos', label: 'Grupos' },
   { value: 'regimes', label: 'Regimes' },
   { value: 'atividades', label: 'Atividades' },
   { value: 'tarefas', label: 'Tarefas' },
@@ -28,13 +27,13 @@ interface Props {
 }
 
 export default function SetorConfigClient({ setor }: Props) {
-  const [categoria, setCategoria] = useState<Categoria>('grupos')
+  const [categoria, setCategoria] = useState<Categoria>('regimes')
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10">
       <h1 className="text-[var(--fg)] font-bold text-2xl mb-1">Configurações — {SETOR_LABEL[setor]}</h1>
       <p className="text-[var(--fg)]/50 text-sm mb-8">
-        Grupos, Regimes, Atividades e Tarefas do setor {SETOR_LABEL[setor]}.
+        Regimes, Atividades e Tarefas do setor {SETOR_LABEL[setor]}.
       </p>
 
       <div className="flex gap-2 mb-8 border-b border-[var(--fg)]/8 pb-4">
@@ -45,7 +44,6 @@ export default function SetorConfigClient({ setor }: Props) {
         ))}
       </div>
 
-      {categoria === 'grupos' && <EntidadeListaTab tabela="grupos" entidadeTipoVinculo="grupo" setor={setor} label="Grupo" />}
       {categoria === 'regimes' && <EntidadeListaTab tabela="regimes" entidadeTipoVinculo="regime" setor={setor} label="Regime" />}
       {categoria === 'atividades' && <EntidadeListaTab tabela="atividades" entidadeTipoVinculo="atividade" setor={setor} label="Atividade" />}
       {categoria === 'tarefas' && <TarefasTab setor={setor} />}

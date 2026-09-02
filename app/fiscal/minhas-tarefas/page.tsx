@@ -17,7 +17,6 @@ interface ClienteRow {
   id: string
   nome: string
   clientes_fiscal: {
-    grupo: string | null
     regime: string | null
     atividade: string[] | null
     tarefas_personalizadas: string[] | null
@@ -62,7 +61,7 @@ export default async function MinhasTarefasPage() {
   const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }, catalogo] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_fiscal!inner(grupo, regime, atividade, tarefas_personalizadas, tarefas_excluidas, ativo)')
+      .select('id, nome, clientes_fiscal!inner(regime, atividade, tarefas_personalizadas, tarefas_excluidas, ativo)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'fiscal'),
@@ -79,7 +78,6 @@ export default async function MinhasTarefasPage() {
     const r = row as unknown as ClienteRow
     const esperadas = calcularTarefasEsperadas(
       {
-        grupo: r.clientes_fiscal.grupo,
         regime: r.clientes_fiscal.regime,
         atividade: r.clientes_fiscal.atividade,
         tarefas_personalizadas: r.clientes_fiscal.tarefas_personalizadas ?? [],

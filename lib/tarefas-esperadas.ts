@@ -2,7 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { UserSetor } from './types'
 
 export interface MapaVinculosSetor {
-  porGrupo: Record<string, string[]>
   // Não é mais populado — vínculo solto de regime (sem atividade) foi
   // retirado, ver migration 031. Mantido no tipo só pra não quebrar
   // lib/preenchimento-rapido.ts, que também lê esse campo.
@@ -11,16 +10,15 @@ export interface MapaVinculosSetor {
 }
 
 // Uma consulta em lote por carregamento de página (nunca por cliente) —
-// junta grupos/regimes/atividades (id, nome) com tarefa_tipo_vinculos e
-// tarefa_tipos (nome) do setor, monta os 3 mapas nome → [nomes de tarefa].
-// Casamento do grupo/regime/atividade do cliente com a entidade do
+// junta regimes/atividades (id, nome) com tarefa_tipo_vinculos e
+// tarefa_tipos (nome) do setor, monta os 2 mapas nome → [nomes de tarefa].
+// Casamento do regime/atividade do cliente com a entidade do
 // catálogo é por nome (sem coluna de ID — decisão do spec de 2026-08-20).
 export async function buscarMapaVinculosSetor(
   supabase: SupabaseClient,
   setor: UserSetor,
 ): Promise<MapaVinculosSetor> {
-  const [{ data: grupos }, { data: regimes }, { data: atividades }, { data: vinculos }] = await Promise.all([
-    supabase.from('grupos').select('id, nome').eq('setor', setor),
+  const [{ data: regimes }, { data: atividades }, { data: vinculos }] = await Promise.all([
     supabase.from('regimes').select('id, nome').eq('setor', setor),
     supabase.from('atividades').select('id, nome').eq('setor', setor),
     supabase
@@ -30,21 +28,17 @@ export async function buscarMapaVinculosSetor(
   ])
 
   const nomePorId: Record<string, string> = {}
-  for (const g of grupos ?? []) nomePorId[g.id as string] = g.nome as string
   for (const r of regimes ?? []) nomePorId[r.id as string] = r.nome as string
   for (const a of atividades ?? []) nomePorId[a.id as string] = a.nome as string
 
-  const mapa: MapaVinculosSetor = { porGrupo: {}, porRegime: {}, porAtividade: {} }
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
 
   for (const v of vinculos ?? []) {
     const nomeEntidade = nomePorId[v.entidade_id as string]
     if (!nomeEntidade) continue
     const nomeTarefa = (v.tarefa_tipos as unknown as { nome: string }).nome
 
-    if (v.entidade_tipo === 'grupo') {
-      if (!mapa.porGrupo[nomeEntidade]) mapa.porGrupo[nomeEntidade] = []
-      mapa.porGrupo[nomeEntidade].push(nomeTarefa)
-    } else if (v.entidade_tipo === 'atividade') {
+    if (v.entidade_tipo === 'atividade') {
       const regimeId = v.regime_id as string | null
       const regimeNome = regimeId ? (nomePorId[regimeId] ?? null) : null
       if (!mapa.porAtividade[nomeEntidade]) mapa.porAtividade[nomeEntidade] = []
@@ -53,18 +47,19 @@ export async function buscarMapaVinculosSetor(
     // entidade_tipo === 'regime': vínculo solto retirado (migration 031),
     // ignorado aqui de propósito — ver VincularTarefasModal.tsx pra
     // remoção assistida dos que ainda existem.
+    // entidade_tipo === 'grupo': conceito de Grupo removido (migration 035);
+    // linhas antigas com esse valor, se existirem, são ignoradas aqui.
   }
 
   return mapa
 }
 
 interface ClienteVinculo {
-  grupo?: string | null
   regime?: string | null
   atividade?: string[] | null
 }
 
-// Só a parte automática (grupo + atividade/regime), sem tarefas_personalizadas
+// Só a parte automática (atividade/regime), sem tarefas_personalizadas
 // nem tarefas_excluidas — reaproveitada tanto por calcularTarefasEsperadas
 // quanto pela UI do cadastro (tarefasAutomaticasVisiveis), que precisa saber
 // quais tarefas automáticas existem pra poder oferecer excluir uma delas.
@@ -77,16 +72,13 @@ function tarefasAutomaticas(cliente: ClienteVinculo, mapa: MapaVinculosSetor): s
       .filter(e => e.regimeNome === null || e.regimeNome === cliente.regime)
       .map(e => e.tarefa)
   )
-  return Array.from(new Set([
-    ...(mapa.porGrupo[cliente.grupo ?? ''] ?? []),
-    ...doAtividade,
-  ]))
+  return Array.from(new Set(doAtividade))
 }
 
-// Função pura, testável: soma o que os vínculos do grupo/atividade do
+// Função pura, testável: soma o que os vínculos de atividade do
 // cliente geram (menos o que estiver em tarefas_excluidas) com
 // tarefas_personalizadas dele. Nunca duplica (Set). Cliente sem
-// grupo/regime/atividade preenchido (ou com um valor que não bate com nada
+// regime/atividade preenchido (ou com um valor que não bate com nada
 // do mapa — não cadastrado, renomeado etc.) simplesmente não contribui nada
 // desses 2 — a lista vira só tarefas_personalizadas, igual hoje sem nenhum
 // fallback. tarefas_excluidas nunca afeta tarefas_personalizadas — readicionar

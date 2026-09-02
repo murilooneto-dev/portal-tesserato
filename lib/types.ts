@@ -50,7 +50,6 @@ export interface ClienteFiscal {
   regime: string | null
   atividade: string[]
   responsavel: string | null
-  grupo: string | null
   obs: string | null
   prioridade: number
   envia_iss: boolean

@@ -70,7 +70,7 @@ function RelatorioFiscalDocument({ responsavel, mesNome, ano, linhas }: Props) {
               <Text style={[styles.td, styles.cNum]}>{i + 1}</Text>
               <Text style={[styles.td, styles.cNome]}>{l.cliente.nome}</Text>
               <Text style={[styles.td, styles.cCnpj]}>{l.cliente.cnpj ?? '—'}</Text>
-              <Text style={[styles.td, styles.cRegime]}>{l.cliente.regime ?? l.cliente.grupo ?? '—'}</Text>
+              <Text style={[styles.td, styles.cRegime]}>{l.cliente.regime ?? '—'}</Text>
               <Text style={[styles.td, styles.cResp]}>{l.cliente.responsavel ?? '—'}</Text>
               <Text style={[styles.td, styles.cProg]}>{l.pct}%</Text>
               <Text style={[styles.td, styles.cPend]}>{l.pct === 100 ? '✓ Concluído' : l.pendentes.join(', ')}</Text>

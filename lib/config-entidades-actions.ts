@@ -5,15 +5,15 @@ import { revalidatePath } from 'next/cache'
 import type { UserSetor } from '@/lib/types'
 import { validarNomeEntidade, normalizarNome } from '@/lib/config-entidades'
 
-export type TipoEntidade = 'regimes' | 'grupos' | 'atividades'
+export type TipoEntidade = 'regimes' | 'atividades'
 
 // Server Actions são chamáveis diretamente por uma requisição forjada —
 // os tipos do TypeScript são apagados em runtime, então `tabela` chega aqui
 // como uma string qualquer, não garantidamente um TipoEntidade. Como
 // getAuthenticatedAdmin() retorna um client service-role (bypassa RLS), sem
 // essa checagem um `tabela` malicioso poderia atingir .from('profiles') ou
-// .from('clientes') em vez de regimes/grupos/atividades.
-const TABELAS_VALIDAS: readonly TipoEntidade[] = ['regimes', 'grupos', 'atividades']
+// .from('clientes') em vez de regimes/atividades.
+const TABELAS_VALIDAS: readonly TipoEntidade[] = ['regimes', 'atividades']
 
 export interface EntidadeConfig {
   id: string
@@ -139,21 +139,16 @@ export async function alternarAtivoEntidade(
   return { error: null }
 }
 
-// grupo/regime/atividade não têm FK real pra clientes_<setor> (comparação é
-// por nome, ver migrations 018/026) — cada setor tem um subconjunto
-// diferente dessas colunas: só Fiscal tem `grupo`; regime e atividade
-// existem em fiscal/contábil/pessoal. Pessoal não tem `grupo` nem `regime`
-// próprios de vínculo — na prática usa o mesmo `regime` de contábil/pessoal
-// (migration 018). Setor sem a coluna correspondente = 0 clientes em uso,
-// sem tentar consultar uma coluna que não existe na tabela.
+// regime/atividade não têm FK real pra clientes_<setor> (comparação é
+// por nome, ver migrations 018/026) — regime e atividade existem em
+// fiscal/contábil/pessoal. Setor sem a coluna correspondente = 0 clientes
+// em uso, sem tentar consultar uma coluna que não existe na tabela.
 const COLUNA_CLIENTE_POR_TABELA: Record<TipoEntidade, Partial<Record<UserSetor, string>>> = {
-  grupos:     { fiscal: 'grupo' },
   regimes:    { fiscal: 'regime', contabil: 'regime', pessoal: 'regime' },
   atividades: { fiscal: 'atividade', contabil: 'atividade', pessoal: 'atividade' },
 }
 
-const ENTIDADE_TIPO_VINCULO: Record<TipoEntidade, 'grupo' | 'regime' | 'atividade'> = {
-  grupos: 'grupo',
+const ENTIDADE_TIPO_VINCULO: Record<TipoEntidade, 'regime' | 'atividade'> = {
   regimes: 'regime',
   atividades: 'atividade',
 }

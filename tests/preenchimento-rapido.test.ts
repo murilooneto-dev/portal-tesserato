@@ -36,14 +36,6 @@ test('valoresDistintos: extrai valores únicos e ordena', () => {
   assert.deepEqual(valores, ['Lucro Presumido', 'Simples Nacional'])
 })
 
-test('valoresDistintos: campo ausente (ex: grupo em Contábil) não quebra', () => {
-  const valores = valoresDistintos(
-    [{ id: '1', nome: 'A', regime: 'Simples Nacional' }],
-    'grupo',
-  )
-  assert.deepEqual(valores, [])
-})
-
 test('clientesPorValor: filtra só quem tem exatamente aquele valor', () => {
   const clientes = [
     { id: '1', nome: 'A', regime: 'Simples Nacional' },
@@ -56,7 +48,6 @@ test('clientesPorValor: filtra só quem tem exatamente aquele valor', () => {
 
 test('tarefasTipoDataVinculadas: cruza vínculo do valor com o conjunto de tipos DATA', () => {
   const mapa: MapaVinculosSetor = {
-    porGrupo: {},
     porRegime: { 'Simples Nacional': ['DAS', 'FECHAMENTO SIMPLES', 'RELATORIO'] },
     porAtividade: {},
   }
@@ -67,7 +58,7 @@ test('tarefasTipoDataVinculadas: cruza vínculo do valor com o conjunto de tipos
 })
 
 test('tarefasTipoDataVinculadas: valor sem vínculo cadastrado devolve lista vazia', () => {
-  const mapa: MapaVinculosSetor = { porGrupo: {}, porRegime: {}, porAtividade: {} }
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
   const tarefas = tarefasTipoDataVinculadas(mapa, 'regime', 'Inexistente', new Set(['DAS']))
   assert.deepEqual(tarefas, [])
 })

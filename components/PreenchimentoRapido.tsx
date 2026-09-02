@@ -11,7 +11,6 @@ import {
 import type { MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 
 const LABEL_CAMPO: Record<CampoFiltro, string> = {
-  grupo: 'Grupo',
   regime: 'Regime',
   atividade: 'Atividade',
 }

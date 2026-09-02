@@ -57,9 +57,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
 
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
-  // Vínculo por Grupo agora deriva do Regime (texto livre) em vez do campo
-  // Grupo em si — ver lib/regime-bucket.ts pro porquê.
-  const tarefasBaseFiscal = calcularTarefasEsperadas({ ...cliente, grupo: bucketDoRegime(cliente.regime) }, mapaVinculos)
+  const tarefasBaseFiscal = calcularTarefasEsperadas(cliente, mapaVinculos)
   const parcelamentoIdsDaFicha = Array.from(new Set(
     (tarefas ?? []).filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
   ))
