@@ -147,6 +147,14 @@ export interface TarefaTipo {
   padrao: boolean
 }
 
+export interface TarefaGrupo {
+  id: string
+  cliente_id: string
+  setor: UserSetor
+  nome: string
+  tarefas: string[]
+}
+
 export interface TarefaEtapa {
   id: string
   tarefa_id: string

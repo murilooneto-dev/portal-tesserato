@@ -17,6 +17,8 @@ interface ClienteRow {
     regime: string | null
     atividade: string[]
     responsavel: string | null
+    tarefas_personalizadas: string[]
+    tarefas_excluidas: string[]
   }
 }
 
@@ -33,7 +35,7 @@ export default async function PreenchimentoRapidoFiscalPage() {
   const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_fiscal!inner(regime, atividade, responsavel, ativo)')
+      .select('id, nome, clientes_fiscal!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'fiscal'),
@@ -51,6 +53,8 @@ export default async function PreenchimentoRapidoFiscalPage() {
       regime: r.clientes_fiscal.regime,
       atividade: r.clientes_fiscal.atividade,
       responsavel: r.clientes_fiscal.responsavel,
+      tarefas_personalizadas: r.clientes_fiscal.tarefas_personalizadas,
+      tarefas_excluidas: r.clientes_fiscal.tarefas_excluidas,
     }
   })
 

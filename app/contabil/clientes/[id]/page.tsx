@@ -13,7 +13,7 @@ import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
 import { toggleTarefaContabil, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsContabil, marcarSemMovimento } from '../actions'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
-import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento, TarefaGrupo } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
@@ -40,12 +40,13 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
-  const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }, labelsParcelamento] = await Promise.all([
+  const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }, labelsParcelamento, { data: gruposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
     supabase.from('profiles').select('nome').contains('setores', ['contabil']),
     supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'contabil'),
     supabase.from('calendario_eventos').select('*').eq('setor', 'contabil'),
     buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null),
+    supabase.from('tarefa_grupos').select('id, cliente_id, setor, nome, tarefas').eq('cliente_id', id).eq('setor', 'contabil'),
   ])
 
   const prazosPorTipo: Record<string, number> = {}
@@ -147,6 +148,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
 
       <TarefaChecklistContabil
         tarefasPersonalizadas={calcularTarefasEsperadas(cliente, mapaVinculos)}
+        grupos={(gruposRaw ?? []) as TarefaGrupo[]}
         tarefaTipos={tarefaTipos}
         tarefas={(tarefas ?? []) as Tarefa[]}
         etapas={(etapas ?? []) as TarefaEtapa[]}

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
-import type { TarefaArquivo, TarefaEtapa, TipoResposta } from '@/lib/types'
+import type { TarefaArquivo, TarefaEtapa, TipoResposta, TarefaGrupo } from '@/lib/types'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import { buscarLabelsParcelamentoAtivo } from '@/lib/parcelamentos-aviso'
 import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
@@ -55,6 +55,9 @@ export default async function ClienteDetalhePage({ params }: Props) {
   // Tarefas do mês selecionado
   const { data: tarefas } = await supabase
     .from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'fiscal')
+
+  const { data: gruposRaw } = await supabase
+    .from('tarefa_grupos').select('id, cliente_id, setor, nome, tarefas').eq('cliente_id', id).eq('setor', 'fiscal')
 
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
   const tarefasBaseFiscal = calcularTarefasEsperadas(cliente, mapaVinculos)
@@ -230,6 +233,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
         grupo={bucketDoRegime(cliente.regime)}
         tarefasPersonalizadas={tarefasPersonalizadasVisiveis}
         tarefas={tarefas ?? []}
+        grupos={(gruposRaw ?? []) as TarefaGrupo[]}
         vinculos={vinculos}
         mes={mes}
         ano={ano}

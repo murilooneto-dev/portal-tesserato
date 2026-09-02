@@ -1,7 +1,7 @@
 'use client'
 
 import { useTransition, useState } from 'react'
-import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta } from '@/lib/types'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, TarefaGrupo } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
@@ -15,6 +15,7 @@ interface TipoInfo {
 
 interface Props {
   tarefasPersonalizadas: string[]
+  grupos?: TarefaGrupo[]
   tarefaTipos: Record<string, TipoInfo>
   tarefas: Tarefa[]
   etapas: TarefaEtapa[]
@@ -66,6 +67,7 @@ function formatBytes(bytes: number) {
 
 export default function TarefaChecklistContabil({
   tarefasPersonalizadas,
+  grupos = [],
   tarefaTipos,
   tarefas,
   etapas,
@@ -88,6 +90,7 @@ export default function TarefaChecklistContabil({
   const [localResposta, setLocalResposta] = useState<Record<string, string>>({})
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null)
   const [erroUpload, setErroUpload] = useState<Record<string, string>>({})
+  const [gruposExpandidos, setGruposExpandidos] = useState<Set<string>>(new Set())
 
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
   const total = tarefasPersonalizadas.length
@@ -205,6 +208,191 @@ export default function TarefaChecklistContabil({
       : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60 focus:border-[var(--fg)]/30 placeholder-[var(--fg)]/20'
   }`
 
+  function toggleGrupo(grupoId: string) {
+    setGruposExpandidos(prev => {
+      const next = new Set(prev)
+      if (next.has(grupoId)) next.delete(grupoId)
+      else next.add(grupoId)
+      return next
+    })
+  }
+
+  function renderLinhaTarefa(tipo: string) {
+    const info = tarefaTipos[tipo]
+    const etapasDefinidas = info?.etapas ?? null
+    const tipoResposta: TipoResposta = info?.tipoResposta ?? 'data'
+    const feito = !!mapaTarefa.get(tipo)?.concluida
+    const semMovimentoAtivo = getSemMovimento(tipo)
+    const mostrarCheckboxSemMovimento = podeEditar && !(feito && !semMovimentoAtivo)
+    const displayVal = getDisplayValue(tipo)
+    const diasPrazo = !feito ? (prazosPorTipo[normalizarTitulo(tipo)] ?? null) : null
+
+    return (
+      <div key={tipo} className="flex flex-col gap-0">
+        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
+          feito ? 'bg-[var(--accent)]/8 border-[var(--accent)]/25' : 'bg-[var(--fg)]/3 border-[var(--fg)]/8'
+        }`}>
+          <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[var(--accent)]' : 'bg-[var(--fg)]/15'}`} />
+          <span className={`text-sm flex-1 transition-colors ${feito ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]'}`}>
+            {tipo}
+            {vinculos[tipo] && (
+              <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${formatarBadgeVinculo(vinculos[tipo]).classe}`}>
+                {formatarBadgeVinculo(vinculos[tipo]).texto}
+              </span>
+            )}
+            {diasPrazo !== null && (
+              <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap bg-[var(--fg)]/5 ${alertaLabel(diasPrazo).cls}`}>
+                ⏱ {alertaLabel(diasPrazo).text}
+              </span>
+            )}
+          </span>
+
+          {tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo && (
+            <input
+              type="text"
+              value={displayVal}
+              onChange={e => handleTextChange(tipo, e.target.value)}
+              onBlur={() => handleTextBlur(tipo)}
+              disabled={!podeEditar || isPending}
+              placeholder="DD/MM/AAAA"
+              maxLength={10}
+              className={inputCls(feito)}
+            />
+          )}
+
+          {semMovimentoAtivo && (
+            <span className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
+              SEM MOVIMENTO
+            </span>
+          )}
+
+          {mostrarCheckboxSemMovimento && (
+            <label className="flex items-center gap-1 text-[10px] text-[var(--fg)]/40 whitespace-nowrap cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={semMovimentoAtivo}
+                onChange={() => handleToggleSemMovimento(tipo)}
+                disabled={isPending}
+                className="w-3 h-3 accent-[var(--fg)]/50"
+              />
+              Sem mov.
+            </label>
+          )}
+        </div>
+
+        {etapasDefinidas && !semMovimentoAtivo && (
+          <div className="ml-5 mt-1 grid grid-cols-2 gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
+            {etapasDefinidas.map(etapaNome => {
+              const etapaFeita = !!etapasDaTarefa(tipo).find(e => e.nome === etapaNome)?.concluida
+              const etapaDisplay = getDisplayValue(tipo, etapaNome)
+              return (
+                <div key={etapaNome} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-[var(--fg)]/60">{etapaNome}</span>
+                  <input
+                    type="text"
+                    value={etapaDisplay}
+                    onChange={e => handleTextChange(tipo, e.target.value, etapaNome)}
+                    onBlur={() => handleTextBlur(tipo, etapaNome)}
+                    disabled={!podeEditar || isPending}
+                    placeholder="DD/MM/AAAA"
+                    maxLength={10}
+                    className={inputCls(etapaFeita)}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {tipoResposta === 'texto' && !etapasDefinidas && !semMovimentoAtivo && (
+          <div className="ml-5 mt-1 flex flex-col gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
+            <textarea
+              value={getRespostaTexto(tipo)}
+              onChange={e => handleRespostaTextoChange(tipo, e.target.value)}
+              onBlur={() => handleRespostaTextoBlur(tipo)}
+              disabled={!podeEditar || isPending}
+              placeholder="Digite a resposta..."
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50 disabled:opacity-40"
+            />
+            <div className="flex items-center gap-2 flex-wrap">
+              {podeEditar && (
+                <label className={`text-[10px] px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
+                  uploadingTipo === tipo
+                    ? 'opacity-50 pointer-events-none'
+                    : 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/25'
+                }`}>
+                  {uploadingTipo === tipo ? 'Enviando...' : '+ Anexar'}
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
+                    multiple
+                    className="hidden"
+                    onChange={e => handleUploadArquivo(tipo, e.target.files)}
+                    disabled={isPending}
+                  />
+                </label>
+              )}
+              {arquivosDaTarefa(tipo).map(arq => (
+                <span key={arq.id} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
+                  <a href={`/api/arquivos/tarefa/${arq.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                    📎 {arq.name}
+                  </a>
+                  · {formatBytes(arq.size)}
+                  {podeEditar && (
+                    <button type="button" onClick={() => handleExcluirArquivo(arq.id)}
+                      className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
+                  )}
+                </span>
+              ))}
+            </div>
+            {erroUpload[tipo] && <p className="text-red-400 text-[10px]">{erroUpload[tipo]}</p>}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  function renderLista() {
+    const grupoPorTarefa = new Map<string, TarefaGrupo>()
+    for (const g of grupos) {
+      for (const t of g.tarefas) {
+        if (!grupoPorTarefa.has(t)) grupoPorTarefa.set(t, g)
+      }
+    }
+    const gruposRenderizados = new Set<string>()
+
+    return tarefasPersonalizadas.map(tipo => {
+      const grupoDaTarefa = grupoPorTarefa.get(tipo)
+      if (!grupoDaTarefa) return renderLinhaTarefa(tipo)
+      if (gruposRenderizados.has(grupoDaTarefa.id)) return null
+      gruposRenderizados.add(grupoDaTarefa.id)
+
+      const tarefasDoGrupo = grupoDaTarefa.tarefas.filter(t => tarefasPersonalizadas.includes(t))
+      const concluidasDoGrupo = tarefasDoGrupo.filter(t => !!mapaTarefa.get(t)?.concluida).length
+      const expandido = gruposExpandidos.has(grupoDaTarefa.id)
+
+      return (
+        <div key={`grupo-${grupoDaTarefa.id}`} className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => toggleGrupo(grupoDaTarefa.id)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/3 hover:bg-[var(--fg)]/5 transition-all text-left"
+          >
+            <span className={`text-[10px] text-[var(--fg)]/40 transition-transform ${expandido ? 'rotate-90' : ''}`}>▶</span>
+            <span className="text-sm flex-1 text-[var(--fg)] font-medium">{grupoDaTarefa.nome}</span>
+            <span className="text-xs text-[var(--fg)]/40">{concluidasDoGrupo}/{tarefasDoGrupo.length}</span>
+          </button>
+          {expandido && (
+            <div className="ml-5 flex flex-col gap-2">
+              {tarefasDoGrupo.map(t => renderLinhaTarefa(t))}
+            </div>
+          )}
+        </div>
+      )
+    })
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -222,141 +410,7 @@ export default function TarefaChecklistContabil({
       </div>
 
       <div className="flex flex-col gap-2">
-        {tarefasPersonalizadas.map(tipo => {
-          const info = tarefaTipos[tipo]
-          const etapasDefinidas = info?.etapas ?? null
-          const tipoResposta: TipoResposta = info?.tipoResposta ?? 'data'
-          const feito = !!mapaTarefa.get(tipo)?.concluida
-          const semMovimentoAtivo = getSemMovimento(tipo)
-          const mostrarCheckboxSemMovimento = podeEditar && !(feito && !semMovimentoAtivo)
-          const displayVal = getDisplayValue(tipo)
-          const diasPrazo = !feito ? (prazosPorTipo[normalizarTitulo(tipo)] ?? null) : null
-
-          return (
-            <div key={tipo} className="flex flex-col gap-0">
-              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
-                feito ? 'bg-[var(--accent)]/8 border-[var(--accent)]/25' : 'bg-[var(--fg)]/3 border-[var(--fg)]/8'
-              }`}>
-                <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[var(--accent)]' : 'bg-[var(--fg)]/15'}`} />
-                <span className={`text-sm flex-1 transition-colors ${feito ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]'}`}>
-                  {tipo}
-                  {vinculos[tipo] && (
-                    <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${formatarBadgeVinculo(vinculos[tipo]).classe}`}>
-                      {formatarBadgeVinculo(vinculos[tipo]).texto}
-                    </span>
-                  )}
-                  {diasPrazo !== null && (
-                    <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap bg-[var(--fg)]/5 ${alertaLabel(diasPrazo).cls}`}>
-                      ⏱ {alertaLabel(diasPrazo).text}
-                    </span>
-                  )}
-                </span>
-
-                {tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo && (
-                  <input
-                    type="text"
-                    value={displayVal}
-                    onChange={e => handleTextChange(tipo, e.target.value)}
-                    onBlur={() => handleTextBlur(tipo)}
-                    disabled={!podeEditar || isPending}
-                    placeholder="DD/MM/AAAA"
-                    maxLength={10}
-                    className={inputCls(feito)}
-                  />
-                )}
-
-                {semMovimentoAtivo && (
-                  <span className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
-                    SEM MOVIMENTO
-                  </span>
-                )}
-
-                {mostrarCheckboxSemMovimento && (
-                  <label className="flex items-center gap-1 text-[10px] text-[var(--fg)]/40 whitespace-nowrap cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={semMovimentoAtivo}
-                      onChange={() => handleToggleSemMovimento(tipo)}
-                      disabled={isPending}
-                      className="w-3 h-3 accent-[var(--fg)]/50"
-                    />
-                    Sem mov.
-                  </label>
-                )}
-              </div>
-
-              {etapasDefinidas && !semMovimentoAtivo && (
-                <div className="ml-5 mt-1 grid grid-cols-2 gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
-                  {etapasDefinidas.map(etapaNome => {
-                    const etapaFeita = !!etapasDaTarefa(tipo).find(e => e.nome === etapaNome)?.concluida
-                    const etapaDisplay = getDisplayValue(tipo, etapaNome)
-                    return (
-                      <div key={etapaNome} className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-[var(--fg)]/60">{etapaNome}</span>
-                        <input
-                          type="text"
-                          value={etapaDisplay}
-                          onChange={e => handleTextChange(tipo, e.target.value, etapaNome)}
-                          onBlur={() => handleTextBlur(tipo, etapaNome)}
-                          disabled={!podeEditar || isPending}
-                          placeholder="DD/MM/AAAA"
-                          maxLength={10}
-                          className={inputCls(etapaFeita)}
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {tipoResposta === 'texto' && !etapasDefinidas && !semMovimentoAtivo && (
-                <div className="ml-5 mt-1 flex flex-col gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
-                  <textarea
-                    value={getRespostaTexto(tipo)}
-                    onChange={e => handleRespostaTextoChange(tipo, e.target.value)}
-                    onBlur={() => handleRespostaTextoBlur(tipo)}
-                    disabled={!podeEditar || isPending}
-                    placeholder="Digite a resposta..."
-                    rows={2}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50 disabled:opacity-40"
-                  />
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {podeEditar && (
-                      <label className={`text-[10px] px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
-                        uploadingTipo === tipo
-                          ? 'opacity-50 pointer-events-none'
-                          : 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/25'
-                      }`}>
-                        {uploadingTipo === tipo ? 'Enviando...' : '+ Anexar'}
-                        <input
-                          type="file"
-                          accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
-                          multiple
-                          className="hidden"
-                          onChange={e => handleUploadArquivo(tipo, e.target.files)}
-                          disabled={isPending}
-                        />
-                      </label>
-                    )}
-                    {arquivosDaTarefa(tipo).map(arq => (
-                      <span key={arq.id} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
-                        <a href={`/api/arquivos/tarefa/${arq.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                          📎 {arq.name}
-                        </a>
-                        · {formatBytes(arq.size)}
-                        {podeEditar && (
-                          <button type="button" onClick={() => handleExcluirArquivo(arq.id)}
-                            className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                  {erroUpload[tipo] && <p className="text-red-400 text-[10px]">{erroUpload[tipo]}</p>}
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {renderLista()}
       </div>
     </div>
   )

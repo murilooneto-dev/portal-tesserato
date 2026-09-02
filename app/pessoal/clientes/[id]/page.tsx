@@ -14,7 +14,7 @@ import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
 import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsPessoal, marcarSemMovimento } from '../actions'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
-import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento } from '@/lib/types'
+import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento, TarefaGrupo } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
@@ -41,11 +41,12 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   await sincronizarTarefasParcelamento(supabase, 'pessoal', mes, ano)
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
-  const [{ data: tarefas }, { data: usuariosPessoal }, { data: tiposRaw }, labelsParcelamento] = await Promise.all([
+  const [{ data: tarefas }, { data: usuariosPessoal }, { data: tiposRaw }, labelsParcelamento, { data: gruposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'pessoal'),
     supabase.from('profiles').select('nome').contains('setores', ['pessoal']),
     supabase.from('tarefa_tipos').select('nome, etapas, meses_visiveis, tipo_resposta').eq('setor', 'pessoal'),
     buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null),
+    supabase.from('tarefa_grupos').select('id, cliente_id, setor, nome, tarefas').eq('cliente_id', id).eq('setor', 'pessoal'),
   ])
 
   const parcelamentoIdsDaFicha = Array.from(new Set(
@@ -163,6 +164,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
 
       <TarefaChecklistPessoal
         tarefasPersonalizadas={tarefasPersonalizadasEfetivas}
+        grupos={(gruposRaw ?? []) as TarefaGrupo[]}
         tarefaTipos={tarefaTipos}
         tarefas={(tarefas ?? []) as Tarefa[]}
         etapas={(etapas ?? []) as TarefaEtapa[]}
