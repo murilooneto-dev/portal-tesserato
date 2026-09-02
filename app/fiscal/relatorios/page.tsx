@@ -36,6 +36,7 @@ export default function RelatoriosPage() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [obsPorCliente, setObsPorCliente] = useState<Record<string, string>>({})
   const [mapaVinculos, setMapaVinculos] = useState<MapaVinculosSetor>({ porGrupo: {}, porRegime: {}, porAtividade: {} })
+  const [atividadesCatalogo, setAtividadesCatalogo] = useState<string[]>([])
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('relatorios:grupo', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('relatorios:atividade', [])
@@ -74,7 +75,8 @@ export default function RelatoriosPage() {
           buscarTodasTarefasDoMes<Tarefa>(sb, mes, ano),
           sb.from('observacoes_clientes').select('cliente_id,texto').eq('mes', mes).eq('ano', ano),
           buscarMapaVinculosSetor(sb, 'fiscal'),
-        ]).then(([c, t, o, mapa]) => {
+          sb.from('atividades').select('nome').eq('setor', 'fiscal').eq('ativo', true).order('nome'),
+        ]).then(([c, t, o, mapa, at]) => {
           setClientes((c.data ?? []).map(flattenClienteFiscal))
           setTarefas(t)
           const obsMap: Record<string, string> = {}
@@ -83,6 +85,7 @@ export default function RelatoriosPage() {
           }
           setObsPorCliente(obsMap)
           setMapaVinculos(mapa)
+          setAtividadesCatalogo((at.data ?? []).map(a => a.nome as string))
         })
       })
     })
@@ -92,7 +95,7 @@ export default function RelatoriosPage() {
     ? ['TODOS', ...Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[]))]
     : []
 
-  const atividades = Array.from(new Set(clientes.flatMap(c => c.atividade ?? []))).sort()
+  const atividades = atividadesCatalogo
   const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas({ ...c, grupo: bucketDoRegime(c.regime) }, mapaVinculos)))).sort()
 
   const filtrados = clientes
