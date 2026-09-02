@@ -4,6 +4,7 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
+import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa } from '@/lib/types'
 
 export const metadata = { title: 'Relatórios — Tesserato Pessoal' }
@@ -31,6 +32,7 @@ export default async function RelatoriosPessoalPage() {
 
   const clientes = (clientesRaw ?? []).map(flattenClientePessoal)
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal')
+  const catalogo = await buscarCatalogoCliente(supabase, 'pessoal')
 
   const mesesVisiveisPorTipo: Record<string, number[] | null> = {}
   for (const t of tiposRaw ?? []) mesesVisiveisPorTipo[t.nome as string] = t.meses_visiveis as number[] | null
@@ -50,6 +52,7 @@ export default async function RelatoriosPessoalPage() {
       mesesVisiveisPorTipo={mesesVisiveisPorTipo}
       obsPorCliente={obsPorCliente}
       mapaVinculos={mapaVinculos}
+      atividadesCatalogo={catalogo.atividades}
     />
   )
 }

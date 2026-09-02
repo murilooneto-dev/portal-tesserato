@@ -8,6 +8,7 @@ import {
   criarEntidade,
   renomearEntidade,
   alternarAtivoEntidade,
+  excluirEntidade,
   type TipoEntidade,
   type EntidadeConfig,
 } from '@/lib/config-entidades-actions'
@@ -65,6 +66,14 @@ export default function EntidadeListaTab({ tabela, entidadeTipoVinculo, setor, l
   async function handleAlternarAtivo(item: EntidadeConfig) {
     const { error } = await alternarAtivoEntidade(tabela, item.id, !item.ativo)
     if (error) { setErro(error); return }
+    await recarregar()
+  }
+
+  async function handleExcluir(item: EntidadeConfig) {
+    if (!confirm(`Excluir "${item.nome}"? Essa ação não pode ser desfeita.`)) return
+    const { error } = await excluirEntidade(tabela, item.id)
+    if (error) { setErro(error); return }
+    setErro(null)
     await recarregar()
   }
 
@@ -131,6 +140,10 @@ export default function EntidadeListaTab({ tabela, entidadeTipoVinculo, setor, l
 
               <button onClick={() => handleAlternarAtivo(item)} className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]">
                 {item.ativo ? 'Desativar' : 'Ativar'}
+              </button>
+
+              <button onClick={() => handleExcluir(item)} className="text-xs text-red-400/70 hover:text-red-400">
+                Excluir
               </button>
             </li>
           ))}

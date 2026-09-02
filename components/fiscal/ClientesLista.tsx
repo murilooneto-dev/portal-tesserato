@@ -71,9 +71,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
   )).sort()], [clientes])
 
 
-  const atividades = useMemo(() => Array.from(new Set(
-    clientes.flatMap(c => c.atividade ?? [])
-  )).sort(), [clientes])
+  const atividades = catalogo.atividades
 
   function toggleAtividade(nome: string) {
     setFiltroAtividade(

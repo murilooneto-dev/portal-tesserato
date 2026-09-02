@@ -5,15 +5,15 @@ import { revalidatePath } from 'next/cache'
 import type { UserSetor } from '@/lib/types'
 import { validarNomeEntidade, normalizarNome } from '@/lib/config-entidades'
 
-export type TipoEntidade = 'regimes' | 'grupos' | 'atividades'
+export type TipoEntidade = 'regimes' | 'atividades'
 
 // Server Actions são chamáveis diretamente por uma requisição forjada —
 // os tipos do TypeScript são apagados em runtime, então `tabela` chega aqui
 // como uma string qualquer, não garantidamente um TipoEntidade. Como
 // getAuthenticatedAdmin() retorna um client service-role (bypassa RLS), sem
 // essa checagem um `tabela` malicioso poderia atingir .from('profiles') ou
-// .from('clientes') em vez de regimes/grupos/atividades.
-const TABELAS_VALIDAS: readonly TipoEntidade[] = ['regimes', 'grupos', 'atividades']
+// .from('clientes') em vez de regimes/atividades.
+const TABELAS_VALIDAS: readonly TipoEntidade[] = ['regimes', 'atividades']
 
 export interface EntidadeConfig {
   id: string
@@ -134,6 +134,73 @@ export async function alternarAtivoEntidade(
 
   const { error: updateError } = await supabase.from(tabela).update({ ativo }).eq('id', id)
   if (updateError) return { error: updateError.message }
+
+  revalidatePath('/admin/configuracoes')
+  return { error: null }
+}
+
+// regime/atividade não têm FK real pra clientes_<setor> (comparação é
+// por nome, ver migrations 018/026) — regime e atividade existem em
+// fiscal/contábil/pessoal. Setor sem a coluna correspondente = 0 clientes
+// em uso, sem tentar consultar uma coluna que não existe na tabela.
+const COLUNA_CLIENTE_POR_TABELA: Record<TipoEntidade, Partial<Record<UserSetor, string>>> = {
+  regimes:    { fiscal: 'regime', contabil: 'regime', pessoal: 'regime' },
+  atividades: { fiscal: 'atividade', contabil: 'atividade', pessoal: 'atividade' },
+}
+
+const ENTIDADE_TIPO_VINCULO: Record<TipoEntidade, 'regime' | 'atividade'> = {
+  regimes: 'regime',
+  atividades: 'atividade',
+}
+
+export async function excluirEntidade(
+  tabela: TipoEntidade,
+  id: string,
+): Promise<{ error: string | null }> {
+  if (!TABELAS_VALIDAS.includes(tabela)) return { error: 'Tabela inválida.' }
+
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { error }
+
+  const { data: entidade } = await supabase.from(tabela).select('setor, nome').eq('id', id).single()
+  if (!entidade) return { error: 'Item não encontrado.' }
+
+  let nClientes = 0
+  const colunaCliente = COLUNA_CLIENTE_POR_TABELA[tabela][entidade.setor as UserSetor]
+  if (colunaCliente) {
+    const clientesTabela = `clientes_${entidade.setor}`
+    const { count } = tabela === 'atividades'
+      ? await supabase.from(clientesTabela).select('cliente_id', { count: 'exact', head: true }).contains(colunaCliente, [entidade.nome])
+      : await supabase.from(clientesTabela).select('cliente_id', { count: 'exact', head: true }).eq(colunaCliente, entidade.nome)
+    nClientes = count ?? 0
+  }
+
+  const entidadeTipoVinculo = ENTIDADE_TIPO_VINCULO[tabela]
+  const { count: countLegado } = await supabase
+    .from('tarefa_tipo_vinculos')
+    .select('id', { count: 'exact', head: true })
+    .eq('entidade_tipo', entidadeTipoVinculo)
+    .eq('entidade_id', id)
+  let nVinculos = countLegado ?? 0
+  if (tabela === 'regimes') {
+    // vínculo atividade+regime (migration 031) usa regime_id com FK real
+    // (on delete cascade) — contamos aqui também pra bloquear em vez de
+    // deixar o cascade apagar o vínculo silenciosamente.
+    const { count: countRegimeId } = await supabase
+      .from('tarefa_tipo_vinculos')
+      .select('id', { count: 'exact', head: true })
+      .eq('regime_id', id)
+    nVinculos += countRegimeId ?? 0
+  }
+
+  if (nClientes > 0 || nVinculos > 0) {
+    return {
+      error: `Não é possível excluir: em uso por ${nClientes} cliente(s) e ${nVinculos} vínculo(s) de tarefa. Desvincule antes de excluir.`,
+    }
+  }
+
+  const { error: deleteError } = await supabase.from(tabela).delete().eq('id', id)
+  if (deleteError) return { error: deleteError.message }
 
   revalidatePath('/admin/configuracoes')
   return { error: null }

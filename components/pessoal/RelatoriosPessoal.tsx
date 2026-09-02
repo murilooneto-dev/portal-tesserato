@@ -29,9 +29,10 @@ interface Props {
   mesesVisiveisPorTipo: Record<string, number[] | null>
   obsPorCliente: Record<string, string>
   mapaVinculos: MapaVinculosSetor
+  atividadesCatalogo: string[]
 }
 
-export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano, mesesVisiveisPorTipo, obsPorCliente, mapaVinculos }: Props) {
+export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano, mesesVisiveisPorTipo, obsPorCliente, mapaVinculos, atividadesCatalogo }: Props) {
   const router = useRouter()
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios-pessoal:responsavel', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('relatorios-pessoal:atividade', [])
@@ -48,7 +49,7 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
     ? ['TODOS', ...Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[]))]
     : []
 
-  const atividades = Array.from(new Set(clientes.flatMap(c => c.atividade ?? []))).sort()
+  const atividades = atividadesCatalogo
   const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
 
   const filtrados = clientes

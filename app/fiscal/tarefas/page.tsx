@@ -36,7 +36,7 @@ export default async function TarefasPage() {
 
   const { data: clientes } = await supabase
     .from('clientes')
-    .select('id, nome, clientes_fiscal!inner(cod, grupo, responsavel)')
+    .select('id, nome, clientes_fiscal!inner(cod, responsavel)')
     .eq('clientes_fiscal.ativo', true)
     .order('nome')
 
@@ -44,7 +44,7 @@ export default async function TarefasPage() {
     const c = row as unknown as {
       id: string
       nome: string
-      clientes_fiscal: { cod: string | null; grupo: string | null; responsavel: string | null }
+      clientes_fiscal: { cod: string | null; responsavel: string | null }
     }
     return { id: c.id, nome: c.nome, ...c.clientes_fiscal }
   })
