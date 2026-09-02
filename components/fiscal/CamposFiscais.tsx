@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import SeletorAtividades from '@/components/geral/SeletorAtividades'
 import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
+import GruposTarefasModal from '@/components/geral/GruposTarefasModal'
 
 export interface CamposFiscaisData {
   cod: string
@@ -31,13 +33,16 @@ interface Props {
   responsaveis: string[]
   catalogo: CatalogoCliente
   isEdit: boolean
+  clienteId: string | null
   readOnly: boolean
   novaTarefa: string
   setNovaTarefa: (v: string) => void
   addTarefa: () => void
 }
 
-export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdit, readOnly, novaTarefa, setNovaTarefa, addTarefa }: Props) {
+export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdit, clienteId, readOnly, novaTarefa, setNovaTarefa, addTarefa }: Props) {
+  const [gruposAberto, setGruposAberto] = useState(false)
+
   return (
     <>
       {/* Código + Regime */}
@@ -149,6 +154,12 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
           <label className={labelCls + ' mb-0'}>
             Tarefas ({form.tarefas_personalizadas.length})
           </label>
+          {isEdit && clienteId && !readOnly && (
+            <button type="button" onClick={() => setGruposAberto(true)}
+              className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] hover:border-[var(--fg)]/25 transition-colors">
+              Agrupar tarefas
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-1.5 mb-3 min-h-[32px]">
@@ -190,6 +201,15 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
           readOnly={readOnly}
         />
       </div>
+
+      {gruposAberto && clienteId && (
+        <GruposTarefasModal
+          clienteId={clienteId}
+          setor="fiscal"
+          tarefasDisponiveis={form.tarefas_personalizadas}
+          onClose={() => setGruposAberto(false)}
+        />
+      )}
     </>
   )
 }
