@@ -1,4 +1,4 @@
--- supabase/migrations/035_remover_grupo.sql
+-- supabase/migrations/036_remover_grupo.sql
 
 -- Remove o conceito de "Grupo" (catálogo grupos + clientes_fiscal.grupo),
 -- confirmado morto na prática: as 3 linhas de `grupos` estão inativas,
