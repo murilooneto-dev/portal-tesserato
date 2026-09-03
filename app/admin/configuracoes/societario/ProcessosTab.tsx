@@ -7,6 +7,7 @@ import {
   criarProcessoTipo,
   excluirProcessoTipo,
   moverSubetapaOrdem,
+  atualizarProcessoTipo,
 } from '@/lib/processo-tipos-actions'
 import {
   adicionarEtapa,
@@ -14,6 +15,9 @@ import {
   adicionarSubetapa,
   removerSubetapa,
   moverSubetapa,
+  renomearEtapa,
+  editarSubetapa,
+  paraEtapaForm,
   type EtapaForm,
   type SubetapaTipoResposta,
   type ProcessoTipoResumo,
@@ -52,12 +56,14 @@ function SetasOrdem({ onSubir, onDescer, desabilitarSubir, desabilitarDescer }: 
   )
 }
 
-function EtapaBloco({ etapa, onRemoverEtapa, onAdicionarSubetapa, onRemoverSubetapa, onMoverSubetapa }: {
+function EtapaBloco({ etapa, onRemoverEtapa, onRenomearEtapa, onAdicionarSubetapa, onRemoverSubetapa, onMoverSubetapa, onEditarSubetapa }: {
   etapa: EtapaForm
   onRemoverEtapa: () => void
+  onRenomearEtapa: (novoNome: string) => void
   onAdicionarSubetapa: (nome: string, tipoResposta: SubetapaTipoResposta) => void
   onRemoverSubetapa: (subetapaIndex: number) => void
   onMoverSubetapa: (subetapaIndex: number, direcao: 'up' | 'down') => void
+  onEditarSubetapa: (subetapaIndex: number, nome: string, tipoResposta: SubetapaTipoResposta) => void
 }) {
   const [novaSubetapa, setNovaSubetapa] = useState('')
   const [formato, setFormato] = useState<SubetapaTipoResposta>('texto')
@@ -71,27 +77,38 @@ function EtapaBloco({ etapa, onRemoverEtapa, onAdicionarSubetapa, onRemoverSubet
   return (
     <div className="rounded-lg border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-3 mb-2">
       <div className="flex items-center gap-2 mb-2">
-        <span className="flex-1 text-sm text-[var(--fg)]">{etapa.nome}</span>
+        <input value={etapa.nome} onChange={e => onRenomearEtapa(e.target.value)}
+          className={inputCls + ' flex-1 text-sm py-1'} />
         <button type="button" onClick={onRemoverEtapa}
           className="text-[var(--fg)]/40 hover:text-red-400 transition-colors font-bold">×</button>
       </div>
 
       {etapa.subetapas.length > 0 && (
-        <ul className="space-y-1 mb-2">
+        <ul className="space-y-1.5 mb-2">
           {etapa.subetapas.map((sub, i) => (
-            <li key={i} className="flex items-center gap-2 text-xs text-[var(--fg)]/70 pl-3">
-              <SetasOrdem
-                onSubir={() => onMoverSubetapa(i, 'up')}
-                onDescer={() => onMoverSubetapa(i, 'down')}
-                desabilitarSubir={i === 0}
-                desabilitarDescer={i === etapa.subetapas.length - 1}
-              />
-              <span className="flex-1">{sub.nome}</span>
-              <span className="px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)] text-[10px] font-semibold">
-                {labelFormato(sub.tipoResposta)}
-              </span>
-              <button type="button" onClick={() => onRemoverSubetapa(i)}
-                className="text-[var(--fg)]/30 hover:text-red-400 transition-colors font-bold">×</button>
+            <li key={i} className="pl-3">
+              <div className="flex items-center gap-2 text-xs text-[var(--fg)]/70">
+                <SetasOrdem
+                  onSubir={() => onMoverSubetapa(i, 'up')}
+                  onDescer={() => onMoverSubetapa(i, 'down')}
+                  desabilitarSubir={i === 0}
+                  desabilitarDescer={i === etapa.subetapas.length - 1}
+                />
+                <input value={sub.nome} onChange={e => onEditarSubetapa(i, e.target.value, sub.tipoResposta)}
+                  className={inputCls + ' flex-1 text-xs py-1'} />
+                <button type="button" onClick={() => onRemoverSubetapa(i)}
+                  className="text-[var(--fg)]/30 hover:text-red-400 transition-colors font-bold">×</button>
+              </div>
+              <div className="flex gap-1.5 mt-1 pl-5">
+                {FORMATOS_SUBETAPA.map(f => (
+                  <button key={f.value} type="button" onClick={() => onEditarSubetapa(i, sub.nome, f.value)}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-colors ${
+                      sub.tipoResposta === f.value ? 'bg-[var(--accent)] text-[var(--fg)]' : 'bg-[var(--fg)]/5 text-[var(--fg)]/50 hover:text-[var(--fg)]'
+                    }`}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </li>
           ))}
         </ul>
@@ -132,6 +149,12 @@ export default function ProcessosTab() {
   const [salvando, setSalvando] = useState(false)
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({})
   const [movendo, setMovendo] = useState<Record<string, boolean>>({})
+
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [nomeEdicao, setNomeEdicao] = useState('')
+  const [etapasEdicao, setEtapasEdicao] = useState<EtapaForm[]>([])
+  const [novaEtapaEdicao, setNovaEtapaEdicao] = useState('')
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false)
 
   const recarregar = useCallback(async () => {
     setCarregando(true)
@@ -180,6 +203,34 @@ export default function ProcessosTab() {
     setMovendo(prev => ({ ...prev, [subetapaId]: false }))
   }
 
+  function handleEditar(item: ProcessoTipoResumo) {
+    setExpandidos(prev => ({ ...prev, [item.id]: true }))
+    setNomeEdicao(item.nome)
+    setEtapasEdicao(paraEtapaForm(item))
+    setNovaEtapaEdicao('')
+    setEditandoId(item.id)
+  }
+
+  function handleCancelarEdicao() {
+    setEditandoId(null)
+  }
+
+  function addEtapaEdicao() {
+    setEtapasEdicao(prev => adicionarEtapa(prev, novaEtapaEdicao))
+    setNovaEtapaEdicao('')
+  }
+
+  async function handleSalvarEdicao() {
+    if (!editandoId || !nomeEdicao.trim() || etapasEdicao.length === 0) return
+    setSalvandoEdicao(true)
+    const { error } = await atualizarProcessoTipo(editandoId, nomeEdicao, etapasEdicao)
+    if (error) { setErro(error); setSalvandoEdicao(false); return }
+    setErro(null)
+    setSalvandoEdicao(false)
+    setEditandoId(null)
+    await recarregar()
+  }
+
   return (
     <div>
       <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4 mb-6">
@@ -198,9 +249,11 @@ export default function ProcessosTab() {
               key={i}
               etapa={etapa}
               onRemoverEtapa={() => setEtapas(prev => removerEtapa(prev, i))}
+              onRenomearEtapa={novoNome => setEtapas(prev => renomearEtapa(prev, i, novoNome))}
               onAdicionarSubetapa={(nome, tipoResposta) => setEtapas(prev => adicionarSubetapa(prev, i, nome, tipoResposta))}
               onRemoverSubetapa={subetapaIndex => setEtapas(prev => removerSubetapa(prev, i, subetapaIndex))}
               onMoverSubetapa={(subetapaIndex, direcao) => setEtapas(prev => moverSubetapa(prev, i, subetapaIndex, direcao))}
+              onEditarSubetapa={(subetapaIndex, nome, tipoResposta) => setEtapas(prev => editarSubetapa(prev, i, subetapaIndex, nome, tipoResposta))}
             />
           ))}
         </div>
@@ -245,36 +298,89 @@ export default function ProcessosTab() {
                     {item.etapas.length} etapa{item.etapas.length === 1 ? '' : 's'}
                   </span>
                 </button>
-                <button onClick={() => handleExcluir(item)} className="text-xs text-red-400/70 hover:text-red-400">
-                  Excluir
-                </button>
+                {editandoId === item.id ? (
+                  <>
+                    <button onClick={handleSalvarEdicao} disabled={salvandoEdicao || !nomeEdicao.trim() || etapasEdicao.length === 0}
+                      className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] disabled:opacity-50">
+                      {salvandoEdicao ? 'Salvando...' : 'Salvar'}
+                    </button>
+                    <button onClick={handleCancelarEdicao} className="text-xs text-[var(--fg)]/50 hover:text-[var(--fg)]">
+                      Cancelar
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => handleEditar(item)} className="text-xs text-[var(--fg)]/50 hover:text-[var(--fg)]">
+                      Editar
+                    </button>
+                    <button onClick={() => handleExcluir(item)} className="text-xs text-red-400/70 hover:text-red-400">
+                      Excluir
+                    </button>
+                  </>
+                )}
               </div>
 
               {expandidos[item.id] && (
                 <div className="mt-3 pt-3 border-t border-[var(--fg)]/8 space-y-2">
-                  {item.etapas.map((etapa, etapaIndex) => (
-                    <div key={etapaIndex}>
-                      <span className="block text-xs font-semibold text-[var(--fg)]/70">{etapa.nome}</span>
-                      {etapa.subetapas.length > 0 && (
-                        <ul className="mt-1 space-y-0.5 pl-3">
-                          {etapa.subetapas.map((sub, subIndex) => (
-                            <li key={sub.id} className="flex items-center gap-2 text-xs text-[var(--fg)]/50">
-                              <SetasOrdem
-                                onSubir={() => moverPersistida(sub.id, 'up')}
-                                onDescer={() => moverPersistida(sub.id, 'down')}
-                                desabilitarSubir={movendo[sub.id] || subIndex === 0}
-                                desabilitarDescer={movendo[sub.id] || subIndex === etapa.subetapas.length - 1}
-                              />
-                              <span className="flex-1">{sub.nome}</span>
-                              <span className="px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)] text-[10px] font-semibold">
-                                {labelFormato(sub.tipoResposta)}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
+                  {editandoId === item.id ? (
+                    <>
+                      <label className={labelCls}>Nome do tipo de processo</label>
+                      <input
+                        value={nomeEdicao}
+                        onChange={e => setNomeEdicao(e.target.value)}
+                        className={inputCls + ' w-full mb-3'}
+                      />
+                      <label className={labelCls}>Etapas ({etapasEdicao.length})</label>
+                      <div className="mt-2 mb-3">
+                        {etapasEdicao.map((etapa, i) => (
+                          <EtapaBloco
+                            key={i}
+                            etapa={etapa}
+                            onRemoverEtapa={() => setEtapasEdicao(prev => removerEtapa(prev, i))}
+                            onRenomearEtapa={novoNome => setEtapasEdicao(prev => renomearEtapa(prev, i, novoNome))}
+                            onAdicionarSubetapa={(nome, tipoResposta) => setEtapasEdicao(prev => adicionarSubetapa(prev, i, nome, tipoResposta))}
+                            onRemoverSubetapa={subetapaIndex => setEtapasEdicao(prev => removerSubetapa(prev, i, subetapaIndex))}
+                            onMoverSubetapa={(subetapaIndex, direcao) => setEtapasEdicao(prev => moverSubetapa(prev, i, subetapaIndex, direcao))}
+                            onEditarSubetapa={(subetapaIndex, nome, tipoResposta) => setEtapasEdicao(prev => editarSubetapa(prev, i, subetapaIndex, nome, tipoResposta))}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <input value={novaEtapaEdicao} onChange={e => setNovaEtapaEdicao(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addEtapaEdicao())}
+                          placeholder="Digitar nome da etapa e pressionar Enter..."
+                          className={inputCls + ' flex-1 text-xs'} />
+                        <button type="button" onClick={addEtapaEdicao}
+                          className="px-4 py-2 rounded-xl bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/30 text-xs font-semibold transition-colors whitespace-nowrap">
+                          + Adicionar etapa
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    item.etapas.map((etapa, etapaIndex) => (
+                      <div key={etapaIndex}>
+                        <span className="block text-xs font-semibold text-[var(--fg)]/70">{etapa.nome}</span>
+                        {etapa.subetapas.length > 0 && (
+                          <ul className="mt-1 space-y-0.5 pl-3">
+                            {etapa.subetapas.map((sub, subIndex) => (
+                              <li key={sub.id} className="flex items-center gap-2 text-xs text-[var(--fg)]/50">
+                                <SetasOrdem
+                                  onSubir={() => moverPersistida(sub.id, 'up')}
+                                  onDescer={() => moverPersistida(sub.id, 'down')}
+                                  desabilitarSubir={movendo[sub.id] || subIndex === 0}
+                                  desabilitarDescer={movendo[sub.id] || subIndex === etapa.subetapas.length - 1}
+                                />
+                                <span className="flex-1">{sub.nome}</span>
+                                <span className="px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)] text-[10px] font-semibold">
+                                  {labelFormato(sub.tipoResposta)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </li>

@@ -132,6 +132,74 @@ export async function moverSubetapaOrdem(subetapaId: string, direcao: 'up' | 'do
   return { error: null }
 }
 
+export async function atualizarProcessoTipo(id: string, nome: string, etapas: EtapaForm[]): Promise<{ error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { error }
+
+  const nomeTrim = nome.trim()
+
+  const { error: updateError } = await supabase
+    .from('processo_tipos')
+    .update({ nome: nomeTrim, etapas: etapas.map(etapa => etapa.nome.trim()) })
+    .eq('id', id)
+
+  if (updateError) {
+    if (updateError.code === '23505') return { error: 'Já existe um tipo de processo com esse nome.' }
+    return { error: updateError.message }
+  }
+
+  for (const etapa of etapas) {
+    const novoNome = etapa.nome.trim()
+    if (etapa.nomeOriginal && etapa.nomeOriginal !== novoNome) {
+      const { error: renomearError } = await supabase.rpc('renomear_etapa_processo', {
+        p_processo_tipo_id: id,
+        p_nome_antigo: etapa.nomeOriginal,
+        p_nome_novo: novoNome,
+      })
+      if (renomearError) return { error: renomearError.message }
+    }
+  }
+
+  const { data: subetapasAtuais, error: subetapasAtuaisError } = await supabase
+    .from('processo_subetapas')
+    .select('id')
+    .eq('processo_tipo_id', id)
+  if (subetapasAtuaisError) return { error: subetapasAtuaisError.message }
+
+  const idsFinais = new Set(etapas.flatMap(etapa => etapa.subetapas.map(sub => sub.id).filter((subId): subId is string => !!subId)))
+  const idsParaRemover = (subetapasAtuais ?? []).map(s => s.id as string).filter(subId => !idsFinais.has(subId))
+
+  if (idsParaRemover.length > 0) {
+    const { error: removerError } = await supabase.from('processo_subetapas').delete().in('id', idsParaRemover)
+    if (removerError) return { error: removerError.message }
+  }
+
+  for (const etapa of etapas) {
+    const novoNomeEtapa = etapa.nome.trim()
+    for (const [subIndex, sub] of etapa.subetapas.entries()) {
+      if (sub.id) {
+        const { error: subUpdateError } = await supabase
+          .from('processo_subetapas')
+          .update({ nome: sub.nome, tipo_resposta: sub.tipoResposta, etapa_nome: novoNomeEtapa, ordem: subIndex })
+          .eq('id', sub.id)
+        if (subUpdateError) return { error: subUpdateError.message }
+      } else {
+        const { error: subInsertError } = await supabase.from('processo_subetapas').insert({
+          processo_tipo_id: id,
+          etapa_nome: novoNomeEtapa,
+          nome: sub.nome,
+          tipo_resposta: sub.tipoResposta,
+          ordem: subIndex,
+        })
+        if (subInsertError) return { error: subInsertError.message }
+      }
+    }
+  }
+
+  revalidatePath('/admin/configuracoes/societario')
+  return { error: null }
+}
+
 export async function excluirProcessoTipo(id: string): Promise<{ error: string | null }> {
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { error }

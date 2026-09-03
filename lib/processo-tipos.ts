@@ -3,11 +3,13 @@
 export type SubetapaTipoResposta = 'texto' | 'checklist' | 'data'
 
 export interface SubetapaForm {
+  id?: string | null // id real no banco; ausente/null = subetapa nova
   nome: string
   tipoResposta: SubetapaTipoResposta
 }
 
 export interface EtapaForm {
+  nomeOriginal?: string | null // nome da etapa ao abrir a edição; ausente/null = etapa nova
   nome: string
   subetapas: SubetapaForm[]
 }
@@ -107,4 +109,33 @@ export function moverSubetapa(
     ;[subetapas[subetapaIndex], subetapas[alvoIndex]] = [subetapas[alvoIndex], subetapas[subetapaIndex]]
     return { ...etapa, subetapas }
   })
+}
+
+export function renomearEtapa(etapas: EtapaForm[], etapaIndex: number, novoNome: string): EtapaForm[] {
+  return etapas.map((etapa, i) => (i === etapaIndex ? { ...etapa, nome: novoNome } : etapa))
+}
+
+export function editarSubetapa(
+  etapas: EtapaForm[],
+  etapaIndex: number,
+  subetapaIndex: number,
+  nome: string,
+  tipoResposta: SubetapaTipoResposta,
+): EtapaForm[] {
+  return etapas.map((etapa, i) =>
+    i === etapaIndex
+      ? {
+          ...etapa,
+          subetapas: etapa.subetapas.map((sub, si) => (si === subetapaIndex ? { ...sub, nome, tipoResposta } : sub)),
+        }
+      : etapa
+  )
+}
+
+export function paraEtapaForm(tipo: ProcessoTipoResumo): EtapaForm[] {
+  return tipo.etapas.map(etapa => ({
+    nomeOriginal: etapa.nome,
+    nome: etapa.nome,
+    subetapas: etapa.subetapas.map(sub => ({ id: sub.id, nome: sub.nome, tipoResposta: sub.tipoResposta })),
+  }))
 }
