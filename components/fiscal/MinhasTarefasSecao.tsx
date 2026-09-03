@@ -16,7 +16,6 @@ interface Props {
   etapas: TarefaEtapa[]
   mes: number
   ano: number
-  usuarioNome: string
   busca: string
   statusFiltro: StatusFiltroMinhasTarefas
   atividadeFiltro: string[]
@@ -39,7 +38,6 @@ export default function MinhasTarefasSecao({
   etapas,
   mes,
   ano,
-  usuarioNome,
   busca,
   statusFiltro,
   atividadeFiltro,
@@ -145,14 +143,14 @@ export default function MinhasTarefasSecao({
     && (atividadeFiltro.length === 0 || (c.atividade.length === atividadeFiltro.length && atividadeFiltro.every(a => c.atividade.includes(a))))
   )
 
-  async function handleUnlock(clienteId: string, clienteNome: string) {
+  async function handleUnlock(clienteId: string) {
     const motivoTrim = motivo.trim()
     if (!motivoTrim) return
     const tarefa = mapaTarefa.get(clienteId)
     if (!tarefa) return
     setUnlockPending(true)
     try {
-      await desbloquearTarefa(tarefa.id, motivoTrim, usuarioNome, clienteNome, tipo, competencia)
+      await desbloquearTarefa(tarefa.id, motivoTrim, tipo, competencia)
       setOverlay(prev => ({ ...prev, [chave(clienteId, null)]: null }))
       setUnlockingCliente(null)
       setMotivo('')
@@ -254,7 +252,7 @@ export default function MinhasTarefasSecao({
                               Cancelar
                             </button>
                             <button
-                              onClick={() => handleUnlock(cliente.id, cliente.nome)}
+                              onClick={() => handleUnlock(cliente.id)}
                               disabled={!motivo.trim() || unlockPending}
                               className="text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] px-3 py-1.5 rounded-lg hover:bg-[var(--accent)]/30 transition-all disabled:opacity-40"
                             >

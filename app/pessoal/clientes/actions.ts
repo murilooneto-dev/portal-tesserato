@@ -5,7 +5,7 @@ import { getAuthenticatedAdmin, podeEditarClientePessoal } from '@/lib/supabase/
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
-import { registrarEvento, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
+import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
 
 interface ClientePayload {
   nome: string
@@ -42,7 +42,8 @@ export async function salvarClientePessoal(
   const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
   if (clienteId) {
-    const { data: antes } = await supabase.from('clientes_pessoal').select('responsavel').eq('cliente_id', clienteId).single()
+    const { data: clienteAntes } = await supabase.from('clientes').select('nome, cnpj, municipio, uf, contato_chat').eq('id', clienteId).single()
+    const { data: antes } = await supabase.from('clientes_pessoal').select('*').eq('cliente_id', clienteId).single()
 
     const { error: errCliente } = await supabase.from('clientes').update(clientePayload).eq('id', clienteId)
     if (errCliente) return { error: errCliente.message }
@@ -53,6 +54,12 @@ export async function salvarClientePessoal(
       clienteId, clienteNome: clientePayload.nome, setor: 'pessoal',
       responsavelAntigo: antes?.responsavel, responsavelNovo: pessoalPayload.responsavel,
       usuarioId: user.id, usuarioNome,
+    })
+
+    const campos = camposAlterados({ ...clienteAntes, ...antes }, { ...clientePayload, ...pessoalPayload })
+    await registrarEdicao(supabase, {
+      setor: 'pessoal', clienteId, clienteNome: clientePayload.nome,
+      usuarioId: user.id, usuarioNome, campos,
     })
   } else {
     const { data: novoCliente, error: errCliente } = await supabase.from('clientes')

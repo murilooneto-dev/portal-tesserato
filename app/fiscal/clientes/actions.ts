@@ -5,7 +5,7 @@ import { getAuthenticatedAdmin, podeEditarCliente, podeEditarTarefaTipo } from '
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
-import { registrarEvento, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
+import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
 
 interface ClientePayload {
   nome: string
@@ -49,7 +49,8 @@ export async function salvarCliente(
   const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
   if (clienteId) {
-    const { data: antes } = await supabase.from('clientes_fiscal').select('responsavel').eq('cliente_id', clienteId).single()
+    const { data: clienteAntes } = await supabase.from('clientes').select('nome, cnpj, mit, contato_chat').eq('id', clienteId).single()
+    const { data: antes } = await supabase.from('clientes_fiscal').select('*').eq('cliente_id', clienteId).single()
 
     const { error: errCliente } = await supabase.from('clientes').update(clientePayload).eq('id', clienteId)
     if (errCliente) return { error: errCliente.message }
@@ -60,6 +61,12 @@ export async function salvarCliente(
       clienteId, clienteNome: clientePayload.nome, setor: 'fiscal',
       responsavelAntigo: antes?.responsavel, responsavelNovo: fiscalPayload.responsavel,
       usuarioId: user.id, usuarioNome,
+    })
+
+    const campos = camposAlterados({ ...clienteAntes, ...antes }, { ...clientePayload, ...fiscalPayload })
+    await registrarEdicao(supabase, {
+      setor: 'fiscal', clienteId, clienteNome: clientePayload.nome,
+      usuarioId: user.id, usuarioNome, campos,
     })
   } else {
     const { data: novoCliente, error: errCliente } = await supabase.from('clientes').insert(clientePayload).select('id').single()
@@ -90,13 +97,11 @@ export async function salvarCliente(
 export async function desbloquearTarefa(
   tarefaId: string,
   motivo: string,
-  usuarioNome: string,
-  clienteNome: string,
   tarefaTipo: string,
   competencia: string,
 ) {
   const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return
+  if (!user || !supabase) return
 
   const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, mes, parcelamento_id, tipo').eq('id', tarefaId).single()
   if (!tarefa || !(await podeEditarTarefaTipo(tarefa.cliente_id, tarefa.tipo))) return
@@ -110,11 +115,14 @@ export async function desbloquearTarefa(
     await gravarDataParcelamento(supabase, tarefa.parcelamento_id, tarefa.mes, null)
   }
 
+  const usuarioNome = await nomeDoUsuario(supabase, user.id)
+  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', tarefa.cliente_id).single()
+
   await supabase.from('task_unlock_log').insert({
-    usuario_id: user?.id,
+    usuario_id: user.id,
     usuario_nome: usuarioNome,
-    cliente_id: null,
-    cliente_nome: clienteNome,
+    cliente_id: tarefa.cliente_id,
+    cliente_nome: cliente?.nome ?? '—',
     tarefa: tarefaTipo,
     competencia,
     valor_antigo: 'concluida',
