@@ -92,3 +92,19 @@ export function removerSubetapa(etapas: EtapaForm[], etapaIndex: number, subetap
     i === etapaIndex ? { ...etapa, subetapas: etapa.subetapas.filter((_, si) => si !== subetapaIndex) } : etapa
   )
 }
+
+export function moverSubetapa(
+  etapas: EtapaForm[],
+  etapaIndex: number,
+  subetapaIndex: number,
+  direcao: 'up' | 'down',
+): EtapaForm[] {
+  const alvoIndex = direcao === 'up' ? subetapaIndex - 1 : subetapaIndex + 1
+  return etapas.map((etapa, i) => {
+    if (i !== etapaIndex) return etapa
+    if (alvoIndex < 0 || alvoIndex >= etapa.subetapas.length) return etapa
+    const subetapas = [...etapa.subetapas]
+    ;[subetapas[subetapaIndex], subetapas[alvoIndex]] = [subetapas[alvoIndex], subetapas[subetapaIndex]]
+    return { ...etapa, subetapas }
+  })
+}

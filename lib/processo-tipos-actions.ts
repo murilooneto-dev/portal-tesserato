@@ -97,6 +97,41 @@ export async function criarProcessoTipo(nome: string, etapas: EtapaForm[]): Prom
   return { error: null }
 }
 
+export async function moverSubetapaOrdem(subetapaId: string, direcao: 'up' | 'down'): Promise<{ error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { error }
+
+  const { data: alvo, error: alvoError } = await supabase
+    .from('processo_subetapas')
+    .select('id, processo_tipo_id, etapa_nome, ordem')
+    .eq('id', subetapaId)
+    .single()
+  if (alvoError || !alvo) return { error: alvoError?.message ?? 'Subetapa não encontrada.' }
+
+  const { data: irmas, error: irmasError } = await supabase
+    .from('processo_subetapas')
+    .select('id, ordem')
+    .eq('processo_tipo_id', alvo.processo_tipo_id)
+    .eq('etapa_nome', alvo.etapa_nome)
+    .order('ordem')
+  if (irmasError || !irmas) return { error: irmasError?.message ?? 'Erro ao buscar subetapas.' }
+
+  const index = irmas.findIndex(s => s.id === subetapaId)
+  const vizinhoIndex = direcao === 'up' ? index - 1 : index + 1
+  if (index === -1 || vizinhoIndex < 0 || vizinhoIndex >= irmas.length) return { error: null }
+
+  const atual = irmas[index]
+  const vizinho = irmas[vizinhoIndex]
+
+  const { error: err1 } = await supabase.from('processo_subetapas').update({ ordem: vizinho.ordem }).eq('id', atual.id)
+  if (err1) return { error: err1.message }
+  const { error: err2 } = await supabase.from('processo_subetapas').update({ ordem: atual.ordem }).eq('id', vizinho.id)
+  if (err2) return { error: err2.message }
+
+  revalidatePath('/admin/configuracoes/societario')
+  return { error: null }
+}
+
 export async function excluirProcessoTipo(id: string): Promise<{ error: string | null }> {
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { error }

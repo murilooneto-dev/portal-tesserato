@@ -6,12 +6,14 @@ import {
   listarProcessoTipos,
   criarProcessoTipo,
   excluirProcessoTipo,
+  moverSubetapaOrdem,
 } from '@/lib/processo-tipos-actions'
 import {
   adicionarEtapa,
   removerEtapa,
   adicionarSubetapa,
   removerSubetapa,
+  moverSubetapa,
   type EtapaForm,
   type SubetapaTipoResposta,
   type ProcessoTipoResumo,
@@ -30,11 +32,32 @@ function labelFormato(tipo: SubetapaTipoResposta): string {
   return FORMATOS_SUBETAPA.find(f => f.value === tipo)?.label ?? tipo
 }
 
-function EtapaBloco({ etapa, onRemoverEtapa, onAdicionarSubetapa, onRemoverSubetapa }: {
+function SetasOrdem({ onSubir, onDescer, desabilitarSubir, desabilitarDescer }: {
+  onSubir: () => void
+  onDescer: () => void
+  desabilitarSubir: boolean
+  desabilitarDescer: boolean
+}) {
+  return (
+    <span className="flex flex-col leading-none">
+      <button type="button" onClick={onSubir} disabled={desabilitarSubir}
+        className="text-[var(--fg)]/30 hover:text-[var(--accent)] disabled:opacity-20 disabled:hover:text-[var(--fg)]/30 transition-colors text-[10px] leading-none">
+        ▲
+      </button>
+      <button type="button" onClick={onDescer} disabled={desabilitarDescer}
+        className="text-[var(--fg)]/30 hover:text-[var(--accent)] disabled:opacity-20 disabled:hover:text-[var(--fg)]/30 transition-colors text-[10px] leading-none">
+        ▼
+      </button>
+    </span>
+  )
+}
+
+function EtapaBloco({ etapa, onRemoverEtapa, onAdicionarSubetapa, onRemoverSubetapa, onMoverSubetapa }: {
   etapa: EtapaForm
   onRemoverEtapa: () => void
   onAdicionarSubetapa: (nome: string, tipoResposta: SubetapaTipoResposta) => void
   onRemoverSubetapa: (subetapaIndex: number) => void
+  onMoverSubetapa: (subetapaIndex: number, direcao: 'up' | 'down') => void
 }) {
   const [novaSubetapa, setNovaSubetapa] = useState('')
   const [formato, setFormato] = useState<SubetapaTipoResposta>('texto')
@@ -57,6 +80,12 @@ function EtapaBloco({ etapa, onRemoverEtapa, onAdicionarSubetapa, onRemoverSubet
         <ul className="space-y-1 mb-2">
           {etapa.subetapas.map((sub, i) => (
             <li key={i} className="flex items-center gap-2 text-xs text-[var(--fg)]/70 pl-3">
+              <SetasOrdem
+                onSubir={() => onMoverSubetapa(i, 'up')}
+                onDescer={() => onMoverSubetapa(i, 'down')}
+                desabilitarSubir={i === 0}
+                desabilitarDescer={i === etapa.subetapas.length - 1}
+              />
               <span className="flex-1">{sub.nome}</span>
               <span className="px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)] text-[10px] font-semibold">
                 {labelFormato(sub.tipoResposta)}
@@ -102,6 +131,7 @@ export default function ProcessosTab() {
   const [novaEtapa, setNovaEtapa] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({})
+  const [movendo, setMovendo] = useState<Record<string, boolean>>({})
 
   const recarregar = useCallback(async () => {
     setCarregando(true)
@@ -142,6 +172,14 @@ export default function ProcessosTab() {
     setExpandidos(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
+  async function moverPersistida(subetapaId: string, direcao: 'up' | 'down') {
+    setMovendo(prev => ({ ...prev, [subetapaId]: true }))
+    const { error } = await moverSubetapaOrdem(subetapaId, direcao)
+    if (error) setErro(error)
+    else { setErro(null); await recarregar() }
+    setMovendo(prev => ({ ...prev, [subetapaId]: false }))
+  }
+
   return (
     <div>
       <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4 mb-6">
@@ -162,6 +200,7 @@ export default function ProcessosTab() {
               onRemoverEtapa={() => setEtapas(prev => removerEtapa(prev, i))}
               onAdicionarSubetapa={(nome, tipoResposta) => setEtapas(prev => adicionarSubetapa(prev, i, nome, tipoResposta))}
               onRemoverSubetapa={subetapaIndex => setEtapas(prev => removerSubetapa(prev, i, subetapaIndex))}
+              onMoverSubetapa={(subetapaIndex, direcao) => setEtapas(prev => moverSubetapa(prev, i, subetapaIndex, direcao))}
             />
           ))}
         </div>
@@ -218,8 +257,14 @@ export default function ProcessosTab() {
                       <span className="block text-xs font-semibold text-[var(--fg)]/70">{etapa.nome}</span>
                       {etapa.subetapas.length > 0 && (
                         <ul className="mt-1 space-y-0.5 pl-3">
-                          {etapa.subetapas.map(sub => (
+                          {etapa.subetapas.map((sub, subIndex) => (
                             <li key={sub.id} className="flex items-center gap-2 text-xs text-[var(--fg)]/50">
+                              <SetasOrdem
+                                onSubir={() => moverPersistida(sub.id, 'up')}
+                                onDescer={() => moverPersistida(sub.id, 'down')}
+                                desabilitarSubir={movendo[sub.id] || subIndex === 0}
+                                desabilitarDescer={movendo[sub.id] || subIndex === etapa.subetapas.length - 1}
+                              />
                               <span className="flex-1">{sub.nome}</span>
                               <span className="px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)] text-[10px] font-semibold">
                                 {labelFormato(sub.tipoResposta)}

@@ -6,6 +6,7 @@ import {
   removerEtapa,
   adicionarSubetapa,
   removerSubetapa,
+  moverSubetapa,
   type EtapaForm,
   type ProcessoTipoRow,
   type ProcessoSubetapaRow,
@@ -119,4 +120,58 @@ test('removerSubetapa: remove só a subetapa pedida daquela etapa', () => {
   ]
   const resultado = removerSubetapa(etapas, 0, 0)
   assert.deepEqual(resultado[0].subetapas, [{ nome: 'Sub 2', tipoResposta: 'data' }])
+})
+
+test('moverSubetapa: "up" troca com a anterior', () => {
+  const etapas: EtapaForm[] = [
+    {
+      nome: 'A',
+      subetapas: [
+        { nome: 'Sub 1', tipoResposta: 'texto' },
+        { nome: 'Sub 2', tipoResposta: 'data' },
+        { nome: 'Sub 3', tipoResposta: 'checklist' },
+      ],
+    },
+  ]
+  const resultado = moverSubetapa(etapas, 0, 1, 'up')
+  assert.deepEqual(resultado[0].subetapas.map(s => s.nome), ['Sub 2', 'Sub 1', 'Sub 3'])
+})
+
+test('moverSubetapa: "down" troca com a seguinte', () => {
+  const etapas: EtapaForm[] = [
+    {
+      nome: 'A',
+      subetapas: [
+        { nome: 'Sub 1', tipoResposta: 'texto' },
+        { nome: 'Sub 2', tipoResposta: 'data' },
+        { nome: 'Sub 3', tipoResposta: 'checklist' },
+      ],
+    },
+  ]
+  const resultado = moverSubetapa(etapas, 0, 1, 'down')
+  assert.deepEqual(resultado[0].subetapas.map(s => s.nome), ['Sub 1', 'Sub 3', 'Sub 2'])
+})
+
+test('moverSubetapa: no-op ao tentar subir a primeira ou descer a última', () => {
+  const etapas: EtapaForm[] = [
+    {
+      nome: 'A',
+      subetapas: [
+        { nome: 'Sub 1', tipoResposta: 'texto' },
+        { nome: 'Sub 2', tipoResposta: 'data' },
+      ],
+    },
+  ]
+  assert.deepEqual(moverSubetapa(etapas, 0, 0, 'up'), etapas)
+  assert.deepEqual(moverSubetapa(etapas, 0, 1, 'down'), etapas)
+})
+
+test('moverSubetapa: não toca em outras etapas', () => {
+  const etapas: EtapaForm[] = [
+    { nome: 'A', subetapas: [{ nome: 'Sub A1', tipoResposta: 'texto' }, { nome: 'Sub A2', tipoResposta: 'texto' }] },
+    { nome: 'B', subetapas: [{ nome: 'Sub B1', tipoResposta: 'texto' }, { nome: 'Sub B2', tipoResposta: 'texto' }] },
+  ]
+  const resultado = moverSubetapa(etapas, 1, 0, 'down')
+  assert.deepEqual(resultado[0], etapas[0])
+  assert.deepEqual(resultado[1].subetapas.map(s => s.nome), ['Sub B2', 'Sub B1'])
 })
