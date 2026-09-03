@@ -5,6 +5,7 @@ import { Fragment, useState, useTransition } from 'react'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
 import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
 import { desbloquearTarefa, marcarSemMovimento } from '@/app/fiscal/clientes/actions'
+import { filtrarClientes } from '@/lib/minhas-tarefas-filtro'
 import type { StatusFiltroMinhasTarefas } from './MinhasTarefasFiltro'
 
 interface Props {
@@ -129,19 +130,7 @@ export default function MinhasTarefasSecao({
     startTransition(() => { marcarSemMovimento(clienteId, tipo, mes, ano, novo) })
   }
 
-  function statusBate(clienteId: string): boolean {
-    if (statusFiltro === 'TODOS') return true
-    if (statusFiltro === 'SEM_MOVIMENTO') return getSemMovimento(clienteId)
-    const concluida = !!mapaTarefa.get(clienteId)?.concluida
-    if (statusFiltro === 'CONCLUIDA') return concluida && !getSemMovimento(clienteId)
-    return !concluida // PENDENTE
-  }
-
-  const clientesFiltrados = clientes.filter(c =>
-    c.nome.toLowerCase().includes(busca.toLowerCase())
-    && statusBate(c.id)
-    && (atividadeFiltro.length === 0 || (c.atividade.length === atividadeFiltro.length && atividadeFiltro.every(a => c.atividade.includes(a))))
-  )
+  const clientesFiltrados = filtrarClientes(clientes, mapaTarefa, busca, statusFiltro, atividadeFiltro, getSemMovimento)
 
   async function handleUnlock(clienteId: string) {
     const motivoTrim = motivo.trim()
