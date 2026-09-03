@@ -13,22 +13,40 @@ import DevLock from '@/components/fiscal/DevLock'
 interface TaskLog {
   id: string
   created_at: string
-  usuario: string | null
-  cliente: string | null
+  usuario_nome: string | null
+  cliente_nome: string | null
   tarefa: string | null
-  comp: string | null
-  antes: string | null
-  depois: string | null
+  competencia: string | null
+  valor_antigo: string | null
+  valor_novo: string | null
   motivo: string | null
 }
 
 interface DeletionLog {
   id: string
   created_at: string
-  usuario: string | null
+  usuario_nome: string | null
   tipo: string | null
   nome: string | null
   detalhes: string | null
+}
+
+const TIPO_EVENTO_LABEL: Record<string, string> = {
+  criacao: 'Criação',
+  exclusao: 'Exclusão',
+  desabilitacao: 'Desabilitação',
+  reabilitacao: 'Reabilitação',
+  troca_responsavel: 'Troca de responsável',
+}
+
+interface EventoLog {
+  id: string
+  created_at: string
+  usuario_nome: string | null
+  setor: string | null
+  cliente_nome: string | null
+  tipo_evento: string
+  detalhes: { responsavel_antigo?: string | null; responsavel_novo?: string | null } | null
 }
 
 interface Props {
@@ -37,6 +55,7 @@ interface Props {
   dashboardAnnouncement: string
   taskLogs: TaskLog[]
   deletionLogs: DeletionLog[]
+  eventoLogs: EventoLog[]
   emailSettings?: Record<string, string>
 }
 
@@ -62,7 +81,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   )
 }
 
-export default function ParametrosClient({ profiles, currentUserId, dashboardAnnouncement, taskLogs, deletionLogs, emailSettings = {} }: Props) {
+export default function ParametrosClient({ profiles, currentUserId, dashboardAnnouncement, taskLogs, deletionLogs, eventoLogs, emailSettings = {} }: Props) {
   const router = useRouter()
 
   // Comunicado
@@ -114,7 +133,7 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
   const [novoUserOk, setNovoUserOk] = useState(false)
 
   // Logs modais
-  const [logModal, setLogModal] = useState<'tarefas' | 'exclusoes' | null>(null)
+  const [logModal, setLogModal] = useState<'tarefas' | 'exclusoes' | 'eventos' | null>(null)
 
   // Parcelamentos duplicados
   const [analisandoParcelamentos, setAnalisandoParcelamentos] = useState(false)
@@ -303,6 +322,12 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
           <p className="text-[var(--fg)]/40 mt-1 text-sm">Configurações do portal — administradores estão para a equipe</p>
         </div>
         <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => setLogModal('eventos')}
+            className="px-4 py-2 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 text-sm font-semibold hover:bg-sky-500/25 transition-colors"
+          >
+            Log de Eventos
+          </button>
           <button
             onClick={() => setLogModal('exclusoes')}
             className="px-4 py-2 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-400 text-sm font-semibold hover:bg-violet-500/25 transition-colors"
@@ -722,7 +747,11 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
           <div className="bg-[var(--bg-page)] border border-[var(--fg)]/10 rounded-2xl w-full max-w-5xl max-h-[80vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8">
               <h2 className="text-[var(--fg)] font-semibold">
-                {logModal === 'tarefas' ? `Log de Tarefas (últimos ${taskLogs.length})` : `Log de Exclusões (últimos ${deletionLogs.length})`}
+                {logModal === 'tarefas'
+                  ? `Log de Tarefas (últimos ${taskLogs.length})`
+                  : logModal === 'exclusoes'
+                  ? `Log de Exclusões (últimos ${deletionLogs.length})`
+                  : `Log de Eventos (últimos ${eventoLogs.length})`}
               </h2>
               <button onClick={() => setLogModal(null)}
                 className="w-8 h-8 rounded-lg bg-[var(--fg)]/5 hover:bg-[var(--fg)]/10 text-[var(--fg)]/50 hover:text-[var(--fg)] transition-colors flex items-center justify-center text-sm">
@@ -746,18 +775,18 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
                     {taskLogs.map(log => (
                       <tr key={log.id} className="border-b border-[var(--fg)]/5 hover:bg-[var(--fg)]/2">
                         <td className="px-3 py-2 text-[var(--fg)]/50 whitespace-nowrap">{formatDate(log.created_at)}</td>
-                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.usuario ?? '—'}</td>
-                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.cliente ?? '—'}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.usuario_nome ?? '—'}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.cliente_nome ?? '—'}</td>
                         <td className="px-3 py-2 text-[var(--fg)]/70">{log.tarefa ?? '—'}</td>
-                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.comp ?? '—'}</td>
-                        <td className="px-3 py-2 text-[var(--fg)]/50">{log.antes ?? '—'}</td>
-                        <td className="px-3 py-2 text-[var(--fg)]/50">{log.depois ?? '—'}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.competencia ?? '—'}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/50">{log.valor_antigo ?? '—'}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/50">{log.valor_novo ?? '—'}</td>
                         <td className="px-3 py-2 text-[var(--fg)]/50">{log.motivo ?? '—'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              ) : (
+              ) : logModal === 'exclusoes' ? (
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-[var(--fg)]/8">
@@ -773,10 +802,39 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
                     {deletionLogs.map(log => (
                       <tr key={log.id} className="border-b border-[var(--fg)]/5 hover:bg-[var(--fg)]/2">
                         <td className="px-3 py-2 text-[var(--fg)]/50 whitespace-nowrap">{formatDate(log.created_at)}</td>
-                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.usuario ?? '—'}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.usuario_nome ?? '—'}</td>
                         <td className="px-3 py-2 text-[var(--fg)]/70">{log.tipo ?? '—'}</td>
                         <td className="px-3 py-2 text-[var(--fg)]/70">{log.nome ?? '—'}</td>
                         <td className="px-3 py-2 text-[var(--fg)]/50">{log.detalhes ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-[var(--fg)]/8">
+                      {['Data/Hora','Usuário','Setor','Cliente','Evento','Detalhes'].map(h => (
+                        <th key={h} className="text-left px-3 py-2 text-[var(--fg)]/40 font-medium whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eventoLogs.length === 0 && (
+                      <tr><td colSpan={6} className="px-3 py-6 text-center text-[var(--fg)]/20">Nenhum registro</td></tr>
+                    )}
+                    {eventoLogs.map(log => (
+                      <tr key={log.id} className="border-b border-[var(--fg)]/5 hover:bg-[var(--fg)]/2">
+                        <td className="px-3 py-2 text-[var(--fg)]/50 whitespace-nowrap">{formatDate(log.created_at)}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.usuario_nome ?? '—'}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/70 capitalize">{log.setor ?? 'Geral'}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/70">{log.cliente_nome ?? '—'}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/70">{TIPO_EVENTO_LABEL[log.tipo_evento] ?? log.tipo_evento}</td>
+                        <td className="px-3 py-2 text-[var(--fg)]/50">
+                          {log.tipo_evento === 'troca_responsavel' && log.detalhes
+                            ? `de ${log.detalhes.responsavel_antigo ?? '—'} para ${log.detalhes.responsavel_novo ?? '—'}`
+                            : '—'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

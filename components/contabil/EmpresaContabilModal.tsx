@@ -11,6 +11,7 @@ import SeletorAtividades from '@/components/geral/SeletorAtividades'
 import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
 import GruposTarefasModal from '@/components/geral/GruposTarefasModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import { salvarClienteContabil } from '@/app/contabil/clientes/actions'
 
 interface FormData {
   cnpj: string
@@ -138,21 +139,8 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
       tarefas_excluidas: form.tarefas_excluidas,
     }
 
-    if (isEdit) {
-      const { error: errCliente } = await sb.from('clientes').update(clientePayload).eq('id', clienteId)
-      if (errCliente) { setSaving(false); setErro(errCliente.message); return }
-      const { error: errContabil } = await sb.from('clientes_contabil').update(contabilPayload).eq('cliente_id', clienteId)
-      if (errContabil) { setSaving(false); setErro(errContabil.message); return }
-    } else {
-      // setores explícito: 'contabil', não o default '{fiscal}' da coluna —
-      // esse cliente está sendo criado a partir da tela do Contábil.
-      const { data: novoCliente, error: errCliente } = await sb.from('clientes')
-        .insert({ ...clientePayload, setores: ['contabil'] })
-        .select('id').single()
-      if (errCliente || !novoCliente) { setSaving(false); setErro(errCliente?.message ?? 'Falha ao criar cliente'); return }
-      const { error: errContabil } = await sb.from('clientes_contabil').insert({ cliente_id: novoCliente.id, ...contabilPayload })
-      if (errContabil) { setSaving(false); setErro(errContabil.message); return }
-    }
+    const { error } = await salvarClienteContabil(clienteId, clientePayload, contabilPayload)
+    if (error) { setSaving(false); setErro(error); return }
 
     setSaving(false)
     router.refresh()
