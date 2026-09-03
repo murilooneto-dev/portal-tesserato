@@ -1,4 +1,4 @@
--- supabase/migrations/040_tarefa_tipos_checklist.sql
+-- supabase/migrations/041_tarefa_tipos_checklist.sql
 --
 -- Novo formato de tarefa, exclusivo do setor Contábil: "Checkbox com
 -- Opções" (tipo_resposta='checklist'). Reaproveita a coluna `etapas`
