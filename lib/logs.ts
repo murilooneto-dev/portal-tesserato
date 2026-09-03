@@ -1,7 +1,57 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { UserSetor } from '@/lib/types'
 
-export type TipoEvento = 'criacao' | 'exclusao' | 'desabilitacao' | 'reabilitacao' | 'troca_responsavel'
+export type TipoEvento = 'criacao' | 'edicao' | 'exclusao' | 'desabilitacao' | 'reabilitacao' | 'troca_responsavel'
+
+// Nomes amigáveis pros campos mais comuns dos cadastros de cliente —
+// campo sem entrada aqui aparece com o próprio nome da coluna no log.
+const LABEL_CAMPO: Record<string, string> = {
+  nome: 'Razão Social',
+  cnpj: 'CNPJ',
+  mit: 'Município/UF',
+  municipio: 'Município',
+  uf: 'UF',
+  contato_chat: 'Contato',
+  cod: 'Código',
+  regime: 'Regime',
+  atividade: 'Atividade',
+  prioridade: 'Prioridade',
+  declaracao_anual: 'Declaração anual',
+  confere_siga: 'Confere SIGA',
+  faz_dossie: 'Dossiê',
+  envia_iss: 'Configuração ISS',
+  login_iss: 'Configuração ISS',
+  senha_iss: 'Configuração ISS',
+  email_envio_iss: 'Configuração ISS',
+  tarefas_personalizadas: 'Tarefas',
+  tarefas_excluidas: 'Tarefas',
+  setores: 'Setores',
+}
+
+// Campos que nunca entram no diff de 'edicao' — responsavel tem seu
+// próprio evento mais específico (trocarResponsavel), e ids/timestamps
+// não são "dado do cadastro" pro usuário.
+const CAMPOS_IGNORADOS = new Set(['responsavel', 'cliente_id', 'id', 'created_at', 'updated_at'])
+
+function diferente(a: unknown, b: unknown) {
+  if (Array.isArray(a) || Array.isArray(b)) return JSON.stringify(a ?? []) !== JSON.stringify(b ?? [])
+  return (a ?? null) !== (b ?? null)
+}
+
+// Compara "antes" (linha atual no banco) com "depois" (payload que está
+// sendo salvo) e devolve os nomes amigáveis dos campos que mudaram de
+// verdade — só olha as chaves presentes em `depois` (o payload de save já
+// define o que é editável nessa tela).
+export function camposAlterados(antes: Record<string, unknown> | null | undefined, depois: Record<string, unknown>): string[] {
+  const nomes = new Set<string>()
+  for (const campo of Object.keys(depois)) {
+    if (CAMPOS_IGNORADOS.has(campo)) continue
+    if (diferente(antes?.[campo], depois[campo])) {
+      nomes.add(LABEL_CAMPO[campo] ?? campo)
+    }
+  }
+  return Array.from(nomes)
+}
 
 interface RegistrarEventoParams {
   setor: UserSetor | null
@@ -22,6 +72,28 @@ export async function registrarEvento(supabase: SupabaseClient, params: Registra
     usuario_id: params.usuarioId,
     usuario_nome: params.usuarioNome,
     detalhes: params.detalhes ?? null,
+  })
+}
+
+interface RegistrarEdicaoParams {
+  setor: UserSetor | null
+  clienteId: string
+  clienteNome: string
+  usuarioId: string | null
+  usuarioNome: string
+  campos: string[]
+}
+
+export async function registrarEdicao(supabase: SupabaseClient, params: RegistrarEdicaoParams) {
+  if (params.campos.length === 0) return
+  await registrarEvento(supabase, {
+    setor: params.setor,
+    clienteId: params.clienteId,
+    clienteNome: params.clienteNome,
+    tipoEvento: 'edicao',
+    usuarioId: params.usuarioId,
+    usuarioNome: params.usuarioNome,
+    detalhes: { campos: params.campos },
   })
 }
 

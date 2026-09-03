@@ -31,8 +31,6 @@ export default async function MinhasTarefasPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('nome').eq('id', user.id).single()
-
   const { data: meusTiposRaw } = await supabase
     .from('tarefa_tipos')
     .select('nome, etapas, tipo_resposta')
@@ -163,7 +161,6 @@ export default async function MinhasTarefasPage() {
             etapas={etapas}
             mes={mes}
             ano={ano}
-            usuarioNome={profile?.nome ?? user.email ?? ''}
             onToggle={onToggle}
             onAtualizarEtapa={onAtualizarEtapa}
           />

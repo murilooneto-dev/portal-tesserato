@@ -17,7 +17,6 @@ interface TipoInfo {
 
 interface Props {
   clienteId: string
-  clienteNome: string
   grupo: string
   tarefasPersonalizadas?: string[]
   tarefas: Tarefa[]
@@ -26,7 +25,6 @@ interface Props {
   mes: number
   ano: number
   usuarioId: string
-  usuarioNome: string
   mitInicial?: string
   onToggle: (tipo: string, concluida: boolean, data?: string) => Promise<void>
   onOptimisticUnlock?: (tipo: string) => void
@@ -50,7 +48,6 @@ function formatBytes(bytes: number) {
 
 export default function TarefaChecklist({
   clienteId,
-  clienteNome,
   grupo,
   tarefasPersonalizadas = [],
   tarefas,
@@ -58,7 +55,6 @@ export default function TarefaChecklist({
   vinculos = {},
   mes,
   ano,
-  usuarioNome,
   mitInicial = '',
   onToggle,
   onOptimisticUnlock,
@@ -157,7 +153,7 @@ export default function TarefaChecklist({
     if (!tarefa) return
     setUnlockPending(true)
     try {
-      await desbloquearTarefa(tarefa.id, motivo, usuarioNome, clienteNome, tipo, competencia)
+      await desbloquearTarefa(tarefa.id, motivo, tipo, competencia)
       setOptimisticDates(prev => ({ ...prev, [tipo]: null }))
       onOptimisticUnlock?.(tipo)
       setUnlockingTipo(null)

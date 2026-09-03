@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
-import { registrarEvento, abrirHistoricoResponsavel } from '@/lib/logs'
+import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel } from '@/lib/logs'
 import type { UserSetor } from '@/lib/types'
 
 interface ClientePayload {
@@ -55,8 +55,20 @@ export async function salvarClienteGeral(
   const setoresEfetivos = clientePayload.setores
 
   if (clienteId) {
+    const { data: clienteAntes } = await supabase.from('clientes')
+      .select('nome, cnpj, municipio, uf, contato_chat, setores').eq('id', clienteId).single()
+
     const { error } = await supabase.from('clientes').update(clientePayload).eq('id', clienteId)
     if (error) return { error: error.message }
+
+    const campos = camposAlterados(clienteAntes, {
+      nome: clientePayload.nome, cnpj: clientePayload.cnpj, municipio: clientePayload.municipio,
+      uf: clientePayload.uf, contato_chat: clientePayload.contato_chat, setores: clientePayload.setores,
+    })
+    await registrarEdicao(supabase, {
+      setor: null, clienteId, clienteNome: clientePayload.nome,
+      usuarioId: user.id, usuarioNome, campos,
+    })
 
     if (setoresEfetivos.includes('fiscal')) {
       const { data: existente } = await supabase.from('clientes_fiscal').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()

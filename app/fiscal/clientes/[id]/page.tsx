@@ -230,7 +230,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
       {/* Checklist */}
       <TarefaChecklist
         clienteId={id}
-        clienteNome={cliente.nome}
         grupo={bucketDoRegime(cliente.regime)}
         tarefasPersonalizadas={tarefasPersonalizadasVisiveis}
         tarefas={tarefas ?? []}
@@ -239,7 +238,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
         mes={mes}
         ano={ano}
         usuarioId={user.id}
-        usuarioNome={profile?.nome ?? user.email ?? ''}
         mitInicial={cliente.mit ?? ''}
         onToggle={toggleTarefa}
         podeEditar={podeEditar}
