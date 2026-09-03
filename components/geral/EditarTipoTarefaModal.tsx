@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { atualizarFormatoTarefaTipo } from '@/lib/tarefa-tipo-vinculos-actions'
-import type { TipoResposta } from '@/lib/types'
+import type { TipoResposta, UserSetor } from '@/lib/types'
 
-type Formato = 'data' | 'texto' | 'opcoes'
+type Formato = 'data' | 'texto' | 'opcoes' | 'checklist'
 
 interface Props {
   id: string
   nome: string
+  setor: UserSetor
   tipoResposta: TipoResposta
   etapas: string[] | null
   onCancel: () => void
@@ -18,23 +19,29 @@ interface Props {
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
-const FORMATOS: { value: Formato; label: string; desc: string }[] = [
+const FORMATOS_BASE: { value: Formato; label: string; desc: string }[] = [
   { value: 'data', label: 'Data', desc: 'Checkbox simples com data de conclusão' },
   { value: 'texto', label: 'Texto + anexo', desc: 'Campo de texto livre e/ou upload de arquivos' },
   { value: 'opcoes', label: 'Opções', desc: 'Lista de etapas nomeadas, cada uma com seu checkbox' },
 ]
 
+const FORMATO_CHECKLIST: { value: Formato; label: string; desc: string } =
+  { value: 'checklist', label: 'Checkbox com Opções', desc: 'Lista de opções; marcando todas, conclui a tarefa automaticamente' }
+
 function formatoInicial(tipoResposta: TipoResposta, etapas: string[] | null): Formato {
+  if (tipoResposta === 'checklist') return 'checklist'
   if (etapas && etapas.length > 0) return 'opcoes'
   return tipoResposta === 'texto' ? 'texto' : 'data'
 }
 
-export default function EditarTipoTarefaModal({ id, nome, tipoResposta, etapas, onCancel, onSalvo }: Props) {
+export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, etapas, onCancel, onSalvo }: Props) {
+  const FORMATOS = setor === 'contabil' ? [...FORMATOS_BASE, FORMATO_CHECKLIST] : FORMATOS_BASE
   const [formato, setFormato] = useState<Formato>(formatoInicial(tipoResposta, etapas))
   const [etapasForm, setEtapasForm] = useState<string[]>(etapas ?? [])
   const [novaEtapa, setNovaEtapa] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const temEtapas = formato === 'opcoes' || formato === 'checklist'
 
   function addEtapa() {
     const e = novaEtapa.trim()
@@ -44,11 +51,11 @@ export default function EditarTipoTarefaModal({ id, nome, tipoResposta, etapas, 
   }
 
   async function handleSalvar() {
-    if (formato === 'opcoes' && etapasForm.length === 0) return
+    if (temEtapas && etapasForm.length === 0) return
     setSalvando(true)
     setErro(null)
-    const tipoRespostaFinal: TipoResposta = formato === 'texto' ? 'texto' : 'data'
-    const etapasFinal = formato === 'opcoes' ? etapasForm : null
+    const tipoRespostaFinal: TipoResposta = formato === 'checklist' ? 'checklist' : formato === 'texto' ? 'texto' : 'data'
+    const etapasFinal = temEtapas ? etapasForm : null
     try {
       const { error } = await atualizarFormatoTarefaTipo(id, tipoRespostaFinal, etapasFinal)
       if (error) { setErro(error); return }
@@ -95,9 +102,9 @@ export default function EditarTipoTarefaModal({ id, nome, tipoResposta, etapas, 
             ))}
           </div>
 
-          {formato === 'opcoes' && (
+          {temEtapas && (
             <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4">
-              <label className={labelCls}>Etapas ({etapasForm.length})</label>
+              <label className={labelCls}>{formato === 'checklist' ? 'Opções' : 'Etapas'} ({etapasForm.length})</label>
               <div className="flex flex-wrap gap-1.5 mb-3 mt-2 min-h-[32px]">
                 {etapasForm.map((e, i) => (
                   <span key={i} className="flex items-center gap-1.5 text-xs bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] px-2.5 py-1 rounded-lg">
@@ -132,7 +139,7 @@ export default function EditarTipoTarefaModal({ id, nome, tipoResposta, etapas, 
             className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
             Cancelar
           </button>
-          <button onClick={handleSalvar} disabled={salvando || (formato === 'opcoes' && etapasForm.length === 0)}
+          <button onClick={handleSalvar} disabled={salvando || (temEtapas && etapasForm.length === 0)}
             className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
             {salvando ? 'Salvando...' : 'Salvar alterações'}
           </button>
