@@ -27,14 +27,26 @@ interface Props {
   obsPorCliente: Record<string, string>
   mapaVinculos: MapaVinculosSetor
   atividadesCatalogo: string[]
+  gruposCatalogo: { nome: string; tarefas: string[] }[]
 }
 
-export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, ano, obsPorCliente, mapaVinculos, atividadesCatalogo }: Props) {
+export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, ano, obsPorCliente, mapaVinculos, atividadesCatalogo, gruposCatalogo }: Props) {
   const router = useRouter()
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios-contabil:responsavel', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('relatorios-contabil:atividade', [])
+  const [filtroGrupoTarefas, setFiltroGrupoTarefas] = useFiltroPersistente('relatorios-contabil:grupo', 'TODOS')
   const [filtroTarefa, setFiltroTarefa] = useFiltroPersistente('relatorios-contabil:tarefa', 'TODAS')
   const [apenasP, setApenasP] = useFiltroPersistente('relatorios-contabil:pendencia', false)
+
+  const gruposDisponiveis = Array.from(new Set(gruposCatalogo.map(g => g.nome))).sort()
+
+  function selecionarGrupo(nome: string) {
+    setFiltroGrupoTarefas(nome)
+    const tarefasDoNovoGrupo = nome === 'TODOS'
+      ? null
+      : new Set(gruposCatalogo.filter(g => g.nome === nome).flatMap(g => g.tarefas))
+    if (tarefasDoNovoGrupo && !tarefasDoNovoGrupo.has(filtroTarefa)) setFiltroTarefa('TODAS')
+  }
 
   function toggleAtividade(nome: string) {
     setFiltroAtividade(
@@ -47,7 +59,9 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
     : []
 
   const atividades = atividadesCatalogo
-  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
+  const tarefasDisponiveis = filtroGrupoTarefas === 'TODOS'
+    ? Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
+    : Array.from(new Set(gruposCatalogo.filter(g => g.nome === filtroGrupoTarefas).flatMap(g => g.tarefas))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
@@ -128,6 +142,14 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
           <select value={filtroResp} onChange={e => setFiltroResp(e.target.value)}
             className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
             {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
+          </select>
+        )}
+
+        {gruposDisponiveis.length > 0 && (
+          <select value={filtroGrupoTarefas} onChange={e => selecionarGrupo(e.target.value)}
+            className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
+            <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os grupos</option>
+            {gruposDisponiveis.map(g => <option key={g} value={g} className="bg-[var(--bg-surface)]">{g}</option>)}
           </select>
         )}
 

@@ -140,6 +140,7 @@ export default function TarefasTab({ setor }: Props) {
         <EditarTipoTarefaModal
           id={editando.id}
           nome={editando.nome}
+          setor={setor}
           tipoResposta={editando.tipoResposta}
           etapas={editando.etapas}
           onCancel={() => setEditando(null)}

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { criarTipoTarefa } from '@/lib/tarefa-tipos-actions'
 import type { UserSetor, TipoResposta } from '@/lib/types'
 
-type Formato = 'data' | 'texto' | 'opcoes'
+type Formato = 'data' | 'texto' | 'opcoes' | 'checklist'
 
 interface Props {
   nome: string
@@ -22,18 +22,23 @@ interface Props {
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
-const FORMATOS: { value: Formato; label: string; desc: string }[] = [
+const FORMATOS_BASE: { value: Formato; label: string; desc: string }[] = [
   { value: 'data', label: 'Data', desc: 'Checkbox simples com data de conclusão' },
   { value: 'texto', label: 'Texto + anexo', desc: 'Campo de texto livre e/ou upload de arquivos' },
   { value: 'opcoes', label: 'Opções', desc: 'Lista de etapas nomeadas, cada uma com seu checkbox' },
 ]
 
+const FORMATO_CHECKLIST: { value: Formato; label: string; desc: string } =
+  { value: 'checklist', label: 'Checkbox com Opções', desc: 'Lista de opções; marcando todas, conclui a tarefa automaticamente' }
+
 export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCancel, onCriado }: Props) {
+  const FORMATOS = setor === 'contabil' ? [...FORMATOS_BASE, FORMATO_CHECKLIST] : FORMATOS_BASE
   const [formato, setFormato] = useState<Formato>('data')
   const [etapas, setEtapas] = useState<string[]>([])
   const [novaEtapa, setNovaEtapa] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const temEtapas = formato === 'opcoes' || formato === 'checklist'
 
   function addEtapa() {
     const e = novaEtapa.trim()
@@ -43,11 +48,11 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
   }
 
   async function handleCriar() {
-    if (formato === 'opcoes' && etapas.length === 0) return
+    if (temEtapas && etapas.length === 0) return
     setSalvando(true)
     setErro(null)
-    const tipoResposta: TipoResposta = formato === 'texto' ? 'texto' : 'data'
-    const etapasFinal = formato === 'opcoes' ? etapas : null
+    const tipoResposta: TipoResposta = formato === 'checklist' ? 'checklist' : formato === 'texto' ? 'texto' : 'data'
+    const etapasFinal = temEtapas ? etapas : null
     try {
       const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal, padrao)
       if (error) { setErro(error); return }
@@ -90,9 +95,9 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
             ))}
           </div>
 
-          {formato === 'opcoes' && (
+          {temEtapas && (
             <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4">
-              <label className={labelCls}>Etapas ({etapas.length})</label>
+              <label className={labelCls}>{formato === 'checklist' ? 'Opções' : 'Etapas'} ({etapas.length})</label>
               <div className="flex flex-wrap gap-1.5 mb-3 mt-2 min-h-[32px]">
                 {etapas.map((e, i) => (
                   <span key={i} className="flex items-center gap-1.5 text-xs bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] px-2.5 py-1 rounded-lg">
@@ -127,7 +132,7 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
             className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
             Cancelar
           </button>
-          <button onClick={handleCriar} disabled={salvando || (formato === 'opcoes' && etapas.length === 0)}
+          <button onClick={handleCriar} disabled={salvando || (temEtapas && etapas.length === 0)}
             className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
             {salvando ? 'Criando...' : 'Criar tipo'}
           </button>

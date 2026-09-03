@@ -166,7 +166,7 @@ export interface TarefaEtapa {
 
 export type TipoDataEvento = 'recorrente' | 'unica'
 
-export type TipoResposta = 'data' | 'texto'
+export type TipoResposta = 'data' | 'texto' | 'checklist'
 
 export interface CalendarioEvento {
   id: string
