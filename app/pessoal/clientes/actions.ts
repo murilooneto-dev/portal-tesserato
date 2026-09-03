@@ -5,6 +5,88 @@ import { getAuthenticatedAdmin, podeEditarClientePessoal } from '@/lib/supabase/
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
+import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
+
+interface ClientePayload {
+  nome: string
+  cnpj: string | null
+  municipio: string | null
+  uf: string | null
+  contato_chat: string | null
+}
+
+interface PessoalPayload {
+  atividade: string[]
+  regime: string | null
+  responsavel: string | null
+  prioridade: number
+  tarefas_personalizadas: string[]
+  tarefas_excluidas: string[]
+}
+
+async function nomeDoUsuario(supabase: Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase'], userId: string) {
+  const { data } = await supabase!.from('profiles').select('nome').eq('id', userId).single()
+  return data?.nome ?? 'Desconhecido'
+}
+
+export async function salvarClientePessoal(
+  clienteId: string | null,
+  clientePayload: ClientePayload,
+  pessoalPayload: PessoalPayload,
+): Promise<{ error?: string; id?: string }> {
+  if (clienteId && !(await podeEditarClientePessoal(clienteId))) return { error: 'Não autorizado.' }
+
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Não autorizado.' }
+
+  const usuarioNome = await nomeDoUsuario(supabase, user.id)
+
+  if (clienteId) {
+    const { data: clienteAntes } = await supabase.from('clientes').select('nome, cnpj, municipio, uf, contato_chat').eq('id', clienteId).single()
+    const { data: antes } = await supabase.from('clientes_pessoal').select('*').eq('cliente_id', clienteId).single()
+
+    const { error: errCliente } = await supabase.from('clientes').update(clientePayload).eq('id', clienteId)
+    if (errCliente) return { error: errCliente.message }
+    const { error: errPessoal } = await supabase.from('clientes_pessoal').update(pessoalPayload).eq('cliente_id', clienteId)
+    if (errPessoal) return { error: errPessoal.message }
+
+    await trocarResponsavel(supabase, {
+      clienteId, clienteNome: clientePayload.nome, setor: 'pessoal',
+      responsavelAntigo: antes?.responsavel, responsavelNovo: pessoalPayload.responsavel,
+      usuarioId: user.id, usuarioNome,
+    })
+
+    const campos = camposAlterados({ ...clienteAntes, ...antes }, { ...clientePayload, ...pessoalPayload })
+    await registrarEdicao(supabase, {
+      setor: 'pessoal', clienteId, clienteNome: clientePayload.nome,
+      usuarioId: user.id, usuarioNome, campos,
+    })
+  } else {
+    const { data: novoCliente, error: errCliente } = await supabase.from('clientes')
+      .insert({ ...clientePayload, setores: ['pessoal'] })
+      .select('id').single()
+    if (errCliente || !novoCliente) return { error: errCliente?.message ?? 'Falha ao criar cliente' }
+    const { error: errPessoal } = await supabase.from('clientes_pessoal').insert({ cliente_id: novoCliente.id, ...pessoalPayload })
+    if (errPessoal) return { error: errPessoal.message }
+
+    await registrarEvento(supabase, {
+      setor: 'pessoal', clienteId: novoCliente.id, clienteNome: clientePayload.nome,
+      tipoEvento: 'criacao', usuarioId: user.id, usuarioNome,
+    })
+    if (pessoalPayload.responsavel) {
+      await abrirHistoricoResponsavel(supabase, {
+        clienteId: novoCliente.id, setor: 'pessoal', responsavel: pessoalPayload.responsavel,
+        usuarioId: user.id, usuarioNome,
+      })
+    }
+    clienteId = novoCliente.id
+  }
+
+  revalidatePath(`/pessoal/clientes/${clienteId}`)
+  revalidatePath('/pessoal/clientes')
+  revalidatePath('/pessoal/dashboard')
+  return { id: clienteId ?? undefined }
+}
 
 export async function toggleTarefaPessoal(
   clienteId: string,
@@ -150,20 +232,28 @@ export async function atualizarEtapa(
 
 export async function excluirClientePessoal(clienteId: string) {
   if (!(await podeEditarClientePessoal(clienteId))) throw new Error('Não autorizado')
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) throw new Error('Não autorizado')
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) throw new Error('Não autorizado')
+
+  const { data: clienteAntes } = await supabase.from('clientes').select('nome, setores').eq('id', clienteId).single()
+  const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
   await supabase.from('tarefas').delete().eq('cliente_id', clienteId).eq('setor', 'pessoal')
   await supabase.from('clientes_pessoal').delete().eq('cliente_id', clienteId)
 
-  const { data: cliente } = await supabase.from('clientes').select('setores').eq('id', clienteId).single()
-  const novosSetores = (cliente?.setores ?? []).filter((s: string) => s !== 'pessoal')
+  const novosSetores = (clienteAntes?.setores ?? []).filter((s: string) => s !== 'pessoal')
+  const clienteRemovidoDoTodo = novosSetores.length === 0
 
-  if (novosSetores.length === 0) {
+  if (clienteRemovidoDoTodo) {
     await supabase.from('clientes').delete().eq('id', clienteId)
   } else {
     await supabase.from('clientes').update({ setores: novosSetores }).eq('id', clienteId)
   }
+
+  await registrarEvento(supabase, {
+    setor: 'pessoal', clienteId: clienteRemovidoDoTodo ? null : clienteId, clienteNome: clienteAntes?.nome ?? '—',
+    tipoEvento: 'exclusao', usuarioId: user.id, usuarioNome,
+  })
 
   revalidatePath('/pessoal/clientes')
 }
@@ -315,11 +405,18 @@ export async function desabilitarCliente(clienteId: string, senha: string): Prom
   const { ok, error: erroSenha } = await verificarSenhaUsuarioAtual(senha)
   if (!ok) return { error: erroSenha ?? 'Senha incorreta.' }
 
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return { error: 'Não autorizado.' }
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Não autorizado.' }
+
+  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', clienteId).single()
 
   const { error } = await supabase.from('clientes_pessoal').update({ ativo: false }).eq('cliente_id', clienteId)
   if (error) return { error: error.message }
+
+  await registrarEvento(supabase, {
+    setor: 'pessoal', clienteId, clienteNome: cliente?.nome ?? '—',
+    tipoEvento: 'desabilitacao', usuarioId: user.id, usuarioNome: await nomeDoUsuario(supabase, user.id),
+  })
 
   revalidatePath(`/pessoal/clientes/${clienteId}`)
   revalidatePath('/pessoal/clientes')
@@ -331,11 +428,18 @@ export async function desabilitarCliente(clienteId: string, senha: string): Prom
 export async function reabilitarCliente(clienteId: string): Promise<{ error?: string }> {
   if (!(await podeEditarClientePessoal(clienteId))) return { error: 'Não autorizado.' }
 
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return { error: 'Não autorizado.' }
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Não autorizado.' }
+
+  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', clienteId).single()
 
   const { error } = await supabase.from('clientes_pessoal').update({ ativo: true }).eq('cliente_id', clienteId)
   if (error) return { error: error.message }
+
+  await registrarEvento(supabase, {
+    setor: 'pessoal', clienteId, clienteNome: cliente?.nome ?? '—',
+    tipoEvento: 'reabilitacao', usuarioId: user.id, usuarioNome: await nomeDoUsuario(supabase, user.id),
+  })
 
   revalidatePath(`/pessoal/clientes/${clienteId}`)
   revalidatePath('/pessoal/clientes')

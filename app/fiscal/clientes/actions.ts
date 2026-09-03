@@ -5,17 +5,103 @@ import { getAuthenticatedAdmin, podeEditarCliente, podeEditarTarefaTipo } from '
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
+import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
+
+interface ClientePayload {
+  nome: string
+  cnpj: string | null
+  mit: string | null
+  contato_chat: string | null
+}
+
+interface FiscalPayload {
+  cod: string | null
+  regime: string | null
+  atividade: string[]
+  responsavel: string | null
+  prioridade: number
+  declaracao_anual: boolean
+  envia_iss: boolean
+  confere_siga: boolean
+  faz_dossie: boolean
+  login_iss: string | null
+  senha_iss: string | null
+  email_envio_iss: string | null
+  tarefas_personalizadas: string[]
+  tarefas_excluidas: string[]
+}
+
+async function nomeDoUsuario(supabase: Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase'], userId: string) {
+  const { data } = await supabase!.from('profiles').select('nome').eq('id', userId).single()
+  return data?.nome ?? 'Desconhecido'
+}
+
+export async function salvarCliente(
+  clienteId: string | null,
+  clientePayload: ClientePayload,
+  fiscalPayload: FiscalPayload,
+): Promise<{ error?: string; id?: string }> {
+  if (clienteId && !(await podeEditarCliente(clienteId))) return { error: 'Não autorizado.' }
+
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Não autorizado.' }
+
+  const usuarioNome = await nomeDoUsuario(supabase, user.id)
+
+  if (clienteId) {
+    const { data: clienteAntes } = await supabase.from('clientes').select('nome, cnpj, mit, contato_chat').eq('id', clienteId).single()
+    const { data: antes } = await supabase.from('clientes_fiscal').select('*').eq('cliente_id', clienteId).single()
+
+    const { error: errCliente } = await supabase.from('clientes').update(clientePayload).eq('id', clienteId)
+    if (errCliente) return { error: errCliente.message }
+    const { error: errFiscal } = await supabase.from('clientes_fiscal').update(fiscalPayload).eq('cliente_id', clienteId)
+    if (errFiscal) return { error: errFiscal.message }
+
+    await trocarResponsavel(supabase, {
+      clienteId, clienteNome: clientePayload.nome, setor: 'fiscal',
+      responsavelAntigo: antes?.responsavel, responsavelNovo: fiscalPayload.responsavel,
+      usuarioId: user.id, usuarioNome,
+    })
+
+    const campos = camposAlterados({ ...clienteAntes, ...antes }, { ...clientePayload, ...fiscalPayload })
+    await registrarEdicao(supabase, {
+      setor: 'fiscal', clienteId, clienteNome: clientePayload.nome,
+      usuarioId: user.id, usuarioNome, campos,
+    })
+  } else {
+    const { data: novoCliente, error: errCliente } = await supabase.from('clientes').insert(clientePayload).select('id').single()
+    if (errCliente || !novoCliente) return { error: errCliente?.message ?? 'Falha ao criar cliente' }
+    const { error: errFiscal } = await supabase.from('clientes_fiscal').insert({ cliente_id: novoCliente.id, ...fiscalPayload })
+    if (errFiscal) return { error: errFiscal.message }
+
+    await registrarEvento(supabase, {
+      setor: 'fiscal', clienteId: novoCliente.id, clienteNome: clientePayload.nome,
+      tipoEvento: 'criacao', usuarioId: user.id, usuarioNome,
+    })
+    if (fiscalPayload.responsavel) {
+      await abrirHistoricoResponsavel(supabase, {
+        clienteId: novoCliente.id, setor: 'fiscal', responsavel: fiscalPayload.responsavel,
+        usuarioId: user.id, usuarioNome,
+      })
+    }
+    clienteId = novoCliente.id
+  }
+
+  revalidatePath(`/fiscal/clientes/${clienteId}`)
+  revalidatePath('/fiscal/clientes')
+  revalidatePath('/fiscal/dashboard')
+  revalidatePath('/fiscal/relatorios')
+  return { id: clienteId ?? undefined }
+}
 
 export async function desbloquearTarefa(
   tarefaId: string,
   motivo: string,
-  usuarioNome: string,
-  clienteNome: string,
   tarefaTipo: string,
   competencia: string,
 ) {
   const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return
+  if (!user || !supabase) return
 
   const { data: tarefa } = await supabase.from('tarefas').select('cliente_id, mes, parcelamento_id, tipo').eq('id', tarefaId).single()
   if (!tarefa || !(await podeEditarTarefaTipo(tarefa.cliente_id, tarefa.tipo))) return
@@ -29,11 +115,14 @@ export async function desbloquearTarefa(
     await gravarDataParcelamento(supabase, tarefa.parcelamento_id, tarefa.mes, null)
   }
 
+  const usuarioNome = await nomeDoUsuario(supabase, user.id)
+  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', tarefa.cliente_id).single()
+
   await supabase.from('task_unlock_log').insert({
-    usuario_id: user?.id,
+    usuario_id: user.id,
     usuario_nome: usuarioNome,
-    cliente_id: null,
-    cliente_nome: clienteNome,
+    cliente_id: tarefa.cliente_id,
+    cliente_nome: cliente?.nome ?? '—',
     tarefa: tarefaTipo,
     competencia,
     valor_antigo: 'concluida',
@@ -207,10 +296,20 @@ export async function excluirArquivo(arquivoId: string) {
 
 export async function excluirCliente(id: string) {
   if (!(await podeEditarCliente(id))) throw new Error('Não autorizado')
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) throw new Error('Não autorizado')
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) throw new Error('Não autorizado')
+
+  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', id).single()
+  const usuarioNome = await nomeDoUsuario(supabase, user.id)
+
   const { error } = await supabase.from('clientes').delete().eq('id', id)
   if (error) throw new Error(error.message)
+
+  await registrarEvento(supabase, {
+    setor: 'fiscal', clienteId: null, clienteNome: cliente?.nome ?? '—',
+    tipoEvento: 'exclusao', usuarioId: user.id, usuarioNome,
+  })
+
   revalidatePath('/fiscal/clientes')
 }
 
@@ -420,11 +519,18 @@ export async function desabilitarCliente(clienteId: string, senha: string): Prom
   const { ok, error: erroSenha } = await verificarSenhaUsuarioAtual(senha)
   if (!ok) return { error: erroSenha ?? 'Senha incorreta.' }
 
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return { error: 'Não autorizado.' }
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Não autorizado.' }
+
+  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', clienteId).single()
 
   const { error } = await supabase.from('clientes_fiscal').update({ ativo: false }).eq('cliente_id', clienteId)
   if (error) return { error: error.message }
+
+  await registrarEvento(supabase, {
+    setor: 'fiscal', clienteId, clienteNome: cliente?.nome ?? '—',
+    tipoEvento: 'desabilitacao', usuarioId: user.id, usuarioNome: await nomeDoUsuario(supabase, user.id),
+  })
 
   revalidatePath(`/fiscal/clientes/${clienteId}`)
   revalidatePath('/fiscal/clientes')
@@ -439,11 +545,18 @@ export async function desabilitarCliente(clienteId: string, senha: string): Prom
 export async function reabilitarCliente(clienteId: string): Promise<{ error?: string }> {
   if (!(await podeEditarCliente(clienteId))) return { error: 'Não autorizado.' }
 
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return { error: 'Não autorizado.' }
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Não autorizado.' }
+
+  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', clienteId).single()
 
   const { error } = await supabase.from('clientes_fiscal').update({ ativo: true }).eq('cliente_id', clienteId)
   if (error) return { error: error.message }
+
+  await registrarEvento(supabase, {
+    setor: 'fiscal', clienteId, clienteNome: cliente?.nome ?? '—',
+    tipoEvento: 'reabilitacao', usuarioId: user.id, usuarioNome: await nomeDoUsuario(supabase, user.id),
+  })
 
   revalidatePath(`/fiscal/clientes/${clienteId}`)
   revalidatePath('/fiscal/clientes')

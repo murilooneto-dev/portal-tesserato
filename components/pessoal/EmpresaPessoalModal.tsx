@@ -11,6 +11,7 @@ import SeletorAtividades from '@/components/geral/SeletorAtividades'
 import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
 import GruposTarefasModal from '@/components/geral/GruposTarefasModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import { salvarClientePessoal } from '@/app/pessoal/clientes/actions'
 
 interface FormData {
   cnpj: string
@@ -138,21 +139,8 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
       tarefas_excluidas: form.tarefas_excluidas,
     }
 
-    if (isEdit) {
-      const { error: errCliente } = await sb.from('clientes').update(clientePayload).eq('id', clienteId)
-      if (errCliente) { setSaving(false); setErro(errCliente.message); return }
-      const { error: errPessoal } = await sb.from('clientes_pessoal').update(pessoalPayload).eq('cliente_id', clienteId)
-      if (errPessoal) { setSaving(false); setErro(errPessoal.message); return }
-    } else {
-      // setores explícito: 'pessoal', não o default '{fiscal}' da coluna —
-      // esse cliente está sendo criado a partir da tela do Pessoal.
-      const { data: novoCliente, error: errCliente } = await sb.from('clientes')
-        .insert({ ...clientePayload, setores: ['pessoal'] })
-        .select('id').single()
-      if (errCliente || !novoCliente) { setSaving(false); setErro(errCliente?.message ?? 'Falha ao criar cliente'); return }
-      const { error: errPessoal } = await sb.from('clientes_pessoal').insert({ cliente_id: novoCliente.id, ...pessoalPayload })
-      if (errPessoal) { setSaving(false); setErro(errPessoal.message); return }
-    }
+    const { error } = await salvarClientePessoal(clienteId, clientePayload, pessoalPayload)
+    if (error) { setSaving(false); setErro(error); return }
 
     setSaving(false)
     router.refresh()
