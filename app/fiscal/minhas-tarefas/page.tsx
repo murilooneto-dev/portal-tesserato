@@ -56,7 +56,7 @@ export default async function MinhasTarefasPage() {
     )
   }
 
-  const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }, catalogo] = await Promise.all([
+  const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }, catalogo, { data: profile }] = await Promise.all([
     supabase
       .from('clientes')
       .select('id, nome, clientes_fiscal!inner(regime, atividade, tarefas_personalizadas, tarefas_excluidas, ativo)')
@@ -70,6 +70,7 @@ export default async function MinhasTarefasPage() {
       .eq('clientes_fiscal.faz_dossie', true)
       .order('nome'),
     buscarCatalogoCliente(supabase, 'fiscal'),
+    supabase.from('profiles').select('nome').eq('id', user.id).single(),
   ])
 
   const clientesTodos = (clientesRaw ?? []).map(row => {
@@ -161,6 +162,7 @@ export default async function MinhasTarefasPage() {
             etapas={etapas}
             mes={mes}
             ano={ano}
+            nomeUsuario={profile?.nome ?? user.email ?? 'Usuário'}
             onToggle={onToggle}
             onAtualizarEtapa={onAtualizarEtapa}
           />
