@@ -22,6 +22,7 @@ import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas
 import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { bucketDoRegime } from '@/lib/regime-bucket'
+import HistoricoResponsavel from '@/components/HistoricoResponsavel'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -289,6 +290,8 @@ export default async function ClienteDetalhePage({ params }: Props) {
           })}
         </div>
       </div>
+
+      <HistoricoResponsavel clienteId={id} setor="fiscal" />
     </div>
   )
 }

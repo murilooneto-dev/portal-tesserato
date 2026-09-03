@@ -10,7 +10,7 @@ import { flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
-import { excluirClienteGeral } from '@/app/(comum)/clientes/actions'
+import { excluirClienteGeral, salvarClienteGeral } from '@/app/(comum)/clientes/actions'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface FormData extends CamposFiscaisData {
@@ -193,139 +193,20 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
       tarefas_excluidas:      form.tarefas_excluidas,
     }
 
-    if (isEdit) {
-      // O bloco Fiscal é somente-leitura ao editar (edição fica exclusiva de
-      // /fiscal/clientes) — não sobrescrevemos uma linha clientes_fiscal
-      // já existente. Mas se o setor Fiscal acabou de ser marcado num
-      // cliente que nunca teve linha em clientes_fiscal, provisionamos uma
-      // com os valores atuais do form (defaults, já que o bloco nunca foi
-      // editável aqui) — sem isso o cliente fica invisível em toda tela do
-      // Fiscal, que só lista quem tem clientes_fiscal.
-      const { error } = await sb.from('clientes').update(clientePayload).eq('id', clienteId)
-      if (error) {
-        setSaving(false)
-        setErro(error.message)
-        return
-      }
-      if (setoresEfetivos.includes('fiscal')) {
-        const { data: existente } = await sb.from('clientes_fiscal').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
-        if (!existente) {
-          const { error: errFiscal } = await sb.from('clientes_fiscal').insert({ cliente_id: clienteId, ...fiscalPayload })
-          if (errFiscal) {
-            setSaving(false)
-            setErro(errFiscal.message)
-            return
-          }
-        }
-      } else {
-        // Setor Fiscal desmarcado: remove a linha em clientes_fiscal para
-        // que o cliente saia de /fiscal/clientes, que usa inner join.
-        const { error: errRemoveFiscal } = await sb.from('clientes_fiscal').delete().eq('cliente_id', clienteId)
-        if (errRemoveFiscal) {
-          setSaving(false)
-          setErro(errRemoveFiscal.message)
-          return
-        }
-      }
-      // Mesmo raciocínio do bloco Fiscal acima: se o setor Contábil acabou
-      // de ser marcado num cliente que nunca teve linha em clientes_contabil,
-      // provisiona uma com as tarefas padrão do setor — sem isso o cliente
-      // fica invisível em /contabil/clientes, que também usa inner join.
-      if (setoresEfetivos.includes('contabil')) {
-        const { data: existenteContabil } = await sb.from('clientes_contabil').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
-        if (!existenteContabil) {
-          const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).order('nome')
-          const { error: errContabil } = await sb.from('clientes_contabil').insert({
-            cliente_id: clienteId,
-            tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
-          })
-          if (errContabil) {
-            setSaving(false)
-            setErro(errContabil.message)
-            return
-          }
-        }
-      } else {
-        // Setor Contábil desmarcado: remove a linha em clientes_contabil para
-        // que o cliente saia de /contabil/clientes, que usa inner join.
-        const { error: errRemoveContabil } = await sb.from('clientes_contabil').delete().eq('cliente_id', clienteId)
-        if (errRemoveContabil) {
-          setSaving(false)
-          setErro(errRemoveContabil.message)
-          return
-        }
-      }
-      // Mesmo raciocínio dos blocos Fiscal/Contábil acima: se o setor
-      // Pessoal acabou de ser marcado num cliente que nunca teve linha em
-      // clientes_pessoal, provisiona uma com as tarefas padrão do setor —
-      // sem isso o cliente fica invisível em /pessoal/clientes, que também
-      // usa inner join.
-      if (setoresEfetivos.includes('pessoal')) {
-        const { data: existentePessoal } = await sb.from('clientes_pessoal').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
-        if (!existentePessoal) {
-          const { data: tiposPessoal } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).order('nome')
-          const { error: errPessoal } = await sb.from('clientes_pessoal').insert({
-            cliente_id: clienteId,
-            tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome),
-          })
-          if (errPessoal) {
-            setSaving(false)
-            setErro(errPessoal.message)
-            return
-          }
-        }
-      } else {
-        // Setor Pessoal desmarcado: remove a linha em clientes_pessoal para
-        // que o cliente saia de /pessoal/clientes, que usa inner join.
-        const { error: errRemovePessoal } = await sb.from('clientes_pessoal').delete().eq('cliente_id', clienteId)
-        if (errRemovePessoal) {
-          setSaving(false)
-          setErro(errRemovePessoal.message)
-          return
-        }
-      }
+    // Provisionamento condicional de clientes_fiscal/contabil/pessoal
+    // conforme setoresEfetivos (setor marcado ganha linha se não tiver;
+    // desmarcado perde a linha) e o log de auditoria agora vivem no
+    // servidor, em salvarClienteGeral — ver app/(comum)/clientes/actions.ts.
+    // O bloco Fiscal continua somente-leitura na edição (edição de verdade
+    // é feita em /fiscal/clientes): a action só provisiona a linha se ela
+    // ainda não existir.
+    const { error } = await salvarClienteGeral(clienteId, clientePayload, fiscalPayload)
+    if (error) {
       setSaving(false)
-    } else {
-      const { data: novoCliente, error: errCliente } = await sb.from('clientes').insert(clientePayload).select('id').single()
-      if (errCliente || !novoCliente) {
-        setSaving(false)
-        setErro(errCliente?.message ?? 'Falha ao criar cliente')
-        return
-      }
-      if (setoresEfetivos.includes('fiscal')) {
-        const { error: errFiscal } = await sb.from('clientes_fiscal').insert({ cliente_id: novoCliente.id, ...fiscalPayload })
-        if (errFiscal) {
-          setSaving(false)
-          setErro(errFiscal.message)
-          return
-        }
-      }
-      if (setoresEfetivos.includes('contabil')) {
-        const { data: tiposContabil } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).order('nome')
-        const { error: errContabil } = await sb.from('clientes_contabil').insert({
-          cliente_id: novoCliente.id,
-          tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
-        })
-        if (errContabil) {
-          setSaving(false)
-          setErro(errContabil.message)
-          return
-        }
-      }
-      if (setoresEfetivos.includes('pessoal')) {
-        const { data: tiposPessoal } = await sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).order('nome')
-        const { error: errPessoal } = await sb.from('clientes_pessoal').insert({
-          cliente_id: novoCliente.id,
-          tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome),
-        })
-        if (errPessoal) {
-          setSaving(false)
-          setErro(errPessoal.message)
-          return
-        }
-      }
-      setSaving(false)
+      setErro(error)
+      return
     }
+    setSaving(false)
 
     router.refresh()
     onClose()

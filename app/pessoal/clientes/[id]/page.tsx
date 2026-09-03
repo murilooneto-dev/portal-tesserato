@@ -17,6 +17,7 @@ import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento, TarefaGrupo } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
+import HistoricoResponsavel from '@/components/HistoricoResponsavel'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -185,6 +186,8 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
       <EventosAvulsosSecao clienteId={id} setor="pessoal" eventos={eventosAvulsos} podeEditar={podeEditar} />
 
       <ClienteObsSimples clienteId={id} obsInicial={cliente.obs ?? ''} podeEditar={podeEditar} salvarObs={salvarObsPessoal} />
+
+      <HistoricoResponsavel clienteId={id} setor="pessoal" />
     </div>
   )
 }

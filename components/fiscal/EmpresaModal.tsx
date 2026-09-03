@@ -9,6 +9,7 @@ import CamposFiscais, { type CamposFiscaisData } from './CamposFiscais'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import { salvarCliente } from '@/app/fiscal/clientes/actions'
 
 interface FormData {
   cod: string
@@ -169,17 +170,8 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
       tarefas_excluidas:      form.tarefas_excluidas,
     }
 
-    if (isEdit) {
-      const { error: errCliente } = await sb.from('clientes').update(clientePayload).eq('id', clienteId)
-      if (errCliente) { setSaving(false); setErro(errCliente.message); return }
-      const { error: errFiscal } = await sb.from('clientes_fiscal').update(fiscalPayload).eq('cliente_id', clienteId)
-      if (errFiscal) { setSaving(false); setErro(errFiscal.message); return }
-    } else {
-      const { data: novoCliente, error: errCliente } = await sb.from('clientes').insert(clientePayload).select('id').single()
-      if (errCliente || !novoCliente) { setSaving(false); setErro(errCliente?.message ?? 'Falha ao criar cliente'); return }
-      const { error: errFiscal } = await sb.from('clientes_fiscal').insert({ cliente_id: novoCliente.id, ...fiscalPayload })
-      if (errFiscal) { setSaving(false); setErro(errFiscal.message); return }
-    }
+    const { error } = await salvarCliente(clienteId, clientePayload, fiscalPayload)
+    if (error) { setSaving(false); setErro(error); return }
 
     setSaving(false)
     router.refresh()
