@@ -33,6 +33,7 @@ interface Props {
   mes: number
   ano: number
   nomeUsuario: string
+  somenteLeitura?: boolean
   onToggle: (clienteId: string, tipo: string, concluida: boolean, data?: string) => Promise<void>
   onAtualizarEtapa: (clienteId: string, tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
 }
@@ -50,7 +51,7 @@ function getIsoEtapa(etapas: TarefaEtapa[], tarefaId: string | undefined, etapaN
   return e?.concluida && e.concluida_em ? e.concluida_em.slice(0, 10) : null
 }
 
-export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas, mes, ano, nomeUsuario, onToggle, onAtualizarEtapa }: Props) {
+export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas, mes, ano, nomeUsuario, somenteLeitura, onToggle, onAtualizarEtapa }: Props) {
   const [busca, setBusca] = useFiltroPersistente('minhas-tarefas:busca', '')
   const [statusFiltro, setStatusFiltro] = useFiltroPersistente<StatusFiltroMinhasTarefas>('minhas-tarefas:status', 'TODOS')
   const [tarefaFiltro, setTarefaFiltro] = useFiltroPersistente('minhas-tarefas:tarefa', 'TODAS')
@@ -180,6 +181,7 @@ export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas
           busca={busca}
           statusFiltro={statusFiltro}
           atividadeFiltro={atividadeFiltro}
+          somenteLeitura={somenteLeitura}
           onToggle={onToggle}
           onAtualizarEtapa={onAtualizarEtapa}
         />
