@@ -1,8 +1,7 @@
-// app/admin/configuracoes/TarefasTab.tsx
+// app/admin/configuracoes/societario/TarefasSocietarioTab.tsx
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import type { UserSetor } from '@/lib/types'
 import {
   listarTarefaTiposDoSetor,
   excluirTarefaTipo,
@@ -11,16 +10,22 @@ import {
   type TarefaTipoResumo,
   type UsuarioDoSetor,
 } from '@/lib/tarefa-tipo-vinculos-actions'
+import { periodicidadeDosMesesVisiveis } from '@/lib/tarefas-societario-periodicidade'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import EditarTipoTarefaModal from '@/components/geral/EditarTipoTarefaModal'
-
-interface Props {
-  setor: UserSetor
-}
+import VincularClientesModal from './VincularClientesModal'
 
 const inputCls = "px-3 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50"
 
-export default function TarefasTab({ setor }: Props) {
+const LABEL_PERIODICIDADE: Record<string, string> = {
+  mensal: 'Mensal',
+  bimestral: 'Bimestral',
+  trimestral: 'Trimestral',
+  semestral: 'Semestral',
+  anual: 'Anual',
+}
+
+export default function TarefasSocietarioTab() {
   const [itens, setItens] = useState<TarefaTipoResumo[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioDoSetor[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -29,18 +34,19 @@ export default function TarefasTab({ setor }: Props) {
   const [mostrarModal, setMostrarModal] = useState(false)
   const [salvandoResponsavel, setSalvandoResponsavel] = useState<string | null>(null)
   const [editando, setEditando] = useState<TarefaTipoResumo | null>(null)
+  const [vinculando, setVinculando] = useState<TarefaTipoResumo | null>(null)
 
   const recarregar = useCallback(async () => {
     setCarregando(true)
     const [{ data, error }, { data: usuariosData }] = await Promise.all([
-      listarTarefaTiposDoSetor(setor),
-      listarUsuariosDoSetor(setor),
+      listarTarefaTiposDoSetor('societario'),
+      listarUsuariosDoSetor('societario'),
     ])
     if (error) setErro(error)
     else { setItens(data); setErro(null) }
     setUsuarios(usuariosData)
     setCarregando(false)
-  }, [setor])
+  }, [])
 
   useEffect(() => { recarregar() }, [recarregar])
 
@@ -57,7 +63,7 @@ export default function TarefasTab({ setor }: Props) {
   }
 
   async function handleExcluir(item: TarefaTipoResumo) {
-    if (!confirm(`Excluir a tarefa "${item.nome}"? Essa ação não pode ser desfeita e remove também os vínculos dela com regimes/grupos/atividades.`)) return
+    if (!confirm(`Excluir a tarefa "${item.nome}"? Essa ação não pode ser desfeita e remove também os vínculos dela com clientes.`)) return
     const { error } = await excluirTarefaTipo(item.id)
     if (error) { setErro(error); return }
     setErro(null)
@@ -99,6 +105,9 @@ export default function TarefasTab({ setor }: Props) {
             <li key={item.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8">
               <span className={`flex-1 text-sm ${item.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
                 {item.nome}
+                <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--fg)]/8 text-[var(--fg)]/50 whitespace-nowrap">
+                  {LABEL_PERIODICIDADE[periodicidadeDosMesesVisiveis(item.mesesVisiveis)]}
+                </span>
               </span>
 
               <select
@@ -113,6 +122,10 @@ export default function TarefasTab({ setor }: Props) {
                   <option key={u.id} value={u.id}>{u.nome}</option>
                 ))}
               </select>
+
+              <button onClick={() => setVinculando(item)} className="text-xs text-[var(--fg)]/50 hover:text-[var(--fg)]">
+                Vincular clientes
+              </button>
 
               <button onClick={() => setEditando(item)} className="text-xs text-[var(--fg)]/50 hover:text-[var(--fg)]">
                 Editar
@@ -129,7 +142,7 @@ export default function TarefasTab({ setor }: Props) {
       {mostrarModal && (
         <NovoTipoTarefaModal
           nome={novoNome}
-          setor={setor}
+          setor="societario"
           padrao={true}
           onCancel={() => setMostrarModal(false)}
           onCriado={() => { setMostrarModal(false); setNovoNome(''); recarregar() }}
@@ -140,12 +153,20 @@ export default function TarefasTab({ setor }: Props) {
         <EditarTipoTarefaModal
           id={editando.id}
           nome={editando.nome}
-          setor={setor}
+          setor="societario"
           tipoResposta={editando.tipoResposta}
           etapas={editando.etapas}
           mesesVisiveis={editando.mesesVisiveis}
           onCancel={() => setEditando(null)}
           onSalvo={() => { setEditando(null); recarregar() }}
+        />
+      )}
+
+      {vinculando && (
+        <VincularClientesModal
+          tarefaTipoId={vinculando.id}
+          tarefaTipoNome={vinculando.nome}
+          onClose={() => setVinculando(null)}
         />
       )}
     </div>

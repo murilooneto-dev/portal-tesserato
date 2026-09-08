@@ -18,6 +18,7 @@ export interface TarefaTipoResumo {
   responsavelId: string | null
   tipoResposta: TipoResposta
   etapas: string[] | null
+  mesesVisiveis: number[] | null
 }
 
 export interface UsuarioDoSetor {
@@ -45,7 +46,7 @@ export async function listarTarefaTiposDoSetor(
 
   const { data, error: queryError } = await supabase
     .from('tarefa_tipos')
-    .select('id, nome, ativo, responsavel_id, tipo_resposta, etapas')
+    .select('id, nome, ativo, responsavel_id, tipo_resposta, etapas, meses_visiveis')
     .eq('setor', setor)
     .order('nome')
 
@@ -58,6 +59,7 @@ export async function listarTarefaTiposDoSetor(
       responsavelId: t.responsavel_id as string | null,
       tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
       etapas: t.etapas as string[] | null,
+      mesesVisiveis: t.meses_visiveis as number[] | null,
     })),
     error: null,
   }
@@ -104,12 +106,13 @@ export async function atualizarFormatoTarefaTipo(
   id: string,
   tipoResposta: TipoResposta,
   etapas: string[] | null,
+  mesesVisiveis: number[] | null = null,
 ): Promise<{ error: string | null }> {
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { error }
 
   const { error: updateError } = await supabase
-    .from('tarefa_tipos').update({ tipo_resposta: tipoResposta, etapas }).eq('id', id)
+    .from('tarefa_tipos').update({ tipo_resposta: tipoResposta, etapas, meses_visiveis: mesesVisiveis }).eq('id', id)
   if (updateError) return { error: updateError.message }
 
   revalidatePath('/admin/configuracoes')
