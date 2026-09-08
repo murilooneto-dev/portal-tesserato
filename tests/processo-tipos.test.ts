@@ -7,9 +7,13 @@ import {
   adicionarSubetapa,
   removerSubetapa,
   moverSubetapa,
+  renomearEtapa,
+  editarSubetapa,
+  paraEtapaForm,
   type EtapaForm,
   type ProcessoTipoRow,
   type ProcessoSubetapaRow,
+  type ProcessoTipoResumo,
 } from '../lib/processo-tipos'
 
 test('montarProcessoTipos: agrupa subetapas por etapa (nome) e ordena por "ordem"', () => {
@@ -174,4 +178,73 @@ test('moverSubetapa: não toca em outras etapas', () => {
   const resultado = moverSubetapa(etapas, 1, 0, 'down')
   assert.deepEqual(resultado[0], etapas[0])
   assert.deepEqual(resultado[1].subetapas.map(s => s.nome), ['Sub B2', 'Sub B1'])
+})
+
+test('renomearEtapa: atualiza o nome, preserva nomeOriginal e as subetapas', () => {
+  const etapas: EtapaForm[] = [
+    { nomeOriginal: 'Etapa X', nome: 'Etapa X', subetapas: [{ id: 'sub-1', nome: 'Sub 1', tipoResposta: 'texto' }] },
+  ]
+  const resultado = renomearEtapa(etapas, 0, 'Etapa Y')
+  assert.deepEqual(resultado, [
+    { nomeOriginal: 'Etapa X', nome: 'Etapa Y', subetapas: [{ id: 'sub-1', nome: 'Sub 1', tipoResposta: 'texto' }] },
+  ])
+})
+
+test('renomearEtapa: não toca em outras etapas', () => {
+  const etapas: EtapaForm[] = [
+    { nome: 'A', subetapas: [] },
+    { nome: 'B', subetapas: [] },
+  ]
+  const resultado = renomearEtapa(etapas, 1, 'B renomeada')
+  assert.equal(resultado[0], etapas[0])
+  assert.equal(resultado[1].nome, 'B renomeada')
+})
+
+test('editarSubetapa: atualiza nome e tipoResposta da subetapa certa, preserva id', () => {
+  const etapas: EtapaForm[] = [
+    {
+      nome: 'A',
+      subetapas: [
+        { id: 'sub-1', nome: 'Sub 1', tipoResposta: 'texto' },
+        { id: 'sub-2', nome: 'Sub 2', tipoResposta: 'data' },
+      ],
+    },
+  ]
+  const resultado = editarSubetapa(etapas, 0, 1, 'Sub 2 editada', 'checklist')
+  assert.deepEqual(resultado[0].subetapas, [
+    { id: 'sub-1', nome: 'Sub 1', tipoResposta: 'texto' },
+    { id: 'sub-2', nome: 'Sub 2 editada', tipoResposta: 'checklist' },
+  ])
+})
+
+test('editarSubetapa: não toca em outras etapas', () => {
+  const etapas: EtapaForm[] = [
+    { nome: 'A', subetapas: [{ nome: 'Sub A1', tipoResposta: 'texto' }] },
+    { nome: 'B', subetapas: [{ nome: 'Sub B1', tipoResposta: 'texto' }] },
+  ]
+  const resultado = editarSubetapa(etapas, 1, 0, 'Sub B1 editada', 'data')
+  assert.equal(resultado[0], etapas[0])
+  assert.deepEqual(resultado[1].subetapas, [{ nome: 'Sub B1 editada', tipoResposta: 'data' }])
+})
+
+test('paraEtapaForm: converte um ProcessoTipoResumo em EtapaForm[] com nomeOriginal e id populados', () => {
+  const tipo: ProcessoTipoResumo = {
+    id: 'tipo-1',
+    nome: 'Abertura de empresa',
+    etapas: [
+      {
+        nome: 'Consulta de viabilidade',
+        subetapas: [{ id: 'sub-1', nome: 'Data da consulta', tipoResposta: 'data' }],
+      },
+      { nome: 'Registro na junta', subetapas: [] },
+    ],
+  }
+  assert.deepEqual(paraEtapaForm(tipo), [
+    {
+      nomeOriginal: 'Consulta de viabilidade',
+      nome: 'Consulta de viabilidade',
+      subetapas: [{ id: 'sub-1', nome: 'Data da consulta', tipoResposta: 'data' }],
+    },
+    { nomeOriginal: 'Registro na junta', nome: 'Registro na junta', subetapas: [] },
+  ])
 })

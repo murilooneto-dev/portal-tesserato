@@ -6,6 +6,7 @@ import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-
 import type { Tarefa } from '@/lib/types'
 import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
+import { listarGruposDoSetor } from '@/lib/tarefa-grupos-actions'
 
 export const metadata = { title: 'Relatórios — Tesserato Contábil' }
 
@@ -32,6 +33,7 @@ export default async function RelatoriosContabilPage() {
   const clientes = (clientesRaw ?? []).map(flattenClienteContabil)
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
   const catalogo = await buscarCatalogoCliente(supabase, 'contabil')
+  const { data: gruposCatalogo } = await listarGruposDoSetor('contabil')
 
   const obsPorCliente: Record<string, string> = {}
   for (const row of observacoes ?? []) {
@@ -48,6 +50,7 @@ export default async function RelatoriosContabilPage() {
       obsPorCliente={obsPorCliente}
       mapaVinculos={mapaVinculos}
       atividadesCatalogo={catalogo.atividades}
+      gruposCatalogo={gruposCatalogo}
     />
   )
 }

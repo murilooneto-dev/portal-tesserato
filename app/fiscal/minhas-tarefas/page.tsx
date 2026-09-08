@@ -7,6 +7,7 @@ import { atualizarStatusDossie, atualizarFinalizadoDossie } from '@/lib/dossie-a
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import MinhasTarefasFiltro from '@/components/fiscal/MinhasTarefasFiltro'
 import MinhasTarefasTabs from '@/components/fiscal/MinhasTarefasTabs'
+import MinhasTarefasSeletorUsuario from '@/components/fiscal/MinhasTarefasSeletorUsuario'
 import DossieSecao from '@/components/fiscal/DossieSecao'
 import type { StatusDossie } from '@/lib/status-dossie'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
@@ -24,39 +25,105 @@ interface ClienteRow {
   }
 }
 
-export default async function MinhasTarefasPage() {
+interface Props {
+  searchParams: Promise<{ usuario?: string }>
+}
+
+export default async function MinhasTarefasPage({ searchParams }: Props) {
   const supabase = await createClient()
   const { mes, ano } = await getMesAno()
+  const { usuario: usuarioParam } = await searchParams
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const { data: profile } = await supabase.from('profiles').select('nome, role').eq('id', user.id).single()
+  const isAdmin = profile?.role === 'admin'
+
+  let usuariosElegiveis: { id: string; nome: string }[] = []
+  let targetUserId = user.id
+  let nomeAlvo = profile?.nome ?? user.email ?? 'Usuário'
+  let somenteLeitura = false
+
+  if (isAdmin) {
+    const { data: responsaveisRaw } = await supabase
+      .from('tarefa_tipos')
+      .select('responsavel_id')
+      .eq('setor', 'fiscal')
+      .not('responsavel_id', 'is', null)
+
+    const idsElegiveis = Array.from(new Set((responsaveisRaw ?? []).map(r => r.responsavel_id as string)))
+
+    if (idsElegiveis.length > 0) {
+      const { data: usuariosRaw } = await supabase
+        .from('profiles')
+        .select('id, nome')
+        .in('id', idsElegiveis)
+        .order('nome')
+      usuariosElegiveis = usuariosRaw ?? []
+    }
+
+    const alvo = usuarioParam ? usuariosElegiveis.find(u => u.id === usuarioParam) : undefined
+
+    if (!alvo) {
+      return (
+        <div className="p-8 max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-[var(--fg)]">Minhas Tarefas</h1>
+            <p className="text-[var(--fg)]/40 mt-1 text-sm">
+              Selecione um usuário para ver o resumo de tarefas dele.
+            </p>
+          </div>
+          <div className="mb-8">
+            <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />
+          </div>
+          <p className="text-center text-[var(--fg)]/20 py-12 text-sm">
+            {usuariosElegiveis.length === 0
+              ? 'Nenhum usuário tem tipos de tarefa atribuídos no Fiscal ainda.'
+              : 'Selecione um usuário acima para ver as tarefas dele.'}
+          </p>
+        </div>
+      )
+    }
+
+    targetUserId = alvo.id
+    nomeAlvo = alvo.nome
+    somenteLeitura = targetUserId !== user.id
+  }
 
   const { data: meusTiposRaw } = await supabase
     .from('tarefa_tipos')
     .select('nome, etapas, tipo_resposta')
     .eq('setor', 'fiscal')
-    .eq('responsavel_id', user.id)
+    .eq('responsavel_id', targetUserId)
     .order('nome')
 
   const meusTipos = (meusTiposRaw ?? []) as { nome: string; etapas: string[] | null; tipo_resposta: TipoResposta }[]
 
   if (meusTipos.length === 0) {
     return (
-      <div className="p-8">
+      <div className="p-8 max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[var(--fg)]">Minhas Tarefas</h1>
           <p className="text-[var(--fg)]/40 mt-1 text-sm">
             Tipos de tarefa atribuídos exclusivamente a você, em todos os clientes.
           </p>
         </div>
+        {isAdmin && (
+          <div className="mb-8">
+            <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />
+          </div>
+        )}
         <p className="text-center text-[var(--fg)]/20 py-12 text-sm">
-          Nenhum tipo de tarefa está atribuído a você. Peça a um admin pra atribuir em Configurações.
+          {isAdmin
+            ? `Nenhum tipo de tarefa está atribuído a ${nomeAlvo}.`
+            : 'Nenhum tipo de tarefa está atribuído a você. Peça a um admin pra atribuir em Configurações.'}
         </p>
       </div>
     )
   }
 
-  const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }, catalogo, { data: profile }] = await Promise.all([
+  const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }, catalogo] = await Promise.all([
     supabase
       .from('clientes')
       .select('id, nome, clientes_fiscal!inner(regime, atividade, tarefas_personalizadas, tarefas_excluidas, ativo)')
@@ -70,7 +137,6 @@ export default async function MinhasTarefasPage() {
       .eq('clientes_fiscal.faz_dossie', true)
       .order('nome'),
     buscarCatalogoCliente(supabase, 'fiscal'),
-    supabase.from('profiles').select('nome').eq('id', user.id).single(),
   ])
 
   const clientesTodos = (clientesRaw ?? []).map(row => {
@@ -144,9 +210,17 @@ export default async function MinhasTarefasPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[var(--fg)]">Minhas Tarefas</h1>
         <p className="text-[var(--fg)]/40 mt-1 text-sm">
-          Tipos de tarefa atribuídos exclusivamente a você, em todos os clientes.
+          {isAdmin && somenteLeitura
+            ? `Visualizando as tarefas de ${nomeAlvo} (somente leitura).`
+            : 'Tipos de tarefa atribuídos exclusivamente a você, em todos os clientes.'}
         </p>
       </div>
+
+      {isAdmin && (
+        <div className="mb-8">
+          <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />
+        </div>
+      )}
 
       <MinhasTarefasTabs
         tarefasContent={
@@ -162,7 +236,8 @@ export default async function MinhasTarefasPage() {
             etapas={etapas}
             mes={mes}
             ano={ano}
-            nomeUsuario={profile?.nome ?? user.email ?? 'Usuário'}
+            nomeUsuario={nomeAlvo}
+            somenteLeitura={somenteLeitura}
             onToggle={onToggle}
             onAtualizarEtapa={onAtualizarEtapa}
           />

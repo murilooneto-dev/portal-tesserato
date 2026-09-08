@@ -36,6 +36,22 @@ export async function listarGruposCliente(
   return { data: (data ?? []) as TarefaGrupo[], error: null }
 }
 
+export async function listarGruposDoSetor(
+  setor: UserSetor,
+): Promise<{ data: Pick<TarefaGrupo, 'nome' | 'tarefas'>[]; error: string | null }> {
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { data: [], error: 'Sessão inválida.' }
+
+  const { data, error } = await supabase
+    .from('tarefa_grupos')
+    .select('nome, tarefas')
+    .eq('setor', setor)
+    .order('nome')
+
+  if (error) return { data: [], error: error.message }
+  return { data: (data ?? []) as Pick<TarefaGrupo, 'nome' | 'tarefas'>[], error: null }
+}
+
 export async function criarGrupoTarefas(
   clienteId: string,
   setor: UserSetor,

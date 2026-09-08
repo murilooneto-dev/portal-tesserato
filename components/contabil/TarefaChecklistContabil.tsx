@@ -280,7 +280,7 @@ export default function TarefaChecklistContabil({
           )}
         </div>
 
-        {etapasDefinidas && !semMovimentoAtivo && (
+        {etapasDefinidas && tipoResposta !== 'checklist' && !semMovimentoAtivo && (
           <div className="ml-5 mt-1 grid grid-cols-2 gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
             {etapasDefinidas.map(etapaNome => {
               const etapaFeita = !!etapasDaTarefa(tipo).find(e => e.nome === etapaNome)?.concluida
@@ -299,6 +299,26 @@ export default function TarefaChecklistContabil({
                     className={inputCls(etapaFeita)}
                   />
                 </div>
+              )
+            })}
+          </div>
+        )}
+
+        {etapasDefinidas && tipoResposta === 'checklist' && !semMovimentoAtivo && (
+          <div className="ml-5 mt-1 grid grid-cols-2 gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
+            {etapasDefinidas.map(opcaoNome => {
+              const opcaoFeita = !!etapasDaTarefa(tipo).find(e => e.nome === opcaoNome)?.concluida
+              return (
+                <label key={opcaoNome} className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={opcaoFeita}
+                    onChange={e => startTransition(() => onAtualizarEtapa(tipo, opcaoNome, e.target.checked))}
+                    disabled={!podeEditar || isPending}
+                    className="w-3.5 h-3.5 accent-[var(--accent)]"
+                  />
+                  <span className={`text-xs ${opcaoFeita ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]/60'}`}>{opcaoNome}</span>
+                </label>
               )
             })}
           </div>

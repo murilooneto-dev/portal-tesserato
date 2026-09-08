@@ -20,6 +20,7 @@ interface Props {
   busca: string
   statusFiltro: StatusFiltroMinhasTarefas
   atividadeFiltro: string[]
+  somenteLeitura?: boolean
   onToggle: (clienteId: string, tipo: string, concluida: boolean, data?: string) => Promise<void>
   onAtualizarEtapa: (clienteId: string, tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
 }
@@ -42,6 +43,7 @@ export default function MinhasTarefasSecao({
   busca,
   statusFiltro,
   atividadeFiltro,
+  somenteLeitura,
   onToggle,
   onAtualizarEtapa,
 }: Props) {
@@ -207,7 +209,8 @@ export default function MinhasTarefasSecao({
                             onBlur={() => handleBlur(cliente.id, etapaNome)}
                             placeholder="DD/MM/AAAA"
                             maxLength={10}
-                            className={inputCls(iso !== '')}
+                            disabled={somenteLeitura}
+                            className={`${inputCls(iso !== '')} disabled:opacity-60 disabled:cursor-not-allowed`}
                           />
                         </td>
                       )
@@ -217,7 +220,8 @@ export default function MinhasTarefasSecao({
                         type="checkbox"
                         checked={semMovimentoAtivo}
                         onChange={() => handleToggleSemMovimento(cliente.id)}
-                        className="w-3.5 h-3.5 accent-[var(--fg)]/50 cursor-pointer"
+                        disabled={somenteLeitura}
+                        className="w-3.5 h-3.5 accent-[var(--fg)]/50 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </td>
                   </tr>
