@@ -9,6 +9,7 @@ import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas
 import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import type { Tarefa } from '@/lib/types'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
+import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 
 export const metadata = { title: 'Clientes — Tesserato Fiscal' }
 
@@ -22,6 +23,12 @@ export default async function ClientesPage() {
 
   const { mes, ano } = await getMesAno()
 
+  // Garante que parcelamentos "EM ANDAMENTO" já tenham sua tarefa sintética
+  // em `tarefas` pra este mes/ano, mesmo que ninguém tenha aberto a ficha
+  // individual do cliente ainda (mesma chamada feita em
+  // app/fiscal/clientes/[id]/page.tsx).
+  await sincronizarTarefasParcelamento(supabase, 'fiscal', mes, ano)
+
   const catalogo = await buscarCatalogoCliente(supabase, 'fiscal')
 
   const clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_FISCAL).order('nome')
@@ -29,7 +36,7 @@ export default async function ClientesPage() {
 
   const [{ data: clientesRaw }, tarefas, { data: tarefaTiposRaw }] = await Promise.all([
     clientesQ,
-    buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo'>>(supabase, mes, ano, 'cliente_id, concluida, tipo'),
+    buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo' | 'parcelamento_id'>>(supabase, mes, ano, 'cliente_id, concluida, tipo, parcelamento_id'),
     tarefaTiposQ,
   ])
   const clientes = (clientesRaw ?? []).map(flattenClienteFiscal)
@@ -40,13 +47,30 @@ export default async function ClientesPage() {
     (tarefaTiposRaw ?? []).map(t => [t.nome as string, t.responsavel_id as string | null])
   )
 
+  // Tarefas de parcelamento têm um `tipo` sintético que não vem do catálogo
+  // (ver lib/parcelamento-tarefas.ts) — calcularTarefasEsperadas não tem como
+  // conhecê-lo. Resolve, de uma vez pra todos os clientes, quais parcelamentos
+  // ainda estão ativos e agrupa os tipos de tarefa por cliente, do mesmo jeito
+  // que app/fiscal/clientes/[id]/page.tsx já faz por cliente individual.
+  const parcelamentoIdsTodos = Array.from(new Set(
+    (tarefas ?? []).filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)
+  ))
+  const parcelamentosAtivos = await idsDeParcelamentosAtivos(supabase, parcelamentoIdsTodos)
+  const tiposParcelamentoPorCliente: Record<string, Set<string>> = {}
+  for (const t of tarefas ?? []) {
+    if (t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)) {
+      (tiposParcelamentoPorCliente[t.cliente_id] ??= new Set()).add(t.tipo)
+    }
+  }
+
   // Mapa de tipos por cliente — só os visíveis pro usuário logado, senão
   // uma tarefa de responsável exclusivo alheio infla a % e a pendência de
   // quem não deveria nem ver essa tarefa (ver app/fiscal/tarefas/page.tsx
   // e app/fiscal/clientes/[id]/page.tsx, que já fazem esse filtro).
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of clientes) {
-    const tipos = calcularTarefasEsperadas(c, mapaVinculos)
+    const tiposBase = [...calcularTarefasEsperadas(c, mapaVinculos), ...(tiposParcelamentoPorCliente[c.id] ?? [])]
+    const tipos = Array.from(new Set(tiposBase))
       .filter(tipo => tipoVisivelParaUsuario(responsavelIdPorTipo.get(tipo), user.id, profile?.role))
     tiposMap[c.id] = new Set(tipos)
   }
