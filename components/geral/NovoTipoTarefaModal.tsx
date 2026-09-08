@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { criarTipoTarefa } from '@/lib/tarefa-tipos-actions'
 import { mesesVisiveisDaPeriodicidade, type Periodicidade } from '@/lib/tarefas-societario-periodicidade'
+import { useTheme } from '@/lib/theme'
 import type { UserSetor, TipoResposta } from '@/lib/types'
 
 type Formato = 'data' | 'texto' | 'opcoes' | 'checklist'
@@ -41,6 +42,7 @@ const PERIODICIDADES: { value: Periodicidade; label: string }[] = [
 ]
 
 export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCancel, onCriado }: Props) {
+  const { theme } = useTheme()
   const FORMATOS = setor === 'contabil' ? [...FORMATOS_BASE, FORMATO_CHECKLIST] : FORMATOS_BASE
   const [formato, setFormato] = useState<Formato>('data')
   const [etapas, setEtapas] = useState<string[]>([])
@@ -93,7 +95,7 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
           {setor === 'societario' && (
             <div>
               <label className={labelCls}>Periodicidade</label>
-              <select value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)} className={inputCls}>
+              <select value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)} className={inputCls} style={{ colorScheme: theme }}>
                 {PERIODICIDADES.map(p => (
                   <option key={p.value} value={p.value}>{p.label}</option>
                 ))}

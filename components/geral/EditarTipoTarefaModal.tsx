@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { atualizarFormatoTarefaTipo } from '@/lib/tarefa-tipo-vinculos-actions'
 import { mesesVisiveisDaPeriodicidade, periodicidadeDosMesesVisiveis, type Periodicidade } from '@/lib/tarefas-societario-periodicidade'
+import { useTheme } from '@/lib/theme'
 import type { TipoResposta, UserSetor } from '@/lib/types'
 
 type Formato = 'data' | 'texto' | 'opcoes' | 'checklist'
@@ -45,6 +46,7 @@ function formatoInicial(tipoResposta: TipoResposta, etapas: string[] | null): Fo
 }
 
 export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, etapas, mesesVisiveis, onCancel, onSalvo }: Props) {
+  const { theme } = useTheme()
   const FORMATOS = setor === 'contabil' ? [...FORMATOS_BASE, FORMATO_CHECKLIST] : FORMATOS_BASE
   const [formato, setFormato] = useState<Formato>(formatoInicial(tipoResposta, etapas))
   const [etapasForm, setEtapasForm] = useState<string[]>(etapas ?? [])
@@ -104,7 +106,7 @@ export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, e
           {setor === 'societario' && (
             <div>
               <label className={labelCls}>Periodicidade</label>
-              <select value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)} className={inputCls}>
+              <select value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)} className={inputCls} style={{ colorScheme: theme }}>
                 {PERIODICIDADES.map(p => (
                   <option key={p.value} value={p.value}>{p.label}</option>
                 ))}
