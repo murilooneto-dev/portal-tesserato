@@ -105,6 +105,27 @@ export async function podeEditarTarefaTipo(clienteId: string, tipo: string): Pro
   return podeEditarCliente(clienteId)
 }
 
+// Societário não tem "responsável do cliente" (clientes_societario não
+// existe) — qualquer pessoa do setor pode editar a tarefa de qualquer
+// cliente, a menos que o tipo tenha um responsável exclusivo definido
+// (mesmo campo tarefa_tipos.responsavel_id usado no Fiscal).
+export async function podeEditarTarefaTipoSocietario(tipo: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data: profile } = await supabase.from('profiles').select('role, setores').eq('id', user.id).single()
+  if (profile?.role === 'admin') return true
+
+  const { data: tarefaTipo } = await supabase
+    .from('tarefa_tipos').select('responsavel_id')
+    .eq('setor', 'societario').eq('nome', tipo).maybeSingle()
+
+  if (tarefaTipo?.responsavel_id) return tarefaTipo.responsavel_id === user.id
+
+  return !!profile?.setores?.includes('societario')
+}
+
 // Mesma lógica de podeEditarCliente, mas pro setor Contábil (consulta
 // clientes_contabil em vez de clientes_fiscal). Função irmã, não
 // parametrizada — cada setor tem a sua, mesmo padrão de clientes_fiscal.

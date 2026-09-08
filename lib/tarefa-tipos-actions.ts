@@ -15,6 +15,7 @@ export async function criarTipoTarefa(
   tipoResposta: TipoResposta,
   etapas: string[] | null,
   padrao: boolean = false,
+  mesesVisiveis: number[] | null = null,
 ): Promise<{ error: string | null }> {
   const nomeTrim = nome.trim()
   if (setor === 'fiscal' && NOMES_RESERVADOS_FISCAL.includes(nomeTrim)) {
@@ -38,6 +39,7 @@ export async function criarTipoTarefa(
     tipo_resposta: tipoResposta,
     etapas,
     padrao,
+    meses_visiveis: mesesVisiveis,
   })
 
   if (error) {
