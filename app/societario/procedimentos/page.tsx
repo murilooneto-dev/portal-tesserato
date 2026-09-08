@@ -20,13 +20,13 @@ interface ProcessoTipo {
 type SubetapaValor = string | boolean | null
 
 function defaultValorSubetapa(tipo: SubetapaTipoResposta): SubetapaValor {
-  if (tipo === 'checklist') return false
+  if (tipo === 'checklist') return null
   if (tipo === 'data') return null
   return ''
 }
 
 function formatarValorSubetapa(valor: SubetapaValor | undefined, tipo: SubetapaTipoResposta): string {
-  if (tipo === 'checklist') return valor ? 'Sim' : 'Não'
+  if (tipo === 'checklist') return valor === true ? '✓' : valor === false ? '✗' : '—'
   if (tipo === 'data') return valor ? new Date(valor as string).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—'
   return (valor as string) || '—'
 }
@@ -545,15 +545,27 @@ export default function ProcedimentosSocietarioPage() {
                                     </>
                                   )}
                                   {sub.tipoResposta === 'checklist' && (
-                                    <label className="flex items-center gap-2 text-sm text-[var(--fg)]/70 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={!!form.subetapasValores[sub.id]}
-                                        onChange={e => setSubetapaValor(sub.id, e.target.checked)}
-                                        className="accent-[var(--accent)]"
-                                      />
-                                      {sub.nome}
-                                    </label>
+                                    <div className="flex items-center gap-3 text-sm text-[var(--fg)]/70">
+                                      <span>{sub.nome}</span>
+                                      <label className="flex items-center gap-1 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={form.subetapasValores[sub.id] === true}
+                                          onChange={() => setSubetapaValor(sub.id, form.subetapasValores[sub.id] === true ? null : true)}
+                                          className="accent-[var(--accent)]"
+                                        />
+                                        ✓
+                                      </label>
+                                      <label className="flex items-center gap-1 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={form.subetapasValores[sub.id] === false}
+                                          onChange={() => setSubetapaValor(sub.id, form.subetapasValores[sub.id] === false ? null : false)}
+                                          className="accent-[var(--accent)]"
+                                        />
+                                        ✗
+                                      </label>
+                                    </div>
                                   )}
                                   {sub.tipoResposta === 'data' && (
                                     <div className="flex items-center gap-2">

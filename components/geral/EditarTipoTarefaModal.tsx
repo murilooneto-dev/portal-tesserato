@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { atualizarFormatoTarefaTipo } from '@/lib/tarefa-tipo-vinculos-actions'
+import { mesesVisiveisDaPeriodicidade, periodicidadeDosMesesVisiveis, type Periodicidade } from '@/lib/tarefas-societario-periodicidade'
 import type { TipoResposta, UserSetor } from '@/lib/types'
 
 type Formato = 'data' | 'texto' | 'opcoes' | 'checklist'
@@ -12,6 +13,7 @@ interface Props {
   setor: UserSetor
   tipoResposta: TipoResposta
   etapas: string[] | null
+  mesesVisiveis: number[] | null
   onCancel: () => void
   onSalvo: () => void
 }
@@ -28,17 +30,29 @@ const FORMATOS_BASE: { value: Formato; label: string; desc: string }[] = [
 const FORMATO_CHECKLIST: { value: Formato; label: string; desc: string } =
   { value: 'checklist', label: 'Checkbox com Opções', desc: 'Lista de opções; marcando todas, conclui a tarefa automaticamente' }
 
+const PERIODICIDADES: { value: Periodicidade; label: string }[] = [
+  { value: 'mensal', label: 'Mensal' },
+  { value: 'bimestral', label: 'Bimestral (Jan/Mar/Mai/Jul/Set/Nov)' },
+  { value: 'trimestral', label: 'Trimestral (Jan/Abr/Jul/Out)' },
+  { value: 'semestral', label: 'Semestral (Jan/Jul)' },
+  { value: 'anual', label: 'Anual (Jan)' },
+]
+
 function formatoInicial(tipoResposta: TipoResposta, etapas: string[] | null): Formato {
   if (tipoResposta === 'checklist') return 'checklist'
   if (etapas && etapas.length > 0) return 'opcoes'
   return tipoResposta === 'texto' ? 'texto' : 'data'
 }
 
-export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, etapas, onCancel, onSalvo }: Props) {
+export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, etapas, mesesVisiveis, onCancel, onSalvo }: Props) {
   const FORMATOS = setor === 'contabil' ? [...FORMATOS_BASE, FORMATO_CHECKLIST] : FORMATOS_BASE
   const [formato, setFormato] = useState<Formato>(formatoInicial(tipoResposta, etapas))
   const [etapasForm, setEtapasForm] = useState<string[]>(etapas ?? [])
   const [novaEtapa, setNovaEtapa] = useState('')
+  // Só o Societário expõe periodicidade na UI — pros demais setores o valor
+  // atual de meses_visiveis é preservado sem alteração ao salvar (ex.: 13º
+  // Salário do Pessoal continua com [11,12] mesmo editando o formato aqui).
+  const [periodicidade, setPeriodicidade] = useState<Periodicidade>(periodicidadeDosMesesVisiveis(mesesVisiveis))
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const temEtapas = formato === 'opcoes' || formato === 'checklist'
@@ -56,8 +70,9 @@ export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, e
     setErro(null)
     const tipoRespostaFinal: TipoResposta = formato === 'checklist' ? 'checklist' : formato === 'texto' ? 'texto' : 'data'
     const etapasFinal = temEtapas ? etapasForm : null
+    const mesesVisiveisFinal = setor === 'societario' ? mesesVisiveisDaPeriodicidade(periodicidade) : mesesVisiveis
     try {
-      const { error } = await atualizarFormatoTarefaTipo(id, tipoRespostaFinal, etapasFinal)
+      const { error } = await atualizarFormatoTarefaTipo(id, tipoRespostaFinal, etapasFinal, mesesVisiveisFinal)
       if (error) { setErro(error); return }
       onSalvo()
     } catch {
@@ -85,6 +100,17 @@ export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, e
               O nome não pode ser alterado — ele é usado como referência em tarefas já lançadas.
             </p>
           </div>
+
+          {setor === 'societario' && (
+            <div>
+              <label className={labelCls}>Periodicidade</label>
+              <select value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)} className={inputCls}>
+                {PERIODICIDADES.map(p => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="space-y-2">
             {FORMATOS.map(f => (

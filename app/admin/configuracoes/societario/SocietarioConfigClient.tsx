@@ -4,12 +4,14 @@
 import { useState } from 'react'
 import ProcessosTab from './ProcessosTab'
 import DocumentacoesTab from './DocumentacoesTab'
+import TarefasSocietarioTab from './TarefasSocietarioTab'
 
-type Categoria = 'processos' | 'documentacoes'
+type Categoria = 'processos' | 'documentacoes' | 'tarefas'
 
 const CATEGORIAS: { value: Categoria; label: string }[] = [
   { value: 'processos', label: 'Processos' },
   { value: 'documentacoes', label: 'Documentações' },
+  { value: 'tarefas', label: 'Tarefas' },
 ]
 
 const botaoCls = (ativo: boolean) =>
@@ -37,6 +39,7 @@ export default function SocietarioConfigClient() {
 
       {categoria === 'processos' && <ProcessosTab />}
       {categoria === 'documentacoes' && <DocumentacoesTab />}
+      {categoria === 'tarefas' && <TarefasSocietarioTab />}
     </div>
   )
 }

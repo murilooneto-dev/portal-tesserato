@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { criarTipoTarefa } from '@/lib/tarefa-tipos-actions'
+import { mesesVisiveisDaPeriodicidade, type Periodicidade } from '@/lib/tarefas-societario-periodicidade'
 import type { UserSetor, TipoResposta } from '@/lib/types'
 
 type Formato = 'data' | 'texto' | 'opcoes' | 'checklist'
@@ -31,11 +32,20 @@ const FORMATOS_BASE: { value: Formato; label: string; desc: string }[] = [
 const FORMATO_CHECKLIST: { value: Formato; label: string; desc: string } =
   { value: 'checklist', label: 'Checkbox com Opções', desc: 'Lista de opções; marcando todas, conclui a tarefa automaticamente' }
 
+const PERIODICIDADES: { value: Periodicidade; label: string }[] = [
+  { value: 'mensal', label: 'Mensal' },
+  { value: 'bimestral', label: 'Bimestral (Jan/Mar/Mai/Jul/Set/Nov)' },
+  { value: 'trimestral', label: 'Trimestral (Jan/Abr/Jul/Out)' },
+  { value: 'semestral', label: 'Semestral (Jan/Jul)' },
+  { value: 'anual', label: 'Anual (Jan)' },
+]
+
 export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCancel, onCriado }: Props) {
   const FORMATOS = setor === 'contabil' ? [...FORMATOS_BASE, FORMATO_CHECKLIST] : FORMATOS_BASE
   const [formato, setFormato] = useState<Formato>('data')
   const [etapas, setEtapas] = useState<string[]>([])
   const [novaEtapa, setNovaEtapa] = useState('')
+  const [periodicidade, setPeriodicidade] = useState<Periodicidade>('mensal')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const temEtapas = formato === 'opcoes' || formato === 'checklist'
@@ -53,8 +63,9 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
     setErro(null)
     const tipoResposta: TipoResposta = formato === 'checklist' ? 'checklist' : formato === 'texto' ? 'texto' : 'data'
     const etapasFinal = temEtapas ? etapas : null
+    const mesesVisiveis = setor === 'societario' ? mesesVisiveisDaPeriodicidade(periodicidade) : null
     try {
-      const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal, padrao)
+      const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal, padrao, mesesVisiveis)
       if (error) { setErro(error); return }
       onCriado(nome)
     } catch {
@@ -78,6 +89,17 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
           <p className="text-[var(--fg)]/60 text-sm">
             &quot;<span className="font-semibold text-[var(--fg)]">{nome}</span>&quot; ainda não existe no catálogo. Escolha o formato de resposta:
           </p>
+
+          {setor === 'societario' && (
+            <div>
+              <label className={labelCls}>Periodicidade</label>
+              <select value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)} className={inputCls}>
+                {PERIODICIDADES.map(p => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="space-y-2">
             {FORMATOS.map(f => (
