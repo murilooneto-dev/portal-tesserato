@@ -72,8 +72,7 @@ export default function NovoMovimentoModal({ natureza, onClose }: Props) {
   const titulo = natureza === 'entrada' ? 'Novo recebimento' : 'Novo pagamento'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
       <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">

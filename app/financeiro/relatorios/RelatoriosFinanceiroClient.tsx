@@ -50,6 +50,14 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
 
   const opcoesTipo = form.natureza === 'saida' ? tiposSaida : form.natureza === 'entrada' ? tiposEntrada : [...tiposEntrada, ...tiposSaida]
 
+  const filtrosAplicados = [
+    form.natureza && `Natureza: ${NATUREZA_LABEL[form.natureza] ?? form.natureza}`,
+    form.tipoId && `Tipo: ${opcoesTipo.find(t => t.id === form.tipoId)?.nome ?? form.tipoId}`,
+    form.centroCustoId && `Centro de custo: ${centrosCusto.find(c => c.id === form.centroCustoId)?.nome ?? form.centroCustoId}`,
+    form.de && `De: ${formatarData(form.de)}`,
+    form.ate && `Até: ${formatarData(form.ate)}`,
+  ].filter(Boolean).join(' — ')
+
   function aplicar() {
     const params = new URLSearchParams()
     if (form.natureza) params.set('natureza', form.natureza)
@@ -121,18 +129,33 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
         </button>
       </div>
 
-      <div className="flex gap-6 mb-4 text-sm">
-        <span className="text-[var(--fg)]/60">Entradas: <strong className="text-[var(--fg)]">{formatarValor(totalEntradas)}</strong></span>
-        <span className="text-[var(--fg)]/60">Saídas: <strong className="text-[var(--fg)]">{formatarValor(totalSaidas)}</strong></span>
-        <span className="text-[var(--fg)]/60">Saldo: <strong className="text-[var(--fg)]">{formatarValor(totalEntradas - totalSaidas)}</strong></span>
+      <div className="hidden print:block mb-4">
+        <h1 className="text-lg font-bold text-black">Relatório Financeiro</h1>
+        {filtrosAplicados && <p className="text-xs text-black/70 mt-1">Filtros: {filtrosAplicados}</p>}
+        <p className="text-xs text-black/50 mt-1">Gerado em {new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
       </div>
 
-      <div className="overflow-auto">
-        <table className="w-full text-xs">
+      <div className="flex flex-wrap gap-4 mb-6 px-5 py-4 rounded-2xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 print:border-black/20 print:bg-transparent">
+        <div>
+          <p className="text-[10px] font-bold text-[var(--fg)]/40 print:text-black/60 uppercase tracking-widest mb-1">Entradas</p>
+          <p className="text-base font-semibold text-[var(--fg)] print:text-black">{formatarValor(totalEntradas)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-[var(--fg)]/40 print:text-black/60 uppercase tracking-widest mb-1">Saídas</p>
+          <p className="text-base font-semibold text-[var(--fg)] print:text-black">{formatarValor(totalSaidas)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-[var(--fg)]/40 print:text-black/60 uppercase tracking-widest mb-1">Saldo</p>
+          <p className="text-base font-semibold text-[var(--fg)] print:text-black">{formatarValor(totalEntradas - totalSaidas)}</p>
+        </div>
+      </div>
+
+      <div className="overflow-auto rounded-2xl border border-[var(--fg)]/8 print:border-black/20 print:rounded-none">
+        <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="border-b border-[var(--fg)]/8 print:border-black/20">
+            <tr className="border-b border-[var(--fg)]/8 print:border-black/20 bg-[var(--fg)]/3 print:bg-transparent">
               {['Data', 'Natureza', 'Tipo', 'Centro de custo', 'Observação', 'Valor'].map(h => (
-                <th key={h} className="text-left px-3 py-2 text-[var(--fg)]/40 print:text-black font-medium whitespace-nowrap">{h}</th>
+                <th key={h} className="text-left px-3 py-2.5 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
@@ -141,13 +164,13 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
               <tr><td colSpan={6} className="px-3 py-6 text-center text-[var(--fg)]/20">Nenhum registro</td></tr>
             )}
             {movimentos.map(m => (
-              <tr key={m.id} className="border-b border-[var(--fg)]/5 print:border-black/10 hover:bg-[var(--fg)]/2">
-                <td className="px-3 py-2 text-[var(--fg)]/50 print:text-black whitespace-nowrap">{formatarData(m.data)}</td>
-                <td className="px-3 py-2 text-[var(--fg)]/70 print:text-black">{NATUREZA_LABEL[m.natureza]}</td>
-                <td className="px-3 py-2 text-[var(--fg)]/70 print:text-black">{m.tipo_nome}</td>
-                <td className="px-3 py-2 text-[var(--fg)]/70 print:text-black">{m.centro_custo_nome ?? '—'}</td>
-                <td className="px-3 py-2 text-[var(--fg)]/50 print:text-black">{m.observacao ?? '—'}</td>
-                <td className="px-3 py-2 text-[var(--fg)] print:text-black font-medium whitespace-nowrap">{formatarValor(m.valor)}</td>
+              <tr key={m.id} className="border-b border-[var(--fg)]/5 print:border-black/10 hover:bg-[var(--fg)]/2 align-top">
+                <td className="px-3 py-2.5 text-[var(--fg)]/50 print:text-black whitespace-nowrap">{formatarData(m.data)}</td>
+                <td className="px-3 py-2.5 text-[var(--fg)]/70 print:text-black whitespace-nowrap">{NATUREZA_LABEL[m.natureza]}</td>
+                <td className="px-3 py-2.5 text-[var(--fg)]/70 print:text-black break-words max-w-[180px]">{m.tipo_nome}</td>
+                <td className="px-3 py-2.5 text-[var(--fg)]/70 print:text-black break-words max-w-[160px]">{m.centro_custo_nome ?? '—'}</td>
+                <td className="px-3 py-2.5 text-[var(--fg)]/50 print:text-black break-words max-w-[260px]">{m.observacao ?? '—'}</td>
+                <td className="px-3 py-2.5 text-[var(--fg)] print:text-black font-medium whitespace-nowrap">{formatarValor(m.valor)}</td>
               </tr>
             ))}
           </tbody>
