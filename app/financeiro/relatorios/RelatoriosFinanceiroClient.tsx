@@ -77,7 +77,7 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
   const totalSaidas = movimentos.filter(m => m.natureza === 'saida').reduce((acc, m) => acc + m.valor, 0)
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8 max-w-6xl mx-auto print:p-0 print:max-w-none">
       <div className="print:hidden flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[var(--fg)]">Relatórios — Financeiro</h1>
         <button onClick={() => window.print()}
@@ -150,13 +150,16 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
         </div>
       </div>
 
-      <div className="overflow-auto rounded-2xl border border-[var(--fg)]/8 print:border-black/20 print:rounded-none">
-        <table className="w-full text-xs border-collapse">
+      <div className="overflow-auto rounded-2xl border border-[var(--fg)]/8 print:overflow-visible print:border-black/20 print:rounded-none">
+        <table className="w-full text-xs border-collapse print:table-fixed">
           <thead>
             <tr className="border-b border-[var(--fg)]/8 print:border-black/20 bg-[var(--fg)]/3 print:bg-transparent">
-              {['Data', 'Natureza', 'Tipo', 'Centro de custo', 'Observação', 'Valor'].map(h => (
-                <th key={h} className="text-left px-3 py-2.5 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap">{h}</th>
-              ))}
+              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[10%]">Data</th>
+              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[9%]">Natureza</th>
+              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[18%]">Tipo</th>
+              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[17%]">Centro de custo</th>
+              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[31%]">Observação</th>
+              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[15%]">Valor</th>
             </tr>
           </thead>
           <tbody>
@@ -165,12 +168,12 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
             )}
             {movimentos.map(m => (
               <tr key={m.id} className="border-b border-[var(--fg)]/5 print:border-black/10 hover:bg-[var(--fg)]/2 align-top">
-                <td className="px-3 py-2.5 text-[var(--fg)]/50 print:text-black whitespace-nowrap">{formatarData(m.data)}</td>
-                <td className="px-3 py-2.5 text-[var(--fg)]/70 print:text-black whitespace-nowrap">{NATUREZA_LABEL[m.natureza]}</td>
-                <td className="px-3 py-2.5 text-[var(--fg)]/70 print:text-black break-words max-w-[180px]">{m.tipo_nome}</td>
-                <td className="px-3 py-2.5 text-[var(--fg)]/70 print:text-black break-words max-w-[160px]">{m.centro_custo_nome ?? '—'}</td>
-                <td className="px-3 py-2.5 text-[var(--fg)]/50 print:text-black break-words max-w-[260px]">{m.observacao ?? '—'}</td>
-                <td className="px-3 py-2.5 text-[var(--fg)] print:text-black font-medium whitespace-nowrap">{formatarValor(m.valor)}</td>
+                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/50 print:text-black whitespace-nowrap">{formatarData(m.data)}</td>
+                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/70 print:text-black whitespace-nowrap">{NATUREZA_LABEL[m.natureza]}</td>
+                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/70 print:text-black break-words max-w-[180px]">{m.tipo_nome}</td>
+                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/70 print:text-black break-words max-w-[160px]">{m.centro_custo_nome ?? '—'}</td>
+                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/50 print:text-black break-words max-w-[260px]">{m.observacao ?? '—'}</td>
+                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)] print:text-black font-medium whitespace-nowrap">{formatarValor(m.valor)}</td>
               </tr>
             ))}
           </tbody>

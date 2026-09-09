@@ -17,11 +17,17 @@ export default function PortalShell({ profile, mes, ano, setorAtivo, children }:
 
   return (
     <MesAnoProvider mes={mes} ano={ano}>
-      <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-page)]">
-        {mostraTopNav && <TopNav profile={profile} setorAtivo={setorAtivo} />}
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar profile={profile} mes={mes} ano={ano} setorAtivo={setorAtivo} />
-          <main className="flex-1 overflow-y-auto">
+      <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-page)] print:h-auto print:overflow-visible">
+        {mostraTopNav && (
+          <div className="print:hidden">
+            <TopNav profile={profile} setorAtivo={setorAtivo} />
+          </div>
+        )}
+        <div className="flex flex-1 overflow-hidden print:overflow-visible">
+          <div className="shrink-0 print:hidden">
+            <Sidebar profile={profile} mes={mes} ano={ano} setorAtivo={setorAtivo} />
+          </div>
+          <main className="flex-1 overflow-y-auto print:overflow-visible print:h-auto">
             {children}
           </main>
         </div>
