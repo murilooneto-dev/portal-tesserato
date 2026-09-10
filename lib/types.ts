@@ -18,7 +18,7 @@ export const SETOR_HOME: Record<UserSetor, string> = {
   contabil: '/contabil/dashboard',
   pessoal: '/pessoal/dashboard',
   societario: '/societario/procedimentos',
-  financeiro: '/financeiro',
+  financeiro: '/financeiro/recebimentos',
 }
 
 export interface Profile {
@@ -229,4 +229,31 @@ export interface ProcedimentoArquivo {
   size: number
   content_base64: string
   uploaded_at: string
+}
+
+export type FinanceiroNatureza = 'entrada' | 'saida'
+
+export interface FinanceiroTipo {
+  id: string
+  natureza: FinanceiroNatureza
+  nome: string
+  ativo: boolean
+}
+
+export interface FinanceiroCentroCusto {
+  id: string
+  nome: string
+  ativo: boolean
+}
+
+export interface FinanceiroMovimento {
+  id: string
+  natureza: FinanceiroNatureza
+  tipo_id: string
+  centro_custo_id: string | null
+  valor: number
+  data: string
+  observacao: string | null
+  criado_por: string | null
+  created_at: string
 }

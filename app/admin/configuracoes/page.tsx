@@ -9,6 +9,7 @@ const AREAS = [
   { href: '/admin/configuracoes/contabil', label: 'Contábil', desc: 'Grupos, Regimes, Atividades e Tarefas' },
   { href: '/admin/configuracoes/pessoal', label: 'Pessoal', desc: 'Grupos, Regimes, Atividades e Tarefas' },
   { href: '/admin/configuracoes/societario', label: 'Societário', desc: 'Processos e Documentações' },
+  { href: '/admin/configuracoes/financeiro', label: 'Financeiro', desc: 'Tipos de Entrada, Tipos de Saída e Centro de Custo' },
 ]
 
 export default async function ConfiguracoesPage() {

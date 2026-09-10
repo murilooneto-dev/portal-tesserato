@@ -38,5 +38,9 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'procedimentos', label: 'Procedimentos' },
     { slug: 'clientes', label: 'Clientes' },
   ],
-  financeiro: [],
+  financeiro: [
+    { slug: 'recebimentos', label: 'Recebimentos' },
+    { slug: 'pagamentos', label: 'Pagamentos' },
+    { slug: 'relatorios', label: 'Relatórios' },
+  ],
 }
