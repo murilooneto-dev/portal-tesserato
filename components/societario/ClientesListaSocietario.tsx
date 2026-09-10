@@ -16,27 +16,41 @@ interface ClienteResumo {
 
 interface Props {
   clientes: ClienteResumo[]
-  progressoMap: Record<string, { total: number; concluidas: number }>
-  comPendencia: Set<string>
+  tiposPorCliente: Record<string, string[]>
+  concluidasPorCliente: Record<string, string[]>
+  tarefasDisponiveis: string[]
   mes: number
   ano: number
   pendenciasVinculo: Record<string, PendenciaVinculo[]>
 }
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+const TODAS_TAREFAS = 'TODAS'
 
-export default function ClientesListaSocietario({ clientes, progressoMap, comPendencia, mes, ano, pendenciasVinculo }: Props) {
+export default function ClientesListaSocietario({ clientes, tiposPorCliente, concluidasPorCliente, tarefasDisponiveis, mes, ano, pendenciasVinculo }: Props) {
   const [busca, setBusca] = useFiltroPersistente('clientes-societario:busca', '')
+  const [filtroTarefa, setFiltroTarefa] = useFiltroPersistente('clientes-societario:tarefa', TODAS_TAREFAS)
   const [apenasPendentes, setApenasPendentes] = useFiltroPersistente('clientes-societario:apenasPendentes', false)
+
+  const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
   const filtrados = useMemo(() => clientes.filter(c => {
     if (busca) {
       const q = busca.toLowerCase()
       if (!c.nome.toLowerCase().includes(q) && !(c.cnpj ?? '').includes(q)) return false
     }
-    if (apenasPendentes && !comPendencia.has(c.id)) return false
+    if (filtroTarefa !== TODAS_TAREFAS && !tiposPorCliente[c.id]?.includes(filtroTarefa)) return false
+    if (apenasPendentes) {
+      if (filtroTarefa !== TODAS_TAREFAS) {
+        if (concluidasPorCliente[c.id]?.includes(filtroTarefa)) return false
+      } else {
+        const total = tiposPorCliente[c.id]?.length ?? 0
+        const concluidas = concluidasPorCliente[c.id]?.length ?? 0
+        if (total === 0 || concluidas >= total) return false
+      }
+    }
     return true
-  }), [clientes, busca, apenasPendentes, comPendencia])
+  }), [clientes, busca, filtroTarefa, apenasPendentes, tiposPorCliente, concluidasPorCliente])
 
   return (
     <div>
@@ -48,6 +62,10 @@ export default function ClientesListaSocietario({ clientes, progressoMap, comPen
           onChange={e => setBusca(e.target.value)}
           className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
         />
+        <select value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)} className={selectClass}>
+          <option value={TODAS_TAREFAS} className="bg-[var(--bg-surface)]">Todas as tarefas</option>
+          {tarefasDisponiveis.map(t => <option key={t} value={t} className="bg-[var(--bg-surface)]">{t}</option>)}
+        </select>
         <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
           <input
             type="checkbox"
@@ -69,9 +87,8 @@ export default function ClientesListaSocietario({ clientes, progressoMap, comPen
         )}
 
         {filtrados.map(cliente => {
-          const prog = progressoMap[cliente.id]
-          const total = prog?.total ?? 0
-          const concluidas = prog?.concluidas ?? 0
+          const total = tiposPorCliente[cliente.id]?.length ?? 0
+          const concluidas = concluidasPorCliente[cliente.id]?.length ?? 0
           const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
 
           return (

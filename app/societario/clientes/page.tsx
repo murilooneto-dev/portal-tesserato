@@ -30,7 +30,7 @@ export default async function ClientesSocietarioPage() {
   // regra de app/societario/clientes/tarefas-actions.ts:22-45
   // (listarTarefasSocietarioDoCliente), só que em lote pra todos os
   // clientes da listagem em vez de um único.
-  const [{ data: vinculosRaw }, tarefas] = await Promise.all([
+  const [{ data: vinculosRaw }, { data: tarefaTiposRaw }, tarefas] = await Promise.all([
     clienteIds.length > 0
       ? supabase
         .from('tarefa_tipo_vinculos')
@@ -39,6 +39,7 @@ export default async function ClientesSocietarioPage() {
         .in('entidade_id', clienteIds)
         .eq('tarefa_tipos.setor', 'societario')
       : Promise.resolve({ data: [] as never[] }),
+    supabase.from('tarefa_tipos').select('nome').eq('setor', 'societario').eq('ativo', true).order('nome'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo'>>(
       supabase, mes, ano, 'cliente_id, concluida, tipo', 'societario',
     ),
@@ -46,30 +47,24 @@ export default async function ClientesSocietarioPage() {
 
   type TipoJoin = { nome: string; ativo: boolean; meses_visiveis: number[] | null }
 
-  const tiposMap: Record<string, Set<string>> = {}
-  for (const id of clienteIds) tiposMap[id] = new Set()
+  const tarefasDisponiveis = (tarefaTiposRaw ?? []).map(t => t.nome as string)
+
+  const tiposPorCliente: Record<string, string[]> = {}
+  for (const id of clienteIds) tiposPorCliente[id] = []
   for (const v of vinculosRaw ?? []) {
     const tipo = v.tarefa_tipos as unknown as TipoJoin
     if (!tipo.ativo) continue
     if (!tarefaEsperadaNoPeriodo({ mesesVisiveis: tipo.meses_visiveis, vinculoCreatedAt: v.created_at as string }, mes, ano)) continue
-    tiposMap[v.entidade_id as string]?.add(tipo.nome)
+    tiposPorCliente[v.entidade_id as string]?.push(tipo.nome)
   }
 
-  const progressoMap: Record<string, { total: number; concluidas: number }> = {}
-  for (const [id, tipos] of Object.entries(tiposMap)) {
-    progressoMap[id] = { total: tipos.size, concluidas: 0 }
-  }
+  const concluidasPorCliente: Record<string, string[]> = {}
+  for (const id of clienteIds) concluidasPorCliente[id] = []
   for (const t of tarefas) {
-    if (t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)) {
-      progressoMap[t.cliente_id].concluidas++
+    if (t.concluida && tiposPorCliente[t.cliente_id]?.includes(t.tipo)) {
+      concluidasPorCliente[t.cliente_id].push(t.tipo)
     }
   }
-
-  const comPendencia = new Set(
-    Object.entries(progressoMap)
-      .filter(([, p]) => p.concluidas < p.total)
-      .map(([id]) => id)
-  )
 
   const pendenciasVinculo = await buscarPendenciasVinculoPorCliente(
     supabase,
@@ -84,8 +79,9 @@ export default async function ClientesSocietarioPage() {
     <div className="p-8 max-w-7xl mx-auto">
       <ClientesListaSocietario
         clientes={clientes}
-        progressoMap={progressoMap}
-        comPendencia={comPendencia}
+        tiposPorCliente={tiposPorCliente}
+        concluidasPorCliente={concluidasPorCliente}
+        tarefasDisponiveis={tarefasDisponiveis}
         mes={mes}
         ano={ano}
         pendenciasVinculo={pendenciasVinculo}
