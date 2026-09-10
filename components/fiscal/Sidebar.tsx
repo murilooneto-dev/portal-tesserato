@@ -33,15 +33,19 @@ const ICONES_PAGINA: Record<string, LucideIcon> = {
   procedimentos: Building2,
 }
 
+// Configurações não segue o padrão de URL /${setor}/${slug} dos demais —
+// as rotas reais vivem sob /admin/configuracoes/*.
 function itensDoSetor(setor: UserSetor): NavItem[] {
   const paginas = PAGINAS_POR_SETOR[setor]
   if (paginas.length === 0) {
     return [{ href: `/${setor}`, label: 'Em construção', icon: Wrench }]
   }
+  const prefixo = setor === 'configuracoes' ? '/admin/configuracoes' : `/${setor}`
+  const iconePadrao = setor === 'configuracoes' ? SlidersHorizontal : Wrench
   return paginas.map(p => ({
-    href: `/${setor}/${p.slug}`,
+    href: `${prefixo}/${p.slug}`,
     label: p.label,
-    icon: ICONES_PAGINA[p.slug] ?? Wrench,
+    icon: ICONES_PAGINA[p.slug] ?? iconePadrao,
   }))
 }
 
@@ -51,6 +55,7 @@ const ITENS_POR_SETOR: Record<UserSetor, NavItem[]> = {
   pessoal: itensDoSetor('pessoal'),
   societario: itensDoSetor('societario'),
   financeiro: itensDoSetor('financeiro'),
+  configuracoes: itensDoSetor('configuracoes'),
 }
 
 interface Props {

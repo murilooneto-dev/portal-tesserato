@@ -1,9 +1,9 @@
 export type UserRole = 'admin' | 'operador'
-export type UserSetor = 'fiscal' | 'contabil' | 'pessoal' | 'societario' | 'financeiro'
+export type UserSetor = 'fiscal' | 'contabil' | 'pessoal' | 'societario' | 'financeiro' | 'configuracoes'
 export type BotTipo = 'iss' | 'siga' | 'mei'
 export type BotStatus = 'processado' | 'erro'
 
-export const SETORES: UserSetor[] = ['fiscal', 'contabil', 'pessoal', 'societario', 'financeiro']
+export const SETORES: UserSetor[] = ['fiscal', 'contabil', 'pessoal', 'societario', 'financeiro', 'configuracoes']
 
 export const SETOR_LABEL: Record<UserSetor, string> = {
   fiscal: 'Fiscal',
@@ -11,6 +11,7 @@ export const SETOR_LABEL: Record<UserSetor, string> = {
   pessoal: 'Pessoal',
   societario: 'Societário',
   financeiro: 'Financeiro',
+  configuracoes: 'Configurações',
 }
 
 export const SETOR_HOME: Record<UserSetor, string> = {
@@ -19,6 +20,7 @@ export const SETOR_HOME: Record<UserSetor, string> = {
   pessoal: '/pessoal/dashboard',
   societario: '/societario/procedimentos',
   financeiro: '/financeiro/recebimentos',
+  configuracoes: '/admin/configuracoes',
 }
 
 export interface Profile {
