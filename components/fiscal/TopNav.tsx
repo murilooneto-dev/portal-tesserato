@@ -14,7 +14,9 @@ interface Props {
 export default function TopNav({ profile, setorAtivo }: Props) {
   const router = useRouter()
 
-  const setoresVisiveis = profile.role === 'admin' ? SETORES : profile.setores
+  // Configurações não é um espaço de trabalho — fica só como link fixo no
+  // menu lateral (Sidebar), não aparece como aba de setor aqui em cima.
+  const setoresVisiveis = (profile.role === 'admin' ? SETORES : profile.setores).filter(s => s !== 'configuracoes')
 
   async function handleLogout() {
     const supabase = createClient()

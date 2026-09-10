@@ -24,7 +24,19 @@ interface PerfilPermissao {
   paginas_acesso?: string[] | null
 }
 
+// Configurações não segue o padrão de prefixo /${setor} dos demais — a
+// rota real vive sob /admin/configuracoes/*. Casamento explícito antes do
+// genérico, reaproveitando a mesma convenção de 'dashboard' como página
+// índice sempre liberada.
+const PREFIXO_CONFIGURACOES = '/admin/configuracoes'
+
 export function resolveSetorPagina(pathname: string): { setor: UserSetor | null; pagina: string } {
+  if (pathname === PREFIXO_CONFIGURACOES || pathname.startsWith(`${PREFIXO_CONFIGURACOES}/`)) {
+    const resto = pathname.slice(PREFIXO_CONFIGURACOES.length).replace(/^\//, '')
+    const pagina = resto.split('/')[0] || 'dashboard'
+    return { setor: 'configuracoes', pagina }
+  }
+
   const setor = PREFIXOS_SETOR.find(s => pathname.startsWith(`/${s}`)) ?? null
   if (!setor) return { setor: null, pagina: '' }
 

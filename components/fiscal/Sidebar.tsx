@@ -33,15 +33,19 @@ const ICONES_PAGINA: Record<string, LucideIcon> = {
   procedimentos: Building2,
 }
 
+// Configurações não segue o padrão de URL /${setor}/${slug} dos demais —
+// as rotas reais vivem sob /admin/configuracoes/*.
 function itensDoSetor(setor: UserSetor): NavItem[] {
   const paginas = PAGINAS_POR_SETOR[setor]
   if (paginas.length === 0) {
     return [{ href: `/${setor}`, label: 'Em construção', icon: Wrench }]
   }
+  const prefixo = setor === 'configuracoes' ? '/admin/configuracoes' : `/${setor}`
+  const iconePadrao = setor === 'configuracoes' ? SlidersHorizontal : Wrench
   return paginas.map(p => ({
-    href: `/${setor}/${p.slug}`,
+    href: `${prefixo}/${p.slug}`,
     label: p.label,
-    icon: ICONES_PAGINA[p.slug] ?? Wrench,
+    icon: ICONES_PAGINA[p.slug] ?? iconePadrao,
   }))
 }
 
@@ -51,6 +55,7 @@ const ITENS_POR_SETOR: Record<UserSetor, NavItem[]> = {
   pessoal: itensDoSetor('pessoal'),
   societario: itensDoSetor('societario'),
   financeiro: itensDoSetor('financeiro'),
+  configuracoes: itensDoSetor('configuracoes'),
 }
 
 interface Props {
@@ -114,12 +119,16 @@ export default function Sidebar({ profile, mes, ano, setorAtivo }: Props) {
           <NavLink key={item.href} item={item} active={pathname.startsWith(item.href)} />
         ))}
 
-        {profile.role === 'admin' && (
+        {(profile.role === 'admin' || profile.setores.includes('configuracoes')) && (
           <>
             <div className="my-2 border-t border-[var(--fg)]/8" />
             <p className="px-3 text-[var(--fg)]/20 text-[10px] uppercase tracking-wider mb-1">Admin</p>
-            <NavLink item={{ href: '/fiscal/parametros', label: 'Parâmetros', icon: Settings }} active={pathname.startsWith('/fiscal/parametros')} />
-            <NavLink item={{ href: '/vinculos', label: 'Vínculos', icon: Link2 }} active={pathname.startsWith('/vinculos')} />
+            {profile.role === 'admin' && (
+              <>
+                <NavLink item={{ href: '/fiscal/parametros', label: 'Parâmetros', icon: Settings }} active={pathname.startsWith('/fiscal/parametros')} />
+                <NavLink item={{ href: '/vinculos', label: 'Vínculos', icon: Link2 }} active={pathname.startsWith('/vinculos')} />
+              </>
+            )}
             <NavLink item={{ href: '/admin/configuracoes', label: 'Configurações', icon: SlidersHorizontal }} active={pathname.startsWith('/admin/configuracoes')} />
           </>
         )}
