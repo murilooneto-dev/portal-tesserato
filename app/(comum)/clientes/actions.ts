@@ -46,11 +46,17 @@ export async function salvarClienteGeral(
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!user || !supabase) return { error: 'Não autorizado.' }
 
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
+  const { data: callerProfile } = await supabase.from('profiles').select('role, setores, nome').eq('id', user.id).single()
 
-  const { data: usuarioProfile } = await supabase.from('profiles').select('nome').eq('id', user.id).single()
-  const usuarioNome = usuarioProfile?.nome ?? 'Desconhecido'
+  // Criar cliente novo: admin ou usuário do setor Societário (pedido
+  // específico — eles precisam cadastrar cliente aqui na tela geral antes
+  // de vincular ao setor deles). Editar cliente existente continua
+  // exclusivo de admin, igual sempre foi.
+  const podeCriar = callerProfile?.role === 'admin' || (callerProfile?.setores ?? []).includes('societario')
+  const autorizado = clienteId ? callerProfile?.role === 'admin' : podeCriar
+  if (!autorizado) return { error: 'Acesso negado.' }
+
+  const usuarioNome = callerProfile?.nome ?? 'Desconhecido'
 
   const setoresEfetivos = clientePayload.setores
 
