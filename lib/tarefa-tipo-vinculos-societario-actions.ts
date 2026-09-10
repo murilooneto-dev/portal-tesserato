@@ -1,6 +1,7 @@
 'use server'
 
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
+import { podeAcessarPagina } from '@/lib/route-permissions'
 import { revalidatePath } from 'next/cache'
 
 export interface ClienteResumo {
@@ -12,8 +13,8 @@ async function exigirAdmin() {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', supabase: null }
 
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', supabase: null }
+  const { data: callerProfile } = await supabase.from('profiles').select('role, paginas_acesso').eq('id', user.id).single()
+  if (!podeAcessarPagina(callerProfile, 'configuracoes', 'societario')) return { error: 'Acesso negado.', supabase: null }
 
   return { error: null, supabase }
 }
@@ -31,11 +32,24 @@ export async function listarClientesParaVinculo(): Promise<{ data: ClienteResumo
   return { data: (data ?? []) as ClienteResumo[], error: null }
 }
 
+// tarefaTipoId sempre revalidado contra o setor 'societario' — quem tem
+// acesso concedido só a Configurações → Societário (não admin geral) não
+// pode usar esta action pra mexer em vínculos de tarefa_tipos de outro
+// setor, mesmo sabendo o id.
+async function exigirTarefaTipoSocietario(supabase: NonNullable<Awaited<ReturnType<typeof exigirAdmin>>['supabase']>, tarefaTipoId: string): Promise<string | null> {
+  const { data: tarefaTipo } = await supabase.from('tarefa_tipos').select('setor').eq('id', tarefaTipoId).single()
+  if (!tarefaTipo || tarefaTipo.setor !== 'societario') return 'Tipo de tarefa não encontrado.'
+  return null
+}
+
 export async function listarClienteIdsVinculados(
   tarefaTipoId: string,
 ): Promise<{ data: string[]; error: string | null }> {
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { data: [], error }
+
+  const erroSetor = await exigirTarefaTipoSocietario(supabase, tarefaTipoId)
+  if (erroSetor) return { data: [], error: erroSetor }
 
   const { data, error: queryError } = await supabase
     .from('tarefa_tipo_vinculos')
@@ -54,6 +68,9 @@ export async function alternarVinculoCliente(
 ): Promise<{ error: string | null }> {
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { error }
+
+  const erroSetor = await exigirTarefaTipoSocietario(supabase, tarefaTipoId)
+  if (erroSetor) return { error: erroSetor }
 
   if (vincular) {
     // created_at fica com o default now() do insert — é o que garante que
