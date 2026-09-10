@@ -119,12 +119,16 @@ export default function Sidebar({ profile, mes, ano, setorAtivo }: Props) {
           <NavLink key={item.href} item={item} active={pathname.startsWith(item.href)} />
         ))}
 
-        {profile.role === 'admin' && (
+        {(profile.role === 'admin' || profile.setores.includes('configuracoes')) && (
           <>
             <div className="my-2 border-t border-[var(--fg)]/8" />
             <p className="px-3 text-[var(--fg)]/20 text-[10px] uppercase tracking-wider mb-1">Admin</p>
-            <NavLink item={{ href: '/fiscal/parametros', label: 'Parâmetros', icon: Settings }} active={pathname.startsWith('/fiscal/parametros')} />
-            <NavLink item={{ href: '/vinculos', label: 'Vínculos', icon: Link2 }} active={pathname.startsWith('/vinculos')} />
+            {profile.role === 'admin' && (
+              <>
+                <NavLink item={{ href: '/fiscal/parametros', label: 'Parâmetros', icon: Settings }} active={pathname.startsWith('/fiscal/parametros')} />
+                <NavLink item={{ href: '/vinculos', label: 'Vínculos', icon: Link2 }} active={pathname.startsWith('/vinculos')} />
+              </>
+            )}
             <NavLink item={{ href: '/admin/configuracoes', label: 'Configurações', icon: SlidersHorizontal }} active={pathname.startsWith('/admin/configuracoes')} />
           </>
         )}
