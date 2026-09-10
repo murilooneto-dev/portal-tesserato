@@ -1,6 +1,7 @@
 'use server'
 
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
+import { podeAcessarPagina } from '@/lib/route-permissions'
 import { revalidatePath } from 'next/cache'
 import {
   montarProcessoTipos,
@@ -14,12 +15,15 @@ export type { ProcessoTipoResumo } from '@/lib/processo-tipos'
 
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
 
+// Admin ou quem tem acesso concedido a Configurações → Societário
+// (paginas_acesso 'configuracoes:societario') — igual já vale pra abrir a
+// página, ver lib/route-permissions.ts.
 async function exigirAdmin(): Promise<{ error: string | null; supabase: SupabaseAdmin | null }> {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', supabase: null }
 
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', supabase: null }
+  const { data: callerProfile } = await supabase.from('profiles').select('role, paginas_acesso').eq('id', user.id).single()
+  if (!podeAcessarPagina(callerProfile, 'configuracoes', 'societario')) return { error: 'Acesso negado.', supabase: null }
 
   return { error: null, supabase }
 }

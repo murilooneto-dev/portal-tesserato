@@ -1,6 +1,7 @@
 'use server'
 
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
+import { podeAcessarPagina } from '@/lib/route-permissions'
 import { revalidatePath } from 'next/cache'
 import type { UserSetor, TipoResposta } from '@/lib/types'
 
@@ -28,20 +29,32 @@ export interface UsuarioDoSetor {
 
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
 
-async function exigirAdmin(): Promise<{ error: string | null; supabase: SupabaseAdmin | null }> {
+async function autenticar(): Promise<{ error: string | null; supabase: SupabaseAdmin | null; userId: string | null }> {
   const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase || !user) return { error: 'Não autorizado.', supabase: null }
+  if (!supabase || !user) return { error: 'Não autorizado.', supabase: null, userId: null }
+  return { error: null, supabase, userId: user.id }
+}
 
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', supabase: null }
+// Admin ou quem tem acesso concedido a Configurações → <setor> específico
+// (paginas_acesso `configuracoes:${setor}`) — este arquivo é compartilhado
+// entre todos os setores, então o setor do registro sendo alterado precisa
+// ser checado (nunca confiar num setor vindo direto do cliente).
+async function podeConfigurarSetor(supabase: SupabaseAdmin, userId: string, setor: UserSetor): Promise<boolean> {
+  const { data: profile } = await supabase.from('profiles').select('role, paginas_acesso').eq('id', userId).single()
+  return podeAcessarPagina(profile, 'configuracoes', setor)
+}
 
+async function exigirAcesso(setor: UserSetor): Promise<{ error: string | null; supabase: SupabaseAdmin | null }> {
+  const { error, supabase, userId } = await autenticar()
+  if (error || !supabase || !userId) return { error, supabase: null }
+  if (!(await podeConfigurarSetor(supabase, userId, setor))) return { error: 'Acesso negado.', supabase: null }
   return { error: null, supabase }
 }
 
 export async function listarTarefaTiposDoSetor(
   setor: UserSetor,
 ): Promise<{ data: TarefaTipoResumo[]; error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
+  const { error, supabase } = await exigirAcesso(setor)
   if (error || !supabase) return { data: [], error }
 
   const { data, error: queryError } = await supabase
@@ -68,7 +81,7 @@ export async function listarTarefaTiposDoSetor(
 export async function listarUsuariosDoSetor(
   setor: UserSetor,
 ): Promise<{ data: UsuarioDoSetor[]; error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
+  const { error, supabase } = await exigirAcesso(setor)
   if (error || !supabase) return { data: [], error }
 
   const { data, error: queryError } = await supabase
@@ -85,8 +98,13 @@ export async function atualizarResponsavelTarefaTipo(
   id: string,
   responsavelId: string | null,
 ): Promise<{ error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { error }
+  const { error, supabase, userId } = await autenticar()
+  if (error || !supabase || !userId) return { error }
+
+  const { data: tarefaTipo, error: tarefaTipoError } = await supabase
+    .from('tarefa_tipos').select('setor').eq('id', id).single()
+  if (tarefaTipoError || !tarefaTipo) return { error: tarefaTipoError?.message ?? 'Tipo de tarefa não encontrado.' }
+  if (!(await podeConfigurarSetor(supabase, userId, tarefaTipo.setor as UserSetor))) return { error: 'Acesso negado.' }
 
   const { error: updateError } = await supabase
     .from('tarefa_tipos').update({ responsavel_id: responsavelId }).eq('id', id)
@@ -108,8 +126,13 @@ export async function atualizarFormatoTarefaTipo(
   etapas: string[] | null,
   mesesVisiveis: number[] | null = null,
 ): Promise<{ error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { error }
+  const { error, supabase, userId } = await autenticar()
+  if (error || !supabase || !userId) return { error }
+
+  const { data: tarefaTipo, error: tarefaTipoError } = await supabase
+    .from('tarefa_tipos').select('setor').eq('id', id).single()
+  if (tarefaTipoError || !tarefaTipo) return { error: tarefaTipoError?.message ?? 'Tipo de tarefa não encontrado.' }
+  if (!(await podeConfigurarSetor(supabase, userId, tarefaTipo.setor as UserSetor))) return { error: 'Acesso negado.' }
 
   const { error: updateError } = await supabase
     .from('tarefa_tipos').update({ tipo_resposta: tipoResposta, etapas, meses_visiveis: mesesVisiveis }).eq('id', id)
@@ -120,8 +143,13 @@ export async function atualizarFormatoTarefaTipo(
 }
 
 export async function alternarAtivoTarefaTipo(id: string, ativo: boolean): Promise<{ error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { error }
+  const { error, supabase, userId } = await autenticar()
+  if (error || !supabase || !userId) return { error }
+
+  const { data: tarefaTipo, error: tarefaTipoError } = await supabase
+    .from('tarefa_tipos').select('setor').eq('id', id).single()
+  if (tarefaTipoError || !tarefaTipo) return { error: tarefaTipoError?.message ?? 'Tipo de tarefa não encontrado.' }
+  if (!(await podeConfigurarSetor(supabase, userId, tarefaTipo.setor as UserSetor))) return { error: 'Acesso negado.' }
 
   const { error: updateError } = await supabase.from('tarefa_tipos').update({ ativo }).eq('id', id)
   if (updateError) return { error: updateError.message }
@@ -131,8 +159,13 @@ export async function alternarAtivoTarefaTipo(id: string, ativo: boolean): Promi
 }
 
 export async function excluirTarefaTipo(id: string): Promise<{ error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { error }
+  const { error, supabase, userId } = await autenticar()
+  if (error || !supabase || !userId) return { error }
+
+  const { data: tarefaTipo, error: tarefaTipoError } = await supabase
+    .from('tarefa_tipos').select('setor').eq('id', id).single()
+  if (tarefaTipoError || !tarefaTipo) return { error: tarefaTipoError?.message ?? 'Tipo de tarefa não encontrado.' }
+  if (!(await podeConfigurarSetor(supabase, userId, tarefaTipo.setor as UserSetor))) return { error: 'Acesso negado.' }
 
   // tarefa_tipo_vinculos.tarefa_tipo_id tem on delete cascade (migration
   // 025) — excluir aqui já remove os vínculos dessa tarefa junto.
@@ -147,8 +180,14 @@ export async function listarTarefaTipoIdsVinculados(
   entidadeTipo: TipoEntidadeVinculo,
   entidadeId: string,
 ): Promise<{ data: string[]; error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { data: [], error }
+  const { error, supabase, userId } = await autenticar()
+  if (error || !supabase || !userId) return { data: [], error }
+
+  const tabelaEntidade = TABELA_POR_TIPO[entidadeTipo]
+  const { data: entidade, error: entidadeError } = await supabase
+    .from(tabelaEntidade).select('setor').eq('id', entidadeId).single()
+  if (entidadeError || !entidade) return { data: [], error: entidadeError?.message ?? 'Entidade não encontrada.' }
+  if (!(await podeConfigurarSetor(supabase, userId, entidade.setor as UserSetor))) return { data: [], error: 'Acesso negado.' }
 
   const { data, error: queryError } = await supabase
     .from('tarefa_tipo_vinculos')
@@ -166,21 +205,23 @@ export async function alternarVinculo(
   entidadeId: string,
   vincular: boolean,
 ): Promise<{ error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { error }
+  const { error, supabase, userId } = await autenticar()
+  if (error || !supabase || !userId) return { error }
+
+  // Um feature futura (fora deste branch) lê esses vínculos pra gerar
+  // tarefas de cliente — um vínculo órfão ou cruzando setor geraria dado
+  // errado silenciosamente lá. Validamos aqui, na origem, que a entidade
+  // existe na tabela certa e que seu setor bate com o do tarefa_tipo — e
+  // reaproveitamos esse mesmo setor pra checar a permissão de quem chamou.
+  const { data: tarefaTipo, error: tarefaTipoError } = await supabase
+    .from('tarefa_tipos')
+    .select('setor')
+    .eq('id', tarefaTipoId)
+    .single()
+  if (tarefaTipoError || !tarefaTipo) return { error: 'Tipo de tarefa não encontrado.' }
+  if (!(await podeConfigurarSetor(supabase, userId, tarefaTipo.setor as UserSetor))) return { error: 'Acesso negado.' }
 
   if (vincular) {
-    // Um feature futura (fora deste branch) lê esses vínculos pra gerar
-    // tarefas de cliente — um vínculo órfão ou cruzando setor geraria dado
-    // errado silenciosamente lá. Validamos aqui, na origem, que a entidade
-    // existe na tabela certa e que seu setor bate com o do tarefa_tipo.
-    const { data: tarefaTipo, error: tarefaTipoError } = await supabase
-      .from('tarefa_tipos')
-      .select('setor')
-      .eq('id', tarefaTipoId)
-      .single()
-    if (tarefaTipoError || !tarefaTipo) return { error: 'Tipo de tarefa não encontrado.' }
-
     const tabelaEntidade = TABELA_POR_TIPO[entidadeTipo]
     const { data: entidade, error: entidadeError } = await supabase
       .from(tabelaEntidade)
@@ -222,8 +263,13 @@ export interface VinculoAtividadeRegime {
 export async function listarVinculosAtividadeComRegime(
   atividadeId: string,
 ): Promise<{ data: VinculoAtividadeRegime[]; error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { data: [], error }
+  const { error, supabase, userId } = await autenticar()
+  if (error || !supabase || !userId) return { data: [], error }
+
+  const { data: atividade, error: atividadeError } = await supabase
+    .from('atividades').select('setor').eq('id', atividadeId).single()
+  if (atividadeError || !atividade) return { data: [], error: atividadeError?.message ?? 'Atividade não encontrada.' }
+  if (!(await podeConfigurarSetor(supabase, userId, atividade.setor as UserSetor))) return { data: [], error: 'Acesso negado.' }
 
   const { data, error: queryError } = await supabase
     .from('tarefa_tipo_vinculos')
@@ -251,8 +297,17 @@ export async function definirVinculoAtividadeRegime(
   regimeId: string | null,
   vincular: boolean,
 ): Promise<{ error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { error }
+  const { error, supabase, userId } = await autenticar()
+  if (error || !supabase || !userId) return { error }
+
+  // Mesma validação de setor de alternarVinculo — a entidade (e o regime,
+  // quando escolhido) precisam pertencer ao mesmo setor do tipo de tarefa,
+  // senão o vínculo geraria dado errado silenciosamente no cálculo de
+  // tarefas esperadas. Reaproveitado também pra checar a permissão.
+  const { data: tarefaTipo, error: tarefaTipoError } = await supabase
+    .from('tarefa_tipos').select('setor').eq('id', tarefaTipoId).single()
+  if (tarefaTipoError || !tarefaTipo) return { error: 'Tipo de tarefa não encontrado.' }
+  if (!(await podeConfigurarSetor(supabase, userId, tarefaTipo.setor as UserSetor))) return { error: 'Acesso negado.' }
 
   const { error: deleteError } = await supabase
     .from('tarefa_tipo_vinculos')
@@ -263,14 +318,6 @@ export async function definirVinculoAtividadeRegime(
   if (deleteError) return { error: deleteError.message }
 
   if (vincular) {
-    // Mesma validação de setor de alternarVinculo — a entidade (e o
-    // regime, quando escolhido) precisam pertencer ao mesmo setor do tipo
-    // de tarefa, senão o vínculo geraria dado errado silenciosamente no
-    // cálculo de tarefas esperadas.
-    const { data: tarefaTipo, error: tarefaTipoError } = await supabase
-      .from('tarefa_tipos').select('setor').eq('id', tarefaTipoId).single()
-    if (tarefaTipoError || !tarefaTipo) return { error: 'Tipo de tarefa não encontrado.' }
-
     const { data: atividade, error: atividadeError } = await supabase
       .from('atividades').select('setor').eq('id', atividadeId).single()
     if (atividadeError || !atividade) return { error: 'Atividade não encontrada.' }
