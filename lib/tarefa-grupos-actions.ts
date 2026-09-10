@@ -8,10 +8,12 @@ const PODE_EDITAR_POR_SETOR: Record<UserSetor, (clienteId: string) => Promise<bo
   fiscal: podeEditarCliente,
   contabil: podeEditarClienteContabil,
   pessoal: podeEditarClientePessoal,
-  // Societário e Financeiro ainda não têm agrupamento de tarefas — cai no
-  // mesmo bloqueio de "sem permissão" se algum dia chegar aqui por engano.
+  // Societário, Financeiro e Configurações não têm agrupamento de tarefas
+  // por cliente — cai no mesmo bloqueio de "sem permissão" se algum dia
+  // chegar aqui por engano.
   societario: async () => false,
   financeiro: async () => false,
+  configuracoes: async () => false,
 }
 
 function revalidarFichaCliente(setor: UserSetor, clienteId: string) {
