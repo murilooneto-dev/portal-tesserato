@@ -8,12 +8,13 @@ import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 interface Props {
   clientes: Cliente[]
   isAdmin: boolean
+  podeCriar: boolean
   responsaveis: string[]
   vinculosCatalogo: TarefaVinculo[]
   catalogoFiscal: CatalogoCliente
 }
 
-export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, vinculosCatalogo, catalogoFiscal }: Props) {
+export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, responsaveis, vinculosCatalogo, catalogoFiscal }: Props) {
   const [busca, setBusca] = useState('')
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
   const [clienteAbertoId, setClienteAbertoId] = useState<string | null>(null)
@@ -28,7 +29,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, responsaveis, vi
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[var(--fg)]">Clientes</h1>
-        {isAdmin && (
+        {podeCriar && (
           <button
             onClick={() => setModalNovoOpen(true)}
             className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
