@@ -1,6 +1,7 @@
 'use server'
 
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
+import { podeAcessarPagina } from '@/lib/route-permissions'
 import { revalidatePath } from 'next/cache'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 
@@ -17,8 +18,8 @@ async function exigirAdmin(): Promise<{ error: string | null; supabase: Supabase
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.', supabase: null }
 
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', supabase: null }
+  const { data: callerProfile } = await supabase.from('profiles').select('role, paginas_acesso').eq('id', user.id).single()
+  if (!podeAcessarPagina(callerProfile, 'configuracoes', 'societario')) return { error: 'Acesso negado.', supabase: null }
 
   return { error: null, supabase }
 }
