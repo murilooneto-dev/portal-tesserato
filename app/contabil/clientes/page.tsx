@@ -50,7 +50,7 @@ export default async function ClientesContabilPage() {
   )
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8">
       <ClientesListaContabil
         clientes={clientes}
         progressoAnualMap={progressoAnualMap}

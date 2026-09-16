@@ -132,11 +132,11 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-[var(--fg)]/5 text-[var(--fg)]/40 text-xs uppercase tracking-wide">
-                <th className="px-4 py-2.5 text-left font-semibold sticky left-0 bg-[var(--bg)] z-10">Cliente</th>
-                <th className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Regime</th>
-                <th className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Responsável</th>
+                <th className="px-3 py-2.5 text-left font-semibold sticky left-0 bg-[var(--bg)] z-10">Cliente</th>
+                <th className="px-2 py-2.5 text-left font-semibold whitespace-nowrap">Regime</th>
+                <th className="px-2 py-2.5 text-left font-semibold whitespace-nowrap">Responsável</th>
                 {MESES.map((m, i) => (
-                  <th key={m} className={`px-2 py-2.5 text-center font-semibold whitespace-nowrap ${i + 1 === mes ? 'text-[var(--accent)]' : ''}`}>
+                  <th key={m} className={`px-1 py-2.5 text-center font-semibold whitespace-nowrap ${i + 1 === mes ? 'text-[var(--accent)]' : ''}`}>
                     {m}
                   </th>
                 ))}
@@ -150,8 +150,8 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
 
                 return (
                   <tr key={cliente.id} className="border-t border-[var(--fg)]/6 hover:bg-[var(--fg)]/3 transition-colors group">
-                    <td className="px-4 py-2.5 sticky left-0 bg-[var(--bg)] group-hover:bg-[var(--fg)]/3">
-                      <Link href={`/contabil/clientes/${cliente.id}`} className="flex items-center gap-2 min-w-[220px]">
+                    <td className="px-3 py-2.5 sticky left-0 bg-[var(--bg)] group-hover:bg-[var(--fg)]/3">
+                      <Link href={`/contabil/clientes/${cliente.id}`} className="flex items-center gap-2 min-w-[170px] max-w-[220px]">
                         {cliente.prioridade && cliente.prioridade > 0 ? (
                           <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400">P{cliente.prioridade}</span>
                         ) : null}
@@ -201,18 +201,18 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
                       const destacado = mesNum === mes
 
                       return (
-                        <td key={mesNum} className={`px-1.5 py-1.5 text-center ${destacado ? 'bg-[var(--accent)]/5' : ''}`}>
+                        <td key={mesNum} className={`px-0.5 py-1.5 text-center ${destacado ? 'bg-[var(--accent)]/5' : ''}`}>
                           {total > 0 ? (
                             <Link
                               href={`/contabil/clientes/${cliente.id}?mes=${mesNum}&ano=${ano}`}
-                              className="inline-flex flex-col items-center justify-center min-w-[46px] px-1.5 py-1 rounded-lg font-bold text-[11px] transition-transform hover:scale-105"
+                              className="inline-flex flex-col items-center justify-center min-w-[38px] px-1 py-1 rounded-lg font-bold text-[11px] transition-transform hover:scale-105"
                               style={{ backgroundColor: cor.bg, color: cor.fg }}
                               title={`${concluidas}/${total} concluídas`}
                             >
                               {pct}%
                             </Link>
                           ) : (
-                            <span className="inline-block min-w-[46px] px-1.5 py-1 text-[var(--fg)]/15 text-[11px]">—</span>
+                            <span className="inline-block min-w-[38px] px-1 py-1 text-[var(--fg)]/15 text-[11px]">—</span>
                           )}
                         </td>
                       )
