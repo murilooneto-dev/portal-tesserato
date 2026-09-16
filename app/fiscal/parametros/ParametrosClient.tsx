@@ -73,16 +73,9 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
   const [rotina2Ativo, setRotina2Ativo] = useState(emailSettings.rotina2_ativo === 'true')
   const [rotina2Dia, setRotina2Dia] = useState(emailSettings.rotina2_dia ?? '')
   const [rotina2Hora, setRotina2Hora] = useState(emailSettings.rotina2_hora ?? '')
-  const [logSlots, setLogSlots] = useState<{ ativo: boolean; dia: string; hora: string }[]>([
-    { ativo: emailSettings.log1_ativo === 'true', dia: emailSettings.log1_dia ?? '', hora: emailSettings.log1_hora ?? '' },
-    { ativo: emailSettings.log2_ativo === 'true', dia: emailSettings.log2_dia ?? '', hora: emailSettings.log2_hora ?? '' },
-    { ativo: emailSettings.log3_ativo === 'true', dia: emailSettings.log3_dia ?? '', hora: emailSettings.log3_hora ?? '' },
-    { ativo: emailSettings.log4_ativo === 'true', dia: emailSettings.log4_dia ?? '', hora: emailSettings.log4_hora ?? '' },
-  ])
   const [savingEmail, setSavingEmail] = useState(false)
   const [emailMsg, setEmailMsg] = useState('')
   const [enviandoRelatorio, setEnviandoRelatorio] = useState(false)
-  const [enviandoLogTeste, setEnviandoLogTeste] = useState(false)
 
   // Usuários
   const [editingProfile, setEditingProfile] = useState<string | null>(null)
@@ -191,10 +184,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
       rotina2_ativo: String(rotina2Ativo),
       rotina2_dia: rotina2Dia,
       rotina2_hora: rotina2Hora,
-      log1_ativo: String(logSlots[0].ativo), log1_dia: logSlots[0].dia, log1_hora: logSlots[0].hora,
-      log2_ativo: String(logSlots[1].ativo), log2_dia: logSlots[1].dia, log2_hora: logSlots[1].hora,
-      log3_ativo: String(logSlots[2].ativo), log3_dia: logSlots[2].dia, log3_hora: logSlots[2].hora,
-      log4_ativo: String(logSlots[3].ativo), log4_dia: logSlots[3].dia, log4_hora: logSlots[3].hora,
     })
     setSavingEmail(false)
     setEmailMsg(result.error ? `Erro: ${result.error}` : 'Configuração salva!')
@@ -210,28 +199,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
       ? `${data.enviados} relatório(s) enviado(s): ${data.responsaveis.join(', ')}`
       : `Erro: ${data.error ?? 'falha ao enviar'}`)
     setTimeout(() => setEmailMsg(''), 5000)
-  }
-
-  async function handleTestarLog() {
-    if (!emailDest.trim()) {
-      setEmailMsg('Erro: preencha o e-mail destinatário antes de testar.')
-      setTimeout(() => setEmailMsg(''), 3000)
-      return
-    }
-    setEnviandoLogTeste(true)
-    const res = await fetch('/api/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        para: emailDest,
-        assunto: 'Teste — Log de Rotinas (Tesserato Fiscal)',
-        corpo: 'Este é um e-mail de teste da rotina de envio de log do Portal Tesserato.',
-      }),
-    })
-    const data = await res.json()
-    setEnviandoLogTeste(false)
-    setEmailMsg(res.ok ? 'Log de teste enviado!' : `Erro: ${data.error ?? 'falha ao enviar'}`)
-    setTimeout(() => setEmailMsg(''), 3000)
   }
 
   async function handleCriarUsuario() {
@@ -386,25 +353,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
             ))}
           </div>
 
-          {/* Rotinas Log */}
-          <p className="text-xs font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-3">Rotinas Log</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            {logSlots.map((slot, i) => (
-              <div key={i} className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-xl p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[var(--fg)] text-xs font-semibold">ENVIO {i + 1}</span>
-                  <Toggle on={slot.ativo} onChange={v => setLogSlots(prev => prev.map((s, j) => j === i ? { ...s, ativo: v } : s))} />
-                </div>
-                <input type="number" min="1" max="31" value={slot.dia}
-                  onChange={e => setLogSlots(prev => prev.map((s, j) => j === i ? { ...s, dia: e.target.value } : s))}
-                  placeholder="Dia" className={`${inputCls} mb-2`} />
-                <input type="time" value={slot.hora}
-                  onChange={e => setLogSlots(prev => prev.map((s, j) => j === i ? { ...s, hora: e.target.value } : s))}
-                  className={inputCls} />
-              </div>
-            ))}
-          </div>
-
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={handleSaveEmail} disabled={savingEmail}
               className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
@@ -413,10 +361,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
             <button onClick={handleEnviarRelatorios} disabled={enviandoRelatorio}
               className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm hover:bg-[var(--fg)]/10 transition-colors disabled:opacity-50">
               {enviandoRelatorio ? 'Enviando...' : 'Enviar relatórios agora'}
-            </button>
-            <button onClick={handleTestarLog} disabled={enviandoLogTeste}
-              className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 text-sm hover:bg-[var(--fg)]/10 transition-colors disabled:opacity-50">
-              {enviandoLogTeste ? 'Enviando...' : 'Enviar log agora (teste)'}
             </button>
             {emailMsg && (
               <span className={emailMsg.startsWith('Erro') ? 'text-red-400 text-sm' : 'text-green-400 text-sm'}>{emailMsg}</span>
