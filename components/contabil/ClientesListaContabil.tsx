@@ -151,30 +151,34 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
                 return (
                   <tr key={cliente.id} className="border-t border-[var(--fg)]/6 hover:bg-[var(--fg)]/3 transition-colors group">
                     <td className="px-3 py-2.5 sticky left-0 bg-[var(--bg)] group-hover:bg-[var(--fg)]/3">
-                      <Link href={`/contabil/clientes/${cliente.id}`} className="flex items-center gap-2 min-w-[170px] max-w-[220px]">
+                      <Link href={`/contabil/clientes/${cliente.id}`} className="flex items-start gap-2 min-w-[170px] max-w-[260px]">
                         {cliente.prioridade && cliente.prioridade > 0 ? (
-                          <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400">P{cliente.prioridade}</span>
+                          <span className="shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400">P{cliente.prioridade}</span>
                         ) : null}
                         <span className="min-w-0">
-                          <span className="block text-[var(--fg)] font-semibold truncate hover:underline">
-                            {cliente.nome}
-                            {temObs && <span className="ml-1.5 text-amber-400 font-bold">!</span>}
-                            {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
-                              const badge = formatarBadgeVinculo(p)
-                              return (
-                                <span key={i} className={`ml-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
-                                  {badge.texto}
-                                </span>
-                              )
-                            })}
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-[var(--fg)] font-semibold truncate hover:underline">{cliente.nome}</span>
+                            {temObs && <span className="shrink-0 text-amber-400 font-bold">!</span>}
+                            {cliente.ativo === false && (
+                              <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
+                                Desabilitado
+                              </span>
+                            )}
                           </span>
                           <span className="block text-[var(--fg)]/25 text-xs">{cliente.cnpj ?? '—'}</span>
+                          {(pendenciasVinculo[cliente.id] ?? []).length > 0 && (
+                            <span className="flex flex-wrap gap-1 mt-1">
+                              {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
+                                const badge = formatarBadgeVinculo(p)
+                                return (
+                                  <span key={i} className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
+                                    {badge.texto}
+                                  </span>
+                                )
+                              })}
+                            </span>
+                          )}
                         </span>
-                        {cliente.ativo === false && (
-                          <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
-                            Desabilitado
-                          </span>
-                        )}
                       </Link>
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
