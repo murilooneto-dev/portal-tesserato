@@ -9,9 +9,10 @@ import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calenda
 import TarefaChecklistContabil from '@/components/contabil/TarefaChecklistContabil'
 import ClienteContabilAcoes from '@/components/contabil/ClienteContabilAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
-import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
-import { toggleTarefaContabil, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsContabil, marcarSemMovimento } from '../actions'
+import ClienteNotas from '@/components/geral/ClienteNotas'
+import { toggleTarefaContabil, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, adicionarNotaCliente, editarNotaCliente, excluirNotaCliente, marcarSemMovimento } from '../actions'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
+import { buscarNotasCliente } from '@/lib/cliente-notas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento, TarefaGrupo } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
@@ -57,6 +58,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
   }
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'contabil', mes, ano)
+  const notas = await buscarNotasCliente(supabase, id, 'contabil')
 
   const vinculos = await buscarVinculosDoCliente(
     supabase, id, cliente.tarefas_vinculadas_ativas ?? [], 'contabil', mes, ano
@@ -169,7 +171,7 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
 
       <EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} />
 
-      <ClienteObsSimples clienteId={id} obsInicial={cliente.obs ?? ''} podeEditar={podeEditar} salvarObs={salvarObsContabil} />
+      <ClienteNotas clienteId={id} setor="contabil" notas={notas} podeEditar={podeEditar} adicionarNota={adicionarNotaCliente} editarNota={editarNotaCliente} excluirNota={excluirNotaCliente} />
 
       <HistoricoResponsavel clienteId={id} setor="contabil" />
     </div>
