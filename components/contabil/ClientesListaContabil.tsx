@@ -28,7 +28,7 @@ const CORES_REGIME: Record<string, string> = {
 
 interface Props {
   clientes: ClienteComContabil[]
-  progressoMap: Record<string, { total: number; concluidas: number }>
+  progressoAnualMap: Record<string, { total: number; concluidasPorMes: Record<number, number> }>
   mes: number
   ano: number
   tarefasPadrao: string[]
@@ -38,7 +38,13 @@ interface Props {
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-export default function ClientesListaContabil({ clientes, progressoMap, mes, ano, tarefasPadrao, catalogo, pendenciasVinculo }: Props) {
+function corPct(pct: number): { bg: string; fg: string } {
+  if (pct === 100) return { bg: '#10b98120', fg: '#10b981' }
+  if (pct > 0) return { bg: '#f59e0b20', fg: '#f59e0b' }
+  return { bg: '#ef444415', fg: '#ef4444' }
+}
+
+export default function ClientesListaContabil({ clientes, progressoAnualMap, mes, ano, tarefasPadrao, catalogo, pendenciasVinculo }: Props) {
   const [busca, setBusca] = useFiltroPersistente('clientes-contabil:busca', '')
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes-contabil:responsavel', 'TODOS')
   const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientes-contabil:regime', 'TODOS')
@@ -116,93 +122,108 @@ export default function ClientesListaContabil({ clientes, progressoMap, mes, ano
       )}
 
       <p className="text-[var(--fg)]/30 text-xs mb-3">
-        {filtrados.length} clientes · {MESES[mes - 1]}/{ano}
+        {filtrados.length} clientes · {ano}
       </p>
 
-      <div className="flex flex-col gap-1.5">
-        {filtrados.length === 0 && (
-          <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
-        )}
-
-        {filtrados.map(cliente => {
-          const prog = progressoMap[cliente.id]
-          const total = prog?.total ?? 0
-          const concluidas = prog?.concluidas ?? 0
-          const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
-          const temObs = !!(cliente.obs?.trim())
-
-          return (
-            <Link
-              key={cliente.id}
-              href={`/contabil/clientes/${cliente.id}`}
-              className="flex items-center gap-4 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 hover:border-[var(--fg)]/15 transition-all group"
-            >
-              {cliente.prioridade && cliente.prioridade > 0 ? (
-                <div className="w-7 h-7 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0">
-                  <span className="text-red-400 text-[10px] font-bold">P{cliente.prioridade}</span>
-                </div>
-              ) : (
-                <div className="w-7 h-7 shrink-0" />
-              )}
-
-              <div className="flex-1 min-w-0">
-                <p className="text-[var(--fg)] text-sm font-semibold truncate">
-                  {cliente.nome}
-                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
-                    const badge = formatarBadgeVinculo(p)
-                    return (
-                      <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
-                        {badge.texto}
-                      </span>
-                    )
-                  })}
-                </p>
-                <p className="text-[var(--fg)]/25 text-xs mt-0.5">{cliente.cnpj ?? '—'}</p>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                {cliente.regime && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                    style={{ backgroundColor: (CORES_REGIME[cliente.regime] ?? '#6b7280') + '25', color: CORES_REGIME[cliente.regime] ?? '#6b7280', border: `1px solid ${CORES_REGIME[cliente.regime] ?? '#6b7280'}50` }}>
-                    {labelRegime(cliente.regime)}
-                  </span>
-                )}
-                {(cliente.atividade ?? []).map(a => (
-                  <span key={a} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-                    {a}
-                  </span>
+      {filtrados.length === 0 ? (
+        <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-[var(--fg)]/8">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-[var(--fg)]/5 text-[var(--fg)]/40 text-xs uppercase tracking-wide">
+                <th className="px-4 py-2.5 text-left font-semibold sticky left-0 bg-[var(--bg)] z-10">Cliente</th>
+                <th className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Regime</th>
+                <th className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Responsável</th>
+                {MESES.map((m, i) => (
+                  <th key={m} className={`px-2 py-2.5 text-center font-semibold whitespace-nowrap ${i + 1 === mes ? 'text-[var(--accent)]' : ''}`}>
+                    {m}
+                  </th>
                 ))}
-                {cliente.responsavel && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                    style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
-                    {cliente.responsavel}
-                  </span>
-                )}
-                {cliente.ativo === false && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
-                    Desabilitado
-                  </span>
-                )}
-              </div>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrados.map(cliente => {
+                const prog = progressoAnualMap[cliente.id]
+                const total = prog?.total ?? 0
+                const temObs = !!(cliente.obs?.trim())
 
-              {total > 0 && (
-                <div className="w-20 shrink-0 text-right">
-                  <p className={`text-sm font-bold ${pct === 100 ? 'text-[#10b981]' : 'text-[var(--fg)]'}`}>{pct}%</p>
-                  <div className="w-full h-1 bg-[var(--fg)]/10 rounded-full mt-1">
-                    <div className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : 'var(--accent)' }} />
-                  </div>
-                  <p className="text-[var(--fg)]/25 text-[10px] mt-0.5">{concluidas}/{total}</p>
-                </div>
-              )}
+                return (
+                  <tr key={cliente.id} className="border-t border-[var(--fg)]/6 hover:bg-[var(--fg)]/3 transition-colors group">
+                    <td className="px-4 py-2.5 sticky left-0 bg-[var(--bg)] group-hover:bg-[var(--fg)]/3">
+                      <Link href={`/contabil/clientes/${cliente.id}`} className="flex items-center gap-2 min-w-[220px]">
+                        {cliente.prioridade && cliente.prioridade > 0 ? (
+                          <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400">P{cliente.prioridade}</span>
+                        ) : null}
+                        <span className="min-w-0">
+                          <span className="block text-[var(--fg)] font-semibold truncate hover:underline">
+                            {cliente.nome}
+                            {temObs && <span className="ml-1.5 text-amber-400 font-bold">!</span>}
+                            {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
+                              const badge = formatarBadgeVinculo(p)
+                              return (
+                                <span key={i} className={`ml-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
+                                  {badge.texto}
+                                </span>
+                              )
+                            })}
+                          </span>
+                          <span className="block text-[var(--fg)]/25 text-xs">{cliente.cnpj ?? '—'}</span>
+                        </span>
+                        {cliente.ativo === false && (
+                          <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
+                            Desabilitado
+                          </span>
+                        )}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {cliente.regime && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                          style={{ backgroundColor: (CORES_REGIME[cliente.regime] ?? '#6b7280') + '25', color: CORES_REGIME[cliente.regime] ?? '#6b7280', border: `1px solid ${CORES_REGIME[cliente.regime] ?? '#6b7280'}50` }}>
+                          {labelRegime(cliente.regime)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {cliente.responsavel && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                          style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
+                          {cliente.responsavel}
+                        </span>
+                      )}
+                    </td>
+                    {MESES.map((_, i) => {
+                      const mesNum = i + 1
+                      const concluidas = prog?.concluidasPorMes[mesNum] ?? 0
+                      const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
+                      const cor = corPct(pct)
+                      const destacado = mesNum === mes
 
-              <div className="w-4 shrink-0 text-center">
-                {temObs && <span className="text-amber-400 text-sm font-bold">!</span>}
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+                      return (
+                        <td key={mesNum} className={`px-1.5 py-1.5 text-center ${destacado ? 'bg-[var(--accent)]/5' : ''}`}>
+                          {total > 0 ? (
+                            <Link
+                              href={`/contabil/clientes/${cliente.id}?mes=${mesNum}&ano=${ano}`}
+                              className="inline-flex flex-col items-center justify-center min-w-[46px] px-1.5 py-1 rounded-lg font-bold text-[11px] transition-transform hover:scale-105"
+                              style={{ backgroundColor: cor.bg, color: cor.fg }}
+                              title={`${concluidas}/${total} concluídas`}
+                            >
+                              {pct}%
+                            </Link>
+                          ) : (
+                            <span className="inline-block min-w-[46px] px-1.5 py-1 text-[var(--fg)]/15 text-[11px]">—</span>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
