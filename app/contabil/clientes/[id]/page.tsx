@@ -19,12 +19,16 @@ import { labelRegime } from '@/lib/atividades-regimes'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import HistoricoResponsavel from '@/components/HistoricoResponsavel'
 
+const MESES_LABEL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
 interface Props {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ mes?: string; ano?: string }>
 }
 
-export default async function ClienteContabilDetalhePage({ params }: Props) {
+export default async function ClienteContabilDetalhePage({ params, searchParams }: Props) {
   const { id } = await params
+  const sp = await searchParams
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,7 +42,12 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
 
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
-  const { mes, ano } = await getMesAno()
+  const mesParam = Number(sp.mes)
+  const anoParam = Number(sp.ano)
+  const override = mesParam >= 1 && mesParam <= 12 && anoParam > 2000 && anoParam < 3000
+    ? { mes: mesParam, ano: anoParam }
+    : null
+  const { mes, ano } = override ?? await getMesAno()
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
@@ -135,6 +144,13 @@ export default async function ClienteContabilDetalhePage({ params }: Props) {
                   {cliente.municipio && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
                   {cliente.ativo === false && <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-semibold">Desabilitado</span>}
                 </div>
+                {override && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1 rounded-full">
+                      Visualizando {MESES_LABEL[override.mes - 1]}/{override.ano}
+                    </span>
+                  </div>
+                )}
                 {labelsParcelamento.length > 0 && (
                   <div className="mt-2">
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 bg-red-500/15 px-3 py-1 rounded-full">
