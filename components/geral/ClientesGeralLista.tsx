@@ -42,6 +42,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, respo
   const [clienteAbertoId, setClienteAbertoId] = useState<string | null>(null)
   const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientesGeral:regime', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('clientesGeral:atividade', [])
+  const [ordenacao, setOrdenacao] = useState<{ campo: 'nome' | 'regime'; direcao: 'asc' | 'desc' } | null>(null)
 
   function toggleAtividade(nome: string) {
     setFiltroAtividade(
@@ -49,15 +50,41 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, respo
     )
   }
 
-  const filtrados = useMemo(() => clientes.filter(c => {
-    if (busca) {
-      const q = busca.toLowerCase()
-      if (!c.nome.toLowerCase().includes(q) && !(c.cnpj ?? '').includes(q)) return false
-    }
-    if (filtroRegime !== 'TODOS' && c.clientes_fiscal?.regime !== filtroRegime) return false
-    if (filtroAtividade.length > 0 && !filtroAtividade.some(a => (c.clientes_fiscal?.atividade ?? []).includes(a))) return false
-    return true
-  }), [clientes, busca, filtroRegime, filtroAtividade])
+  function toggleOrdenacao(campo: 'nome' | 'regime') {
+    setOrdenacao(atual => {
+      if (atual?.campo !== campo) return { campo, direcao: 'asc' }
+      if (atual.direcao === 'asc') return { campo, direcao: 'desc' }
+      return null
+    })
+  }
+
+  const filtrados = useMemo(() => {
+    const lista = clientes.filter(c => {
+      if (busca) {
+        const q = busca.toLowerCase()
+        if (!c.nome.toLowerCase().includes(q) && !(c.cnpj ?? '').includes(q)) return false
+      }
+      if (filtroRegime !== 'TODOS' && c.clientes_fiscal?.regime !== filtroRegime) return false
+      if (filtroAtividade.length > 0 && !filtroAtividade.some(a => (c.clientes_fiscal?.atividade ?? []).includes(a))) return false
+      return true
+    })
+
+    if (!ordenacao) return lista
+
+    const valor = (c: ClienteComDadosFiscais) => ordenacao.campo === 'nome'
+      ? c.nome.toLowerCase()
+      : (c.clientes_fiscal?.regime ?? '').toLowerCase()
+
+    return [...lista].sort((a, b) => {
+      const cmp = valor(a).localeCompare(valor(b))
+      return ordenacao.direcao === 'asc' ? cmp : -cmp
+    })
+  }, [clientes, busca, filtroRegime, filtroAtividade, ordenacao])
+
+  function iconeOrdenacao(campo: 'nome' | 'regime') {
+    if (ordenacao?.campo !== campo) return <span className="text-[var(--fg)]/20">↕</span>
+    return <span className="text-[var(--accent)]">{ordenacao.direcao === 'asc' ? '↑' : '↓'}</span>
+  }
 
   const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
@@ -121,18 +148,28 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, respo
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--fg)]/12">
-              {['Razão Social', 'CNPJ', 'Endereço', 'Regime', 'Atividade'].map(h => (
-                <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">{h}</th>
-              ))}
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">
+                <button type="button" onClick={() => toggleOrdenacao('nome')} className="flex items-center gap-1.5 hover:text-[var(--fg)] transition-colors">
+                  Razão Social {iconeOrdenacao('nome')}
+                </button>
+              </th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">CNPJ</th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">Endereço</th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">
+                <button type="button" onClick={() => toggleOrdenacao('regime')} className="flex items-center gap-1.5 hover:text-[var(--fg)] transition-colors">
+                  Regime {iconeOrdenacao('regime')}
+                </button>
+              </th>
+              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">Atividade</th>
             </tr>
           </thead>
           <tbody>
             {filtrados.map(c => (
               <tr key={c.id} onClick={() => setClienteAbertoId(c.id)}
                 className="border-b border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 cursor-pointer transition-colors">
-                <td className="px-4 py-3 text-[var(--fg)] text-sm font-medium">{c.nome}</td>
-                <td className="px-4 py-3 text-[var(--fg)]/50 text-xs font-mono">{c.cnpj ?? '—'}</td>
-                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs">
+                <td className="px-4 py-3 text-[var(--fg)] text-sm font-medium whitespace-nowrap">{c.nome}</td>
+                <td className="px-4 py-3 text-[var(--fg)]/50 text-xs font-mono whitespace-nowrap">{c.cnpj ?? '—'}</td>
+                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs whitespace-nowrap">
                   {[c.municipio, c.uf].filter(Boolean).join('/') || '—'}
                 </td>
                 <td className="px-4 py-3 text-xs">
