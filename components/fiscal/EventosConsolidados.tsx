@@ -1,0 +1,125 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
+import type { TarefaAvulsaComCriador } from '@/lib/tarefas-avulsas'
+import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
+import EventoAvulsoModal from '@/components/geral/EventoAvulsoModal'
+
+interface GrupoCliente {
+  clienteId: string
+  clienteNome: string
+  eventos: TarefaAvulsaComCriador[]
+}
+
+interface Props {
+  clientes: { id: string; nome: string }[]
+  eventos: TarefaAvulsaComCriador[]
+  podeEditar: boolean
+}
+
+const inputCls = "flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
+
+export default function EventosConsolidados({ clientes, eventos, podeEditar }: Props) {
+  const [busca, setBusca] = useFiltroPersistente('eventos-consolidados:busca', '')
+  const [seletorAberto, setSeletorAberto] = useState(false)
+  const [clienteNovoEvento, setClienteNovoEvento] = useState<string | null>(null)
+
+  const nomePorCliente = useMemo(() => new Map(clientes.map(c => [c.id, c.nome])), [clientes])
+
+  // Só entram na lista clientes com pelo menos um evento no mês — sem isso
+  // teríamos uma seção vazia por cliente do setor inteiro.
+  const grupos = useMemo<GrupoCliente[]>(() => {
+    const porCliente = new Map<string, TarefaAvulsaComCriador[]>()
+    for (const ev of eventos) {
+      const lista = porCliente.get(ev.cliente_id) ?? []
+      lista.push(ev)
+      porCliente.set(ev.cliente_id, lista)
+    }
+    return Array.from(porCliente.entries())
+      .map(([clienteId, evs]) => ({ clienteId, clienteNome: nomePorCliente.get(clienteId) ?? 'Cliente', eventos: evs }))
+      .sort((a, b) => a.clienteNome.localeCompare(b.clienteNome, 'pt-BR'))
+  }, [eventos, nomePorCliente])
+
+  const gruposFiltrados = busca
+    ? grupos.filter(g => g.clienteNome.toLowerCase().includes(busca.toLowerCase()))
+    : grupos
+
+  const clientesOrdenados = useMemo(
+    () => [...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    [clientes],
+  )
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          placeholder="Buscar por nome do cliente..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          className={inputCls}
+        />
+        {podeEditar && (
+          <button
+            type="button"
+            onClick={() => setSeletorAberto(true)}
+            className="text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/30 px-3 py-2 rounded-xl transition-all font-semibold"
+          >
+            + Evento
+          </button>
+        )}
+      </div>
+
+      {gruposFiltrados.length === 0 ? (
+        <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum evento neste mês.</p>
+      ) : (
+        <div className="flex flex-col gap-6">
+          {gruposFiltrados.map(grupo => (
+            <div key={grupo.clienteId}>
+              <h4 className="text-sm font-semibold text-[var(--fg)] mb-1">{grupo.clienteNome}</h4>
+              <EventosAvulsosSecao
+                clienteId={grupo.clienteId}
+                setor="fiscal"
+                eventos={grupo.eventos}
+                podeEditar={podeEditar}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {seletorAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          onClick={e => e.target === e.currentTarget && setSeletorAberto(false)}>
+          <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
+              <h2 className="text-[var(--fg)] font-bold text-base">Escolha o cliente</h2>
+              <button onClick={() => setSeletorAberto(false)} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
+            </div>
+            <div className="overflow-y-auto flex-1 py-2">
+              {clientesOrdenados.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => { setClienteNovoEvento(c.id); setSeletorAberto(false) }}
+                  className="w-full text-left px-6 py-2.5 text-sm text-[var(--fg)]/80 hover:bg-[var(--fg)]/5 hover:text-[var(--fg)] transition-colors"
+                >
+                  {c.nome}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {clienteNovoEvento && (
+        <EventoAvulsoModal
+          clienteId={clienteNovoEvento}
+          setor="fiscal"
+          onClose={() => setClienteNovoEvento(null)}
+        />
+      )}
+    </div>
+  )
+}
