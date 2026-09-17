@@ -14,7 +14,7 @@ export default async function ClientesGeralPage() {
 
   const [{ data: profile }, { data: clientes }, { data: usuariosFiscal }, { data: vinculosCatalogo }] = await Promise.all([
     supabase.from('profiles').select('role, setores').eq('id', user.id).single(),
-    supabase.from('clientes').select('*').order('nome'),
+    supabase.from('clientes').select('*, clientes_fiscal(regime, atividade)').order('nome'),
     supabase.from('profiles').select('nome').contains('setores', ['fiscal']),
     supabase.from('tarefa_vinculos').select('*').order('created_at'),
   ])

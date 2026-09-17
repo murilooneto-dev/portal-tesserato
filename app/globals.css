@@ -37,3 +37,16 @@ body {
   background: var(--bg-page);
   color: var(--fg);
 }
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+
+  :root, :root.light {
+    --bg-page: #ffffff;
+    --bg-surface: #ffffff;
+    --fg: #000000;
+  }
+
+  body { background: #ffffff; }
+}

@@ -82,6 +82,12 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
     })
   }, [clienteId])
 
+  useEffect(() => {
+    sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').then(({ data }) => {
+      setCatalogoNomes((data ?? []).map(t => t.nome as string))
+    })
+  }, [])
+
   async function fetchCnpj(raw: string) {
     setLoadingCnpj(true)
     const resultado = await buscarCnpj(raw)

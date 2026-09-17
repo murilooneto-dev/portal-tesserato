@@ -37,6 +37,37 @@ export async function buscarTodasTarefasDoMes<T = Record<string, unknown>>(
 }
 
 /**
+ * Busca todas as linhas de `tarefas` de um ano inteiro (sem filtro de mes), paginando
+ * em blocos de 1000 pelo mesmo motivo de `buscarTodasTarefasDoMes`.
+ */
+export async function buscarTodasTarefasDoAno<T = Record<string, unknown>>(
+  supabase: SupabaseClient,
+  ano: number,
+  colunas: string = '*',
+  setor: UserSetor = 'fiscal'
+): Promise<T[]> {
+  const linhas: T[] = []
+  const TAMANHO_PAGINA = 1000
+
+  for (let inicio = 0; ; inicio += TAMANHO_PAGINA) {
+    const { data, error } = await supabase
+      .from('tarefas')
+      .select(colunas)
+      .eq('ano', ano)
+      .eq('setor', setor)
+      .range(inicio, inicio + TAMANHO_PAGINA - 1)
+
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) break
+
+    linhas.push(...(data as unknown as T[]))
+    if (data.length < TAMANHO_PAGINA) break
+  }
+
+  return linhas
+}
+
+/**
  * Busca todas as linhas de `tarefas` sem filtro de mes/ano (tabela inteira), paginando
  * em blocos de 1000 pelo mesmo motivo de `buscarTodasTarefasDoMes`.
  */

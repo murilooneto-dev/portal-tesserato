@@ -387,15 +387,53 @@ export async function excluirArquivoTarefa(arquivoId: string) {
   revalidatePath('/pessoal/clientes')
 }
 
-export async function salvarObsPessoal(clienteId: string, texto: string): Promise<{ error?: string }> {
+export async function adicionarNotaCliente(clienteId: string, texto: string): Promise<{ error?: string }> {
+  if (!texto.trim()) return { error: 'Nota vazia.' }
   if (!(await podeEditarClientePessoal(clienteId))) return { error: 'Você não pode editar este cliente.' }
-  const { supabase } = await getAuthenticatedAdmin()
-  if (!supabase) return { error: 'Não autorizado.' }
-  const { error } = await supabase.from('clientes_pessoal').update({ obs: texto || null }).eq('cliente_id', clienteId)
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Não autorizado.' }
+  const { error } = await supabase.from('cliente_notas').insert({
+    cliente_id: clienteId,
+    setor: 'pessoal',
+    texto: texto.trim(),
+    usuario_id: user.id,
+    usuario_nome: await nomeDoUsuario(supabase, user.id),
+  })
   if (error) return { error: error.message }
   revalidatePath(`/pessoal/clientes/${clienteId}`)
   revalidatePath('/pessoal/clientes')
   revalidatePath('/pessoal/dashboard')
+  return {}
+}
+
+export async function editarNotaCliente(notaId: string, clienteId: string, texto: string): Promise<{ error?: string }> {
+  if (!texto.trim()) return { error: 'Nota vazia.' }
+  if (!(await podeEditarClientePessoal(clienteId))) return { error: 'Você não pode editar este cliente.' }
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+  const { error } = await supabase
+    .from('cliente_notas')
+    .update({ texto: texto.trim(), updated_at: new Date().toISOString() })
+    .eq('id', notaId)
+    .eq('cliente_id', clienteId)
+    .eq('setor', 'pessoal')
+  if (error) return { error: error.message }
+  revalidatePath(`/pessoal/clientes/${clienteId}`)
+  return {}
+}
+
+export async function excluirNotaCliente(notaId: string, clienteId: string): Promise<{ error?: string }> {
+  if (!(await podeEditarClientePessoal(clienteId))) return { error: 'Você não pode editar este cliente.' }
+  const { supabase } = await getAuthenticatedAdmin()
+  if (!supabase) return { error: 'Não autorizado.' }
+  const { error } = await supabase
+    .from('cliente_notas')
+    .delete()
+    .eq('id', notaId)
+    .eq('cliente_id', clienteId)
+    .eq('setor', 'pessoal')
+  if (error) return { error: error.message }
+  revalidatePath(`/pessoal/clientes/${clienteId}`)
   return {}
 }
 

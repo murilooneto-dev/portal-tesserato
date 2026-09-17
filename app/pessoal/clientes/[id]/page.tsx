@@ -11,8 +11,9 @@ import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calenda
 import TarefaChecklistPessoal from '@/components/pessoal/TarefaChecklistPessoal'
 import ClientePessoalAcoes from '@/components/pessoal/ClientePessoalAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
-import ClienteObsSimples from '@/components/geral/ClienteObsSimples'
-import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, salvarObsPessoal, marcarSemMovimento } from '../actions'
+import ClienteNotas from '@/components/geral/ClienteNotas'
+import { toggleTarefaPessoal, atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquivoTarefa, adicionarNotaCliente, editarNotaCliente, excluirNotaCliente, marcarSemMovimento } from '../actions'
+import { buscarNotasCliente } from '@/lib/cliente-notas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento, TarefaGrupo } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
@@ -72,6 +73,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   }
 
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'pessoal', mes, ano)
+  const notas = await buscarNotasCliente(supabase, id, 'pessoal')
 
   const vinculos = await buscarVinculosDoCliente(
     supabase, id, cliente.tarefas_vinculadas_ativas ?? [], 'pessoal', mes, ano
@@ -185,7 +187,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
 
       <EventosAvulsosSecao clienteId={id} setor="pessoal" eventos={eventosAvulsos} podeEditar={podeEditar} />
 
-      <ClienteObsSimples clienteId={id} obsInicial={cliente.obs ?? ''} podeEditar={podeEditar} salvarObs={salvarObsPessoal} />
+      <ClienteNotas clienteId={id} setor="pessoal" notas={notas} podeEditar={podeEditar} adicionarNota={adicionarNotaCliente} editarNota={editarNotaCliente} excluirNota={excluirNotaCliente} />
 
       <HistoricoResponsavel clienteId={id} setor="pessoal" />
     </div>
