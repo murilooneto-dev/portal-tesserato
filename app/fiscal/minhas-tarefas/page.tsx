@@ -5,10 +5,14 @@ import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas
 import { atualizarEtapa, toggleTarefaFiscal } from '@/app/fiscal/clientes/actions'
 import { atualizarStatusDossie, atualizarFinalizadoDossie } from '@/lib/dossie-actions'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
+import { nomesTarefaTipoData } from '@/lib/preenchimento-rapido'
+import { buscarTarefasAvulsasDoMesParaClientes } from '@/lib/tarefas-avulsas'
 import MinhasTarefasFiltro from '@/components/fiscal/MinhasTarefasFiltro'
 import MinhasTarefasTabs from '@/components/fiscal/MinhasTarefasTabs'
 import MinhasTarefasSeletorUsuario from '@/components/fiscal/MinhasTarefasSeletorUsuario'
 import DossieSecao from '@/components/fiscal/DossieSecao'
+import MeusClientesGrid from '@/components/fiscal/MeusClientesGrid'
+import EventosConsolidados from '@/components/fiscal/EventosConsolidados'
 import type { StatusDossie } from '@/lib/status-dossie'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
 
@@ -17,9 +21,11 @@ export const metadata = { title: 'Minhas Tarefas — Tesserato Fiscal' }
 interface ClienteRow {
   id: string
   nome: string
+  cnpj: string | null
   clientes_fiscal: {
     regime: string | null
     atividade: string[] | null
+    responsavel: string | null
     tarefas_personalizadas: string[] | null
     tarefas_excluidas: string[] | null
   }
@@ -126,7 +132,7 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
   const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }, catalogo] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_fiscal!inner(regime, atividade, tarefas_personalizadas, tarefas_excluidas, ativo)')
+      .select('id, nome, cnpj, clientes_fiscal!inner(regime, atividade, responsavel, tarefas_personalizadas, tarefas_excluidas, ativo)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'fiscal'),
@@ -150,7 +156,15 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
       },
       mapaVinculos,
     )
-    return { id: r.id, nome: r.nome, atividade: r.clientes_fiscal.atividade ?? [], esperadas }
+    return {
+      id: r.id,
+      nome: r.nome,
+      cnpj: r.cnpj,
+      responsavel: r.clientes_fiscal.responsavel,
+      regime: r.clientes_fiscal.regime,
+      atividade: r.clientes_fiscal.atividade ?? [],
+      esperadas,
+    }
   })
 
   const nomesMeusTipos = meusTipos.map(t => t.nome)
@@ -162,6 +176,17 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
 
   const tarefas = (tarefasRaw ?? []) as Pick<Tarefa, 'id' | 'cliente_id' | 'tipo' | 'concluida' | 'concluida_em' | 'sem_movimento'>[]
   const tarefaIds = tarefas.map(t => t.id)
+
+  const colunasGrid = nomesTarefaTipoData(meusTipos)
+  const estadoInicialGrid: Record<string, Record<string, boolean>> = {}
+  for (const t of tarefas) {
+    if (!estadoInicialGrid[t.cliente_id]) estadoInicialGrid[t.cliente_id] = {}
+    estadoInicialGrid[t.cliente_id][t.tipo] = t.concluida
+  }
+
+  const eventosConsolidados = await buscarTarefasAvulsasDoMesParaClientes(
+    clientesTodos.map(c => c.id), 'fiscal', mes, ano,
+  )
 
   const { data: etapasRaw } = tarefaIds.length > 0
     ? await supabase.from('tarefa_etapas').select('*').in('tarefa_id', tarefaIds)
@@ -240,6 +265,22 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
             somenteLeitura={somenteLeitura}
             onToggle={onToggle}
             onAtualizarEtapa={onAtualizarEtapa}
+          />
+        }
+        meusClientesContent={
+          <MeusClientesGrid
+            clientes={clientesTodos}
+            colunas={colunasGrid}
+            estadoInicial={estadoInicialGrid}
+            somenteLeitura={somenteLeitura}
+            onToggle={onToggle}
+          />
+        }
+        eventosContent={
+          <EventosConsolidados
+            clientes={clientesTodos}
+            eventos={eventosConsolidados}
+            podeEditar={!somenteLeitura}
           />
         }
         dossieContent={

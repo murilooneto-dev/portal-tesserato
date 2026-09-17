@@ -10,6 +10,9 @@ interface Props {
   setor: UserSetor
   eventos: TarefaAvulsaComCriador[]
   podeEditar: boolean
+  // Sem a margem/borda de separação de cima — usado quando o cliente já é
+  // o próprio cabeçalho da seção (ex: visão consolidada de eventos).
+  compacto?: boolean
 }
 
 function formatarData(iso: string): string {
@@ -23,7 +26,7 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function EventosAvulsosSecao({ clienteId, setor, eventos, podeEditar }: Props) {
+export default function EventosAvulsosSecao({ clienteId, setor, eventos, podeEditar, compacto }: Props) {
   const [modalAberto, setModalAberto] = useState(false)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -60,7 +63,7 @@ export default function EventosAvulsosSecao({ clienteId, setor, eventos, podeEdi
   }
 
   return (
-    <div className="mt-8 pt-6 border-t border-[var(--fg)]/8">
+    <div className={compacto ? '' : 'mt-8 pt-6 border-t border-[var(--fg)]/8'}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">Eventos do mês</h3>
         {podeEditar && (
