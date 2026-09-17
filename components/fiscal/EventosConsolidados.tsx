@@ -77,12 +77,13 @@ export default function EventosConsolidados({ clientes, eventos, podeEditar }: P
         <div className="flex flex-col gap-6">
           {gruposFiltrados.map(grupo => (
             <div key={grupo.clienteId}>
-              <h4 className="text-sm font-semibold text-[var(--fg)] mb-1">{grupo.clienteNome}</h4>
+              <h4 className="text-sm font-semibold text-[var(--fg)] mb-2">{grupo.clienteNome}</h4>
               <EventosAvulsosSecao
                 clienteId={grupo.clienteId}
                 setor="fiscal"
                 eventos={grupo.eventos}
                 podeEditar={podeEditar}
+                compacto
               />
             </div>
           ))}
