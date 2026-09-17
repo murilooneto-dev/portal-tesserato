@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import type { Cliente, TarefaVinculo } from '@/lib/types'
 import ClienteGeralModal from './ClienteGeralModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 
 const CORES_REGIME: Record<string, string> = {
   simples:   '#10b981',
@@ -39,33 +40,82 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, respo
   const [busca, setBusca] = useState('')
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
   const [clienteAbertoId, setClienteAbertoId] = useState<string | null>(null)
+  const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientesGeral:regime', 'TODOS')
+  const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('clientesGeral:atividade', [])
+
+  function toggleAtividade(nome: string) {
+    setFiltroAtividade(
+      filtroAtividade.includes(nome) ? filtroAtividade.filter(a => a !== nome) : [...filtroAtividade, nome]
+    )
+  }
 
   const filtrados = useMemo(() => clientes.filter(c => {
-    if (!busca) return true
-    const q = busca.toLowerCase()
-    return c.nome.toLowerCase().includes(q) || (c.cnpj ?? '').includes(q)
-  }), [clientes, busca])
+    if (busca) {
+      const q = busca.toLowerCase()
+      if (!c.nome.toLowerCase().includes(q) && !(c.cnpj ?? '').includes(q)) return false
+    }
+    if (filtroRegime !== 'TODOS' && c.clientes_fiscal?.regime !== filtroRegime) return false
+    if (filtroAtividade.length > 0 && !filtroAtividade.some(a => (c.clientes_fiscal?.atividade ?? []).includes(a))) return false
+    return true
+  }), [clientes, busca, filtroRegime, filtroAtividade])
+
+  const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 no-print">
         <h1 className="text-2xl font-bold text-[var(--fg)]">Clientes</h1>
-        {podeCriar && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setModalNovoOpen(true)}
-            className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
-            + Novo Cliente
+            onClick={() => window.print()}
+            className="px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/15 text-[var(--fg)] text-sm font-semibold hover:border-[var(--fg)]/30 transition-colors whitespace-nowrap">
+            Imprimir
           </button>
-        )}
+          {podeCriar && (
+            <button
+              onClick={() => setModalNovoOpen(true)}
+              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
+              + Novo Cliente
+            </button>
+          )}
+        </div>
       </div>
 
-      <input
-        type="text"
-        placeholder="Buscar por nome ou CNPJ..."
-        value={busca}
-        onChange={e => setBusca(e.target.value)}
-        className="w-full mb-4 px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-      />
+      <h1 className="hidden print-only text-2xl font-bold text-[var(--fg)] mb-6">Clientes</h1>
+
+      <div className="flex flex-wrap items-center gap-2 mb-3 no-print">
+        <input
+          type="text"
+          placeholder="Buscar por nome ou CNPJ..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
+        />
+        <select value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)} className={selectClass}>
+          <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os regimes</option>
+          {catalogoFiscal.regimes.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
+        </select>
+      </div>
+
+      {catalogoFiscal.atividades.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-3 no-print">
+          <span className="text-xs text-[var(--fg)]/40">Atividade:</span>
+          {catalogoFiscal.atividades.map(nome => (
+            <button
+              key={nome}
+              type="button"
+              onClick={() => toggleAtividade(nome)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                filtroAtividade.includes(nome)
+                  ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
+                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
+              }`}
+            >
+              {nome}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-xl border border-[var(--fg)]/12">
         <table className="w-full">
