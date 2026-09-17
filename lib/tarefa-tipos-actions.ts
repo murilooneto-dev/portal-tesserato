@@ -9,6 +9,12 @@ import type { UserSetor, TipoResposta } from './types'
 // e só geraria confusão. Bloqueado aqui, na origem.
 const NOMES_RESERVADOS_FISCAL = ['ENTRADA', 'SAIDAS']
 
+function arraysIguais(a: string[] | number[] | null, b: string[] | number[] | null): boolean {
+  if (a === null || b === null) return a === b
+  if (a.length !== b.length) return false
+  return a.every((v, i) => v === b[i])
+}
+
 export async function criarTipoTarefa(
   setor: UserSetor,
   nome: string,
@@ -43,9 +49,35 @@ export async function criarTipoTarefa(
   })
 
   if (error) {
-    // unique(setor, nome): outra pessoa criou esse tipo nesse meio tempo —
-    // tratado como sucesso, é exatamente o resultado que queríamos.
-    if (error.code === '23505') return { error: null }
+    if (error.code === '23505') {
+      // unique(setor, nome): já existe um registro com esse nome. Pode ser
+      // corrida (outra pessoa criou o mesmo tipo agora) ou um tipo antigo
+      // que ficou no catálogo (ex.: foi removido de um cliente, o que só
+      // desvincula, nunca apaga tarefa_tipos — ver EmpresaContabilModal).
+      // Buscamos o registro existente para comparar: se a config já bate
+      // com o que o usuário escolheu, é a corrida (sucesso silencioso). Se
+      // diverge, precisamos avisar em vez de reaproveitar sem o usuário
+      // saber que o formato é outro.
+      const { data: existente } = await supabase
+        .from('tarefa_tipos')
+        .select('tipo_resposta, etapas, meses_visiveis')
+        .eq('setor', setor)
+        .eq('nome', nomeTrim)
+        .maybeSingle()
+
+      if (
+        existente &&
+        existente.tipo_resposta === tipoResposta &&
+        arraysIguais(existente.etapas, etapas) &&
+        arraysIguais(existente.meses_visiveis, mesesVisiveis)
+      ) {
+        return { error: null }
+      }
+
+      return {
+        error: `Já existe um tipo de tarefa chamado "${nomeTrim}" no catálogo, com um formato diferente do que você configurou agora. Escolha outro nome, ou use "${nomeTrim}" para reaproveitar o tipo já existente.`,
+      }
+    }
     return { error: error.message }
   }
 
