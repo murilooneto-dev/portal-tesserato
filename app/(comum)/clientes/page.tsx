@@ -31,7 +31,7 @@ export default async function ClientesGeralPage() {
   const catalogoFiscal = await buscarCatalogoCliente(supabase, 'fiscal')
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8">
       <ClientesGeralLista
         clientes={clientes ?? []}
         isAdmin={isAdmin}
