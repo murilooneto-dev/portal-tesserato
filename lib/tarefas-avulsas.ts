@@ -10,6 +10,22 @@ export interface TarefaAvulsaComCriador extends TarefaAvulsa {
   arquivos: Omit<EventoArquivo, 'content_base64'>[]
 }
 
+function rangeMes(mes: number, ano: number) {
+  const inicio = `${ano}-${String(mes).padStart(2, '0')}-01`
+  const proxMes = mes === 12 ? 1 : mes + 1
+  const proxAno = mes === 12 ? ano + 1 : ano
+  const fim = `${proxAno}-${String(proxMes).padStart(2, '0')}-01`
+  return { inicio, fim }
+}
+
+function mapearTarefaAvulsa(row: unknown): TarefaAvulsaComCriador {
+  const { profiles, evento_arquivos, ...resto } = row as unknown as {
+    profiles: { nome: string } | null
+    evento_arquivos: Omit<EventoArquivo, 'content_base64'>[]
+  } & TarefaAvulsa
+  return { ...resto, criado_por_nome: profiles?.nome ?? null, arquivos: evento_arquivos ?? [] }
+}
+
 export async function buscarTarefasAvulsasDoMes(
   clienteId: string,
   setor: UserSetor,
@@ -17,10 +33,7 @@ export async function buscarTarefasAvulsasDoMes(
   ano: number,
 ): Promise<TarefaAvulsaComCriador[]> {
   const supabase = await createClient()
-  const inicio = `${ano}-${String(mes).padStart(2, '0')}-01`
-  const proxMes = mes === 12 ? 1 : mes + 1
-  const proxAno = mes === 12 ? ano + 1 : ano
-  const fim = `${proxAno}-${String(proxMes).padStart(2, '0')}-01`
+  const { inicio, fim } = rangeMes(mes, ano)
 
   const { data } = await supabase
     .from('tarefas_avulsas')
@@ -31,13 +44,32 @@ export async function buscarTarefasAvulsasDoMes(
     .lt('data', fim)
     .order('data')
 
-  return (data ?? []).map(row => {
-    const { profiles, evento_arquivos, ...resto } = row as unknown as {
-      profiles: { nome: string } | null
-      evento_arquivos: Omit<EventoArquivo, 'content_base64'>[]
-    } & TarefaAvulsa
-    return { ...resto, criado_por_nome: profiles?.nome ?? null, arquivos: evento_arquivos ?? [] }
-  })
+  return (data ?? []).map(mapearTarefaAvulsa)
+}
+
+// Mesma busca de buscarTarefasAvulsasDoMes, só que para vários clientes de
+// uma vez — usada pela visão consolidada de Eventos em Minhas Tarefas, que
+// não pode fazer 1 chamada por cliente.
+export async function buscarTarefasAvulsasDoMesParaClientes(
+  clienteIds: string[],
+  setor: UserSetor,
+  mes: number,
+  ano: number,
+): Promise<TarefaAvulsaComCriador[]> {
+  if (clienteIds.length === 0) return []
+  const supabase = await createClient()
+  const { inicio, fim } = rangeMes(mes, ano)
+
+  const { data } = await supabase
+    .from('tarefas_avulsas')
+    .select('*, profiles(nome), evento_arquivos(id, evento_id, name, size, uploaded_at)')
+    .in('cliente_id', clienteIds)
+    .eq('setor', setor)
+    .gte('data', inicio)
+    .lt('data', fim)
+    .order('data')
+
+  return (data ?? []).map(mapearTarefaAvulsa)
 }
 
 export async function criarTarefaAvulsa(input: {
