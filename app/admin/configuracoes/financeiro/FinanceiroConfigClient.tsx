@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import FinanceiroCatalogoTab from './FinanceiroCatalogoTab'
 
-type Categoria = 'entrada' | 'saida' | 'centro_custo'
+type Categoria = 'entrada' | 'saida' | 'centro_custo_recebimento' | 'centro_custo_pagamento'
 
 const CATEGORIAS: { value: Categoria; label: string }[] = [
   { value: 'entrada', label: 'Tipos de Entrada' },
   { value: 'saida', label: 'Tipos de Saída' },
-  { value: 'centro_custo', label: 'Centro de Custo' },
+  { value: 'centro_custo_recebimento', label: 'Centro de Custo (Recebimento)' },
+  { value: 'centro_custo_pagamento', label: 'Centro de Custo (Pagamento)' },
 ]
 
 const botaoCls = (ativo: boolean) =>
@@ -25,7 +26,7 @@ export default function FinanceiroConfigClient() {
     <div className="max-w-4xl mx-auto px-6 py-10">
       <h1 className="text-[var(--fg)] font-bold text-2xl mb-1">Configurações — Financeiro</h1>
       <p className="text-[var(--fg)]/50 text-sm mb-8">
-        Tipos de Entrada, Tipos de Saída e Centro de Custo do setor Financeiro.
+        Tipos de Entrada, Tipos de Saída e Centro de Custo (separados por Recebimento/Pagamento) do setor Financeiro.
       </p>
 
       <div className="flex gap-2 mb-8 border-b border-[var(--fg)]/8 pb-4">
@@ -38,7 +39,8 @@ export default function FinanceiroConfigClient() {
 
       {categoria === 'entrada' && <FinanceiroCatalogoTab tipo="tipos" natureza="entrada" label="tipo de entrada" />}
       {categoria === 'saida' && <FinanceiroCatalogoTab tipo="tipos" natureza="saida" label="tipo de saída" />}
-      {categoria === 'centro_custo' && <FinanceiroCatalogoTab tipo="centro_custo" label="centro de custo" />}
+      {categoria === 'centro_custo_recebimento' && <FinanceiroCatalogoTab tipo="centro_custo" natureza="entrada" label="centro de custo de recebimento" />}
+      {categoria === 'centro_custo_pagamento' && <FinanceiroCatalogoTab tipo="centro_custo" natureza="saida" label="centro de custo de pagamento" />}
     </div>
   )
 }

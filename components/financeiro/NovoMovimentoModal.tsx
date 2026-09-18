@@ -1,9 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { criarMovimento, listarFinanceiroTiposAtivos, listarFinanceiroCentrosCustoAtivos } from '@/lib/financeiro-actions'
+import {
+  criarMovimento, listarFinanceiroTiposAtivos, listarFinanceiroCentrosCustoAtivos,
+  criarFinanceiroTipo, criarFinanceiroCentroCusto,
+} from '@/lib/financeiro-actions'
+import { normalizarNome } from '@/lib/config-entidades'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from '@/lib/types'
+import SeletorComBusca from './SeletorComBusca'
 
 interface Props {
   natureza: FinanceiroNatureza
@@ -28,17 +33,72 @@ export default function NovoMovimentoModal({ natureza, onClose }: Props) {
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
+  const [criandoTipo, setCriandoTipo] = useState(false)
+  const [novoTipoNome, setNovoTipoNome] = useState('')
+  const [salvandoTipo, setSalvandoTipo] = useState(false)
+  const [erroTipo, setErroTipo] = useState<string | null>(null)
+
+  const [criandoCentro, setCriandoCentro] = useState(false)
+  const [novoCentroNome, setNovoCentroNome] = useState('')
+  const [salvandoCentro, setSalvandoCentro] = useState(false)
+  const [erroCentro, setErroCentro] = useState<string | null>(null)
+
+  const recarregarTipos = useCallback(async () => {
+    const resultado = await listarFinanceiroTiposAtivos(natureza)
+    setTipos(resultado.data)
+    return resultado.data
+  }, [natureza])
+
+  const recarregarCentros = useCallback(async () => {
+    const resultado = await listarFinanceiroCentrosCustoAtivos(natureza)
+    setCentrosCusto(resultado.data)
+    return resultado.data
+  }, [natureza])
+
   useEffect(() => {
     (async () => {
-      const [tiposResult, centrosResult] = await Promise.all([
-        listarFinanceiroTiposAtivos(natureza),
-        listarFinanceiroCentrosCustoAtivos(),
-      ])
-      setTipos(tiposResult.data)
-      setCentrosCusto(centrosResult.data)
+      await Promise.all([recarregarTipos(), recarregarCentros()])
       setCarregando(false)
     })()
-  }, [natureza])
+  }, [recarregarTipos, recarregarCentros])
+
+  async function handleCriarTipo() {
+    if (!novoTipoNome.trim()) return
+    setSalvandoTipo(true)
+    setErroTipo(null)
+    const { error } = await criarFinanceiroTipo(natureza, novoTipoNome)
+    if (error) {
+      setErroTipo(error)
+      setSalvandoTipo(false)
+      return
+    }
+    const nomeCriado = novoTipoNome.trim()
+    const atualizados = await recarregarTipos()
+    const criado = atualizados.find(t => normalizarNome(t.nome) === normalizarNome(nomeCriado))
+    if (criado) setTipoId(criado.id)
+    setNovoTipoNome('')
+    setCriandoTipo(false)
+    setSalvandoTipo(false)
+  }
+
+  async function handleCriarCentro() {
+    if (!novoCentroNome.trim()) return
+    setSalvandoCentro(true)
+    setErroCentro(null)
+    const { error } = await criarFinanceiroCentroCusto(natureza, novoCentroNome)
+    if (error) {
+      setErroCentro(error)
+      setSalvandoCentro(false)
+      return
+    }
+    const nomeCriado = novoCentroNome.trim()
+    const atualizados = await recarregarCentros()
+    const criado = atualizados.find(c => normalizarNome(c.nome) === normalizarNome(nomeCriado))
+    if (criado) setCentroCustoId(criado.id)
+    setNovoCentroNome('')
+    setCriandoCentro(false)
+    setSalvandoCentro(false)
+  }
 
   async function handleSave() {
     const valorNumerico = Number(valor.replace(',', '.'))
@@ -82,17 +142,38 @@ export default function NovoMovimentoModal({ natureza, onClose }: Props) {
 
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
           <div>
-            <label className={labelCls}>Tipo *</label>
-            <select className={inputCls} value={tipoId} onChange={e => setTipoId(e.target.value)} disabled={carregando}>
-              <option value="" className="bg-[var(--bg-surface)]">Selecione...</option>
-              {tipos.map(t => (
-                <option key={t.id} value={t.id} className="bg-[var(--bg-surface)]">{t.nome}</option>
-              ))}
-            </select>
-            {!carregando && tipos.length === 0 && (
-              <p className="text-[10px] text-[var(--fg)]/40 mt-1.5">
-                Nenhum tipo cadastrado ainda. Cadastre em Configurações → Financeiro.
-              </p>
+            <label className={labelCls}>Data *</label>
+            <input className={inputCls} type="date" value={data} onChange={e => setData(e.target.value)} />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={labelCls + ' mb-0'}>Tipo *</label>
+              <button type="button" onClick={() => setCriandoTipo(v => !v)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">
+                {criandoTipo ? 'Cancelar' : '+ Novo tipo'}
+              </button>
+            </div>
+            {criandoTipo ? (
+              <div className="flex gap-2">
+                <input
+                  className={inputCls}
+                  value={novoTipoNome}
+                  onChange={e => setNovoTipoNome(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCriarTipo()}
+                  placeholder="Nome do novo tipo"
+                  autoFocus
+                />
+                <button type="button" onClick={handleCriarTipo} disabled={salvandoTipo || !novoTipoNome.trim()}
+                  className="px-4 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50 shrink-0">
+                  Criar
+                </button>
+              </div>
+            ) : (
+              <SeletorComBusca value={tipoId} onChange={setTipoId} opcoes={tipos} placeholder="Selecione..." disabled={carregando} />
+            )}
+            {erroTipo && <p className="text-[10px] text-red-400 mt-1.5">{erroTipo}</p>}
+            {!criandoTipo && !carregando && tipos.length === 0 && (
+              <p className="text-[10px] text-[var(--fg)]/40 mt-1.5">Nenhum tipo cadastrado ainda.</p>
             )}
           </div>
 
@@ -102,18 +183,31 @@ export default function NovoMovimentoModal({ natureza, onClose }: Props) {
           </div>
 
           <div>
-            <label className={labelCls}>Data *</label>
-            <input className={inputCls} type="date" value={data} onChange={e => setData(e.target.value)} />
-          </div>
-
-          <div>
-            <label className={labelCls}>Centro de custo</label>
-            <select className={inputCls} value={centroCustoId} onChange={e => setCentroCustoId(e.target.value)} disabled={carregando}>
-              <option value="" className="bg-[var(--bg-surface)]">Nenhum</option>
-              {centrosCusto.map(c => (
-                <option key={c.id} value={c.id} className="bg-[var(--bg-surface)]">{c.nome}</option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={labelCls + ' mb-0'}>Centro de custo</label>
+              <button type="button" onClick={() => setCriandoCentro(v => !v)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">
+                {criandoCentro ? 'Cancelar' : '+ Novo centro de custo'}
+              </button>
+            </div>
+            {criandoCentro ? (
+              <div className="flex gap-2">
+                <input
+                  className={inputCls}
+                  value={novoCentroNome}
+                  onChange={e => setNovoCentroNome(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCriarCentro()}
+                  placeholder="Nome do novo centro de custo"
+                  autoFocus
+                />
+                <button type="button" onClick={handleCriarCentro} disabled={salvandoCentro || !novoCentroNome.trim()}
+                  className="px-4 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50 shrink-0">
+                  Criar
+                </button>
+              </div>
+            ) : (
+              <SeletorComBusca value={centroCustoId} onChange={setCentroCustoId} opcoes={centrosCusto} placeholder="Nenhum" disabled={carregando} />
+            )}
+            {erroCentro && <p className="text-[10px] text-red-400 mt-1.5">{erroCentro}</p>}
           </div>
 
           <div>

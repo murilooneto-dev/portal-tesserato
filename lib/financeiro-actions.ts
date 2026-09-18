@@ -17,6 +17,21 @@ async function exigirAdmin(): Promise<{ error: string | null; supabase: Supabase
   return { error: null, supabase }
 }
 
+// Usada só nas ações de CRIAR tipo/centro de custo — permite que qualquer
+// usuário do setor financeiro cadastre um item novo direto do modal de
+// lançamento, sem precisar de um admin. Renomear/ativar/excluir continuam
+// exigindo admin (exigirAdmin), gerenciados só em Configurações.
+async function exigirFinanceiroOuAdmin(): Promise<{ error: string | null; supabase: SupabaseAdmin | null }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Não autorizado.', supabase: null }
+
+  const { data: callerProfile } = await supabase.from('profiles').select('role, setores').eq('id', user.id).single()
+  const autorizado = callerProfile?.role === 'admin' || (callerProfile?.setores ?? []).includes('financeiro')
+  if (!autorizado) return { error: 'Acesso negado.', supabase: null }
+
+  return { error: null, supabase }
+}
+
 // ---------- financeiro_tipos ----------
 
 export async function listarFinanceiroTipos(
@@ -42,7 +57,7 @@ export async function criarFinanceiroTipo(
   const erroNome = validarNomeEntidade(nome)
   if (erroNome) return { error: erroNome }
 
-  const { error, supabase } = await exigirAdmin()
+  const { error, supabase } = await exigirFinanceiroOuAdmin()
   if (error || !supabase) return { error }
 
   const nomeNormalizado = normalizarNome(nome)
@@ -116,33 +131,39 @@ export async function excluirFinanceiroTipo(id: string): Promise<{ error: string
 
 // ---------- financeiro_centros_custo ----------
 
-export async function listarFinanceiroCentrosCusto(): Promise<{ data: FinanceiroCentroCusto[]; error: string | null }> {
+export async function listarFinanceiroCentrosCusto(
+  natureza: FinanceiroNatureza,
+): Promise<{ data: FinanceiroCentroCusto[]; error: string | null }> {
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { data: [], error }
 
   const { data, error: queryError } = await supabase
     .from('financeiro_centros_custo')
-    .select('id, nome, ativo')
+    .select('id, nome, ativo, natureza')
+    .or(`natureza.eq.${natureza},natureza.is.null`)
     .order('nome')
 
   if (queryError) return { data: [], error: queryError.message }
   return { data: (data ?? []) as FinanceiroCentroCusto[], error: null }
 }
 
-export async function criarFinanceiroCentroCusto(nome: string): Promise<{ error: string | null }> {
+export async function criarFinanceiroCentroCusto(
+  natureza: FinanceiroNatureza,
+  nome: string,
+): Promise<{ error: string | null }> {
   const erroNome = validarNomeEntidade(nome)
   if (erroNome) return { error: erroNome }
 
-  const { error, supabase } = await exigirAdmin()
+  const { error, supabase } = await exigirFinanceiroOuAdmin()
   if (error || !supabase) return { error }
 
   const nomeNormalizado = normalizarNome(nome)
-  const { data: existentes } = await supabase.from('financeiro_centros_custo').select('nome')
+  const { data: existentes } = await supabase.from('financeiro_centros_custo').select('nome').or(`natureza.eq.${natureza},natureza.is.null`)
   if ((existentes ?? []).some(e => normalizarNome(e.nome) === nomeNormalizado)) {
     return { error: 'Já existe um centro de custo equivalente a esse nome.' }
   }
 
-  const { error: insertError } = await supabase.from('financeiro_centros_custo').insert({ nome: nome.trim() })
+  const { error: insertError } = await supabase.from('financeiro_centros_custo').insert({ natureza, nome: nome.trim() })
   if (insertError) {
     if (insertError.code === '23505') return { error: 'Já existe um centro de custo com esse nome.' }
     return { error: insertError.message }
@@ -159,8 +180,10 @@ export async function renomearFinanceiroCentroCusto(id: string, nome: string): P
   const { error, supabase } = await exigirAdmin()
   if (error || !supabase) return { error }
 
+  const { data: atual } = await supabase.from('financeiro_centros_custo').select('natureza').eq('id', id).single()
   const nomeNormalizado = normalizarNome(nome)
-  const { data: existentes } = await supabase.from('financeiro_centros_custo').select('id, nome')
+  const filtroNatureza = atual?.natureza ? `natureza.eq.${atual.natureza},natureza.is.null` : 'natureza.is.null'
+  const { data: existentes } = await supabase.from('financeiro_centros_custo').select('id, nome').or(filtroNatureza)
   if ((existentes ?? []).some(e => e.id !== id && normalizarNome(e.nome) === nomeNormalizado)) {
     return { error: 'Já existe um centro de custo equivalente a esse nome.' }
   }
@@ -226,15 +249,18 @@ export async function listarFinanceiroTiposAtivos(
   return { data: (data ?? []) as FinanceiroTipo[], error: null }
 }
 
-export async function listarFinanceiroCentrosCustoAtivos(): Promise<{ data: FinanceiroCentroCusto[]; error: string | null }> {
+export async function listarFinanceiroCentrosCustoAtivos(
+  natureza: FinanceiroNatureza,
+): Promise<{ data: FinanceiroCentroCusto[]; error: string | null }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { data: [], error: 'Não autorizado.' }
 
   const { data, error } = await supabase
     .from('financeiro_centros_custo')
-    .select('id, nome, ativo')
+    .select('id, nome, ativo, natureza')
     .eq('ativo', true)
+    .or(`natureza.eq.${natureza},natureza.is.null`)
     .order('nome')
 
   if (error) return { data: [], error: error.message }
