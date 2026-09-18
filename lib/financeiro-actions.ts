@@ -300,6 +300,38 @@ export async function criarMovimento(input: {
   return { id: novo.id }
 }
 
+export async function atualizarMovimento(input: {
+  id: string
+  natureza: FinanceiroNatureza
+  tipoId: string
+  centroCustoId: string | null
+  valor: number
+  data: string
+  observacao: string | null
+}): Promise<{ error: string | null }> {
+  if (!input.tipoId) return { error: 'Selecione o tipo.' }
+  if (!input.data) return { error: 'Selecione a data.' }
+  if (!Number.isFinite(input.valor) || input.valor <= 0) return { error: 'Informe um valor válido.' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const { error } = await supabase.from('financeiro_movimentos').update({
+    tipo_id: input.tipoId,
+    centro_custo_id: input.centroCustoId,
+    valor: input.valor,
+    data: input.data,
+    observacao: input.observacao,
+  }).eq('id', input.id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(input.natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')
+  revalidatePath('/financeiro/relatorios')
+  return { error: null }
+}
+
 export async function excluirMovimento(id: string, natureza: FinanceiroNatureza): Promise<{ error: string | null }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
