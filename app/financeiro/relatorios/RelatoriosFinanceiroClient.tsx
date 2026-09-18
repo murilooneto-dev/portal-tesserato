@@ -75,6 +75,8 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
 
   const totalEntradas = movimentos.filter(m => m.natureza === 'entrada').reduce((acc, m) => acc + m.valor, 0)
   const totalSaidas = movimentos.filter(m => m.natureza === 'saida').reduce((acc, m) => acc + m.valor, 0)
+  const saldo = totalEntradas - totalSaidas
+  const corSaldo = saldo >= 0 ? 'text-emerald-400 print:text-emerald-700' : 'text-red-400 print:text-red-700'
 
   return (
     <div className="p-8 max-w-6xl mx-auto print:p-0 print:max-w-none">
@@ -146,7 +148,7 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
         </div>
         <div>
           <p className="text-[10px] font-bold text-[var(--fg)]/40 print:text-black/60 uppercase tracking-widest mb-1">Saldo</p>
-          <p className="text-base font-semibold text-[var(--fg)] print:text-black">{formatarValor(totalEntradas - totalSaidas)}</p>
+          <p className={`text-base font-semibold ${corSaldo}`}>{formatarValor(saldo)}</p>
         </div>
       </div>
 
