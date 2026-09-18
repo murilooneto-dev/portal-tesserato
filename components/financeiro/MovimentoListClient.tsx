@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { excluirMovimento } from '@/lib/financeiro-actions'
+import { normalizarNome } from '@/lib/config-entidades'
 import type { FinanceiroNatureza } from '@/lib/types'
 import NovoMovimentoModal from './NovoMovimentoModal'
 
@@ -14,6 +15,7 @@ export interface MovimentoLinha {
   observacao: string | null
   tipo_nome: string
   centro_custo_nome: string | null
+  created_at: string
 }
 
 interface Props {
@@ -22,6 +24,18 @@ interface Props {
   botaoNovo: string
   movimentos: MovimentoLinha[]
 }
+
+type Ordenacao = 'lancamento' | 'data_desc' | 'data_asc' | 'valor_desc' | 'valor_asc'
+
+const OPCOES_ORDENACAO: { value: Ordenacao; label: string }[] = [
+  { value: 'lancamento', label: 'Mais recente lançado' },
+  { value: 'data_desc', label: 'Data (mais recente)' },
+  { value: 'data_asc', label: 'Data (mais antiga)' },
+  { value: 'valor_desc', label: 'Maior valor' },
+  { value: 'valor_asc', label: 'Menor valor' },
+]
+
+const inputCls = "px-3 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
 function formatarData(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -37,13 +51,38 @@ export default function MovimentoListClient({ natureza, titulo, botaoNovo, movim
   const [editando, setEditando] = useState<MovimentoLinha | null>(null)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [busca, setBusca] = useState('')
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>('lancamento')
 
   function handleExcluir(id: string) {
     startTransition(() => { excluirMovimento(id, natureza) })
     setExcluindoId(null)
   }
 
-  const total = movimentos.reduce((acc, m) => acc + m.valor, 0)
+  const movimentosFiltrados = useMemo(() => {
+    const termo = normalizarNome(busca)
+    let lista = movimentos
+    if (termo) {
+      lista = lista.filter(m =>
+        normalizarNome(m.tipo_nome).includes(termo) ||
+        normalizarNome(m.centro_custo_nome ?? '').includes(termo) ||
+        normalizarNome(m.observacao ?? '').includes(termo)
+      )
+    }
+    lista = [...lista].sort((a, b) => {
+      switch (ordenacao) {
+        case 'data_desc': return b.data.localeCompare(a.data) || b.created_at.localeCompare(a.created_at)
+        case 'data_asc': return a.data.localeCompare(b.data) || a.created_at.localeCompare(b.created_at)
+        case 'valor_desc': return b.valor - a.valor
+        case 'valor_asc': return a.valor - b.valor
+        case 'lancamento':
+        default: return b.created_at.localeCompare(a.created_at)
+      }
+    })
+    return lista
+  }, [movimentos, busca, ordenacao])
+
+  const total = movimentosFiltrados.reduce((acc, m) => acc + m.valor, 0)
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -58,11 +97,27 @@ export default function MovimentoListClient({ natureza, titulo, botaoNovo, movim
         </button>
       </div>
 
-      {movimentos.length === 0 ? (
-        <p className="text-[var(--fg)]/30 text-sm py-6 text-center">Nenhum lançamento ainda.</p>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <input
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          placeholder="Buscar por tipo, centro de custo ou observação..."
+          className={inputCls + ' flex-1 min-w-[200px]'}
+        />
+        <select value={ordenacao} onChange={e => setOrdenacao(e.target.value as Ordenacao)} className={inputCls}>
+          {OPCOES_ORDENACAO.map(o => (
+            <option key={o.value} value={o.value} className="bg-[var(--bg-surface)]">{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {movimentosFiltrados.length === 0 ? (
+        <p className="text-[var(--fg)]/30 text-sm py-6 text-center">
+          {movimentos.length === 0 ? 'Nenhum lançamento ainda.' : 'Nenhum lançamento encontrado com esse filtro.'}
+        </p>
       ) : (
         <ul className="space-y-2">
-          {movimentos.map(m => (
+          {movimentosFiltrados.map(m => (
             <li key={m.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8">
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-[var(--fg)]">{m.tipo_nome}</p>

@@ -44,6 +44,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
 
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [sucesso, setSucesso] = useState(false)
 
   const [criandoTipo, setCriandoTipo] = useState(false)
   const [novoTipoNome, setNovoTipoNome] = useState('')
@@ -123,6 +124,13 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     setSalvandoCentro(false)
   }
 
+  function limparParaProximo() {
+    setTipoId('')
+    setValor('')
+    setCentroCustoId('')
+    setObservacao('')
+  }
+
   async function handleSave() {
     const valorNumerico = Number(valor.replace(',', '.'))
     if (!tipoId) { setErro('Selecione o tipo.'); return }
@@ -131,6 +139,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
 
     setSaving(true)
     setErro(null)
+    setSucesso(false)
 
     const resultado = movimento
       ? await atualizarMovimento({
@@ -159,7 +168,19 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
 
     setSaving(false)
     router.refresh()
-    onClose()
+
+    if (movimento) {
+      // Editando um lançamento existente: salvar e fechar, sem fluxo de
+      // "próximo" (não faz sentido continuar editando o mesmo registro).
+      onClose()
+      return
+    }
+
+    // Criando: modal fica aberto pra lançar o próximo em sequência, só
+    // limpa os campos (mantém a data — normalmente vários lançamentos do
+    // mesmo dia). Só o × fecha o modal a partir daqui.
+    limparParaProximo()
+    setSucesso(true)
   }
 
   const titulo = movimento
@@ -251,6 +272,12 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           </div>
         </div>
 
+        {sucesso && !erro && (
+          <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm">
+            ✓ Lançamento salvo. Pronto para o próximo.
+          </div>
+        )}
+
         {erro && (
           <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
             ⚠ {erro}
@@ -258,9 +285,9 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
         )}
 
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <button onClick={onClose}
+          <button onClick={() => { if (movimento) { onClose() } else { limparParaProximo(); setErro(null); setSucesso(false) } }}
             className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-            Cancelar
+            {movimento ? 'Cancelar' : 'Limpar'}
           </button>
           <button onClick={handleSave} disabled={saving || !tipoId || !data || !valor}
             className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
