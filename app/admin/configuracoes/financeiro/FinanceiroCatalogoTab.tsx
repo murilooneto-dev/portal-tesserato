@@ -8,11 +8,11 @@ import {
 } from '@/lib/financeiro-actions'
 import { ordenarPorNome } from '@/lib/config-entidades'
 
-interface Item { id: string; nome: string; ativo: boolean }
+interface Item { id: string; nome: string; ativo: boolean; natureza?: FinanceiroNatureza | null }
 
 interface Props {
   tipo: 'tipos' | 'centro_custo'
-  natureza?: FinanceiroNatureza
+  natureza: FinanceiroNatureza
   label: string
 }
 
@@ -30,8 +30,8 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label }: Props) 
   const recarregar = useCallback(async () => {
     setCarregando(true)
     const { data, error } = tipo === 'tipos'
-      ? await listarFinanceiroTipos(natureza!)
-      : await listarFinanceiroCentrosCusto()
+      ? await listarFinanceiroTipos(natureza)
+      : await listarFinanceiroCentrosCusto(natureza)
     if (error) setErro(error)
     else { setItens(ordenarPorNome(data)); setErro(null) }
     setCarregando(false)
@@ -43,8 +43,8 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label }: Props) 
     if (!novoNome.trim()) return
     setSalvandoNovo(true)
     const { error } = tipo === 'tipos'
-      ? await criarFinanceiroTipo(natureza!, novoNome)
-      : await criarFinanceiroCentroCusto(novoNome)
+      ? await criarFinanceiroTipo(natureza, novoNome)
+      : await criarFinanceiroCentroCusto(natureza, novoNome)
     if (error) setErro(error)
     else { setNovoNome(''); setErro(null); await recarregar() }
     setSalvandoNovo(false)
@@ -123,6 +123,9 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label }: Props) 
               ) : (
                 <span className={`flex-1 text-sm ${item.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
                   {item.nome}
+                  {tipo === 'centro_custo' && !item.natureza && (
+                    <span className="ml-2 text-[10px] text-[var(--fg)]/30 font-normal">(sem categoria — item antigo)</span>
+                  )}
                 </span>
               )}
 

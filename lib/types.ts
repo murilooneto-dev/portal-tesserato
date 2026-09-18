@@ -246,6 +246,7 @@ export interface FinanceiroCentroCusto {
   id: string
   nome: string
   ativo: boolean
+  natureza: FinanceiroNatureza | null
 }
 
 export interface FinanceiroMovimento {
