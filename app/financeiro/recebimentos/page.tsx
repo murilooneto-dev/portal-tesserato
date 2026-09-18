@@ -8,19 +8,21 @@ export default async function RecebimentosPage() {
 
   const { data } = await supabase
     .from('financeiro_movimentos')
-    .select('id, valor, data, observacao, financeiro_tipos(nome), financeiro_centros_custo(nome)')
+    .select('id, tipo_id, centro_custo_id, valor, data, observacao, financeiro_tipos(nome), financeiro_centros_custo(nome)')
     .eq('natureza', 'entrada')
     .order('data', { ascending: false })
     .limit(200)
 
   const movimentos: MovimentoLinha[] = (data ?? []).map(row => {
     const r = row as unknown as {
-      id: string; valor: number; data: string; observacao: string | null
+      id: string; tipo_id: string; centro_custo_id: string | null; valor: number; data: string; observacao: string | null
       financeiro_tipos: { nome: string } | null
       financeiro_centros_custo: { nome: string } | null
     }
     return {
       id: r.id,
+      tipo_id: r.tipo_id,
+      centro_custo_id: r.centro_custo_id,
       valor: r.valor,
       data: r.data,
       observacao: r.observacao,

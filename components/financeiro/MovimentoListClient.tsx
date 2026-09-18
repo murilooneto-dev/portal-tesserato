@@ -7,6 +7,8 @@ import NovoMovimentoModal from './NovoMovimentoModal'
 
 export interface MovimentoLinha {
   id: string
+  tipo_id: string
+  centro_custo_id: string | null
   valor: number
   data: string
   observacao: string | null
@@ -32,6 +34,7 @@ function formatarValor(v: number): string {
 
 export default function MovimentoListClient({ natureza, titulo, botaoNovo, movimentos }: Props) {
   const [modalAberto, setModalAberto] = useState(false)
+  const [editando, setEditando] = useState<MovimentoLinha | null>(null)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -76,8 +79,12 @@ export default function MovimentoListClient({ natureza, titulo, botaoNovo, movim
                     className="text-[10px] text-[var(--fg)]/40 px-1">Cancelar</button>
                 </div>
               ) : (
-                <button onClick={() => setExcluindoId(m.id)}
-                  className="text-[var(--fg)]/25 hover:text-red-400 text-xs shrink-0 transition-colors">×</button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => setEditando(m)}
+                    className="text-[var(--fg)]/40 hover:text-[var(--fg)] text-xs transition-colors">Editar</button>
+                  <button onClick={() => setExcluindoId(m.id)}
+                    className="text-[var(--fg)]/25 hover:text-red-400 text-xs transition-colors">×</button>
+                </div>
               )}
             </li>
           ))}
@@ -86,6 +93,23 @@ export default function MovimentoListClient({ natureza, titulo, botaoNovo, movim
 
       {modalAberto && (
         <NovoMovimentoModal natureza={natureza} onClose={() => setModalAberto(false)} />
+      )}
+
+      {editando && (
+        <NovoMovimentoModal
+          natureza={natureza}
+          onClose={() => setEditando(null)}
+          movimento={{
+            id: editando.id,
+            tipoId: editando.tipo_id,
+            tipoNome: editando.tipo_nome,
+            centroCustoId: editando.centro_custo_id,
+            centroCustoNome: editando.centro_custo_nome,
+            valor: editando.valor,
+            data: editando.data,
+            observacao: editando.observacao,
+          }}
+        />
       )}
     </div>
   )

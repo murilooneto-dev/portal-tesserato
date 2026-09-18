@@ -3,32 +3,44 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  criarMovimento, listarFinanceiroTiposAtivos, listarFinanceiroCentrosCustoAtivos,
+  criarMovimento, atualizarMovimento, listarFinanceiroTiposAtivos, listarFinanceiroCentrosCustoAtivos,
   criarFinanceiroTipo, criarFinanceiroCentroCusto,
 } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from '@/lib/types'
 import SeletorComBusca from './SeletorComBusca'
 
+export interface MovimentoParaEditar {
+  id: string
+  tipoId: string
+  tipoNome: string
+  centroCustoId: string | null
+  centroCustoNome: string | null
+  valor: number
+  data: string
+  observacao: string | null
+}
+
 interface Props {
   natureza: FinanceiroNatureza
   onClose: () => void
+  movimento?: MovimentoParaEditar
 }
 
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
-export default function NovoMovimentoModal({ natureza, onClose }: Props) {
+export default function NovoMovimentoModal({ natureza, onClose, movimento }: Props) {
   const router = useRouter()
   const [tipos, setTipos] = useState<FinanceiroTipo[]>([])
   const [centrosCusto, setCentrosCusto] = useState<FinanceiroCentroCusto[]>([])
   const [carregando, setCarregando] = useState(true)
 
-  const [tipoId, setTipoId] = useState('')
-  const [valor, setValor] = useState('')
-  const [data, setData] = useState('')
-  const [centroCustoId, setCentroCustoId] = useState('')
-  const [observacao, setObservacao] = useState('')
+  const [tipoId, setTipoId] = useState(movimento?.tipoId ?? '')
+  const [valor, setValor] = useState(movimento ? String(movimento.valor) : '')
+  const [data, setData] = useState(movimento?.data ?? '')
+  const [centroCustoId, setCentroCustoId] = useState(movimento?.centroCustoId ?? '')
+  const [observacao, setObservacao] = useState(movimento?.observacao ?? '')
 
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -45,15 +57,26 @@ export default function NovoMovimentoModal({ natureza, onClose }: Props) {
 
   const recarregarTipos = useCallback(async () => {
     const resultado = await listarFinanceiroTiposAtivos(natureza)
-    setTipos(resultado.data)
-    return resultado.data
-  }, [natureza])
+    let lista = resultado.data
+    // Editando um lançamento cujo tipo foi desativado depois de criado: o
+    // seletor precisa continuar mostrando o nome atual mesmo fora da lista
+    // de ativos, senão o campo aparece vazio ao abrir pra editar.
+    if (movimento && !lista.some(t => t.id === movimento.tipoId)) {
+      lista = [...lista, { id: movimento.tipoId, natureza, nome: movimento.tipoNome, ativo: false }]
+    }
+    setTipos(lista)
+    return lista
+  }, [natureza, movimento])
 
   const recarregarCentros = useCallback(async () => {
     const resultado = await listarFinanceiroCentrosCustoAtivos(natureza)
-    setCentrosCusto(resultado.data)
-    return resultado.data
-  }, [natureza])
+    let lista = resultado.data
+    if (movimento?.centroCustoId && !lista.some(c => c.id === movimento.centroCustoId)) {
+      lista = [...lista, { id: movimento.centroCustoId, nome: movimento.centroCustoNome ?? '', ativo: false, natureza }]
+    }
+    setCentrosCusto(lista)
+    return lista
+  }, [natureza, movimento])
 
   useEffect(() => {
     (async () => {
@@ -109,16 +132,26 @@ export default function NovoMovimentoModal({ natureza, onClose }: Props) {
     setSaving(true)
     setErro(null)
 
-    const resultado = await criarMovimento({
-      natureza,
-      tipoId,
-      centroCustoId: centroCustoId || null,
-      valor: valorNumerico,
-      data,
-      observacao: observacao.trim() || null,
-    })
+    const resultado = movimento
+      ? await atualizarMovimento({
+          id: movimento.id,
+          natureza,
+          tipoId,
+          centroCustoId: centroCustoId || null,
+          valor: valorNumerico,
+          data,
+          observacao: observacao.trim() || null,
+        })
+      : await criarMovimento({
+          natureza,
+          tipoId,
+          centroCustoId: centroCustoId || null,
+          valor: valorNumerico,
+          data,
+          observacao: observacao.trim() || null,
+        })
 
-    if ('error' in resultado) {
+    if ('error' in resultado && resultado.error) {
       setSaving(false)
       setErro(resultado.error)
       return
@@ -129,7 +162,9 @@ export default function NovoMovimentoModal({ natureza, onClose }: Props) {
     onClose()
   }
 
-  const titulo = natureza === 'entrada' ? 'Novo recebimento' : 'Novo pagamento'
+  const titulo = movimento
+    ? (natureza === 'entrada' ? 'Editar recebimento' : 'Editar pagamento')
+    : (natureza === 'entrada' ? 'Novo recebimento' : 'Novo pagamento')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
