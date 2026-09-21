@@ -6,6 +6,11 @@ export function getMesAnoRealAgora(): { mes: number; ano: number } {
   return { mes: agora.getMonth() + 1, ano: agora.getFullYear() }
 }
 
+/** Data de hoje (YYYY-MM-DD) no fuso de São Paulo. */
+export function hojeISO(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+}
+
 /** Faz o parse do valor do cookie "MM-YYYY". Retorna null se ausente ou inválido. */
 export function parseMesAnoCookie(valor: string | undefined | null): { mes: number; ano: number } | null {
   if (!valor) return null
