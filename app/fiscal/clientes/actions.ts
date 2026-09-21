@@ -63,6 +63,15 @@ export async function salvarCliente(
       usuarioId: user.id, usuarioNome,
     })
 
+    // Responsável do parcelamento é sempre o do cliente (vínculo por CNPJ)
+    if ((antes?.responsavel ?? null) !== (fiscalPayload.responsavel ?? null)) {
+      const cnpjsParcelamento = [clientePayload.cnpj, clienteAntes?.cnpj].filter((c): c is string => !!c)
+      if (cnpjsParcelamento.length) {
+        await supabase.from('parcelamentos').update({ responsavel: fiscalPayload.responsavel }).in('cnpj', cnpjsParcelamento)
+        revalidatePath('/fiscal/parcelamentos')
+      }
+    }
+
     const campos = camposAlterados({ ...clienteAntes, ...antes }, { ...clientePayload, ...fiscalPayload })
     await registrarEdicao(supabase, {
       setor: 'fiscal', clienteId, clienteNome: clientePayload.nome,
