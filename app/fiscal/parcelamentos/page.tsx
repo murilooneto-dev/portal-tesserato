@@ -591,6 +591,7 @@ export default function ParcelamentosPage() {
                         const cliente = clientesCadastrados.find(c => c.nome === nomeSelecionado)
                         setF('empresa', nomeSelecionado)
                         setF('cnpj', cliente?.cnpj ?? null)
+                        setF('responsavel', cliente?.responsavel ?? null)
                       }}
                       className={inputCls + ' bg-[var(--bg-surface)]'}>
                       <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
@@ -617,7 +618,9 @@ export default function ParcelamentosPage() {
                   <select
                     value={form.responsavel ?? ''}
                     onChange={e => setF('responsavel', e.target.value || null)}
-                    className={inputCls + ' bg-[var(--bg-surface)]'}>
+                    disabled={!form.empresa_avulsa && clientesCadastrados.some(c => c.nome === form.empresa)}
+                    title="Segue o responsável do cliente"
+                    className={inputCls + ' bg-[var(--bg-surface)] disabled:opacity-60'}>
                     <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
                     {responsaveisCadastrados.map(r => (
                       <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>
