@@ -10,7 +10,7 @@ const AREAS = [
   { href: '/admin/configuracoes/contabil', slug: 'contabil', label: 'Contábil', desc: 'Grupos, Regimes, Atividades e Tarefas' },
   { href: '/admin/configuracoes/pessoal', slug: 'pessoal', label: 'Pessoal', desc: 'Grupos, Regimes, Atividades e Tarefas' },
   { href: '/admin/configuracoes/societario', slug: 'societario', label: 'Societário', desc: 'Processos e Documentações' },
-  { href: '/admin/configuracoes/financeiro', slug: 'financeiro', label: 'Financeiro', desc: 'Tipos de Entrada, Tipos de Saída e Centro de Custo' },
+  { href: '/admin/configuracoes/financeiro', slug: 'financeiro', label: 'Financeiro', desc: 'Tipos de Entrada, Tipos de Saída, Centro de Custo e Tarefas' },
 ]
 
 export default async function ConfiguracoesPage() {
