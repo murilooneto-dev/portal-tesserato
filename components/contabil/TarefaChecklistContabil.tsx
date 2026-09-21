@@ -5,6 +5,7 @@ import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, TarefaGrupo } fr
 import type { VinculoStatus } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
+import { hojeISO } from '@/lib/mes-atual'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -155,6 +156,15 @@ export default function TarefaChecklistContabil({
     setLocalText(prev => { const n = { ...prev }; delete n[key]; return n })
   }
 
+  function handleHoje(tipo: string, marcar: boolean, etapaNome?: string) {
+    const key = keyLocal(tipo, etapaNome)
+    setLocalText(prev => { const n = { ...prev }; delete n[key]; return n })
+    startTransition(() => {
+      if (etapaNome) onAtualizarEtapa(tipo, etapaNome, marcar, marcar ? hojeISO() : undefined)
+      else onToggleSimples(tipo, marcar, marcar ? hojeISO() : undefined)
+    })
+  }
+
   function getRespostaTexto(tipo: string): string {
     if (tipo in localResposta) return localResposta[tipo]
     return mapaTarefa.get(tipo)?.resposta_texto ?? ''
@@ -248,7 +258,16 @@ export default function TarefaChecklistContabil({
           </span>
 
           {tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo && (
-            <input
+            <>
+              <input
+                type="checkbox"
+                checked={feito}
+                onChange={e => handleHoje(tipo, e.target.checked)}
+                disabled={!podeEditar || isPending}
+                title="Preencher com a data de hoje"
+                className="w-3.5 h-3.5 accent-[var(--accent)] cursor-pointer shrink-0"
+              />
+              <input
               type="text"
               value={displayVal}
               onChange={e => handleTextChange(tipo, e.target.value)}
@@ -258,6 +277,7 @@ export default function TarefaChecklistContabil({
               maxLength={10}
               className={inputCls(feito)}
             />
+            </>
           )}
 
           {semMovimentoAtivo && (
@@ -288,7 +308,16 @@ export default function TarefaChecklistContabil({
               return (
                 <div key={etapaNome} className="flex items-center justify-between gap-2">
                   <span className="text-xs text-[var(--fg)]/60">{etapaNome}</span>
+                  <div className="flex items-center gap-2">
                   <input
+                type="checkbox"
+                checked={etapaFeita}
+                onChange={e => handleHoje(tipo, e.target.checked, etapaNome)}
+                disabled={!podeEditar || isPending}
+                title="Preencher com a data de hoje"
+                className="w-3.5 h-3.5 accent-[var(--accent)] cursor-pointer shrink-0"
+              />
+              <input
                     type="text"
                     value={etapaDisplay}
                     onChange={e => handleTextChange(tipo, e.target.value, etapaNome)}
@@ -298,6 +327,7 @@ export default function TarefaChecklistContabil({
                     maxLength={10}
                     className={inputCls(etapaFeita)}
                   />
+                  </div>
                 </div>
               )
             })}
