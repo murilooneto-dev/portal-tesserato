@@ -70,7 +70,7 @@ export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, e
     setErro(null)
     const tipoRespostaFinal: TipoResposta = formato === 'checklist' ? 'checklist' : formato === 'texto' ? 'texto' : 'data'
     const etapasFinal = temEtapas ? etapasForm : null
-    const mesesVisiveisFinal = setor === 'societario' ? mesesVisiveisDaPeriodicidade(periodicidade) : mesesVisiveis
+    const mesesVisiveisFinal = (setor === 'societario' || setor === 'financeiro') ? mesesVisiveisDaPeriodicidade(periodicidade) : mesesVisiveis
     try {
       const { error } = await atualizarFormatoTarefaTipo(id, tipoRespostaFinal, etapasFinal, mesesVisiveisFinal)
       if (error) { setErro(error); return }
@@ -101,7 +101,7 @@ export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, e
             </p>
           </div>
 
-          {setor === 'societario' && (
+          {(setor === 'societario' || setor === 'financeiro') && (
             <div>
               <label className={labelCls}>Periodicidade</label>
               <select value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)} className={inputCls}>
