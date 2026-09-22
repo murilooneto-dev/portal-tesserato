@@ -63,7 +63,7 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
     setErro(null)
     const tipoResposta: TipoResposta = formato === 'checklist' ? 'checklist' : formato === 'texto' ? 'texto' : 'data'
     const etapasFinal = temEtapas ? etapas : null
-    const mesesVisiveis = setor === 'societario' ? mesesVisiveisDaPeriodicidade(periodicidade) : null
+    const mesesVisiveis = (setor === 'societario' || setor === 'financeiro') ? mesesVisiveisDaPeriodicidade(periodicidade) : null
     try {
       const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal, padrao, mesesVisiveis)
       if (error) { setErro(error); return }
@@ -90,7 +90,7 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
             &quot;<span className="font-semibold text-[var(--fg)]">{nome}</span>&quot; ainda não existe no catálogo. Escolha o formato de resposta:
           </p>
 
-          {setor === 'societario' && (
+          {(setor === 'societario' || setor === 'financeiro') && (
             <div>
               <label className={labelCls}>Periodicidade</label>
               <select value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)} className={inputCls}>
