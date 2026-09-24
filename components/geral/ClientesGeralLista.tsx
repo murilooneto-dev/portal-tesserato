@@ -165,9 +165,14 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, respo
           </thead>
           <tbody>
             {filtrados.map(c => (
-              <tr key={c.id} onClick={() => setClienteAbertoId(c.id)}
-                className="border-b border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 cursor-pointer transition-colors">
-                <td className="px-4 py-3 text-[var(--fg)] text-sm font-medium whitespace-nowrap">{c.nome}</td>
+              <tr key={c.id}
+                className="border-b border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 transition-colors">
+                <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
+                  <button type="button" onClick={() => setClienteAbertoId(c.id)}
+                    className="text-[var(--fg)] hover:text-[var(--accent)] hover:underline cursor-pointer transition-colors text-left">
+                    {c.nome}
+                  </button>
+                </td>
                 <td className="px-4 py-3 text-[var(--fg)]/50 text-xs font-mono whitespace-nowrap">{c.cnpj ?? '—'}</td>
                 <td className="px-4 py-3 text-[var(--fg)]/60 text-xs whitespace-nowrap">
                   {[c.municipio, c.uf].filter(Boolean).join('/') || '—'}
