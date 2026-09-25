@@ -8,7 +8,7 @@ import {
   type TipoColuna, type OpcaoColuna, type ValorCelula,
 } from '@/lib/tabelas/tipos'
 import { agruparValoresCliente, type ClienteMatch } from '@/lib/tabelas/cliente-match'
-import { montarLinhas, LIMITE_LINHAS, type ColunaConfig, type SetorTabela } from '@/lib/tabelas/montar-payload'
+import { montarLinhas, LIMITE_LINHAS, MAX_COLUNAS, LIMITE_BYTES_PAYLOAD, type ColunaConfig, type SetorTabela } from '@/lib/tabelas/montar-payload'
 import { criarPlanilha } from '@/lib/tabelas-actions'
 
 interface ColunaEdit { id: string; nome: string; tipo: TipoColuna; opcoes: OpcaoColuna[] | null; indiceOrigem: number }
@@ -37,6 +37,8 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
   // valor da coluna Cliente -> cliente escolhido (null = "sem cliente")
   const [escolhas, setEscolhas] = useState<Record<string, string | null>>({})
   const [erro, setErro] = useState<string | null>(null)
+  // falha ao LER/re-ler a planilha; separado do erro de criação e bloqueia o botão
+  const [erroLeitura, setErroLeitura] = useState<string | null>(null)
   const [criando, setCriando] = useState(false)
   const [linhaCabecalhoInput, setLinhaCabecalhoInput] = useState('1')
 
@@ -47,16 +49,20 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
       if (p.linhas.length > LIMITE_LINHAS) {
         throw new Error(`A planilha tem ${p.linhas.length.toLocaleString('pt-BR')} linhas; o limite é ${LIMITE_LINHAS.toLocaleString('pt-BR')}.`)
       }
+      if (p.cabecalhos.length > MAX_COLUNAS) {
+        throw new Error(`A planilha tem ${p.cabecalhos.length.toLocaleString('pt-BR')} colunas; o limite é ${MAX_COLUNAS}.`)
+      }
       setPlanilha(p)
       setLinhaCabecalhoInput(String(p.linhaCabecalho))
       setColunas(colunasDetectadas(p))
       setColunaChaveId(null)
       setEscolhas({})
       setErro(null)
+      setErroLeitura(null)
     } catch (e) {
       // re-leitura falha: mantém a planilha anterior para os controles continuarem visíveis
       if (!(opts && planilha)) setPlanilha(null)
-      setErro(e instanceof Error ? e.message : 'Não foi possível ler o arquivo.')
+      setErroLeitura(e instanceof Error ? e.message : 'Não foi possível ler o arquivo.')
     }
   }
 
@@ -100,11 +106,24 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
     return montarLinhas(planilha.linhas as ValorCelula[][], colunas.map(c => ({ ...c })), planilha.linhas.map(() => null)).naoConvertidas
   }, [planilha, colunas])
 
+  const nomeDuplicado = (() => {
+    const vistos = new Set<string>()
+    for (const c of colunas) {
+      const k = c.nome.trim().toLowerCase()
+      if (vistos.has(k)) return c.nome.trim()
+      vistos.add(k)
+    }
+    return null
+  })()
+
   const semMatch = grupos.filter(g => clienteDoValor(g.valor) === null)
 
   async function criar() {
     if (!planilha) return
-    setCriando(true)
+    if (nomeDuplicado !== null) {
+      setErro(`Há duas colunas chamadas “${nomeDuplicado}” (o nome não diferencia maiúsculas de minúsculas). Renomeie uma delas.`)
+      return
+    }
     setErro(null)
     const config: ColunaConfig[] = colunas.map(c => ({ ...c }))
     const clientePorLinha = planilha.linhas.map(l => {
@@ -113,15 +132,23 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
       return v === null ? null : clienteDoValor(String(v).trim())
     })
     const { linhas } = montarLinhas(planilha.linhas as ValorCelula[][], config, clientePorLinha)
+    const entrada = {
+      setor,
+      nome,
+      colunaChaveId,
+      colunas: colunas.map((c, i) => ({ id: c.id, nome: c.nome, tipo: c.tipo, ordem: i, opcoes: c.opcoes })),
+      linhas,
+    }
+    const tamanho = JSON.stringify(entrada).length
+    if (tamanho > LIMITE_BYTES_PAYLOAD) {
+      const mb = (tamanho / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+      setErro(`A planilha é grande demais para criar de uma vez (~${mb} MB). Remova colunas ou linhas e tente de novo.`)
+      return
+    }
+    setCriando(true)
     let resposta: Awaited<ReturnType<typeof criarPlanilha>>
     try {
-      resposta = await criarPlanilha({
-        setor,
-        nome,
-        colunaChaveId,
-        colunas: colunas.map((c, i) => ({ id: c.id, nome: c.nome, tipo: c.tipo, ordem: i, opcoes: c.opcoes })),
-        linhas,
-      })
+      resposta = await criarPlanilha(entrada)
     } catch {
       setErro('Não foi possível criar a tabela. Se a planilha for muito grande, tente com menos linhas ou colunas.')
       return
@@ -133,7 +160,7 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
   }
 
   function fechar() {
-    setAberto(false); setBuffer(null); setPlanilha(null); setErro(null)
+    setAberto(false); setBuffer(null); setPlanilha(null); setErro(null); setErroLeitura(null)
   }
 
   if (!aberto) {
@@ -161,6 +188,7 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
               className="text-sm text-[var(--fg)]/70" />
           </div>
 
+          {erroLeitura && <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">⚠ {erroLeitura}</div>}
           {erro && <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">⚠ {erro}</div>}
 
           {planilha && buffer && (<>
@@ -170,9 +198,14 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
                 <input className={`${inputCls} w-full`} value={nome} onChange={e => setNome(e.target.value)} maxLength={120} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">Linha do cabeçalho</label>
+                <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">Linha do cabeçalho (contando só linhas com dados)</label>
                 <input type="number" min={1} className={`${inputCls} w-full`} value={linhaCabecalhoInput}
-                  onChange={e => { setLinhaCabecalhoInput(e.target.value); carregar(buffer, { aba: planilha.aba, linhaCabecalho: Number(e.target.value) || 1 }) }} />
+                  onChange={e => {
+                    const txt = e.target.value
+                    setLinhaCabecalhoInput(txt)
+                    const n = Number(txt)
+                    if (Number.isInteger(n) && n >= 1) carregar(buffer, { aba: planilha.aba, linhaCabecalho: n })
+                  }} />
               </div>
               {planilha.abas.length > 1 && (
                 <div className="sm:col-span-3">
@@ -250,6 +283,11 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
           </>)}
         </div>
 
+        {nomeDuplicado !== null && (
+          <div className="mx-6 mb-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
+            Há duas colunas chamadas “{nomeDuplicado}” (maiúsculas e minúsculas contam como iguais). Renomeie uma delas para criar a tabela.
+          </div>
+        )}
         {naoConvertidas > 0 && (
           <div className="mx-6 mb-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
             {naoConvertidas.toLocaleString('pt-BR')} {naoConvertidas === 1 ? 'valor não pôde' : 'valores não puderam'} ser {naoConvertidas === 1 ? 'convertido' : 'convertidos'} para o tipo da coluna e {naoConvertidas === 1 ? 'será mantido' : 'serão mantidos'} como texto.
@@ -258,7 +296,7 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
           <button onClick={fechar} disabled={criando}
             className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm">Cancelar</button>
-          <button onClick={criar} disabled={!planilha || !nome.trim() || criando}
+          <button onClick={criar} disabled={!planilha || !nome.trim() || criando || erroLeitura !== null || nomeDuplicado !== null}
             className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
             {criando ? 'Criando...' : 'Criar tabela'}
           </button>

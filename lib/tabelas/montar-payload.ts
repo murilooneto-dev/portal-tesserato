@@ -5,7 +5,9 @@ export const LIMITE_LINHAS = 5000
 export const SETORES_TABELA = ['fiscal', 'contabil', 'pessoal', 'societario', 'financeiro'] as const
 export type SetorTabela = typeof SETORES_TABELA[number]
 
-const MAX_COLUNAS = 100
+export const MAX_COLUNAS = 100
+// Folga sobre o limite de 4 MB do corpo da Server Action.
+export const LIMITE_BYTES_PAYLOAD = 3_800_000
 const MAX_TEXTO = 120
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -18,6 +20,8 @@ export interface ColunaConfig {
 }
 export interface ColunaPayload { id: string; nome: string; tipo: TipoColuna; ordem: number; opcoes: OpcaoColuna[] | null }
 export interface LinhaPayload { dados: Record<string, ValorCelula>; clienteId: string | null; ordem: number }
+// Linha enviada pela UI: valores em ordem de coluna (sem repetir o id de cada coluna).
+export interface LinhaCompacta { v: ValorCelula[]; clienteId: string | null }
 export interface PayloadCriacao {
   setor: SetorTabela
   nome: string
@@ -34,24 +38,25 @@ export function montarLinhas(
   linhasBrutas: ValorCelula[][],
   colunas: ColunaConfig[],
   clientePorLinha: (string | null)[],
-): { linhas: LinhaPayload[]; naoConvertidas: number } {
+): { linhas: LinhaCompacta[]; naoConvertidas: number } {
   let naoConvertidas = 0
   const linhas = linhasBrutas.map((bruta, i) => {
-    const dados: Record<string, ValorCelula> = {}
+    const v: ValorCelula[] = []
     for (const col of colunas) {
       const raw = bruta[col.indiceOrigem] ?? null
-      if (vazio(raw)) { dados[col.id] = null; continue }
+      if (vazio(raw)) { v.push(null); continue }
       if (col.tipo === 'numero') {
         const n = paraNumero(raw)
-        if (n === null) { naoConvertidas++; dados[col.id] = String(raw) } else dados[col.id] = n
+        if (n === null) { naoConvertidas++; v.push(String(raw)) } else v.push(n)
       } else if (col.tipo === 'data') {
         const d = paraDataISO(raw)
-        if (d === null) { naoConvertidas++; dados[col.id] = String(raw) } else dados[col.id] = d
+        if (d === null) { naoConvertidas++; v.push(String(raw)) } else v.push(d)
       } else {
-        dados[col.id] = typeof raw === 'number' ? raw : String(raw).trim()
+        // texto, opções e cliente ficam como string (CNPJ/códigos numéricos não viram número)
+        v.push(col.tipo === 'texto' && typeof raw === 'number' ? raw : String(raw).trim())
       }
     }
-    return { dados, clienteId: clientePorLinha[i] ?? null, ordem: i }
+    return { v, clienteId: clientePorLinha[i] ?? null }
   })
   return { linhas, naoConvertidas }
 }
@@ -76,6 +81,7 @@ export function validarPayload(entrada: unknown): Resultado {
   if (entrada.colunas.length > MAX_COLUNAS) return falha(`No máximo ${MAX_COLUNAS} colunas.`)
 
   const ids = new Set<string>()
+  const nomesVistos = new Set<string>()
   const colunas: ColunaPayload[] = []
   let qtdCliente = 0
   for (const c of entrada.colunas) {
@@ -85,6 +91,8 @@ export function validarPayload(entrada: unknown): Resultado {
     ids.add(c.id)
     const nomeCol = typeof c.nome === 'string' ? c.nome.trim() : ''
     if (!nomeCol || nomeCol.length > MAX_TEXTO) return falha('Cada coluna precisa de um nome de até 120 caracteres.')
+    if (nomesVistos.has(nomeCol.toLowerCase())) return falha(`Nome de coluna repetido: "${nomeCol}" (nomes iguais, ignorando maiúsculas/minúsculas).`)
+    nomesVistos.add(nomeCol.toLowerCase())
     if (typeof c.tipo !== 'string' || !(TIPOS_COLUNA as string[]).includes(c.tipo)) return falha('Tipo de coluna inválido.')
     if (c.tipo === 'cliente') qtdCliente++
     let opcoes: OpcaoColuna[] | null = null
@@ -113,12 +121,12 @@ export function validarPayload(entrada: unknown): Resultado {
 
   const linhas: LinhaPayload[] = []
   for (const l of entrada.linhas) {
-    if (!ehObjeto(l) || !ehObjeto(l.dados)) return falha('Linha inválida.')
+    if (!ehObjeto(l) || !Array.isArray(l.v) || l.v.length !== colunas.length) return falha('Linha inválida.')
     const dados: Record<string, ValorCelula> = {}
-    for (const [k, v] of Object.entries(l.dados)) {
-      if (!ids.has(k)) return falha('Linha com valor para coluna inexistente.')
+    for (let i = 0; i < colunas.length; i++) {
+      const v: unknown = l.v[i]
       if (v !== null && typeof v !== 'string' && typeof v !== 'number') return falha('Valor de célula inválido.')
-      dados[k] = typeof v === 'string' ? v.slice(0, 5000) : v
+      dados[colunas[i].id] = typeof v === 'string' ? v.slice(0, 5000) : v
     }
     let clienteId: string | null = null
     if (l.clienteId !== null && l.clienteId !== undefined) {

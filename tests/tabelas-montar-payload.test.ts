@@ -1,7 +1,7 @@
 // tests/tabelas-montar-payload.test.ts
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { montarLinhas, validarPayload, LIMITE_LINHAS, type ColunaConfig } from '../lib/tabelas/montar-payload'
+import { montarLinhas, validarPayload, LIMITE_LINHAS, MAX_COLUNAS, LIMITE_BYTES_PAYLOAD, type ColunaConfig } from '../lib/tabelas/montar-payload'
 
 const ID1 = '11111111-1111-4111-8111-111111111111'
 const ID2 = '22222222-2222-4222-8222-222222222222'
@@ -19,7 +19,7 @@ interface PayloadFixture {
   nome: string
   colunaChaveId: string | null
   colunas: { id: string; nome: string; tipo: string; ordem: number; opcoes: { valor: string; cor: string }[] | null }[]
-  linhas: { dados: Record<string, string | number | null>; clienteId: string | null; ordem: number }[]
+  linhas: { v: (string | number | null)[]; clienteId: string | null }[]
 }
 
 function payloadValido(): PayloadFixture {
@@ -31,7 +31,7 @@ function payloadValido(): PayloadFixture {
       { id: ID1, nome: 'Cliente', tipo: 'cliente', ordem: 0, opcoes: null },
       { id: ID2, nome: 'Status', tipo: 'opcoes', ordem: 1, opcoes: [{ valor: 'Ok', cor: '#10b981' }] },
     ],
-    linhas: [{ dados: { [ID1]: 'A', [ID2]: 'Ok' }, clienteId: CLI, ordem: 0 }],
+    linhas: [{ v: ['A', 'Ok'], clienteId: CLI }],
   }
 }
 
@@ -42,25 +42,20 @@ test('montarLinhas converte por tipo e guarda por id da coluna', () => {
     [CLI, null],
   )
   assert.equal(r.naoConvertidas, 0)
-  assert.deepEqual(r.linhas[0], {
-    dados: { [ID1]: 'Empresa A', [ID2]: 1234.5, [ID3]: '2026-03-15' },
-    clienteId: CLI,
-    ordem: 0,
-  })
-  assert.equal(r.linhas[1].clienteId, null)
-  assert.equal(r.linhas[1].ordem, 1)
+  assert.deepEqual(r.linhas[0], { v: ['Empresa A', 1234.5, '2026-03-15'], clienteId: CLI })
+  assert.deepEqual(r.linhas[1], { v: ['Empresa B', 20, '2026-04-01'], clienteId: null })
 })
 
 test('montarLinhas: valor que não converte fica como texto original e é contado', () => {
   const r = montarLinhas([['A', 'abc', 'ontem']], colunas, [null])
-  assert.equal(r.linhas[0].dados[ID2], 'abc')
-  assert.equal(r.linhas[0].dados[ID3], 'ontem')
+  assert.equal(r.linhas[0].v[1], 'abc')
+  assert.equal(r.linhas[0].v[2], 'ontem')
   assert.equal(r.naoConvertidas, 2)
 })
 
 test('montarLinhas: célula vazia vira null e não conta como não convertida', () => {
   const r = montarLinhas([['A', null, null]], colunas, [null])
-  assert.equal(r.linhas[0].dados[ID2], null)
+  assert.equal(r.linhas[0].v[1], null)
   assert.equal(r.naoConvertidas, 0)
 })
 
@@ -97,10 +92,56 @@ test('validarPayload rejeita id de coluna repetido ou não-uuid', () => {
   assert.equal(validarPayload(q).ok, false)
 })
 
-test('validarPayload rejeita dado com chave de coluna inexistente', () => {
+test('validarPayload rejeita v com tamanho diferente do número de colunas', () => {
   const p = payloadValido()
-  p.linhas[0].dados = { [ID1]: 'A', [ID3]: 'x' }
+  p.linhas[0].v = ['A']
   assert.equal(validarPayload(p).ok, false)
+  const q = payloadValido()
+  q.linhas[0].v = ['A', 'Ok', 'x']
+  assert.equal(validarPayload(q).ok, false)
+  const r = payloadValido()
+  ;(r.linhas[0] as unknown as { v: unknown }).v = 'A'
+  assert.equal(validarPayload(r).ok, false)
+})
+
+test('validarPayload expande v em dados indexados pelo id da coluna', () => {
+  const r = validarPayload(payloadValido())
+  assert.equal(r.ok, true)
+  if (r.ok) assert.deepEqual(r.payload.linhas, [{ dados: { [ID1]: 'A', [ID2]: 'Ok' }, clienteId: CLI, ordem: 0 }])
+})
+
+test('validarPayload rejeita valor de célula inválido', () => {
+  const p = payloadValido()
+  ;(p.linhas[0].v as unknown[])[0] = { x: 1 }
+  assert.equal(validarPayload(p).ok, false)
+})
+
+test('validarPayload rejeita nomes de coluna iguais ignorando caixa', () => {
+  const p = payloadValido()
+  p.colunas[0].nome = 'Nome'
+  p.colunas[1].nome = 'nome'
+  const r = validarPayload(p)
+  assert.equal(r.ok, false)
+  if (!r.ok) assert.match(r.erro, /nome/i)
+})
+
+test('validarPayload rejeita mais de MAX_COLUNAS colunas', () => {
+  const p = payloadValido()
+  p.colunas = Array.from({ length: MAX_COLUNAS + 1 }, (_, i) => ({
+    id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, nome: `C${i}`, tipo: 'texto', ordem: i, opcoes: null,
+  }))
+  assert.equal(validarPayload(p).ok, false)
+  assert.equal(LIMITE_BYTES_PAYLOAD, 3_800_000)
+})
+
+test('montarLinhas: opcoes e cliente guardam string mesmo com célula numérica', () => {
+  const cfg: ColunaConfig[] = [
+    { id: ID1, nome: 'Cli', tipo: 'cliente', opcoes: null, indiceOrigem: 0 },
+    { id: ID2, nome: 'Grupo', tipo: 'opcoes', opcoes: [{ valor: '2', cor: '#10b981' }], indiceOrigem: 1 },
+    { id: ID3, nome: 'Qtd', tipo: 'numero', opcoes: null, indiceOrigem: 2 },
+  ]
+  const r = montarLinhas([[1234567000189, 2, 7]], cfg, [null])
+  assert.deepEqual(r.linhas[0].v, ['1234567000189', '2', 7])
 })
 
 test('validarPayload rejeita coluna-chave inexistente e clienteId inválido', () => {
@@ -112,7 +153,7 @@ test('validarPayload rejeita coluna-chave inexistente e clienteId inválido', ()
 
 test('validarPayload rejeita acima do limite de linhas', () => {
   const p = payloadValido()
-  p.linhas = Array.from({ length: LIMITE_LINHAS + 1 }, (_, i) => ({ dados: {}, clienteId: null, ordem: i }))
+  p.linhas = Array.from({ length: LIMITE_LINHAS + 1 }, () => ({ v: [null, null], clienteId: null }))
   const r = validarPayload(p)
   assert.equal(r.ok, false)
   if (!r.ok) assert.match(r.erro, /5\.?000/)
