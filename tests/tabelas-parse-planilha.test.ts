@@ -80,3 +80,50 @@ test('nomesUnicos: resultado sempre único ignorando caixa', () => {
   assert.equal(r.length, ent.length)
   assert.equal(new Set(r.map(x => x.toLowerCase())).size, ent.length)
 })
+
+// ---- CSV pt-BR / encoding / datas com hora / colunas vazias ----
+import { paraNumero, paraDataISO } from '../lib/tabelas/tipos'
+
+const CSV = 'Nome;Valor;Data;CNPJ\nSão José;1.234,56;03/04/2026;01234567000189\nBom Preço;12,5;15/03/2026;98765432000110\n'
+const paraAB = (b: Buffer): ArrayBuffer => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer
+
+function conferirCsv(r: ReturnType<typeof lerPlanilha>) {
+  assert.deepEqual(r.cabecalhos, ['Nome', 'Valor', 'Data', 'CNPJ'])
+  assert.deepEqual(r.linhas[0], ['São José', '1.234,56', '03/04/2026', '01234567000189'])
+  assert.deepEqual(r.linhas[1], ['Bom Preço', '12,5', '15/03/2026', '98765432000110'])
+}
+
+test('CSV ; em UTF-8 sem BOM mantém strings originais e acentos', () => {
+  conferirCsv(lerPlanilha(paraAB(Buffer.from(CSV, 'utf8'))))
+})
+
+test('CSV ; em windows-1252 mantém acentos', () => {
+  conferirCsv(lerPlanilha(paraAB(Buffer.from(CSV, 'latin1'))))
+})
+
+test('CSV ; em UTF-8 com BOM', () => {
+  conferirCsv(lerPlanilha(paraAB(Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(CSV, 'utf8')]))))
+})
+
+test('datetime no meio e no fim do dia fica no mesmo dia', () => {
+  const r = lerPlanilha(xlsx([['D'], [new Date(2026, 2, 15, 14, 30)], [new Date(2026, 2, 15, 23, 30)]]))
+  assert.equal(r.linhas[0][0], '2026-03-15')
+  assert.equal(r.linhas[1][0], '2026-03-15')
+})
+
+test('colunas totalmente vazias (formatadas até H) são descartadas', () => {
+  const ws = XLSX.utils.aoa_to_sheet([['A', 'B'], [1, 2], [3, 4]])
+  ws['!ref'] = 'A1:H3'
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'P')
+  const r = lerPlanilha(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer)
+  assert.deepEqual(r.cabecalhos, ['A', 'B'])
+  assert.deepEqual(r.linhas, [[1, 2], [3, 4]])
+})
+
+test('strings do CSV convertem com paraNumero/paraDataISO', () => {
+  const r = lerPlanilha(paraAB(Buffer.from(CSV, 'utf8')))
+  assert.equal(paraNumero(r.linhas[0][1]), 1234.56)
+  assert.equal(paraNumero(r.linhas[1][1]), 12.5)
+  assert.equal(paraDataISO(r.linhas[0][2]), '2026-04-03')
+})
