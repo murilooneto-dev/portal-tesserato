@@ -19,7 +19,8 @@ import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
-import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
+import { tipoVisivelParaUsuario, filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
+import { buscarDonoNomePorTipo } from '@/lib/tarefa-tipo-donos'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { bucketDoRegime } from '@/lib/regime-bucket'
 import HistoricoResponsavel from '@/components/HistoricoResponsavel'
@@ -91,6 +92,10 @@ export default async function ClienteDetalhePage({ params }: Props) {
     tipoVisivelParaUsuario(responsavelIdPorTipo[tipo], user.id, profile?.role)
 
   const tarefasPersonalizadasVisiveis = tarefasPersonalizadasEfetivas.filter(ehDonoOuAdmin)
+
+  // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % deste cliente.
+  const donoNomePorTipo = await buscarDonoNomePorTipo(supabase, 'fiscal')
+  const tiposDoProgresso = filtrarTiposDoProgresso(tarefasPersonalizadasVisiveis, cliente.responsavel, donoNomePorTipo)
 
   const podeEditarPorTipo: Record<string, boolean> = {}
   for (const tipo of tarefasPersonalizadasVisiveis) {
@@ -180,9 +185,9 @@ export default async function ClienteDetalhePage({ params }: Props) {
   // de quem não deveria nem ver essa tarefa.
   const historicoMeses = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
-    const total = tarefasPersonalizadasVisiveis.length
+    const total = tiposDoProgresso.length
     const feitas = (tarefasAno ?? []).filter(
-      t => t.mes === m && t.concluida && tarefasPersonalizadasVisiveis.includes(t.tipo as string)
+      t => t.mes === m && t.concluida && tiposDoProgresso.includes(t.tipo as string)
     ).length
     const pct = total > 0 ? Math.round((feitas / total) * 100) : 0
     return { m, total, feitas, pct }
