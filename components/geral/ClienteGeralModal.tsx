@@ -10,7 +10,8 @@ import { flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
-import { excluirClienteGeral, salvarClienteGeral } from '@/app/(comum)/clientes/actions'
+import { excluirClienteGeral, salvarClienteGeral, desabilitarClienteGeral, reabilitarClienteGeral } from '@/app/(comum)/clientes/actions'
+import DesabilitarClienteModal from '@/components/geral/DesabilitarClienteModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
 interface FormData extends CamposFiscaisData {
@@ -30,6 +31,9 @@ interface Props {
   catalogoFiscal: CatalogoCliente
   onClose: () => void
   readOnly?: boolean
+  podeDesabilitar?: boolean
+  desabilitada?: boolean
+  temSetorDesabilitavel?: boolean
 }
 
 const emptyForm = (): FormData => ({
@@ -44,7 +48,7 @@ const emptyForm = (): FormData => ({
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
 const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
-export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCatalogo, catalogoFiscal, onClose, readOnly = false }: Props) {
+export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCatalogo, catalogoFiscal, onClose, readOnly = false, podeDesabilitar = false, desabilitada = false, temSetorDesabilitavel = false }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
@@ -56,6 +60,8 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
   const [loadingCnpj, setLoadingCnpj] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [excluindo, setExcluindo] = useState(false)
+  const [desabilitarModalOpen, setDesabilitarModalOpen] = useState(false)
+  const [reabilitando, setReabilitando] = useState(false)
   const [mostrarVinculos, setMostrarVinculos] = useState(false)
   const [catalogoNomes, setCatalogoNomes] = useState<string[]>([])
   const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
@@ -212,6 +218,18 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
     onClose()
   }
 
+  async function handleReabilitar() {
+    if (!clienteId) return
+    if (!confirm(`Reabilitar "${form.nome}"? A empresa volta a aparecer nos setores onde estava desabilitada.`)) return
+    setReabilitando(true)
+    setErro(null)
+    const { error } = await reabilitarClienteGeral(clienteId)
+    setReabilitando(false)
+    if (error) { setErro(error); return }
+    router.refresh()
+    onClose()
+  }
+
   async function handleExcluir() {
     if (!clienteId) return
     if (!confirm(`Excluir "${form.nome}" do sistema? Essa ação não pode ser desfeita e remove o cliente de todos os setores (tarefas, arquivos e parcelamentos vinculados a ele também são apagados).`)) return
@@ -364,12 +382,27 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         )}
 
         <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          {!readOnly && isEdit ? (
-            <button onClick={handleExcluir} disabled={excluindo}
-              className="px-4 py-2.5 rounded-xl text-red-400/70 hover:text-red-400 text-sm transition-colors disabled:opacity-50">
-              {excluindo ? 'Excluindo...' : 'Excluir cliente'}
-            </button>
-          ) : <span />}
+          <div className="flex gap-1">
+            {!readOnly && isEdit && (
+              <button onClick={handleExcluir} disabled={excluindo}
+                className="px-4 py-2.5 rounded-xl text-red-400/70 hover:text-red-400 text-sm transition-colors disabled:opacity-50">
+                {excluindo ? 'Excluindo...' : 'Excluir cliente'}
+              </button>
+            )}
+            {podeDesabilitar && isEdit && temSetorDesabilitavel && (
+              desabilitada ? (
+                <button onClick={handleReabilitar} disabled={reabilitando}
+                  className="px-4 py-2.5 rounded-xl text-emerald-400/70 hover:text-emerald-400 text-sm transition-colors disabled:opacity-50">
+                  {reabilitando ? 'Reabilitando...' : 'Reabilitar empresa'}
+                </button>
+              ) : (
+                <button onClick={() => setDesabilitarModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl text-amber-400/70 hover:text-amber-400 text-sm transition-colors">
+                  Desabilitar empresa
+                </button>
+              )
+            )}
+          </div>
 
           <div className="flex gap-3">
             {readOnly ? (
@@ -391,6 +424,14 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         </div>
       </div>
     </div>
+    {desabilitarModalOpen && clienteId && (
+      <DesabilitarClienteModal
+        clienteNome={form.nome}
+        onClose={() => setDesabilitarModalOpen(false)}
+        onConfirm={senha => desabilitarClienteGeral(clienteId, senha)}
+        onConfirmado={() => { router.refresh(); onClose() }}
+      />
+    )}
     {nomeParaCriar && (
       <NovoTipoTarefaModal
         nome={nomeParaCriar}

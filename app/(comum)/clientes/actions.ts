@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel } from '@/lib/logs'
 import type { UserSetor } from '@/lib/types'
+import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 
 interface ClientePayload {
   nome: string
@@ -193,4 +194,68 @@ export async function excluirClienteGeral(id: string): Promise<{ error: string |
 
   revalidatePath('/clientes')
   return { error: null }
+}
+
+// Setores com estado "desabilitado" por cliente (tabela filha 1:1 com
+// `clientes`, ver supabase/migrations/020_clientes_ativo.sql). Societário e
+// Financeiro não têm o campo, então não entram aqui.
+const TABELAS_ATIVO: { setor: UserSetor; tabela: string }[] = [
+  { setor: 'fiscal', tabela: 'clientes_fiscal' },
+  { setor: 'contabil', tabela: 'clientes_contabil' },
+  { setor: 'pessoal', tabela: 'clientes_pessoal' },
+]
+
+// Só Societário e Admin desabilitam/reabilitam a empresa (em todos os setores
+// onde ela existe) — a partir da tela Clientes geral.
+async function alterarAtivoGeral(
+  clienteId: string,
+  ativo: boolean,
+  senha?: string,
+): Promise<{ error?: string }> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Não autorizado.' }
+
+  const { data: caller } = await supabase.from('profiles').select('role, setores, nome').eq('id', user.id).single()
+  const autorizado = caller?.role === 'admin' || (caller?.setores ?? []).includes('societario')
+  if (!autorizado) return { error: 'Não autorizado.' }
+
+  if (!ativo) {
+    const { ok, error: erroSenha } = await verificarSenhaUsuarioAtual(senha ?? '')
+    if (!ok) return { error: erroSenha ?? 'Senha incorreta.' }
+  }
+
+  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', clienteId).single()
+  if (!cliente) return { error: 'Cliente não encontrado.' }
+
+  let alterados = 0
+  for (const { setor, tabela } of TABELAS_ATIVO) {
+    const { data, error } = await supabase.from(tabela).update({ ativo }).eq('cliente_id', clienteId).select('cliente_id')
+    if (error) return { error: error.message }
+    if (!data || data.length === 0) continue
+    alterados++
+    await registrarEvento(supabase, {
+      setor, clienteId, clienteNome: cliente.nome,
+      tipoEvento: ativo ? 'reabilitacao' : 'desabilitacao',
+      usuarioId: user.id, usuarioNome: caller?.nome ?? 'Desconhecido',
+    })
+  }
+  if (alterados === 0) return { error: 'Cliente não está vinculado a nenhum setor com desabilitação.' }
+
+  revalidatePath('/clientes')
+  for (const s of ['fiscal', 'contabil', 'pessoal']) {
+    for (const p of ['clientes', 'dashboard', 'relatorios']) revalidatePath(`/${s}/${p}`)
+    revalidatePath(`/${s}/clientes/${clienteId}`)
+  }
+  revalidatePath('/fiscal/tarefas')
+  revalidatePath('/fiscal/minhas-tarefas')
+  revalidatePath('/ferramentas')
+  return {}
+}
+
+export async function desabilitarClienteGeral(clienteId: string, senha: string) {
+  return alterarAtivoGeral(clienteId, false, senha)
+}
+
+export async function reabilitarClienteGeral(clienteId: string) {
+  return alterarAtivoGeral(clienteId, true)
 }
