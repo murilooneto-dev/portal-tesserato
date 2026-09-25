@@ -49,4 +49,4 @@ Arquivo inválido ou vazio; cabeçalho duplicado (sufixo automático + aviso); d
 Funções puras em `lib/`, com testes `node --test`: detecção de tipo por amostragem, normalização de CNPJ, sugestão de cliente parecido, diff do reenvio, conversão ao trocar tipo. Teste de tela: usuário, em dev.
 
 ## Fora do escopo (v1)
-Coluna Sim/Não, fórmulas, edição colaborativa em tempo real, histórico por célula, tabelas entre setores, mostrar a tabela na ficha do cliente (o `cliente_id` indexado já deixa isso pronto para depois).
+Coluna Sim/Não, fórmulas, edição colaborativa em tempo real, histórico por célula, tabelas entre setores, exibir qualquer coisa na ficha do cliente (decidido: o vínculo com o cliente serve só dentro da própria tabela, para seletor, filtro e busca; nada aparece na ficha).
