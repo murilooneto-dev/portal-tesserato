@@ -39,7 +39,9 @@ begin
   else
     update planilha_linhas
        set cliente_id = p_cliente,
-           dados = jsonb_set(dados, array[p_coluna::text], to_jsonb(p_nome), true),
+           -- p_nome nulo: a coluna é a chave da tabela; só o vínculo muda, o texto fica.
+           dados = case when p_nome is null then dados
+                        else jsonb_set(dados, array[p_coluna::text], to_jsonb(p_nome), true) end,
            updated_at = now()
      where id = p_linha;
   end if;

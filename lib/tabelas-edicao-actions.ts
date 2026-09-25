@@ -1,8 +1,10 @@
 // lib/tabelas-edicao-actions.ts
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin } from './supabase/server'
 import { podeEditarLinhas } from './tabelas/permissoes'
+import { podeAcessarPagina } from './route-permissions'
 import { converterEntradaCelula, ehUuid } from './tabelas/editar-celula'
 import type { SetorTabela } from './tabelas/montar-payload'
 import type { OpcaoColuna, TipoColuna, ValorCelula } from './tabelas/tipos'
@@ -22,8 +24,8 @@ async function contextoDaPlanilha(planilhaId: string): Promise<Contexto> {
   const { data: planilha } = await supabase.from('planilhas').select('id, setor').eq('id', planilhaId).maybeSingle()
   if (!planilha) return { error: 'Tabela não encontrada.' }
 
-  const { data: profile } = await supabase.from('profiles').select('role, setores').eq('id', user.id).single()
-  if (!podeEditarLinhas(profile, planilha.setor as SetorTabela)) return { error: 'Acesso negado.' }
+  const { data: profile } = await supabase.from('profiles').select('role, setores, paginas_acesso').eq('id', user.id).single()
+  if (!podeEditarLinhas(profile, planilha.setor as SetorTabela) || !podeAcessarPagina(profile, planilha.setor as SetorTabela, 'tabelas')) return { error: 'Acesso negado.' }
 
   return { error: null, supabase, planilhaId: planilha.id as string, setor: planilha.setor as SetorTabela }
 }
@@ -35,6 +37,12 @@ async function contextoDaLinha(linhaId: string): Promise<Contexto> {
   const { data: linha } = await supabase.from('planilha_linhas').select('id, planilha_id').eq('id', linhaId).maybeSingle()
   if (!linha) return { error: 'Essa linha não existe mais (talvez outra pessoa a removeu). Recarregue a página.' }
   return contextoDaPlanilha(linha.planilha_id as string)
+}
+
+// O Router Cache do Next reaproveita payloads ao voltar no navegador; sem isso a grade
+// mostraria valores antigos depois de uma edição.
+function revalidarTabela(ctx: { setor: SetorTabela; planilhaId: string }) {
+  revalidatePath(`/${ctx.setor}/tabelas/${ctx.planilhaId}`)
 }
 
 interface ColunaDB { id: string; planilha_id: string; tipo: TipoColuna; opcoes: OpcaoColuna[] | null }
@@ -66,6 +74,7 @@ export async function editarCelula(
   })
   if (error) return { error: 'Não foi possível salvar a alteração.' }
   if (!data) return { error: 'Essa linha não existe mais. Recarregue a página.' }
+  revalidarTabela(ctx)
   return { error: null, valor: convertido.valor }
 }
 
@@ -78,12 +87,17 @@ export async function definirClienteDaLinha(
   const coluna = await colunaDaTabela(ctx.supabase, entrada.colunaId, ctx.planilhaId)
   if (!coluna || coluna.tipo !== 'cliente') return { error: 'Coluna inválida.' }
 
+  // Se essa coluna é a chave da tabela (ex.: CNPJ), o texto importado é o identificador
+  // usado na reimportação: só o vínculo muda, o texto da célula não é sobrescrito.
+  const { data: planilha } = await ctx.supabase.from('planilhas').select('coluna_chave').eq('id', ctx.planilhaId).maybeSingle()
+  const ehChave = planilha?.coluna_chave === coluna.id
+
   let nome: string | null = null
   if (entrada.clienteId !== null) {
     if (!ehUuid(entrada.clienteId)) return { error: 'Cliente inválido.' }
     const { data: cliente } = await ctx.supabase.from('clientes').select('nome').eq('id', entrada.clienteId).maybeSingle()
     if (!cliente) return { error: 'Cliente não encontrado.' }
-    nome = cliente.nome as string
+    nome = ehChave ? null : (cliente.nome as string)
   }
 
   const { data, error } = await ctx.supabase.rpc('vincular_cliente_linha', {
@@ -94,6 +108,7 @@ export async function definirClienteDaLinha(
   })
   if (error) return { error: 'Não foi possível salvar o cliente.' }
   if (!data) return { error: 'Essa linha não existe mais. Recarregue a página.' }
+  revalidarTabela(ctx)
   return { error: null, nome }
 }
 
@@ -103,6 +118,7 @@ export async function adicionarLinha(planilhaId: string): Promise<{ error: strin
 
   const { data, error } = await ctx.supabase.rpc('adicionar_linha_planilha', { p_planilha: ctx.planilhaId })
   if (error || !data) return { error: 'Não foi possível adicionar a linha.' }
+  revalidarTabela(ctx)
   return { error: null, id: data as string }
 }
 
@@ -113,5 +129,6 @@ export async function removerLinha(linhaId: string): Promise<{ error: string | n
   const { data, error } = await ctx.supabase.from('planilha_linhas').delete().eq('id', linhaId).select('id')
   if (error) return { error: 'Não foi possível remover a linha.' }
   if (!data || data.length === 0) return { error: 'Essa linha já foi removida. Recarregue a página.' }
+  revalidarTabela(ctx)
   return { error: null }
 }
