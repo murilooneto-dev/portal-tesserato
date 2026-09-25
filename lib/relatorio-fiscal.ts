@@ -2,6 +2,7 @@ import type { Tarefa } from './types'
 import type { ClienteComFiscal } from './clientes-fiscal'
 import type { MapaVinculosSetor } from './tarefas-esperadas'
 import { calcularTarefasEsperadas } from './tarefas-esperadas'
+import { filtrarTiposDoProgresso } from './tarefa-tipo-visibilidade'
 
 export interface ProgressoCliente {
   total: number
@@ -10,8 +11,8 @@ export interface ProgressoCliente {
   pendentes: string[]
 }
 
-export function calcularProgresso(cliente: ClienteComFiscal, tarefas: Tarefa[], mapaVinculos: MapaVinculosSetor): ProgressoCliente {
-  const tipos = new Set(calcularTarefasEsperadas(cliente, mapaVinculos))
+export function calcularProgresso(cliente: ClienteComFiscal, tarefas: Tarefa[], mapaVinculos: MapaVinculosSetor, donoNomePorTipo: Record<string, string> = {}): ProgressoCliente {
+  const tipos = new Set(filtrarTiposDoProgresso(calcularTarefasEsperadas(cliente, mapaVinculos), cliente.responsavel, donoNomePorTipo))
   const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.has(t.tipo))
   const total = tipos.size
   const feitas = clienteTarefas.filter(t => t.concluida).length
@@ -28,8 +29,8 @@ export interface LinhaRelatorio {
   pendentes: string[]
 }
 
-export function montarLinhasRelatorio(clientes: ClienteComFiscal[], tarefas: Tarefa[], mapaVinculos: MapaVinculosSetor): LinhaRelatorio[] {
+export function montarLinhasRelatorio(clientes: ClienteComFiscal[], tarefas: Tarefa[], mapaVinculos: MapaVinculosSetor, donoNomePorTipo: Record<string, string> = {}): LinhaRelatorio[] {
   return clientes
-    .map(cliente => ({ cliente, ...calcularProgresso(cliente, tarefas, mapaVinculos) }))
+    .map(cliente => ({ cliente, ...calcularProgresso(cliente, tarefas, mapaVinculos, donoNomePorTipo) }))
     .sort((a, b) => a.pct - b.pct)
 }

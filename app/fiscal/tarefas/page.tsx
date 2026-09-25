@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
-import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
+import { tipoVisivelParaUsuario, tipoContaNoProgressoDoCliente } from '@/lib/tarefa-tipo-visibilidade'
+import { buscarDonoNomePorTipo } from '@/lib/tarefa-tipo-donos'
 import type { Tarefa } from '@/lib/types'
 
 export const metadata = { title: 'Tarefas — Tesserato Fiscal' }
@@ -33,6 +34,8 @@ export default async function TarefasPage() {
   // o dono nem admin — ver lib/supabase/server.ts:podeEditarTarefaTipo.
   const tipoVisivel = (tipo: string) =>
     tipoVisivelParaUsuario(responsavelIdPorTipo.get(tipo), user.id, profile?.role)
+
+  const donoNomePorTipo = await buscarDonoNomePorTipo(supabase, 'fiscal')
 
   const { data: clientes } = await supabase
     .from('clientes')
@@ -74,7 +77,7 @@ export default async function TarefasPage() {
 
       <div className="flex flex-col gap-2">
         {clientesFiltrados.map(cliente => {
-          const ts = (tarefasPorCliente.get(cliente.id) ?? []).filter(t => tipoVisivel(t.tipo))
+          const ts = (tarefasPorCliente.get(cliente.id) ?? []).filter(t => tipoVisivel(t.tipo) && tipoContaNoProgressoDoCliente(donoNomePorTipo[t.tipo], cliente.responsavel))
           const concluidas = ts.filter(t => t.concluida).length
           const total = ts.length
           const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0

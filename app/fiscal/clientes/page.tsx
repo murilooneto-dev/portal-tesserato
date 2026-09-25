@@ -6,7 +6,8 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
-import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
+import { tipoVisivelParaUsuario, filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
+import { buscarDonoNomePorTipo } from '@/lib/tarefa-tipo-donos'
 import type { Tarefa } from '@/lib/types'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
@@ -42,6 +43,7 @@ export default async function ClientesPage() {
   const clientes = (clientesRaw ?? []).map(flattenClienteFiscal)
 
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
+  const donoNomePorTipo = await buscarDonoNomePorTipo(supabase, 'fiscal')
 
   const responsavelIdPorTipo = new Map(
     (tarefaTiposRaw ?? []).map(t => [t.nome as string, t.responsavel_id as string | null])
@@ -70,7 +72,8 @@ export default async function ClientesPage() {
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of clientes) {
     const tiposBase = [...calcularTarefasEsperadas(c, mapaVinculos), ...(tiposParcelamentoPorCliente[c.id] ?? [])]
-    const tipos = Array.from(new Set(tiposBase))
+    // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % deste cliente.
+    const tipos = filtrarTiposDoProgresso(new Set(tiposBase), c.responsavel, donoNomePorTipo)
       .filter(tipo => tipoVisivelParaUsuario(responsavelIdPorTipo.get(tipo), user.id, profile?.role))
     tiposMap[c.id] = new Set(tipos)
   }

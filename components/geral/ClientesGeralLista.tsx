@@ -5,6 +5,7 @@ import type { Cliente, TarefaVinculo } from '@/lib/types'
 import ClienteGeralModal from './ClienteGeralModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
+import { empresaDesabilitada, empresaTemSetorDesabilitavel } from '@/lib/cliente-ativo'
 
 const CORES_REGIME: Record<string, string> = {
   simples:   '#10b981',
@@ -24,22 +25,26 @@ function corRegime(regime: string): string {
 }
 
 type ClienteComDadosFiscais = Cliente & {
-  clientes_fiscal: { regime: string | null; atividade: string[] } | null
+  clientes_fiscal: { regime: string | null; atividade: string[]; ativo: boolean } | null
+  clientes_contabil: { ativo: boolean } | null
+  clientes_pessoal: { ativo: boolean } | null
 }
 
 interface Props {
   clientes: ClienteComDadosFiscais[]
   isAdmin: boolean
   podeCriar: boolean
+  podeDesabilitar: boolean
   responsaveis: string[]
   vinculosCatalogo: TarefaVinculo[]
   catalogoFiscal: CatalogoCliente
 }
 
-export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, responsaveis, vinculosCatalogo, catalogoFiscal }: Props) {
+export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeDesabilitar, responsaveis, vinculosCatalogo, catalogoFiscal }: Props) {
   const [busca, setBusca] = useState('')
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
   const [clienteAbertoId, setClienteAbertoId] = useState<string | null>(null)
+  const clienteAberto = clientes.find(c => c.id === clienteAbertoId)
   const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientesGeral:regime', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('clientesGeral:atividade', [])
   const [ordenacao, setOrdenacao] = useState<{ campo: 'nome' | 'regime'; direcao: 'asc' | 'desc' } | null>(null)
@@ -225,6 +230,9 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, respo
           vinculosCatalogo={vinculosCatalogo}
           catalogoFiscal={catalogoFiscal}
           readOnly={!isAdmin}
+          podeDesabilitar={podeDesabilitar}
+          desabilitada={empresaDesabilitada([clienteAberto?.clientes_fiscal, clienteAberto?.clientes_contabil, clienteAberto?.clientes_pessoal])}
+          temSetorDesabilitavel={empresaTemSetorDesabilitavel([clienteAberto?.clientes_fiscal, clienteAberto?.clientes_contabil, clienteAberto?.clientes_pessoal])}
           onClose={() => setClienteAbertoId(null)}
         />
       )}

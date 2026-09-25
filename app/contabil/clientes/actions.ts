@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarClienteContabil } from '@/lib/supabase/server'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
-import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
 
 interface ClientePayload {
@@ -434,54 +433,5 @@ export async function excluirNotaCliente(notaId: string, clienteId: string): Pro
     .eq('setor', 'contabil')
   if (error) return { error: error.message }
   revalidatePath(`/contabil/clientes/${clienteId}`)
-  return {}
-}
-
-export async function desabilitarCliente(clienteId: string, senha: string): Promise<{ error?: string }> {
-  if (!(await podeEditarClienteContabil(clienteId))) return { error: 'Não autorizado.' }
-
-  const { ok, error: erroSenha } = await verificarSenhaUsuarioAtual(senha)
-  if (!ok) return { error: erroSenha ?? 'Senha incorreta.' }
-
-  const { user, supabase } = await getAuthenticatedAdmin()
-  if (!user || !supabase) return { error: 'Não autorizado.' }
-
-  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', clienteId).single()
-
-  const { error } = await supabase.from('clientes_contabil').update({ ativo: false }).eq('cliente_id', clienteId)
-  if (error) return { error: error.message }
-
-  await registrarEvento(supabase, {
-    setor: 'contabil', clienteId, clienteNome: cliente?.nome ?? '—',
-    tipoEvento: 'desabilitacao', usuarioId: user.id, usuarioNome: await nomeDoUsuario(supabase, user.id),
-  })
-
-  revalidatePath(`/contabil/clientes/${clienteId}`)
-  revalidatePath('/contabil/clientes')
-  revalidatePath('/contabil/dashboard')
-  revalidatePath('/contabil/relatorios')
-  return {}
-}
-
-export async function reabilitarCliente(clienteId: string): Promise<{ error?: string }> {
-  if (!(await podeEditarClienteContabil(clienteId))) return { error: 'Não autorizado.' }
-
-  const { user, supabase } = await getAuthenticatedAdmin()
-  if (!user || !supabase) return { error: 'Não autorizado.' }
-
-  const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', clienteId).single()
-
-  const { error } = await supabase.from('clientes_contabil').update({ ativo: true }).eq('cliente_id', clienteId)
-  if (error) return { error: error.message }
-
-  await registrarEvento(supabase, {
-    setor: 'contabil', clienteId, clienteNome: cliente?.nome ?? '—',
-    tipoEvento: 'reabilitacao', usuarioId: user.id, usuarioNome: await nomeDoUsuario(supabase, user.id),
-  })
-
-  revalidatePath(`/contabil/clientes/${clienteId}`)
-  revalidatePath('/contabil/clientes')
-  revalidatePath('/contabil/dashboard')
-  revalidatePath('/contabil/relatorios')
   return {}
 }
