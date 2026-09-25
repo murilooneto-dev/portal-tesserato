@@ -153,11 +153,13 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
         <input
           // O key força o campo a voltar ao valor salvo quando o servidor recusa a edição.
           key={`${k}:${inicial}:${est?.estado ?? ''}`}
-          type={c.tipo === 'data' ? 'date' : 'text'}
+          // Data legada não convertida (ex.: 'ontem') não cabe em <input type="date">, que a mostraria vazia
+          // e faria o blur apagar o valor. Nesse caso vira texto, com o original visível e editável.
+          type={c.tipo === 'data' && (valor === null || (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor))) ? 'date' : 'text'}
           inputMode={c.tipo === 'numero' ? 'decimal' : undefined}
           className={`${campoCls} ${bordaCls}`}
           disabled={desabilitado}
-          defaultValue={c.tipo === 'data' && typeof valor === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(valor) ? '' : inicial}
+          defaultValue={inicial}
           onBlur={e => { if (e.target.value.trim() !== inicial) salvarCelula(l, c, e.target.value) }}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
         />
