@@ -12,6 +12,17 @@ export function somenteDigitos(s: string | null | undefined): string {
   return (s ?? '').replace(/\D/g, '')
 }
 
+export function chaveDocumento(s: string | null | undefined): string {
+  const digitos = somenteDigitos(s)
+  if (digitos.length >= 12 && digitos.length <= 14) {
+    return digitos.padStart(14, '0')
+  }
+  if (digitos.length >= 10 && digitos.length <= 11) {
+    return digitos.padStart(11, '0')
+  }
+  return ''
+}
+
 export function normalizarNome(s: string): string {
   const base = s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   const limpo = base.replace(/[^a-z0-9]+/g, ' ').trim().replace(/\bs a\b/g, 'sa')
@@ -49,9 +60,9 @@ export function casarCliente(valor: string | null | undefined, clientes: Cliente
   const v = (valor ?? '').trim()
   if (!v) return { status: 'sem_match', clienteId: null, score: 0 }
 
-  const digitos = somenteDigitos(v)
-  if (digitos.length >= 11) {
-    const porDoc = clientes.find(c => somenteDigitos(c.cnpj) === digitos)
+  const chave = chaveDocumento(v)
+  if (chave) {
+    const porDoc = clientes.find(c => chaveDocumento(c.cnpj) === chave)
     if (porDoc) return { status: 'exato', clienteId: porDoc.id, score: 1 }
   }
 

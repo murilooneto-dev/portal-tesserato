@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  somenteDigitos, normalizarNome, similaridade, casarCliente, agruparValoresCliente,
+  somenteDigitos, normalizarNome, similaridade, casarCliente, agruparValoresCliente, chaveDocumento,
   type ClienteMatch,
 } from '../lib/tabelas/cliente-match'
 
@@ -63,4 +63,46 @@ test('agruparValoresCliente: conta linhas por valor distinto e ignora vazios', (
   assert.equal(oficina.linhas, 2)
   assert.equal(oficina.match.clienteId, 'c3')
   assert.equal(g.find(x => x.valor === '12345678000190')!.match.clienteId, 'c1')
+})
+
+test('casarCliente: CNPJ com zero à esquerda perdido em planilha (13 dígitos) é exato após padding', () => {
+  const clientesComLeadingZero: ClienteMatch[] = [
+    { id: 'c_leading', nome: 'Empresa com Leading Zero', cnpj: '01.234.567/0001-89' },
+  ]
+  const r = casarCliente('1234567000189', clientesComLeadingZero)
+  assert.equal(r.status, 'exato')
+  assert.equal(r.clienteId, 'c_leading')
+})
+
+test('casarCliente: CPF (14 digits sem formatação) é exato', () => {
+  const clientesComCPF: ClienteMatch[] = [
+    { id: 'c_cpf1', nome: 'Pessoa Física', cnpj: '123.456.789-09' },
+  ]
+  const r = casarCliente('12345678909', clientesComCPF)
+  assert.equal(r.status, 'exato')
+  assert.equal(r.clienteId, 'c_cpf1')
+})
+
+test('casarCliente: CPF com zero à esquerda perdido (10 dígitos) é exato após padding', () => {
+  const clientesComCPFLeadingZero: ClienteMatch[] = [
+    { id: 'c_cpf2', nome: 'Pessoa Física com Zero', cnpj: '012.345.678-90' },
+  ]
+  const r = casarCliente('1234567890', clientesComCPFLeadingZero)
+  assert.equal(r.status, 'exato')
+  assert.equal(r.clienteId, 'c_cpf2')
+})
+
+test('casarCliente: documento com 14 dígitos que não existe no cliente é sem_match', () => {
+  const r = casarCliente('99999999999999', clientes)
+  assert.equal(r.status, 'sem_match')
+  assert.equal(r.clienteId, null)
+})
+
+test('chaveDocumento normaliza documentos com zero à esquerda', () => {
+  assert.equal(chaveDocumento('01234567000189'), '01234567000189')  // 14 digits CNPJ
+  assert.equal(chaveDocumento('1234567000189'), '01234567000189')   // 13 digits -> pad to 14
+  assert.equal(chaveDocumento('01234567890'), '01234567890')        // 11 digits CPF
+  assert.equal(chaveDocumento('1234567890'), '01234567890')         // 10 digits -> pad to 11
+  assert.equal(chaveDocumento('abc'), '')
+  assert.equal(chaveDocumento(null), '')
 })
