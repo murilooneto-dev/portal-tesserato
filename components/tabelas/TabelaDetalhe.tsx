@@ -38,7 +38,7 @@ export default async function TabelaDetalhe({ setor, id, pagina: paginaBruta, se
   const { pagina, totalPaginas, de, ate } = paginar(paginaBruta, total)
 
   let consulta = supabase.from('planilha_linhas').select('id, dados, cliente_id')
-    .eq('planilha_id', id).order('ordem').range(de, ate)
+    .eq('planilha_id', id).order('ordem').order('id').range(de, ate)
   if (filtrarSemCliente) consulta = consulta.is('cliente_id', null)
   const { data: linhasRaw } = await consulta
   const linhas = (linhasRaw ?? []) as LinhaGrade[]
@@ -91,6 +91,7 @@ export default async function TabelaDetalhe({ setor, id, pagina: paginaBruta, se
         linhas={linhas}
         clientes={clientes}
         podeEditar={podeEditar}
+        semCliente={filtrarSemCliente}
       />
 
       {totalPaginas > 1 && (

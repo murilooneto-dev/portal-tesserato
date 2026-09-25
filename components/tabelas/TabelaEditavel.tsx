@@ -17,6 +17,7 @@ interface Props {
   linhas: LinhaGrade[]
   clientes: ClienteMatch[]
   podeEditar: boolean
+  semCliente: boolean
 }
 
 type Estado = { estado: 'salvando' } | { estado: 'erro'; msg: string }
@@ -30,13 +31,15 @@ function textoDeEdicao(tipo: TipoColuna, valor: ValorCelula): string {
   return String(valor)
 }
 
-export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, podeEditar }: Props) {
+export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, podeEditar, semCliente }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   // Valores já salvos com sucesso nesta sessão, por cima do que veio do servidor.
   const [salvos, setSalvos] = useState<Record<string, ValorCelula>>({})
   const [vinculos, setVinculos] = useState<Record<string, string | null>>({})
   const [estados, setEstados] = useState<Record<string, Estado>>({})
+  const [rascunhos, setRascunhos] = useState<Record<string, string>>({})
+  const [editandoCliente, setEditandoCliente] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [erroGeral, setErroGeral] = useState<string | null>(null)
 
@@ -51,16 +54,27 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
     setEstados(e => { const n = { ...e }; delete n[k]; return n })
   }
 
+  function limparRascunho(k: string) {
+    setRascunhos(r => { const n = { ...r }; delete n[k]; return n })
+  }
+
   async function salvarCelula(l: LinhaGrade, c: ColunaGrade, entrada: string) {
     const k = chave(l.id, c.id)
     setEstados(e => ({ ...e, [k]: { estado: 'salvando' } }))
     try {
       const r = await editarCelula({ linhaId: l.id, colunaId: c.id, valor: entrada })
-      if (r.error) { setEstados(e => ({ ...e, [k]: { estado: 'erro', msg: r.error as string } })); return }
+      if (r.error) {
+        // Recusa do servidor: o campo volta ao valor anterior e a mensagem explica o motivo.
+        limparRascunho(k)
+        setEstados(e => ({ ...e, [k]: { estado: 'erro', msg: r.error as string } }))
+        return
+      }
       setSalvos(s => ({ ...s, [k]: r.valor ?? null }))
+      limparRascunho(k)
       limparEstado(k)
     } catch {
-      setEstados(e => ({ ...e, [k]: { estado: 'erro', msg: 'Falha de conexão ao salvar.' } }))
+      // Falha de rede: o rascunho fica no campo para não perder o que foi digitado.
+      setEstados(e => ({ ...e, [k]: { estado: 'erro', msg: 'Falha de conexão ao salvar. O texto digitado foi mantido; tente sair do campo de novo.' } }))
     }
   }
 
@@ -84,7 +98,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
       const r = await adicionarLinha(planilhaId)
       if (r.error) { setErroGeral(r.error); return }
       // A paginação limita 999999 à última página, onde a linha nova aparece.
-      router.push(`${pathname}?pagina=999999`)
+      router.push(`${pathname}?pagina=999999${semCliente ? '&semCliente=1' : ''}`)
     } catch {
       setErroGeral('Falha de conexão ao adicionar a linha.')
     } finally {
@@ -132,38 +146,87 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
 
     let campo: ReactNode
     if (c.tipo === 'opcoes') {
+      const atual = valor === null ? '' : String(valor)
+      const foraDaLista = atual !== '' && !(c.opcoes ?? []).some(o => o.valor === atual)
       campo = (
-        <select className={`${campoCls} ${bordaCls}`} disabled={desabilitado} value={valor === null ? '' : String(valor)}
+        <select aria-label={c.nome} className={`${campoCls} ${bordaCls}`} disabled={desabilitado} value={atual}
           onChange={e => salvarCelula(l, c, e.target.value)}>
           <option value="">—</option>
+          {foraDaLista && <option value={atual}>{`${atual} (fora da lista)`}</option>}
           {(c.opcoes ?? []).map(o => <option key={o.valor} value={o.valor}>{o.valor}</option>)}
         </select>
       )
     } else if (c.tipo === 'cliente') {
-      campo = (
-        <select className={`${campoCls} ${bordaCls}`} disabled={desabilitado} value={clienteAtual(l) ?? ''}
-          onChange={e => salvarCliente(l, c, e.target.value)}>
-          <option value="">Sem cliente{valor !== null ? ` (${String(valor)})` : ''}</option>
-          {clientes.map(cl => <option key={cl.id} value={cl.id}>{cl.nome}</option>)}
-        </select>
-      )
+      const cid = clienteAtual(l)
+      if (editandoCliente !== k) {
+        // A lista completa de clientes só existe na célula em edição (evita ~100k <option> por página).
+        campo = (
+          <button type="button" aria-label={c.nome} disabled={desabilitado} onClick={() => setEditandoCliente(k)}
+            className={`${campoCls} ${bordaCls} text-left cursor-pointer disabled:opacity-60`}>
+            {valor !== null ? formatarValor(c.tipo, valor) : 'Sem cliente'}
+            {!cid && valor !== null && (
+              <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">sem cliente</span>
+            )}
+          </button>
+        )
+      } else {
+        const foraDaLista = cid !== null && !clientes.some(cl => cl.id === cid)
+        campo = (
+          <select aria-label={c.nome} autoFocus className={`${campoCls} ${bordaCls}`} disabled={desabilitado} value={cid ?? ''}
+            onBlur={() => setEditandoCliente(null)}
+            onChange={e => { setEditandoCliente(null); salvarCliente(l, c, e.target.value) }}>
+            <option value="">Sem cliente{valor !== null ? ` (${String(valor)})` : ''}</option>
+            {foraDaLista && <option value={cid as string}>{`${valor !== null ? String(valor) : cid} (fora da lista)`}</option>}
+            {clientes.map(cl => <option key={cl.id} value={cl.id}>{cl.nome}</option>)}
+          </select>
+        )
+      }
     } else {
       const inicial = textoDeEdicao(c.tipo, valor)
-      campo = (
-        <input
-          // O key força o campo a voltar ao valor salvo quando o servidor recusa a edição.
-          key={`${k}:${inicial}:${est?.estado ?? ''}`}
-          // Data legada não convertida (ex.: 'ontem') não cabe em <input type="date">, que a mostraria vazia
-          // e faria o blur apagar o valor. Nesse caso vira texto, com o original visível e editável.
-          type={c.tipo === 'data' && (valor === null || (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor))) ? 'date' : 'text'}
-          inputMode={c.tipo === 'numero' ? 'decimal' : undefined}
-          className={`${campoCls} ${bordaCls}`}
-          disabled={desabilitado}
-          defaultValue={inicial}
-          onBlur={e => { if (e.target.value.trim() !== inicial) salvarCelula(l, c, e.target.value) }}
-          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-        />
-      )
+      const exibido = rascunhos[k] ?? inicial
+      const aoMudar = (v: string) => {
+        setRascunhos(r => ({ ...r, [k]: v }))
+        if (est?.estado === 'erro') limparEstado(k)
+      }
+      const aoSair = (el: HTMLInputElement | HTMLTextAreaElement) => {
+        const rascunho = rascunhos[k]
+        // Sem rascunho = a pessoa nunca digitou nesta célula: apenas focar/sair não salva.
+        if (rascunho === undefined) return
+        if (el.validity.badInput) {
+          // Data pela metade: o navegador entrega value '' mas o campo está preenchido pela metade.
+          limparRascunho(k)
+          setEstados(e => ({ ...e, [k]: { estado: 'erro', msg: 'Data incompleta.' } }))
+          return
+        }
+        if (rascunho.trim() !== inicial.trim()) salvarCelula(l, c, rascunho)
+        else limparRascunho(k)
+      }
+      if (c.tipo === 'texto') {
+        campo = (
+          <textarea aria-label={c.nome} rows={1} className={`${campoCls} ${bordaCls} resize-y`} disabled={desabilitado}
+            value={exibido}
+            onChange={e => aoMudar(e.target.value)}
+            onBlur={e => aoSair(e.currentTarget)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur() } }}
+          />
+        )
+      } else {
+        campo = (
+          <input
+            aria-label={c.nome}
+            // Data legada não convertida (ex.: 'ontem') não cabe em <input type="date">, que a mostraria vazia
+            // e faria o blur apagar o valor. Nesse caso vira texto, com o original visível e editável.
+            type={c.tipo === 'data' && (valor === null || (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor))) ? 'date' : 'text'}
+            inputMode={c.tipo === 'numero' ? 'decimal' : undefined}
+            className={`${campoCls} ${bordaCls}`}
+            disabled={desabilitado}
+            value={exibido}
+            onChange={e => aoMudar(e.target.value)}
+            onBlur={e => aoSair(e.currentTarget)}
+            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+          />
+        )
+      }
     }
 
     return (
@@ -209,7 +272,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
                 ))}
                 {podeEditar && (
                   <td className="px-2 py-2.5">
-                    <button onClick={() => aoRemover(l)} disabled={ocupado} title="Remover linha"
+                    <button onClick={() => aoRemover(l)} disabled={ocupado} title="Remover linha" aria-label="Remover linha"
                       className="text-red-400/60 hover:text-red-400 text-lg leading-none px-1 disabled:opacity-40">×</button>
                   </td>
                 )}
