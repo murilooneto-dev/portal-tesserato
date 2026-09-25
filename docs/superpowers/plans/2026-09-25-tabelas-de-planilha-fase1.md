@@ -117,7 +117,7 @@ alter table planilha_linhas  enable row level security;
 
 create policy "Setor le planilhas" on planilhas for select using (
   is_admin() or exists (
-    select 1 from profiles p where p.id = auth.uid() and planilhas.setor = any(p.setores)
+    select 1 from profiles p where p.id = auth.uid() and planilhas.setor::user_setor = any(p.setores)
   )
 );
 create policy "Admin gerencia planilhas" on planilhas for all using (is_admin());
