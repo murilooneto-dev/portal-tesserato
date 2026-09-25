@@ -65,3 +65,18 @@ test('planilha vazia lança erro claro', () => {
   const buf = xlsx([[null]])
   assert.throws(() => lerPlanilha(buf), /vazia|dados/i)
 })
+
+test('nomesUnicos não gera duplicata com literal que aparece depois', () => {
+  assert.deepEqual(nomesUnicos(['Nome', 'Nome', 'Nome (2)']), ['Nome', 'Nome (3)', 'Nome (2)'])
+})
+
+test('nomesUnicos: vazio não colide com "Coluna N" literal', () => {
+  assert.deepEqual(nomesUnicos(['', 'Coluna 1']), ['Coluna 1 (2)', 'Coluna 1'])
+})
+
+test('nomesUnicos: resultado sempre único ignorando caixa', () => {
+  const ent = ['a', 'A', '', 'Coluna 3', 'a (2)', 'A', '']
+  const r = nomesUnicos(ent)
+  assert.equal(r.length, ent.length)
+  assert.equal(new Set(r.map(x => x.toLowerCase())).size, ent.length)
+})

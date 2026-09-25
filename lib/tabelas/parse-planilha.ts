@@ -10,13 +10,20 @@ export interface PlanilhaLida {
 }
 
 export function nomesUnicos(cabs: string[]): string[] {
-  const usados = new Map<string, number>()
+  const usados = new Set<string>()
   return cabs.map((c, i) => {
-    const base = c.trim() || `Coluna ${i + 1}`
-    const chave = base.toLowerCase()
-    const n = (usados.get(chave) ?? 0) + 1
-    usados.set(chave, n)
-    return n === 1 ? base : `${base} (${n})`
+    const literal = c.trim()
+    const base = literal || `Coluna ${i + 1}`
+    // Literais que aparecem depois são donos dos seus nomes: nomes gerados não os roubam.
+    const depois = new Set(cabs.slice(i + 1).map(x => x.trim().toLowerCase()).filter(Boolean))
+    let nome = base
+    let n = 1
+    while (usados.has(nome.toLowerCase()) || ((n > 1 || !literal) && depois.has(nome.toLowerCase()))) {
+      n++
+      nome = `${base} (${n})`
+    }
+    usados.add(nome.toLowerCase())
+    return nome
   })
 }
 
