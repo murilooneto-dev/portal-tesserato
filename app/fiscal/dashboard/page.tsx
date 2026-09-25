@@ -9,6 +9,8 @@ import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } fro
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { bucketDoRegime } from '@/lib/regime-bucket'
+import { buscarDonoNomePorTipo } from '@/lib/tarefa-tipo-donos'
+import { filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
 
@@ -51,6 +53,12 @@ export default async function DashboardPage() {
   }
   for (const t of ts) {
     if (t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)) tiposMap[t.cliente_id]?.add(t.tipo)
+  }
+
+  // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % do cliente.
+  const donoNomePorTipo = await buscarDonoNomePorTipo(supabase, 'fiscal')
+  for (const c of cs) {
+    tiposMap[c.id] = new Set(filtrarTiposDoProgresso(tiposMap[c.id], c.responsavel, donoNomePorTipo))
   }
 
   const totalTarefas = cs.reduce((sum, c) => sum + (tiposMap[c.id]?.size ?? 0), 0)
