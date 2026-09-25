@@ -106,3 +106,23 @@ test('chaveDocumento normaliza documentos com zero à esquerda', () => {
   assert.equal(chaveDocumento('abc'), '')
   assert.equal(chaveDocumento(null), '')
 })
+
+test('casarCliente: dois clientes com o mesmo nome (matriz/filial) é sugerido, não exato', () => {
+  const dup: ClienteMatch[] = [
+    { id: 'm1', nome: 'Padaria Central LTDA', cnpj: '11.111.111/0001-11' },
+    { id: 'm2', nome: 'Padaria Central', cnpj: '11.111.111/0002-92' },
+  ]
+  assert.deepEqual(casarCliente('padaria central', dup), { status: 'sugerido', clienteId: 'm1', score: 1 })
+})
+
+test('casarCliente: dois clientes com o mesmo CNPJ é sugerido, não exato', () => {
+  const dup: ClienteMatch[] = [
+    { id: 'd1', nome: 'Alfa', cnpj: '12.345.678/0001-90' },
+    { id: 'd2', nome: 'Beta', cnpj: '12345678000190' },
+  ]
+  assert.deepEqual(casarCliente('12345678000190', dup), { status: 'sugerido', clienteId: 'd1', score: 1 })
+})
+
+test('casarCliente: casamento único continua exato', () => {
+  assert.equal(casarCliente('Oficina do João', clientes).status, 'exato')
+})

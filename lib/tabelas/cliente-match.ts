@@ -62,17 +62,23 @@ export function casarCliente(valor: string | null | undefined, clientes: Cliente
 
   const chave = chaveDocumento(v)
   if (chave) {
-    const porDoc = clientes.find(c => chaveDocumento(c.cnpj) === chave)
-    if (porDoc) return { status: 'exato', clienteId: porDoc.id, score: 1 }
+    const porDoc = clientes.filter(c => chaveDocumento(c.cnpj) === chave)
+    // Documento repetido em mais de um cliente é ambíguo: o usuário escolhe.
+    if (porDoc.length === 1) return { status: 'exato', clienteId: porDoc[0].id, score: 1 }
+    if (porDoc.length > 1) return { status: 'sugerido', clienteId: porDoc[0].id, score: 1 }
   }
 
   let melhor: ClienteMatch | null = null
   let melhorScore = 0
+  let empatados = 0
   for (const c of clientes) {
     const s = similaridade(v, c.nome)
-    if (s > melhorScore) { melhorScore = s; melhor = c }
+    if (s > melhorScore) { melhorScore = s; melhor = c; empatados = 1 } else if (s === melhorScore && s > 0) empatados++
   }
-  if (melhor && melhorScore === 1) return { status: 'exato', clienteId: melhor.id, score: 1 }
+  if (melhor && melhorScore === 1) {
+    // Mesmo nome normalizado em vários clientes (matriz/filial): não liga sozinho.
+    return { status: empatados > 1 ? 'sugerido' : 'exato', clienteId: melhor.id, score: 1 }
+  }
   if (melhor && melhorScore >= LIMIAR_SUGESTAO) return { status: 'sugerido', clienteId: melhor.id, score: melhorScore }
   return { status: 'sem_match', clienteId: null, score: melhorScore }
 }
