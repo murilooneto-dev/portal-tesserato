@@ -14,6 +14,27 @@ const colunas: ColunaConfig[] = [
   { id: ID3, nome: 'Vence', tipo: 'data', opcoes: null, indiceOrigem: 2 },
 ]
 
+interface PayloadFixture {
+  setor: string
+  nome: string
+  colunaChaveId: string | null
+  colunas: { id: string; nome: string; tipo: string; ordem: number; opcoes: { valor: string; cor: string }[] | null }[]
+  linhas: { dados: Record<string, string | number | null>; clienteId: string | null; ordem: number }[]
+}
+
+function payloadValido(): PayloadFixture {
+  return {
+    setor: 'fiscal',
+    nome: 'Certificados',
+    colunaChaveId: ID1,
+    colunas: [
+      { id: ID1, nome: 'Cliente', tipo: 'cliente', ordem: 0, opcoes: null },
+      { id: ID2, nome: 'Status', tipo: 'opcoes', ordem: 1, opcoes: [{ valor: 'Ok', cor: '#10b981' }] },
+    ],
+    linhas: [{ dados: { [ID1]: 'A', [ID2]: 'Ok' }, clienteId: CLI, ordem: 0 }],
+  }
+}
+
 test('montarLinhas converte por tipo e guarda por id da coluna', () => {
   const r = montarLinhas(
     [['Empresa A', '1.234,50', '15/03/2026'], ['Empresa B', 20, '2026-04-01']],
@@ -43,19 +64,6 @@ test('montarLinhas: célula vazia vira null e não conta como não convertida', 
   assert.equal(r.naoConvertidas, 0)
 })
 
-function payloadValido() {
-  return {
-    setor: 'fiscal',
-    nome: 'Certificados',
-    colunaChaveId: ID1,
-    colunas: [
-      { id: ID1, nome: 'Cliente', tipo: 'cliente', ordem: 0, opcoes: null },
-      { id: ID2, nome: 'Status', tipo: 'opcoes', ordem: 1, opcoes: [{ valor: 'Ok', cor: '#10b981' }] },
-    ],
-    linhas: [{ dados: { [ID1]: 'A', [ID2]: 'Ok' }, clienteId: CLI, ordem: 0 }],
-  }
-}
-
 test('validarPayload aceita um payload válido', () => {
   const r = validarPayload(payloadValido())
   assert.equal(r.ok, true)
@@ -73,7 +81,7 @@ test('validarPayload rejeita nome vazio e sem colunas', () => {
 
 test('validarPayload rejeita tipo inválido e duas colunas Cliente', () => {
   const p = payloadValido()
-  p.colunas[1] = { ...p.colunas[1], tipo: 'sim_nao' as never }
+  p.colunas[1] = { ...p.colunas[1], tipo: 'sim_nao' }
   assert.equal(validarPayload(p).ok, false)
   const q = payloadValido()
   q.colunas[1] = { id: ID2, nome: 'Outro', tipo: 'cliente', ordem: 1, opcoes: null }
