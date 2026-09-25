@@ -51,6 +51,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
   const isEdit = !!clienteId
 
   const [form, setForm] = useState<FormData>(emptyForm(tarefasPadrao))
+  const [personalizadasOriginais, setPersonalizadasOriginais] = useState<string[]>([])
   const [novaTarefa, setNovaTarefa] = useState('')
   const [catalogoNomes, setCatalogoNomes] = useState<string[]>(tarefasPadrao)
   const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
@@ -78,6 +79,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
         tarefas_personalizadas: data.tarefas_personalizadas ?? [],
         tarefas_excluidas: data.tarefas_excluidas ?? [],
       })
+      setPersonalizadasOriginais(data.tarefas_personalizadas ?? [])
       setLoading(false)
     })
   }, [clienteId])
@@ -126,6 +128,8 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
 
   async function handleSave() {
     if (!form.nome.trim()) return
+    const removidas = personalizadasOriginais.filter(t => !form.tarefas_personalizadas.includes(t))
+    if (removidas.length > 0 && !confirm(`Remover ${removidas.map(t => `"${t}"`).join(', ')} deste cliente apaga o histórico dessa tarefa nele (concluída, respostas, anexos). Outros clientes não são afetados. Continuar?`)) return
     setSaving(true)
     setErro(null)
 

@@ -5,6 +5,8 @@ import { getAuthenticatedAdmin, podeEditarCliente, podeEditarTarefaTipo } from '
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
 import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
+import { tarefasRemovidasDoCliente, apagarTarefasDoCliente } from '@/lib/tarefas-do-cliente'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
 interface ClientePayload {
   nome: string
@@ -55,6 +57,17 @@ export async function salvarCliente(
     if (errCliente) return { error: errCliente.message }
     const { error: errFiscal } = await supabase.from('clientes_fiscal').update(fiscalPayload).eq('cliente_id', clienteId)
     if (errFiscal) return { error: errFiscal.message }
+
+    // Tarefa personalizada removida deste cliente perde o histórico dele (as linhas
+    // de `tarefas` casam por nome e voltariam ao recriar o mesmo nome). Só este
+    // cliente: o catálogo e os outros clientes não são tocados.
+    const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
+    const removidas = tarefasRemovidasDoCliente(
+      antes?.tarefas_personalizadas,
+      calcularTarefasEsperadas(fiscalPayload, mapaVinculos),
+    )
+    const { error: errLimpeza } = await apagarTarefasDoCliente(supabase, clienteId, 'fiscal', removidas)
+    if (errLimpeza) return { error: errLimpeza }
 
     await trocarResponsavel(supabase, {
       clienteId, clienteNome: clientePayload.nome, setor: 'fiscal',
