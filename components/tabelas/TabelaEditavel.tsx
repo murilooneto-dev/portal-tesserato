@@ -2,7 +2,8 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { editarCelula, definirClienteDaLinha, adicionarLinha, removerLinha } from '@/lib/tabelas-edicao-actions'
 import { formatarValor } from '@/lib/tabelas/formatar'
 import type { ClienteMatch } from '@/lib/tabelas/cliente-match'
@@ -17,7 +18,9 @@ interface Props {
   linhas: LinhaGrade[]
   clientes: ClienteMatch[]
   podeEditar: boolean
-  semCliente: boolean
+  ordenacao: { coluna: string | null; desc: boolean; hrefs: Record<string, string> }
+  consultaAtiva: boolean
+  hrefNovaLinha: string
 }
 
 type Estado = { estado: 'salvando' } | { estado: 'erro'; msg: string }
@@ -31,9 +34,8 @@ function textoDeEdicao(tipo: TipoColuna, valor: ValorCelula): string {
   return String(valor)
 }
 
-export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, podeEditar, semCliente }: Props) {
+export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, podeEditar, ordenacao, consultaAtiva, hrefNovaLinha }: Props) {
   const router = useRouter()
-  const pathname = usePathname()
   // Valores já salvos com sucesso nesta sessão, por cima do que veio do servidor.
   const [salvos, setSalvos] = useState<Record<string, ValorCelula>>({})
   const [vinculos, setVinculos] = useState<Record<string, string | null>>({})
@@ -98,7 +100,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
       const r = await adicionarLinha(planilhaId)
       if (r.error) { setErroGeral(r.error); return }
       // A paginação limita 999999 à última página, onde a linha nova aparece.
-      router.push(`${pathname}?pagina=999999${semCliente ? '&semCliente=1' : ''}`)
+      router.push(hrefNovaLinha)
     } catch {
       setErroGeral('Falha de conexão ao adicionar a linha.')
     } finally {
@@ -250,16 +252,22 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-[var(--fg)]/12">
+      <div className="max-h-[75vh] overflow-auto rounded-xl border border-[var(--fg)]/12">
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--fg)]/12">
               {colunas.map(c => (
-                <th key={c.id} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3 whitespace-nowrap">
-                  {c.nome}
+                <th key={c.id} aria-sort={ordenacao.coluna === c.id ? (ordenacao.desc ? 'descending' : 'ascending') : 'none'}
+                  className="sticky top-0 z-10 bg-[var(--bg-surface)] text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3 whitespace-nowrap">
+                  <Link href={ordenacao.hrefs[c.id] ?? '#'} className="inline-flex items-center gap-1 hover:text-[var(--fg)]">
+                    {c.nome}
+                    <span aria-hidden="true" className="text-[var(--fg)]/40">
+                      {ordenacao.coluna === c.id ? (ordenacao.desc ? '↓' : '↑') : ''}
+                    </span>
+                  </Link>
                 </th>
               ))}
-              {podeEditar && <th className="w-10" />}
+              {podeEditar && <th className="sticky top-0 z-10 bg-[var(--bg-surface)] w-10" />}
             </tr>
           </thead>
           <tbody>
@@ -280,7 +288,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
             ))}
           </tbody>
         </table>
-        {linhas.length === 0 && <p className="text-center text-[var(--fg)]/30 py-12 text-sm">Nenhuma linha.</p>}
+        {linhas.length === 0 && <p className="text-center text-[var(--fg)]/30 py-12 text-sm">{consultaAtiva ? 'Nenhuma linha encontrada com esses filtros.' : 'Nenhuma linha.'}</p>}
       </div>
     </div>
   )
