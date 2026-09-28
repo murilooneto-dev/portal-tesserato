@@ -8,6 +8,7 @@ import {
   clientesPorValor,
   tarefasAplicaveisCliente,
   tarefasDisponiveisParaClientes,
+  linhasVisiveis as calcularLinhasVisiveis,
 } from '@/lib/preenchimento-rapido'
 import type { MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 
@@ -22,6 +23,7 @@ interface Props {
   mapaVinculos: MapaVinculosSetor
   tiposData: string[]
   tiposNaoData?: string[]
+  filtroPendentes?: boolean
   estadoInicial: Record<string, Record<string, boolean>>
   onToggle: (clienteId: string, tipo: string, concluida: boolean) => Promise<void>
 }
@@ -32,6 +34,7 @@ export default function PreenchimentoRapido({
   mapaVinculos,
   tiposData,
   tiposNaoData,
+  filtroPendentes = false,
   estadoInicial,
   onToggle,
 }: Props) {
@@ -39,6 +42,7 @@ export default function PreenchimentoRapido({
   const [valor, setValor] = useState<string | null>(null)
   const [tarefasSelecionadas, setTarefasSelecionadas] = useState<Set<string>>(new Set())
   const [overlay, setOverlay] = useState<Record<string, Record<string, boolean>>>({})
+  const [apenasPendentes, setApenasPendentes] = useState(false)
   const [, startTransition] = useTransition()
 
   function getConcluida(clienteId: string, tipo: string): boolean {
@@ -114,9 +118,14 @@ export default function PreenchimentoRapido({
   // Só entra na grade quem tem pelo menos uma das tarefas marcadas
   // realmente aplicável — cliente sem nenhuma delas não aparece nem como
   // linha vazia (ex: AB Preço Único não deve aparecer pra "Distribuição
-  // de Lucros" se essa tarefa não é dela).
-  const linhasVisiveis = clientesFiltrados.filter(c =>
-    colunas.some(tipo => tarefasAplicaveisPorCliente[c.id]?.has(tipo)),
+  // de Lucros" se essa tarefa não é dela). Com o filtro "Só pendentes"
+  // ativo, quem já tem todas as colunas selecionadas concluídas também some.
+  const linhas = calcularLinhasVisiveis(
+    clientesFiltrados,
+    colunas,
+    tarefasAplicaveisPorCliente,
+    getConcluida,
+    filtroPendentes && apenasPendentes,
   )
 
   return (
@@ -195,9 +204,25 @@ export default function PreenchimentoRapido({
         </div>
       )}
 
+      {filtroPendentes && colunas.length > 0 && (
+        <label className="flex items-center gap-2 text-xs text-[var(--fg)]/60 cursor-pointer w-fit">
+          <input
+            type="checkbox"
+            checked={apenasPendentes}
+            onChange={e => setApenasPendentes(e.target.checked)}
+            className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
+          />
+          Só pendentes
+        </label>
+      )}
+
       {colunas.length > 0 && (
-        linhasVisiveis.length === 0 ? (
-          <p className="text-sm text-[var(--fg)]/40">Nenhum cliente tem essa(s) tarefa(s) aplicável(is).</p>
+        linhas.length === 0 ? (
+          <p className="text-sm text-[var(--fg)]/40">
+            {apenasPendentes
+              ? 'Nenhum cliente com essa(s) tarefa(s) pendente(s).'
+              : 'Nenhum cliente tem essa(s) tarefa(s) aplicável(is).'}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -212,7 +237,7 @@ export default function PreenchimentoRapido({
                 </tr>
               </thead>
               <tbody>
-                {linhasVisiveis.map(cliente => (
+                {linhas.map(cliente => (
                   <tr key={cliente.id} className="border-b border-[var(--fg)]/5">
                     <td className="py-2 px-3 text-[var(--fg)]">{cliente.nome}</td>
                     {colunas.map(tipo => (

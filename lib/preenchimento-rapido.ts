@@ -104,3 +104,24 @@ export function tarefasDisponiveisParaClientes(
   }
   return Array.from(nomes).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }
+
+// Linhas (clientes) que devem aparecer na grade pras colunas selecionadas:
+// precisa ter pelo menos uma delas realmente aplicável. Com
+// apenasPendentes=true, exige além disso que pelo menos uma dessas
+// aplicáveis ainda não esteja concluída — cliente com todas as colunas já
+// marcadas simplesmente some da lista, mesmo que a tarefa continue
+// aplicável a ele.
+export function linhasVisiveis(
+  clientes: ClienteFiltro[],
+  colunas: string[],
+  tarefasAplicaveisPorCliente: Record<string, Set<string>>,
+  concluida: (clienteId: string, tipo: string) => boolean,
+  apenasPendentes: boolean,
+): ClienteFiltro[] {
+  return clientes.filter(c => {
+    const aplicaveis = colunas.filter(tipo => tarefasAplicaveisPorCliente[c.id]?.has(tipo))
+    if (aplicaveis.length === 0) return false
+    if (!apenasPendentes) return true
+    return aplicaveis.some(tipo => !concluida(c.id, tipo))
+  })
+}
