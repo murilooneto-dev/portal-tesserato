@@ -2,9 +2,13 @@
 --
 -- Teste de fumaça da migration 052. Rodar SÓ no dev, no SQL Editor.
 -- Confere que as 4 policies novas existem com o texto esperado (via
--- pg_policies) e que a lógica de "setor bate" está presente no qual
+-- pg_policies), que a lógica de "setor bate" está presente no qual
 -- (checagem estática, não simula auth.uid() real — isso é testado de
--- verdade fazendo login como cada perfil de teste e usando a tela).
+-- verdade fazendo login como cada perfil de teste e usando a tela), e
+-- que as policies antigas — inclusive as 3 policies "leem" residuais em
+-- observacoes_clientes/procedimentos_societario/procedimento_arquivos,
+-- que continuariam liberando SELECT irrestrito por OR se não fossem
+-- removidas — não existem mais.
 -- Sucesso = aparece a mensagem "052 OK" e nenhum erro.
 begin;
 
@@ -39,6 +43,17 @@ begin
   assert not found, 'policy antiga de procedimentos_societario ainda existe';
   perform 1 from pg_policies where tablename = 'procedimento_arquivos' and policyname = 'Autenticados gerenciam procedimento_arquivos';
   assert not found, 'policy antiga de procedimento_arquivos ainda existe';
+
+  -- As policies de leitura residuais ("leem") também precisam ter sumido:
+  -- como policies permissivas do Postgres se combinam por OR, mantê-las
+  -- continuaria liberando SELECT pra qualquer autenticado de qualquer
+  -- setor mesmo com a "for all" apertada acima.
+  perform 1 from pg_policies where tablename = 'observacoes_clientes' and policyname = 'Autenticados leem observacoes_clientes';
+  assert not found, 'policy residual de leitura de observacoes_clientes ainda existe';
+  perform 1 from pg_policies where tablename = 'procedimentos_societario' and policyname = 'Autenticados leem procedimentos_societario';
+  assert not found, 'policy residual de leitura de procedimentos_societario ainda existe';
+  perform 1 from pg_policies where tablename = 'procedimento_arquivos' and policyname = 'Autenticados leem procedimento_arquivos';
+  assert not found, 'policy residual de leitura de procedimento_arquivos ainda existe';
 
   raise notice '052 OK';
 end $$;
