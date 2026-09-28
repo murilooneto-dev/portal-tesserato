@@ -24,7 +24,7 @@ export default async function TabelaDetalhe({ setor, id, params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: planilha } = await supabase.from('planilhas').select('id, nome, setor').eq('id', id).maybeSingle()
+  const { data: planilha } = await supabase.from('planilhas').select('id, nome, setor, coluna_chave').eq('id', id).maybeSingle()
   if (!planilha || planilha.setor !== setor) notFound()
 
   const [{ data: profile }, { data: colunasRaw }] = await Promise.all([
@@ -50,7 +50,7 @@ export default async function TabelaDetalhe({ setor, id, params }: Props) {
   // A lista de clientes só é buscada para quem pode editar e se há coluna Cliente.
   // (PostgREST limita a 1000 linhas por consulta; acima disso o seletor fica parcial.)
   let clientes: ClienteMatch[] = []
-  if (podeEditar && temColunaCliente) {
+  if ((podeEditar || podeConfigurar) && temColunaCliente) {
     const { data } = await supabase.from('clientes').select('id, nome, cnpj').order('nome')
     clientes = (data ?? []) as ClienteMatch[]
   }
@@ -73,7 +73,8 @@ export default async function TabelaDetalhe({ setor, id, params }: Props) {
       <div className="flex items-center justify-between gap-3 mt-2">
         <h1 className="text-2xl font-bold text-[var(--fg)]">{planilha.nome}</h1>
         {podeConfigurar && (
-          <GerenciarEstrutura planilhaId={id} nome={planilha.nome} setor={setor} colunas={colunas} />
+          <GerenciarEstrutura planilhaId={id} nome={planilha.nome} setor={setor} colunas={colunas}
+            temColunaChave={planilha.coluna_chave !== null} clientes={clientes} />
         )}
       </div>
       <p className="text-sm text-[var(--fg)]/40 mt-1 mb-4">
