@@ -93,6 +93,25 @@ test('calcularDiffReenvio: chave do banco que não veio no arquivo é ausente', 
   assert.equal(r.ausentes[0].id, 'linha-2')
 })
 
+test('calcularDiffReenvio: coluna tipo cliente em colunasIgnoradas não gera diff mesmo divergindo', () => {
+  const existentesDb: LinhaExistente[] = [{ id: 'linha-1', dados: { [C_CHAVE]: 'ABC', [C_C]: 'Cliente Antigo Ltda' } }]
+  const importadas: LinhaImportada[] = [
+    { indiceOrigem: 0, chaveValor: 'ABC', dados: { [C_CHAVE]: 'ABC', [C_C]: 'Cliente Novo Ltda' } },
+  ]
+  const r = calcularDiffReenvio(importadas, existentesDb, C_CHAVE, new Set([C_C]))
+  assert.equal(r.atualizar.length, 0)
+})
+
+test('calcularDiffReenvio: linha importada com chave vazia é ignorada (não vira nova nem atualização)', () => {
+  const existentesDb: LinhaExistente[] = [{ id: 'linha-1', dados: { [C_CHAVE]: 'ABC', [C_B]: 'valor' } }]
+  const importadas: LinhaImportada[] = [
+    { indiceOrigem: 0, chaveValor: '', dados: { [C_CHAVE]: '', [C_B]: 'algo preenchido' } },
+  ]
+  const r = calcularDiffReenvio(importadas, existentesDb, C_CHAVE)
+  assert.equal(r.novas.length, 0)
+  assert.equal(r.atualizar.length, 0)
+})
+
 test('montarAtualizacoes: sem conflito sempre aplica; com conflito só se resolução for "planilha"', () => {
   const linhas: LinhaAtualizar[] = [
     { linhaId: 'l1', indiceOrigem: 0, semConflito: [{ coluna: C_B, de: null, para: 'x' }], comConflito: [{ coluna: C_C, de: 'a', para: 'b' }] },

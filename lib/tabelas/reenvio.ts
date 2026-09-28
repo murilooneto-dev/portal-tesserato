@@ -53,6 +53,7 @@ export function calcularDiffReenvio(
   linhasImportadas: LinhaImportada[],
   linhasExistentes: LinhaExistente[],
   colunaChaveId: string,
+  colunasIgnoradas: Set<string> = new Set(),
 ): DiffReenvio {
   const existentesPorChave = new Map<string, LinhaExistente>()
   for (const l of linhasExistentes) {
@@ -67,6 +68,7 @@ export function calcularDiffReenvio(
   const atualizar: LinhaAtualizar[] = []
 
   for (const imp of linhasImportadas) {
+    if (imp.chaveValor === '') continue
     const existente = existentesPorChave.get(imp.chaveValor)
     if (!existente) {
       novas.push({ indiceOrigem: imp.indiceOrigem, dados: imp.dados })
@@ -76,7 +78,7 @@ export function calcularDiffReenvio(
     const semConflito: CelulaAlterada[] = []
     const comConflito: CelulaAlterada[] = []
     for (const [coluna, novo] of Object.entries(imp.dados)) {
-      if (coluna === colunaChaveId) continue
+      if (coluna === colunaChaveId || colunasIgnoradas.has(coluna)) continue
       const atual = existente.dados[coluna] ?? null
       if (atual === novo) continue
       if (vazio(atual)) semConflito.push({ coluna, de: atual, para: novo })

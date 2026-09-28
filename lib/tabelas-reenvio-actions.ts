@@ -102,7 +102,15 @@ function validarEntrada(e: unknown): e is EntradaArquivo {
 // chamada.
 async function recalcularDiff(entrada: EntradaArquivo): Promise<
   | { error: string }
-  | { error: null; ctx: Extract<Contexto, { error: null }>; diff: DiffReenvio; naoConvertidas: number; naoReconhecidas: string[] }
+  | {
+      error: null
+      ctx: Extract<Contexto, { error: null }>
+      diff: DiffReenvio
+      linhasImportadas: LinhaImportada[]
+      naoConvertidas: number
+      naoReconhecidas: string[]
+      semChave: number
+    }
 > {
   const ctx = await contexto(entrada.planilhaId)
   if (ctx.error !== null) return { error: ctx.error }
@@ -132,29 +140,54 @@ async function recalcularDiff(entrada: EntradaArquivo): Promise<
   }
 
   const linhasExistentes = await lerLinhasExistentes(ctx.supabase, ctx.planilhaId)
-  const diff = calcularDiffReenvio(linhasImportadas, linhasExistentes, ctx.colunaChaveId)
+  const colunasCliente = new Set(casadas.filter(c => c.tipo === 'cliente').map(c => c.id))
+  const diff = calcularDiffReenvio(linhasImportadas, linhasExistentes, ctx.colunaChaveId, colunasCliente)
 
   const totalFinal = linhasExistentes.length + diff.novas.length
   if (totalFinal > LIMITE_LINHAS) {
     return { error: `Esse reenvio deixaria a tabela com ${totalFinal.toLocaleString('pt-BR')} linhas; o limite é ${LIMITE_LINHAS.toLocaleString('pt-BR')}.` }
   }
 
-  return { error: null, ctx, diff, naoConvertidas, naoReconhecidas: naoReconhecidas.map(n => n.nome) }
+  let naoConvertidasOpcoes = 0
+  for (const c of casadas) {
+    if (c.tipo !== 'opcoes') continue
+    const valores = new Set((c.opcoes ?? []).map(o => o.valor))
+    for (const l of linhasImportadas) {
+      const v = l.dados[c.id]
+      if (v !== null && !valores.has(String(v))) naoConvertidasOpcoes++
+    }
+  }
+
+  const semChave = linhasImportadas.filter(l => l.chaveValor === '').length
+
+  return {
+    error: null,
+    ctx,
+    diff,
+    linhasImportadas,
+    naoConvertidas: naoConvertidas + naoConvertidasOpcoes,
+    naoReconhecidas: naoReconhecidas.map(n => n.nome),
+    semChave,
+  }
 }
 
 export interface PreviaReenvio {
   novas: number
   semConflito: number
-  comConflito: { linhaId: string; celulas: { coluna: string; de: ValorCelula; para: ValorCelula }[] }[]
+  comConflito: { linhaId: string; chave: string; celulas: { coluna: string; colunaNome: string; de: ValorCelula; para: ValorCelula }[] }[]
   ausentes: number
   naoConvertidas: number
   naoReconhecidas: string[]
+  semChave: number
 }
 
 export async function preVisualizarReenvio(entrada: unknown): Promise<{ error: string | null; previa?: PreviaReenvio }> {
   if (!validarEntrada(entrada)) return { error: 'Dados inválidos.' }
   const r = await recalcularDiff(entrada)
   if (r.error !== null) return { error: r.error }
+
+  const colunaNomePorId = new Map(r.ctx.colunas.map(c => [c.id, c.nome]))
+  const linhaImportadaPorIndice = new Map(r.linhasImportadas.map(l => [l.indiceOrigem, l]))
 
   const semConflito = r.diff.atualizar.reduce((n, l) => n + l.semConflito.length, 0)
   return {
@@ -164,10 +197,15 @@ export async function preVisualizarReenvio(entrada: unknown): Promise<{ error: s
       semConflito,
       comConflito: r.diff.atualizar
         .filter(l => l.comConflito.length > 0)
-        .map(l => ({ linhaId: l.linhaId, celulas: l.comConflito })),
+        .map(l => ({
+          linhaId: l.linhaId,
+          chave: linhaImportadaPorIndice.get(l.indiceOrigem)?.chaveValor ?? '',
+          celulas: l.comConflito.map(c => ({ coluna: c.coluna, colunaNome: colunaNomePorId.get(c.coluna) ?? c.coluna, de: c.de, para: c.para })),
+        })),
       ausentes: r.diff.ausentes.length,
       naoConvertidas: r.naoConvertidas,
       naoReconhecidas: r.naoReconhecidas,
+      semChave: r.semChave,
     },
   }
 }
