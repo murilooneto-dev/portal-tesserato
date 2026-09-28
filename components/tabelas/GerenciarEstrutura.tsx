@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import {
   adicionarColuna, renomearColuna, moverColuna, preVisualizarExclusaoColuna, excluirColuna,
   preVisualizarTrocaTipo, trocarTipoColuna, renomearTabela, excluirTabela,
+  type ValorAlterado,
 } from '@/lib/tabelas-estrutura-actions'
 import { TIPOS_COLUNA, opcoesDosValores, type TipoColuna, type OpcaoColuna } from '@/lib/tabelas/tipos'
 import type { SetorTabela } from '@/lib/tabelas/montar-payload'
-import type { ValorConvertido } from '@/lib/tabelas/trocar-tipo'
 
 const ROTULO_TIPO: Record<TipoColuna, string> = {
   texto: 'Texto', numero: 'Número', data: 'Data', opcoes: 'Lista de opções', cliente: 'Cliente',
@@ -38,7 +38,7 @@ export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas }:
   const [colunaTrocando, setColunaTrocando] = useState<ColunaResumo | null>(null)
   const [tipoAlvo, setTipoAlvo] = useState<TipoColuna>('texto')
   const [opcoesAlvoTexto, setOpcoesAlvoTexto] = useState('')
-  const [previaTroca, setPreviaTroca] = useState<{ convertidas: number; naoConvertidas: number; valores: ValorConvertido[] } | null>(null)
+  const [previaTroca, setPreviaTroca] = useState<{ convertidas: number; naoConvertidas: number; valores: ValorAlterado[] } | null>(null)
 
   const [confirmandoExclusaoTabela, setConfirmandoExclusaoTabela] = useState(false)
   const [nomeDigitado, setNomeDigitado] = useState('')

@@ -4,8 +4,8 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin } from './supabase/server'
 import { podeAcessarPagina } from './route-permissions'
-import { ehUuid } from './tabelas/editar-celula'
-import { prepararTrocaTipo, type LinhaValor, type ValorConvertido } from './tabelas/trocar-tipo'
+import { ehUuid, MAX_TEXTO_CELULA } from './tabelas/editar-celula'
+import { prepararTrocaTipo, type LinhaValor } from './tabelas/trocar-tipo'
 import type { SetorTabela } from './tabelas/montar-payload'
 import type { OpcaoColuna, TipoColuna, ValorCelula } from './tabelas/tipos'
 
@@ -19,6 +19,10 @@ type ContextoColuna =
 
 const TIPOS_VALIDOS: TipoColuna[] = ['texto', 'numero', 'data', 'opcoes', 'cliente']
 const MAX_NOME = 120
+const LOTE_LINHAS = 1000
+const MAX_LINHAS_TROCA_TIPO = 5000
+
+export interface ValorAlterado { id: string; de: ValorCelula; para: ValorCelula }
 
 function validarNome(nome: unknown): string | null {
   if (typeof nome !== 'string') return null
@@ -79,6 +83,11 @@ export async function adicionarColuna(
   const nome = validarNome(entrada.nome)
   if (!nome) return { error: 'Nome inválido.' }
   if (!TIPOS_VALIDOS.includes(entrada.tipo)) return { error: 'Tipo inválido.' }
+  if (entrada.tipo === 'cliente') {
+    const { data: existentes } = await ctx.supabase
+      .from('planilha_colunas').select('id').eq('planilha_id', ctx.planilhaId).eq('tipo', 'cliente').limit(1)
+    if (existentes && existentes.length > 0) return { error: 'Essa tabela já tem uma coluna do tipo Cliente.' }
+  }
   const opcoes = entrada.tipo === 'opcoes' ? (entrada.opcoes ?? null) : null
 
   const { data, error } = await ctx.supabase.rpc('adicionar_coluna_planilha', {
@@ -143,7 +152,7 @@ export async function excluirColuna(colunaId: string): Promise<{ error: string |
 
 export async function preVisualizarTrocaTipo(
   entrada: { colunaId: string; tipoNovo: TipoColuna; opcoesNovas?: OpcaoColuna[] | null },
-): Promise<{ error: string | null; convertidas?: number; naoConvertidas?: number; valores?: ValorConvertido[] }> {
+): Promise<{ error: string | null; convertidas?: number; naoConvertidas?: number; valores?: ValorAlterado[] }> {
   const ctx = await contextoDaColuna(entrada?.colunaId)
   if (ctx.error !== null) return { error: ctx.error }
   if (!TIPOS_VALIDOS.includes(entrada.tipoNovo)) return { error: 'Tipo inválido.' }
@@ -154,22 +163,39 @@ export async function preVisualizarTrocaTipo(
     return { error: 'Coluna do tipo Cliente não pode trocar de tipo.' }
   }
 
-  const { data: linhasRaw, error } = await ctx.supabase
-    .from('planilha_linhas').select('id, dados').eq('planilha_id', ctx.planilhaId)
-  if (error) return { error: 'Não foi possível ler as linhas da tabela.' }
-
-  const linhas: LinhaValor[] = (linhasRaw ?? []).map(l => ({
-    id: l.id as string,
-    valorAtual: (l.dados as Record<string, ValorCelula>)[ctx.colunaId] ?? null,
-  }))
+  // Paginado: o PostgREST capa cada select em 1000 linhas por padrão, e o
+  // limite de linhas por tabela é 5000 (Fase 1) — sem paginar, tabelas com
+  // mais de 1000 linhas tinham a prévia errada e só um lote era convertido.
+  const linhas: LinhaValor[] = []
+  for (let offset = 0; offset < MAX_LINHAS_TROCA_TIPO; offset += LOTE_LINHAS) {
+    const { data, error } = await ctx.supabase
+      .from('planilha_linhas').select('id, dados')
+      .eq('planilha_id', ctx.planilhaId)
+      .order('id')
+      .range(offset, offset + LOTE_LINHAS - 1)
+    if (error) return { error: 'Não foi possível ler as linhas da tabela.' }
+    const lote = data ?? []
+    for (const l of lote) {
+      linhas.push({ id: l.id as string, valorAtual: (l.dados as Record<string, ValorCelula>)[ctx.colunaId] ?? null })
+    }
+    if (lote.length < LOTE_LINHAS) break
+  }
 
   const opcoesNovas = entrada.tipoNovo === 'opcoes' ? (entrada.opcoesNovas ?? null) : null
   const resultado = prepararTrocaTipo(linhas, entrada.tipoNovo, opcoesNovas)
-  return { error: null, ...resultado }
+
+  // Só manda adiante as linhas cujo valor realmente muda — payload menor e
+  // a confirmação só regrava o que precisa mudar.
+  const valorAtualPorId = new Map(linhas.map(l => [l.id, l.valorAtual]))
+  const valores: ValorAlterado[] = resultado.valores
+    .filter(v => valorAtualPorId.get(v.id) !== v.valor)
+    .map(v => ({ id: v.id, de: valorAtualPorId.get(v.id) ?? null, para: v.valor }))
+
+  return { error: null, convertidas: resultado.convertidas, naoConvertidas: resultado.naoConvertidas, valores }
 }
 
 export async function trocarTipoColuna(
-  entrada: { colunaId: string; tipoNovo: TipoColuna; opcoesNovas: OpcaoColuna[] | null; valores: ValorConvertido[] },
+  entrada: { colunaId: string; tipoNovo: TipoColuna; opcoesNovas: OpcaoColuna[] | null; valores: ValorAlterado[] },
 ): Promise<{ error: string | null }> {
   const ctx = await contextoDaColuna(entrada?.colunaId)
   if (ctx.error !== null) return { error: ctx.error }
@@ -180,7 +206,16 @@ export async function trocarTipoColuna(
   if (coluna.tipo === 'cliente' || entrada.tipoNovo === 'cliente') {
     return { error: 'Coluna do tipo Cliente não pode trocar de tipo.' }
   }
-  if (!Array.isArray(entrada.valores)) return { error: 'Dados de conversão inválidos.' }
+  const valorValido = (v: unknown) => v === null || typeof v === 'string' || typeof v === 'number'
+  if (
+    !Array.isArray(entrada.valores) ||
+    !entrada.valores.every(v =>
+      v && typeof v === 'object' && typeof (v as ValorAlterado).id === 'string' &&
+      valorValido((v as ValorAlterado).de) && valorValido((v as ValorAlterado).para) &&
+      (typeof (v as ValorAlterado).para !== 'string' || (v as ValorAlterado).para!.toString().length <= MAX_TEXTO_CELULA))
+  ) {
+    return { error: 'Dados de conversão inválidos.' }
+  }
 
   const { error } = await ctx.supabase.rpc('trocar_tipo_coluna_planilha', {
     p_coluna: ctx.colunaId,
