@@ -68,6 +68,8 @@ begin
     return false;
   end if;
 
+  perform pg_advisory_xact_lock(hashtext(v_planilha::text));
+
   if p_direcao = 'cima' then
     select id, ordem into v_vizinho_id, v_vizinho_ordem
     from planilha_colunas
@@ -102,10 +104,19 @@ set search_path = public
 as $$
 declare
   v_planilha uuid;
+  v_tipo text;
 begin
-  select planilha_id into v_planilha from planilha_colunas where id = p_coluna;
+  select planilha_id, tipo into v_planilha, v_tipo from planilha_colunas where id = p_coluna;
   if v_planilha is null then
     return false;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(v_planilha::text));
+
+  update planilhas set coluna_chave = null where id = v_planilha and coluna_chave = p_coluna;
+
+  if v_tipo = 'cliente' then
+    update planilha_linhas set cliente_id = null, updated_at = now() where planilha_id = v_planilha;
   end if;
 
   update planilha_linhas
@@ -127,7 +138,7 @@ set search_path = public
 as $$
   select
     count(*) as total,
-    count(*) filter (where l.dados ? p_coluna::text) as preenchidas
+    count(*) filter (where nullif(btrim(l.dados ->> p_coluna::text), '') is not null) as preenchidas
   from planilha_linhas l
   join planilha_colunas c on c.planilha_id = l.planilha_id
   where c.id = p_coluna
@@ -144,11 +155,12 @@ security definer
 set search_path = public
 as $$
 declare
+  v_planilha uuid;
   v_tipo_atual text;
   v_item jsonb;
 begin
-  select tipo into v_tipo_atual from planilha_colunas where id = p_coluna;
-  if v_tipo_atual is null then
+  select planilha_id, tipo into v_planilha, v_tipo_atual from planilha_colunas where id = p_coluna;
+  if v_planilha is null then
     return false;
   end if;
   if v_tipo_atual = 'cliente' or p_tipo = 'cliente' then
@@ -157,12 +169,19 @@ begin
 
   update planilha_colunas set tipo = p_tipo, opcoes = p_opcoes where id = p_coluna;
 
+  -- Só escreve linhas cujo valor mudou (o preview já filtrou o resto), e só
+  -- se o valor ainda for o mesmo que o preview viu ('de') — impede
+  -- sobrescrever uma edição feita depois do preview. planilha_id = v_planilha
+  -- garante que a escrita nunca sai da própria tabela, mesmo que p_valores
+  -- venha adulterado.
   for v_item in select * from jsonb_array_elements(coalesce(p_valores, '[]'::jsonb))
   loop
     update planilha_linhas
-       set dados = jsonb_set(dados, array[p_coluna::text], coalesce(v_item->'valor', 'null'::jsonb), true),
+       set dados = jsonb_set(dados, array[p_coluna::text], coalesce(v_item->'para', 'null'::jsonb), true),
            updated_at = now()
-     where id = (v_item->>'id')::uuid;
+     where id = (v_item->>'id')::uuid
+       and planilha_id = v_planilha
+       and dados -> p_coluna::text is not distinct from coalesce(v_item->'de', 'null'::jsonb);
   end loop;
 
   return true;
