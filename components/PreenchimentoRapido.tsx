@@ -21,6 +21,7 @@ interface Props {
   clientes: ClienteFiltro[]
   mapaVinculos: MapaVinculosSetor
   tiposData: string[]
+  tiposNaoData?: string[]
   estadoInicial: Record<string, Record<string, boolean>>
   onToggle: (clienteId: string, tipo: string, concluida: boolean) => Promise<void>
 }
@@ -30,6 +31,7 @@ export default function PreenchimentoRapido({
   clientes,
   mapaVinculos,
   tiposData,
+  tiposNaoData,
   estadoInicial,
   onToggle,
 }: Props) {
@@ -46,6 +48,7 @@ export default function PreenchimentoRapido({
   const modoDireto = camposDisponiveis.length === 0
 
   const tiposDataSet = useMemo(() => new Set(tiposData), [tiposData])
+  const tiposNaoDataSet = useMemo(() => new Set(tiposNaoData ?? []), [tiposNaoData])
 
   const valores = useMemo(
     () => (campo ? valoresDistintos(clientes, campo) : []),
@@ -64,14 +67,14 @@ export default function PreenchimentoRapido({
   const tarefasAplicaveisPorCliente = useMemo(() => {
     const porCliente: Record<string, Set<string>> = {}
     for (const c of clientesFiltrados) {
-      porCliente[c.id] = tarefasAplicaveisCliente(c, mapaVinculos, tiposDataSet)
+      porCliente[c.id] = tarefasAplicaveisCliente(c, mapaVinculos, tiposDataSet, tiposNaoDataSet)
     }
     return porCliente
-  }, [clientesFiltrados, mapaVinculos, tiposDataSet])
+  }, [clientesFiltrados, mapaVinculos, tiposDataSet, tiposNaoDataSet])
 
   const tarefasDisponiveis = useMemo(
-    () => tarefasDisponiveisParaClientes(clientesFiltrados, mapaVinculos, tiposDataSet),
-    [clientesFiltrados, mapaVinculos, tiposDataSet],
+    () => tarefasDisponiveisParaClientes(clientesFiltrados, mapaVinculos, tiposDataSet, tiposNaoDataSet),
+    [clientesFiltrados, mapaVinculos, tiposDataSet, tiposNaoDataSet],
   )
 
   function handleCampoChange(novoCampo: CampoFiltro) {
