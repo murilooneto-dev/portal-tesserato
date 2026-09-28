@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
-import { nomesTarefaTipoData, type ClienteFiltro } from '@/lib/preenchimento-rapido'
+import { nomesTarefaTipoData, nomesTarefaTipoNaoData, type ClienteFiltro } from '@/lib/preenchimento-rapido'
 import { toggleTarefaPessoal } from '@/app/pessoal/clientes/actions'
 import PreenchimentoRapido from '@/components/PreenchimentoRapido'
 import type { Tarefa } from '@/lib/types'
@@ -63,6 +63,7 @@ export default async function PreenchimentoRapidoPessoalPage() {
     : clientesTodos.filter(c => c.responsavel?.toUpperCase() === profile?.nome?.toUpperCase())
 
   const tiposData = nomesTarefaTipoData(tiposRaw ?? [])
+  const tiposNaoData = nomesTarefaTipoNaoData(tiposRaw ?? [])
 
   const idsPermitidos = new Set(clientes.map(c => c.id))
   const estadoInicial: Record<string, Record<string, boolean>> = {}
@@ -90,6 +91,7 @@ export default async function PreenchimentoRapidoPessoalPage() {
         clientes={clientes}
         mapaVinculos={mapaVinculos}
         tiposData={tiposData}
+        tiposNaoData={tiposNaoData}
         estadoInicial={estadoInicial}
         onToggle={onToggle}
       />

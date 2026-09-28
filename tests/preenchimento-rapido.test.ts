@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   nomesTarefaTipoData,
+  nomesTarefaTipoNaoData,
   valoresDistintos,
   clientesPorValor,
   tarefasAplicaveisCliente,
@@ -22,6 +23,17 @@ test('nomesTarefaTipoData: mantém só tipo_resposta=data sem etapas', () => {
 
 test('nomesTarefaTipoData: lista vazia devolve lista vazia', () => {
   assert.deepEqual(nomesTarefaTipoData([]), [])
+})
+
+test('nomesTarefaTipoNaoData: mantém tipo_resposta != data ou data com etapas', () => {
+  const nomes = nomesTarefaTipoNaoData([
+    { nome: 'DAS', tipo_resposta: 'data', etapas: null },
+    { nome: 'RELATORIO', tipo_resposta: 'texto', etapas: null },
+    { nome: 'FECHAMENTO', tipo_resposta: 'data', etapas: ['Conferência', 'Envio'] },
+    { nome: 'ISS', tipo_resposta: 'data', etapas: [] },
+    { nome: 'CHECK', tipo_resposta: 'checklist', etapas: ['Opção 1'] },
+  ])
+  assert.deepEqual(nomes, ['RELATORIO', 'FECHAMENTO', 'CHECK'])
 })
 
 test('valoresDistintos: extrai valores únicos e ordena', () => {
@@ -70,6 +82,35 @@ test('tarefasAplicaveisCliente: soma vínculo automático (respeitando regime) c
   // DAS foi excluído manualmente; DISTRIBUICAO LUCROS exige Lucro Presumido
   // e o cliente é Simples Nacional — nenhum dos dois se aplica.
   assert.deepEqual(Array.from(tarefas).sort(), ['RELATORIO EXTRA'])
+})
+
+test('tarefasAplicaveisCliente: personalizada sem entrada no catálogo entra como DATA por padrão', () => {
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
+  const cliente = {
+    id: '1',
+    nome: 'Cliente X',
+    tarefas_personalizadas: ['TAREFA SEM CATALOGO'],
+    tarefas_excluidas: [],
+  }
+  // Catálogo não tem "TAREFA SEM CATALOGO" nem como tipo data nem como não-data
+  const tiposData = new Set<string>()
+  const tiposNaoData = new Set<string>()
+  const tarefas = tarefasAplicaveisCliente(cliente, mapa, tiposData, tiposNaoData)
+  assert.deepEqual(Array.from(tarefas), ['TAREFA SEM CATALOGO'])
+})
+
+test('tarefasAplicaveisCliente: personalizada com entrada não-data no catálogo continua de fora', () => {
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
+  const cliente = {
+    id: '1',
+    nome: 'Cliente X',
+    tarefas_personalizadas: ['RELATORIO COM ETAPAS'],
+    tarefas_excluidas: [],
+  }
+  const tiposData = new Set<string>()
+  const tiposNaoData = new Set(['RELATORIO COM ETAPAS'])
+  const tarefas = tarefasAplicaveisCliente(cliente, mapa, tiposData, tiposNaoData)
+  assert.deepEqual(Array.from(tarefas), [])
 })
 
 test('tarefasDisponiveisParaClientes: une as tarefas aplicáveis de todos os clientes do grupo', () => {
