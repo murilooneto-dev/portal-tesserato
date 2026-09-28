@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarCliente, podeEditarClienteContabil, podeEditarClientePessoal } from '@/lib/supabase/server'
+import { PREFIXOS_SETOR } from '@/lib/route-permissions'
 import type { UserSetor, TarefaGrupo } from '@/lib/types'
 
 const PODE_EDITAR_POR_SETOR: Record<UserSetor, (clienteId: string) => Promise<boolean>> = {
@@ -14,6 +15,15 @@ const PODE_EDITAR_POR_SETOR: Record<UserSetor, (clienteId: string) => Promise<bo
   societario: async () => false,
   financeiro: async () => false,
   configuracoes: async () => false,
+}
+
+// Valida `setor` contra a lista real ANTES de indexar qualquer objeto com
+// ele — sem isso, uma string como 'constructor' acha uma propriedade
+// herdada do protótipo do JS (Object) em vez de "chave não existe", e a
+// checagem de permissão passa sempre. Nunca indexar PODE_EDITAR_POR_SETOR
+// (ou qualquer objeto/Record) com um valor não validado primeiro.
+export function setorValido(setor: string): setor is UserSetor {
+  return (PREFIXOS_SETOR as readonly string[]).includes(setor)
 }
 
 function revalidarFichaCliente(setor: UserSetor, clienteId: string) {
@@ -54,13 +64,20 @@ export async function listarGruposDoSetor(
   return { data: (data ?? []) as Pick<TarefaGrupo, 'nome' | 'tarefas'>[], error: null }
 }
 
+async function verificarPermissao(setor: string, clienteId: string): Promise<string | null> {
+  if (!setorValido(setor)) return 'Setor inválido.'
+  if (!(await PODE_EDITAR_POR_SETOR[setor](clienteId))) return 'Sem permissão pra editar esse cliente.'
+  return null
+}
+
 export async function criarGrupoTarefas(
   clienteId: string,
   setor: UserSetor,
   nome: string,
   tarefas: string[],
 ): Promise<{ error: string | null }> {
-  if (!(await PODE_EDITAR_POR_SETOR[setor](clienteId))) return { error: 'Sem permissão pra editar esse cliente.' }
+  const erroPermissao = await verificarPermissao(setor, clienteId)
+  if (erroPermissao) return { error: erroPermissao }
 
   const nomeTrim = nome.trim()
   if (!nomeTrim) return { error: 'Dê um nome ao grupo.' }
@@ -89,7 +106,8 @@ export async function atualizarGrupoTarefas(
   nome: string,
   tarefas: string[],
 ): Promise<{ error: string | null }> {
-  if (!(await PODE_EDITAR_POR_SETOR[setor](clienteId))) return { error: 'Sem permissão pra editar esse cliente.' }
+  const erroPermissao = await verificarPermissao(setor, clienteId)
+  if (erroPermissao) return { error: erroPermissao }
 
   const nomeTrim = nome.trim()
   if (!nomeTrim) return { error: 'Dê um nome ao grupo.' }
@@ -98,13 +116,21 @@ export async function atualizarGrupoTarefas(
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return { error: 'Sessão inválida.' }
 
+  // O grupo precisa pertencer ao MESMO cliente/setor já validados acima —
+  // sem isso, um grupoId de outro cliente seria editado mesmo com a
+  // permissão checada contra o cliente errado (IDOR).
   const { error } = await supabase
     .from('tarefa_grupos')
     .update({ nome: nomeTrim, tarefas })
     .eq('id', grupoId)
+    .eq('cliente_id', clienteId)
+    .eq('setor', setor)
+    .select('id')
+    .single()
 
   if (error) {
     if (error.code === '23505') return { error: 'Já existe um grupo com esse nome pra esse cliente.' }
+    if (error.code === 'PGRST116') return { error: 'Grupo não encontrado pra esse cliente.' }
     return { error: error.message }
   }
 
@@ -117,13 +143,21 @@ export async function excluirGrupoTarefas(
   clienteId: string,
   setor: UserSetor,
 ): Promise<{ error: string | null }> {
-  if (!(await PODE_EDITAR_POR_SETOR[setor](clienteId))) return { error: 'Sem permissão pra editar esse cliente.' }
+  const erroPermissao = await verificarPermissao(setor, clienteId)
+  if (erroPermissao) return { error: erroPermissao }
 
   const { supabase } = await getAuthenticatedAdmin()
   if (!supabase) return { error: 'Sessão inválida.' }
 
-  const { error } = await supabase.from('tarefa_grupos').delete().eq('id', grupoId)
+  const { error, count } = await supabase
+    .from('tarefa_grupos')
+    .delete({ count: 'exact' })
+    .eq('id', grupoId)
+    .eq('cliente_id', clienteId)
+    .eq('setor', setor)
+
   if (error) return { error: error.message }
+  if (!count) return { error: 'Grupo não encontrado pra esse cliente.' }
 
   revalidarFichaCliente(setor, clienteId)
   return { error: null }
