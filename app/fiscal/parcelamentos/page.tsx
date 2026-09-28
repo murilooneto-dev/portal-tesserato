@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { escapeHtml } from '@/lib/escape-html'
 import { useMesAno } from '@/lib/mes-atual-context'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { StatusParcelamento } from '@/lib/parcelamentos-aviso'
@@ -246,9 +247,9 @@ export default function ParcelamentosPage() {
   function imprimir() {
     const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short' })
     const filtroDesc = [
-      secaoFiltro !== 'TODOS' ? `Seção: ${secaoFiltro}` : null,
-      respFiltro  !== 'TODOS' ? `Responsável: ${respFiltro}` : null,
-      search ? `Busca: "${search}"` : null,
+      secaoFiltro !== 'TODOS' ? `Seção: ${escapeHtml(secaoFiltro)}` : null,
+      respFiltro  !== 'TODOS' ? `Responsável: ${escapeHtml(respFiltro)}` : null,
+      search ? `Busca: "${escapeHtml(search)}"` : null,
     ].filter(Boolean).join(' · ') || 'Todos os registros'
 
     const secRows = (secaoFiltro === 'TODOS' ? secoes.map(s => s.nome) : [secaoFiltro]).map(secao => {
@@ -256,19 +257,19 @@ export default function ParcelamentosPage() {
       if (!rows.length) return ''
       const trs = rows.map((p, i) => `
         <tr class="${i % 2 === 0 ? 'even' : ''}">
-          <td>${p.empresa}</td>
-          <td>${p.cnpj ?? '—'}</td>
-          <td>${p.regime ?? '—'}</td>
-          <td>${p.responsavel ?? '—'}</td>
-          <td>${p.local_tipo ?? '—'}</td>
-          <td>${p.status}</td>
+          <td>${escapeHtml(p.empresa)}</td>
+          <td>${escapeHtml(p.cnpj) || '—'}</td>
+          <td>${escapeHtml(p.regime) || '—'}</td>
+          <td>${escapeHtml(p.responsavel) || '—'}</td>
+          <td>${escapeHtml(p.local_tipo) || '—'}</td>
+          <td>${escapeHtml(p.status)}</td>
           ${MESES_COLS.map(m => {
             const v = (p as any)[m] as string | null
-            return `<td class="month ${v ? 'filled' : ''}">${v ?? '—'}</td>`
+            return `<td class="month ${v ? 'filled' : ''}">${escapeHtml(v) || '—'}</td>`
           }).join('')}
         </tr>`).join('')
       return `
-        <div class="section-title">${secao} <span class="count">${rows.length} parcelamento${rows.length !== 1 ? 's' : ''}</span></div>
+        <div class="section-title">${escapeHtml(secao)} <span class="count">${rows.length} parcelamento${rows.length !== 1 ? 's' : ''}</span></div>
         <table>
           <thead><tr>
             <th>Empresa</th><th>CNPJ</th><th>Regime</th><th>Responsável</th><th>Local/Tipo</th><th>Status</th>
@@ -322,7 +323,7 @@ export default function ParcelamentosPage() {
       <div class="meta-item"><div class="label">Ano de referência</div><div class="value">${ano}</div></div>
       <div class="meta-item"><div class="label">Total de parcelamentos</div><div class="value">${filtered.length}</div></div>
       <div class="meta-item"><div class="label">Seções</div><div class="value">${(secaoFiltro === 'TODOS' ? secoes.map(s => s.nome) : [secaoFiltro]).filter(s => filtered.some(p => p.secao === s)).length}</div></div>
-      ${respFiltro !== 'TODOS' ? `<div class="meta-item"><div class="label">Responsável</div><div class="value">${respFiltro}</div></div>` : ''}
+      ${respFiltro !== 'TODOS' ? `<div class="meta-item"><div class="label">Responsável</div><div class="value">${escapeHtml(respFiltro)}</div></div>` : ''}
     </div>
     ${secRows}
     <footer>Tesserato Contabilidade — Documento gerado automaticamente em ${agora}</footer>
