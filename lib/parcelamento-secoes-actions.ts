@@ -3,8 +3,22 @@
 import { getAuthenticatedAdmin } from './supabase/server'
 import { podeAcessarPagina } from './route-permissions'
 
-// Parcelamento é um conceito exclusivo do setor Fiscal — a permissão exigida
-// é sempre "configuracoes:fiscal", independente de quem chama.
+// Parcelamento é um conceito exclusivo do setor Fiscal. Criar uma seção nova
+// é baixo risco (só adiciona uma linha ao catálogo, não reatribui nem apaga
+// parcelamento nenhum já existente) e é chamada legitimamente por qualquer
+// usuário Fiscal no fluxo normal de "Novo Parcelamento" — exige só ser
+// membro do setor. Renomear/remover mexem em dado já existente (reatribuição
+// em massa / exclusão), então exigem a permissão mais alta de quem configura
+// o setor ("configuracoes:fiscal").
+async function contextoFiscal() {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Sessão inválida.' as const }
+  const { data: profile } = await supabase.from('profiles').select('role, setores, paginas_acesso').eq('id', user.id).single()
+  const membroDoSetor = profile?.role === 'admin' || (profile?.setores ?? []).includes('fiscal')
+  if (!membroDoSetor) return { error: 'Acesso negado.' as const }
+  return { error: null, supabase }
+}
+
 async function contextoConfigFiscal() {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!user || !supabase) return { error: 'Sessão inválida.' as const }
@@ -17,7 +31,7 @@ export async function criarSecaoParcelamento(nome: string): Promise<{ error: str
   const nomeNormalizado = nome.trim().toUpperCase()
   if (!nomeNormalizado) return { error: 'Nome não pode ser vazio.' }
 
-  const ctx = await contextoConfigFiscal()
+  const ctx = await contextoFiscal()
   if (ctx.error !== null) return { error: ctx.error }
 
   const { error } = await ctx.supabase.from('parcelamento_secoes').insert({ nome: nomeNormalizado })
