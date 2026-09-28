@@ -51,6 +51,19 @@ as $$
         from jsonb_each_text(l.dados) e
         where e.value ilike
           '%' || replace(replace(replace(pr.busca, '\', '\\'), '%', '\%'), '_', '\_') || '%'
+        -- Data armazenada em ISO (aaaa-mm-dd), mas exibida em pt-BR (dd/mm/aaaa): também
+        -- compara a versão formatada, pra achar o que a pessoa vê na tela.
+        or (
+          e.value ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          and (substr(e.value, 9, 2) || '/' || substr(e.value, 6, 2) || '/' || substr(e.value, 1, 4)) ilike
+            '%' || replace(replace(replace(pr.busca, '\', '\\'), '%', '\%'), '_', '\_') || '%'
+        )
+        -- Número armazenado com ponto decimal, mas exibido com vírgula: idem.
+        or (
+          e.value ~ '^-?[0-9]+\.[0-9]+$'
+          and replace(e.value, '.', ',') ilike
+            '%' || replace(replace(replace(pr.busca, '\', '\\'), '%', '\%'), '_', '\_') || '%'
+        )
       )
     )
     and not exists (

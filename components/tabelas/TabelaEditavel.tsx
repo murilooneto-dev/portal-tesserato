@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { editarCelula, definirClienteDaLinha, adicionarLinha, removerLinha } from '@/lib/tabelas-edicao-actions'
 import { formatarValor } from '@/lib/tabelas/formatar'
@@ -18,9 +18,9 @@ interface Props {
   linhas: LinhaGrade[]
   clientes: ClienteMatch[]
   podeEditar: boolean
-  semCliente: boolean
   ordenacao: { coluna: string | null; desc: boolean; hrefs: Record<string, string> }
   consultaAtiva: boolean
+  hrefNovaLinha: string
 }
 
 type Estado = { estado: 'salvando' } | { estado: 'erro'; msg: string }
@@ -34,9 +34,8 @@ function textoDeEdicao(tipo: TipoColuna, valor: ValorCelula): string {
   return String(valor)
 }
 
-export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, podeEditar, semCliente, ordenacao, consultaAtiva }: Props) {
+export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, podeEditar, ordenacao, consultaAtiva, hrefNovaLinha }: Props) {
   const router = useRouter()
-  const pathname = usePathname()
   // Valores já salvos com sucesso nesta sessão, por cima do que veio do servidor.
   const [salvos, setSalvos] = useState<Record<string, ValorCelula>>({})
   const [vinculos, setVinculos] = useState<Record<string, string | null>>({})
@@ -101,7 +100,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
       const r = await adicionarLinha(planilhaId)
       if (r.error) { setErroGeral(r.error); return }
       // A paginação limita 999999 à última página, onde a linha nova aparece.
-      router.push(`${pathname}?pagina=999999${semCliente ? '&semCliente=1' : ''}`)
+      router.push(hrefNovaLinha)
     } catch {
       setErroGeral('Falha de conexão ao adicionar a linha.')
     } finally {

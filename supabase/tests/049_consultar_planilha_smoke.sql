@@ -88,6 +88,10 @@ begin
   select array(select l.id::text from consultar_planilha_linhas(v_pl, 'zzzz-nao-existe', '[]'::jsonb, false, null, null, false, 0, 100) l) into r;
   assert coalesce(array_length(r, 1), 0) = 0, 'busca sem resultado deveria vir vazia';
 
+  -- 12) busca acha data no formato exibido (dd/mm), não só o ISO armazenado
+  select array(select l.dados ->> c_nome::text from consultar_planilha_linhas(v_pl, '15/03', '[]'::jsonb, false, null, null, false, 0, 100) l) into r;
+  assert r = array['Padaria São José'], 'busca 15/03 (data formatada): ' || r::text;
+
   raise notice '049 OK';
 end $$;
 

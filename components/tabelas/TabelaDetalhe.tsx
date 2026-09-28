@@ -62,6 +62,7 @@ export default async function TabelaDetalhe({ setor, id, params }: Props) {
   const consultaAtiva = temConsultaAtiva(consulta)
   const exportQs = serializeConsulta(consulta, 1)
   const exportarHref = `/api/tabelas/${id}/exportar${exportQs ? `?${exportQs}` : ''}`
+  const hrefNovaLinha = href({ ...consulta, q: '', filtros: {} }, 999999)
 
   return (
     <div className="p-8">
@@ -108,9 +109,9 @@ export default async function TabelaDetalhe({ setor, id, params }: Props) {
         linhas={linhas}
         clientes={clientes}
         podeEditar={podeEditar}
-        semCliente={consulta.semCliente}
         ordenacao={{ coluna: consulta.ordem, desc: consulta.desc, hrefs: hrefsOrdem }}
         consultaAtiva={consultaAtiva}
+        hrefNovaLinha={hrefNovaLinha}
       />
 
       {totalPaginas > 1 && (
