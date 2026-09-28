@@ -80,6 +80,19 @@ begin
   select count(*) into v_total_log from planilha_reenvio_log where planilha_id = v_pl and usuario_nome = 'Teste do resumo';
   assert v_total_log = 1, 'log do reenvio não foi gravado';
 
+  -- 6) chave da célula nunca existiu em "dados" (linha nova sem a coluna B
+  -- nunca setada) — guarda de/para precisa tratar chave ausente como igual
+  -- a SQL NULL, não só o "null" literal já presente em outra linha
+  insert into planilha_linhas (id, planilha_id, ordem, dados) values
+    (v_novo_id, v_pl, 1, jsonb_build_object(c_chave::text, 'SEM_COLUNA_B'));
+  select aplicar_reenvio_planilha(
+    v_pl, '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object('linha', v_novo_id, 'coluna', c_b, 'de', null, 'para', 'preenchido')),
+    null, 'Teste', '{}'::jsonb
+  ) into v_ok;
+  select dados into v_dados from planilha_linhas where id = v_novo_id;
+  assert v_dados ->> c_b::text = 'preenchido', 'célula com chave ausente em "dados" não foi atualizada: ' || v_dados::text;
+
   raise notice '051 OK';
 end $$;
 

@@ -72,7 +72,7 @@ begin
            updated_at = now()
      where id = (v_item->>'linha')::uuid
        and planilha_id = p_planilha
-       and dados -> (v_item->>'coluna') is not distinct from coalesce(v_item->'de', 'null'::jsonb);
+       and coalesce(dados -> (v_item->>'coluna'), 'null'::jsonb) is not distinct from coalesce(v_item->'de', 'null'::jsonb);
   end loop;
 
   insert into planilha_reenvio_log (planilha_id, usuario_id, usuario_nome, resumo)
