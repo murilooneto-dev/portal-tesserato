@@ -83,6 +83,7 @@ begin
   -- 6) chave da célula nunca existiu em "dados" (linha nova sem a coluna B
   -- nunca setada) — guarda de/para precisa tratar chave ausente como igual
   -- a SQL NULL, não só o "null" literal já presente em outra linha
+  v_novo_id := gen_random_uuid();
   insert into planilha_linhas (id, planilha_id, ordem, dados) values
     (v_novo_id, v_pl, 1, jsonb_build_object(c_chave::text, 'SEM_COLUNA_B'));
   select aplicar_reenvio_planilha(
