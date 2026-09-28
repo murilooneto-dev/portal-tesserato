@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarCliente, podeEditarClienteContabil, podeEditarClientePessoal } from '@/lib/supabase/server'
-import { PREFIXOS_SETOR } from '@/lib/route-permissions'
+import { setorValido } from '@/lib/route-permissions'
 import type { UserSetor, TarefaGrupo } from '@/lib/types'
 
 const PODE_EDITAR_POR_SETOR: Record<UserSetor, (clienteId: string) => Promise<boolean>> = {
@@ -15,15 +15,6 @@ const PODE_EDITAR_POR_SETOR: Record<UserSetor, (clienteId: string) => Promise<bo
   societario: async () => false,
   financeiro: async () => false,
   configuracoes: async () => false,
-}
-
-// Valida `setor` contra a lista real ANTES de indexar qualquer objeto com
-// ele — sem isso, uma string como 'constructor' acha uma propriedade
-// herdada do protótipo do JS (Object) em vez de "chave não existe", e a
-// checagem de permissão passa sempre. Nunca indexar PODE_EDITAR_POR_SETOR
-// (ou qualquer objeto/Record) com um valor não validado primeiro.
-export function setorValido(setor: string): setor is UserSetor {
-  return (PREFIXOS_SETOR as readonly string[]).includes(setor)
 }
 
 function revalidarFichaCliente(setor: UserSetor, clienteId: string) {

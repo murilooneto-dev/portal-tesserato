@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { setorValido } from '../lib/tarefa-grupos-actions'
+import { setorValido } from '../lib/route-permissions'
 
 test('setorValido aceita só os 5 setores reais', () => {
   assert.equal(setorValido('fiscal'), true)
