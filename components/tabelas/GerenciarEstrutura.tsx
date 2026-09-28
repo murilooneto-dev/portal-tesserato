@@ -9,19 +9,28 @@ import {
 } from '@/lib/tabelas-estrutura-actions'
 import { TIPOS_COLUNA, opcoesDosValores, type TipoColuna, type OpcaoColuna } from '@/lib/tabelas/tipos'
 import type { SetorTabela } from '@/lib/tabelas/montar-payload'
+import type { ClienteMatch } from '@/lib/tabelas/cliente-match'
+import ReenviarPlanilhaWizard from './ReenviarPlanilhaWizard'
 
 const ROTULO_TIPO: Record<TipoColuna, string> = {
   texto: 'Texto', numero: 'Número', data: 'Data', opcoes: 'Lista de opções', cliente: 'Cliente',
 }
 const TIPOS_TROCAVEIS = TIPOS_COLUNA.filter(t => t !== 'cliente')
 
-interface ColunaResumo { id: string; nome: string; tipo: TipoColuna }
-interface Props { planilhaId: string; nome: string; setor: SetorTabela; colunas: ColunaResumo[] }
+interface ColunaResumo { id: string; nome: string; tipo: TipoColuna; opcoes: OpcaoColuna[] | null }
+interface Props {
+  planilhaId: string
+  nome: string
+  setor: SetorTabela
+  colunas: ColunaResumo[]
+  temColunaChave: boolean
+  clientes: ClienteMatch[]
+}
 
 const inputCls = 'px-2 py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50'
 const btnCls = 'px-3 py-1.5 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-xs'
 
-export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas }: Props) {
+export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas, temColunaChave, clientes }: Props) {
   const router = useRouter()
   const [aberto, setAberto] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -211,6 +220,8 @@ export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas }:
             <input className={`${inputCls} w-full`} value={nomeTabela} maxLength={120}
               onChange={e => setNomeTabela(e.target.value)} onBlur={salvarNomeTabela} disabled={ocupado} />
           </div>
+
+          <ReenviarPlanilhaWizard planilhaId={planilhaId} setor={setor} colunas={colunas} temColunaChave={temColunaChave} clientes={clientes} />
 
           <div className="rounded-xl border border-[var(--fg)]/12 divide-y divide-[var(--fg)]/8">
             {colunas.map((c, i) => (
