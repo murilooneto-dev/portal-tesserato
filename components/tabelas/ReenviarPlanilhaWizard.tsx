@@ -8,7 +8,7 @@ import { agruparValoresCliente, type ClienteMatch } from '@/lib/tabelas/cliente-
 import { casarColunas } from '@/lib/tabelas/reenvio'
 import { adicionarColuna } from '@/lib/tabelas-estrutura-actions'
 import { preVisualizarReenvio, aplicarReenvio, type PreviaReenvio } from '@/lib/tabelas-reenvio-actions'
-import type { SetorTabela } from '@/lib/tabelas/montar-payload'
+import { LIMITE_BYTES_PAYLOAD, type SetorTabela } from '@/lib/tabelas/montar-payload'
 
 interface ColunaTabela { id: string; nome: string; tipo: TipoColuna; opcoes: OpcaoColuna[] | null }
 interface Props {
@@ -104,10 +104,20 @@ export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, tem
         linhas: planilha.linhas as ValorCelula[][],
         clientePorLinha: montarClientePorLinha(),
       }
-      const { error, previa: p } = await preVisualizarReenvio(entrada)
-      if (error || !p) { setErro(error ?? 'Não foi possível calcular a prévia.'); return }
-      setPrevia(p)
-      setResolucoes({})
+      const tamanho = JSON.stringify(entrada).length
+      if (tamanho > LIMITE_BYTES_PAYLOAD) {
+        const mb = (tamanho / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+        setErro(`O arquivo é grande demais para reenviar de uma vez (~${mb} MB).`)
+        return
+      }
+      try {
+        const { error, previa: p } = await preVisualizarReenvio(entrada)
+        if (error || !p) { setErro(error ?? 'Não foi possível calcular a prévia.'); return }
+        setPrevia(p)
+        setResolucoes({})
+      } catch {
+        setErro('Não foi possível calcular a prévia.')
+      }
     } finally {
       setProcessando(false)
     }
@@ -131,10 +141,20 @@ export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, tem
         linhas: planilha.linhas as ValorCelula[][],
         clientePorLinha: montarClientePorLinha(),
       }
-      const { error } = await aplicarReenvio(entrada, resolucoes)
-      if (error) { setErro(error); return }
-      fechar()
-      router.refresh()
+      const tamanho = JSON.stringify(entrada).length
+      if (tamanho > LIMITE_BYTES_PAYLOAD) {
+        const mb = (tamanho / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+        setErro(`O arquivo é grande demais para reenviar de uma vez (~${mb} MB).`)
+        return
+      }
+      try {
+        const { error } = await aplicarReenvio(entrada, resolucoes)
+        if (error) { setErro(error); return }
+        fechar()
+        router.refresh()
+      } catch {
+        setErro('Não foi possível aplicar o reenvio.')
+      }
     } finally {
       setProcessando(false)
     }
@@ -248,6 +268,10 @@ export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, tem
               <p className="text-xs text-amber-400">{previa.naoConvertidas} valor(es) não puderam ser convertidos para o tipo da coluna e serão mantidos como texto.</p>
             )}
 
+            {previa.semChave > 0 && (
+              <p className="text-xs text-amber-400">{previa.semChave} linha(s) sem valor na coluna-chave foram ignoradas.</p>
+            )}
+
             {previa.comConflito.length > 0 && (
               <div className="rounded-xl border border-amber-500/30 p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -260,8 +284,11 @@ export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, tem
                 <div className="divide-y divide-[var(--fg)]/8 max-h-64 overflow-y-auto">
                   {previa.comConflito.map(c => (
                     <div key={c.linhaId} className="py-2 space-y-1">
+                      <p className="text-xs font-semibold text-[var(--fg)]/70">Linha: {c.chave}</p>
                       {c.celulas.map((cel, i) => (
-                        <p key={i} className="text-xs text-[var(--fg)]/70">{String(cel.de)} → {String(cel.para)}</p>
+                        <p key={i} className="text-xs text-[var(--fg)]/70">
+                          {cel.colunaNome}: {cel.de === null ? '(vazio)' : String(cel.de)} → {cel.para === null ? '(vazio)' : String(cel.para)}
+                        </p>
                       ))}
                       <div className="flex gap-3 text-xs">
                         <label className="flex items-center gap-1">
