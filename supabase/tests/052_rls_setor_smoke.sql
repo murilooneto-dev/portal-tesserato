@@ -24,6 +24,14 @@ begin
   assert v_qual is not null, 'policy de observacoes_clientes não foi criada';
   assert v_qual like '%fiscal%', 'policy de observacoes_clientes não referencia o setor fiscal: ' || v_qual;
 
+  -- SELECT precisa também ficar liberado pra Contábil e Pessoal, que leem
+  -- observacoes_clientes de verdade nas próprias páginas de relatório
+  -- (só a escrita é exclusiva do Fiscal, coberta pela policy acima).
+  select qual into v_qual from pg_policies where tablename = 'observacoes_clientes' and policyname = 'Setores leitores leem observacoes_clientes';
+  assert v_qual is not null, 'policy de leitura ampla de observacoes_clientes não foi criada';
+  assert v_qual like '%fiscal%' and v_qual like '%contabil%' and v_qual like '%pessoal%',
+    'policy de leitura ampla de observacoes_clientes não referencia os 3 setores leitores: ' || v_qual;
+
   select qual into v_qual from pg_policies where tablename = 'procedimentos_societario' and policyname = 'Setor societario gerencia procedimentos_societario';
   assert v_qual is not null, 'policy de procedimentos_societario não foi criada';
   assert v_qual like '%societario%', 'policy de procedimentos_societario não referencia o setor societario: ' || v_qual;

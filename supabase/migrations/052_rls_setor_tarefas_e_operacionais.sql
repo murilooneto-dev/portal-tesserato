@@ -6,13 +6,21 @@
 --    checava só o dono do registro, sem exigir que o setor da tarefa
 --    bata com o setor do usuário. Trocada por uma checagem de setor,
 --    igual à policy de leitura já existente (migration 006).
---  * observacoes_clientes: usado só pelo Fiscal na prática; a policy de
---    escrita liberava qualquer autenticado, de qualquer setor. A policy de
---    leitura separada ("Autenticados leem observacoes_clientes") também é
---    removida: como policies permissivas se combinam por OR, mantê-la
---    continuaria liberando SELECT pra qualquer setor mesmo depois da "for
---    all" apertada. A nova "for all" já cobre SELECT para quem tem
---    setor/admin.
+--  * observacoes_clientes: só o Fiscal escreve (salvarObs usa service role,
+--    que ignora RLS de qualquer forma), mas Fiscal, Contábil E Pessoal leem
+--    essa tabela de verdade nas próprias páginas de relatório
+--    (app/fiscal|contabil|pessoal/relatorios/page.tsx), via client SSR
+--    ligado a RLS. A policy de escrita antiga liberava qualquer autenticado,
+--    de qualquer setor — isso é apertado. Mas apertar demais pra só-fiscal
+--    (como as outras 3 tabelas desta migration) bloquearia leitura
+--    legítima de Contábil/Pessoal. Por isso aqui a escrita fica restrita a
+--    fiscal/admin (for all) e é somada uma policy de SELECT à parte, mais
+--    ampla, cobrindo os 3 setores leitores — policies permissivas somam por
+--    OR, então fiscal/admin continuam com CRUD completo (pela "for all") e
+--    contábil/pessoal ganham só leitura (pela SELECT extra). A policy de
+--    leitura residual antiga ("Autenticados leem observacoes_clientes")
+--    ainda é removida, porque ela liberava QUALQUER autenticado (não só os
+--    3 setores certos).
 --  * procedimentos_societario / procedimento_arquivos: exclusivos do
 --    Societário; a policy de escrita liberava qualquer autenticado. Mesmo
 --    problema e mesma correção da policy de leitura residual acima.
@@ -41,6 +49,13 @@ create policy "Setor fiscal gerencia observacoes_clientes" on observacoes_client
 ) with check (
   exists (
     select 1 from profiles p where p.id = auth.uid() and (p.role = 'admin' or 'fiscal'::user_setor = any(p.setores))
+  )
+);
+create policy "Setores leitores leem observacoes_clientes" on observacoes_clientes for select using (
+  exists (
+    select 1 from profiles p where p.id = auth.uid() and (
+      p.role = 'admin' or p.setores && array['fiscal', 'contabil', 'pessoal']::user_setor[]
+    )
   )
 );
 
