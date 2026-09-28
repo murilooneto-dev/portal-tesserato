@@ -36,7 +36,7 @@ export default function GerenciarSecoesModal({ secoes, onClose, onChanged }: Pro
     setErro(null)
     setBusyId(s.id)
     try {
-      const { error } = await renomearSecaoParcelamento(s.id, s.nome, editValue)
+      const { error } = await renomearSecaoParcelamento(s.id, editValue)
       if (error) { setErro(error); return }
       setEditingId(null)
       setEditValue('')
@@ -51,7 +51,7 @@ export default function GerenciarSecoesModal({ secoes, onClose, onChanged }: Pro
     setErro(null)
     setBusyId(s.id)
     try {
-      const { error } = await removerSecaoParcelamento(s.id, s.nome)
+      const { error } = await removerSecaoParcelamento(s.id)
       if (error) { setErro(error); return }
       onChanged()
     } finally {

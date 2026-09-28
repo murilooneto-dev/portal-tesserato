@@ -1,6 +1,7 @@
 'use server'
 
 import { getAuthenticatedAdmin } from './supabase/server'
+import { podeAcessarPagina } from './route-permissions'
 import type { UserSetor, TipoResposta } from './types'
 
 // ENTRADA/SAIDAS são reconhecidas por nome literal (case-sensitive) em
@@ -30,6 +31,12 @@ export async function criarTipoTarefa(
 
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!user || !supabase) return { error: 'Sessão inválida.' }
+
+  const { data: profile } = await supabase.from('profiles').select('role, setores, paginas_acesso').eq('id', user.id).single()
+  const podeConfigurar = podeAcessarPagina(profile, 'configuracoes', setor)
+  const membroDoSetor = profile?.role === 'admin' || (profile?.setores ?? []).includes(setor)
+  if (!membroDoSetor) return { error: 'Acesso negado.' }
+  if (padrao && !podeConfigurar) return { error: 'Só quem configura o setor pode criar um tipo padrão.' }
 
   // Por padrão (chamado a partir do cadastro de um cliente específico via
   // NovoTipoTarefaModal), `padrao` fica false — não deve ser copiado
