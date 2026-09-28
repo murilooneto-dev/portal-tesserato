@@ -19,10 +19,13 @@ const inputCls = (feito: boolean) => `text-xs px-2 py-1 rounded-lg border transi
     : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60 focus:border-[var(--fg)]/30 placeholder-[var(--fg)]/20'
 }`
 
+// Formata data-only ISO ("2026-09-03") sem passar por Date/fuso horário —
+// new Date(iso) interpreta como meia-noite UTC, e ler de volta no fuso de
+// Brasília (UTC-3) recuava sempre um dia.
 function formatarDdMm(iso: string | null): string {
   if (!iso) return ''
-  const d = new Date(iso)
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  const [ano, mes, dia] = iso.split('-')
+  return `${dia}/${mes}/${ano}`
 }
 
 function parseDdMmParaIso(valor: string): string | undefined {
