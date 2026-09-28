@@ -8,6 +8,7 @@ import {
   clientesPorValor,
   tarefasAplicaveisCliente,
   tarefasDisponiveisParaClientes,
+  linhasVisiveis,
 } from '../lib/preenchimento-rapido'
 import type { MapaVinculosSetor } from '../lib/tarefas-esperadas'
 
@@ -124,6 +125,34 @@ test('tarefasDisponiveisParaClientes: une as tarefas aplicáveis de todos os cli
   ]
   const tarefas = tarefasDisponiveisParaClientes(clientes, mapa, new Set(['DAS', 'ISS AVULSO']))
   assert.deepEqual(tarefas, ['DAS', 'ISS AVULSO'])
+})
+
+test('linhasVisiveis: sem apenasPendentes, mantém quem tem alguma coluna aplicável', () => {
+  const porCliente = { '1': new Set(['DAS']), '2': new Set(['ISS']) }
+  const clientes = [
+    { id: '1', nome: 'A' },
+    { id: '2', nome: 'B' },
+    { id: '3', nome: 'C' },
+  ]
+  const linhas = linhasVisiveis(clientes, ['DAS'], porCliente, () => false, false)
+  assert.deepEqual(linhas.map(c => c.id), ['1'])
+})
+
+test('linhasVisiveis: apenasPendentes remove quem já concluiu todas as colunas aplicáveis', () => {
+  const porCliente = {
+    '1': new Set(['DAS', 'ISS']), // DAS concluído, ISS pendente -> fica
+    '2': new Set(['DAS']), // DAS concluído -> some
+    '3': new Set(['DAS']), // DAS pendente -> fica
+  }
+  const concluida = (clienteId: string, tipo: string) =>
+    (clienteId === '1' && tipo === 'DAS') || clienteId === '2'
+  const clientes = [
+    { id: '1', nome: 'A' },
+    { id: '2', nome: 'B' },
+    { id: '3', nome: 'C' },
+  ]
+  const linhas = linhasVisiveis(clientes, ['DAS', 'ISS'], porCliente, concluida, true)
+  assert.deepEqual(linhas.map(c => c.id), ['1', '3'])
 })
 
 test('valoresDistintos: campo atividade achata os arrays e ordena', () => {
