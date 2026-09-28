@@ -6,6 +6,8 @@ import { paginar, POR_PAGINA } from '@/lib/tabelas/paginacao'
 import type { SetorTabela } from '@/lib/tabelas/montar-payload'
 import type { ClienteMatch } from '@/lib/tabelas/cliente-match'
 import TabelaEditavel, { type ColunaGrade, type LinhaGrade } from './TabelaEditavel'
+import { podeAcessarPagina } from '@/lib/route-permissions'
+import GerenciarEstrutura from './GerenciarEstrutura'
 
 interface Props {
   setor: SetorTabela
@@ -23,13 +25,14 @@ export default async function TabelaDetalhe({ setor, id, pagina: paginaBruta, se
   if (!planilha || planilha.setor !== setor) notFound()
 
   const [{ data: profile }, { data: colunasRaw }] = await Promise.all([
-    supabase.from('profiles').select('role, setores').eq('id', user.id).single(),
+    supabase.from('profiles').select('role, setores, paginas_acesso').eq('id', user.id).single(),
     supabase.from('planilha_colunas').select('id, nome, tipo, opcoes').eq('planilha_id', id).order('ordem'),
   ])
   const colunas = (colunasRaw ?? []) as ColunaGrade[]
   const temColunaCliente = colunas.some(c => c.tipo === 'cliente')
   const filtrarSemCliente = semCliente && temColunaCliente
   const podeEditar = podeEditarLinhas(profile, setor)
+  const podeConfigurar = podeAcessarPagina(profile, 'configuracoes', setor)
 
   let contagem = supabase.from('planilha_linhas').select('id', { count: 'exact', head: true }).eq('planilha_id', id)
   if (filtrarSemCliente) contagem = contagem.is('cliente_id', null)
@@ -63,7 +66,12 @@ export default async function TabelaDetalhe({ setor, id, pagina: paginaBruta, se
   return (
     <div className="p-8">
       <Link href={`/${setor}/tabelas`} className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]">← Tabelas</Link>
-      <h1 className="text-2xl font-bold text-[var(--fg)] mt-2">{planilha.nome}</h1>
+      <div className="flex items-center justify-between gap-3 mt-2">
+        <h1 className="text-2xl font-bold text-[var(--fg)]">{planilha.nome}</h1>
+        {podeConfigurar && (
+          <GerenciarEstrutura planilhaId={id} nome={planilha.nome} setor={setor} colunas={colunas} />
+        )}
+      </div>
       <p className="text-sm text-[var(--fg)]/40 mt-1 mb-4">
         {total.toLocaleString('pt-BR')} {total === 1 ? 'linha' : 'linhas'}
         {filtrarSemCliente ? ' sem cliente' : ''}
