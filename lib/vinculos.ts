@@ -1,6 +1,6 @@
 // lib/vinculos.ts
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { SETOR_LABEL, type UserSetor } from './types'
+import { SETORES, SETOR_LABEL, type UserSetor } from './types'
 import type { TarefaVinculo } from './types'
 import { buscarTodasTarefasDoMes } from './tarefas-paginacao'
 
@@ -44,6 +44,23 @@ export function formatarBadgeVinculo(
       ? `✓ Liberada (${status.concluidos}/${status.total})`
       : `⏳ Aguardando (${status.concluidos}/${status.total} concluídas)`,
   }
+}
+
+// Tarefas oferecidas na tela de Vínculos de Tarefas, por setor: o catálogo
+// (tarefa_tipos) é a fonte — uma tarefa recém-criada precisa aparecer mesmo
+// sem nenhum cliente usando ainda. Os nomes já em uso nos clientes entram
+// junto (união) pra não sumir tarefa legada que nunca virou linha do catálogo.
+export function montarTiposPorSetor(
+  catalogo: { setor: string; nome: string }[],
+  personalizadasPorSetor: Record<string, string[]>,
+): Record<UserSetor, string[]> {
+  const resultado = {} as Record<UserSetor, string[]>
+  for (const setor of SETORES) {
+    const nomes = new Set<string>(personalizadasPorSetor[setor] ?? [])
+    for (const t of catalogo) if (t.setor === setor) nomes.add(t.nome)
+    resultado[setor] = Array.from(nomes).sort()
+  }
+  return resultado
 }
 
 export function calcularNovosPares(

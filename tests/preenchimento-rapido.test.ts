@@ -3,10 +3,12 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   nomesTarefaTipoData,
+  nomesTarefaTipoNaoData,
   valoresDistintos,
   clientesPorValor,
   tarefasAplicaveisCliente,
   tarefasDisponiveisParaClientes,
+  linhasVisiveis,
 } from '../lib/preenchimento-rapido'
 import type { MapaVinculosSetor } from '../lib/tarefas-esperadas'
 
@@ -22,6 +24,17 @@ test('nomesTarefaTipoData: mantém só tipo_resposta=data sem etapas', () => {
 
 test('nomesTarefaTipoData: lista vazia devolve lista vazia', () => {
   assert.deepEqual(nomesTarefaTipoData([]), [])
+})
+
+test('nomesTarefaTipoNaoData: mantém tipo_resposta != data ou data com etapas', () => {
+  const nomes = nomesTarefaTipoNaoData([
+    { nome: 'DAS', tipo_resposta: 'data', etapas: null },
+    { nome: 'RELATORIO', tipo_resposta: 'texto', etapas: null },
+    { nome: 'FECHAMENTO', tipo_resposta: 'data', etapas: ['Conferência', 'Envio'] },
+    { nome: 'ISS', tipo_resposta: 'data', etapas: [] },
+    { nome: 'CHECK', tipo_resposta: 'checklist', etapas: ['Opção 1'] },
+  ])
+  assert.deepEqual(nomes, ['RELATORIO', 'FECHAMENTO', 'CHECK'])
 })
 
 test('valoresDistintos: extrai valores únicos e ordena', () => {
@@ -72,6 +85,35 @@ test('tarefasAplicaveisCliente: soma vínculo automático (respeitando regime) c
   assert.deepEqual(Array.from(tarefas).sort(), ['RELATORIO EXTRA'])
 })
 
+test('tarefasAplicaveisCliente: personalizada sem entrada no catálogo entra como DATA por padrão', () => {
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
+  const cliente = {
+    id: '1',
+    nome: 'Cliente X',
+    tarefas_personalizadas: ['TAREFA SEM CATALOGO'],
+    tarefas_excluidas: [],
+  }
+  // Catálogo não tem "TAREFA SEM CATALOGO" nem como tipo data nem como não-data
+  const tiposData = new Set<string>()
+  const tiposNaoData = new Set<string>()
+  const tarefas = tarefasAplicaveisCliente(cliente, mapa, tiposData, tiposNaoData)
+  assert.deepEqual(Array.from(tarefas), ['TAREFA SEM CATALOGO'])
+})
+
+test('tarefasAplicaveisCliente: personalizada com entrada não-data no catálogo continua de fora', () => {
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
+  const cliente = {
+    id: '1',
+    nome: 'Cliente X',
+    tarefas_personalizadas: ['RELATORIO COM ETAPAS'],
+    tarefas_excluidas: [],
+  }
+  const tiposData = new Set<string>()
+  const tiposNaoData = new Set(['RELATORIO COM ETAPAS'])
+  const tarefas = tarefasAplicaveisCliente(cliente, mapa, tiposData, tiposNaoData)
+  assert.deepEqual(Array.from(tarefas), [])
+})
+
 test('tarefasDisponiveisParaClientes: une as tarefas aplicáveis de todos os clientes do grupo', () => {
   const mapa: MapaVinculosSetor = {
     porRegime: {},
@@ -83,6 +125,34 @@ test('tarefasDisponiveisParaClientes: une as tarefas aplicáveis de todos os cli
   ]
   const tarefas = tarefasDisponiveisParaClientes(clientes, mapa, new Set(['DAS', 'ISS AVULSO']))
   assert.deepEqual(tarefas, ['DAS', 'ISS AVULSO'])
+})
+
+test('linhasVisiveis: sem apenasPendentes, mantém quem tem alguma coluna aplicável', () => {
+  const porCliente = { '1': new Set(['DAS']), '2': new Set(['ISS']) }
+  const clientes = [
+    { id: '1', nome: 'A' },
+    { id: '2', nome: 'B' },
+    { id: '3', nome: 'C' },
+  ]
+  const linhas = linhasVisiveis(clientes, ['DAS'], porCliente, () => false, false)
+  assert.deepEqual(linhas.map(c => c.id), ['1'])
+})
+
+test('linhasVisiveis: apenasPendentes remove quem já concluiu todas as colunas aplicáveis', () => {
+  const porCliente = {
+    '1': new Set(['DAS', 'ISS']), // DAS concluído, ISS pendente -> fica
+    '2': new Set(['DAS']), // DAS concluído -> some
+    '3': new Set(['DAS']), // DAS pendente -> fica
+  }
+  const concluida = (clienteId: string, tipo: string) =>
+    (clienteId === '1' && tipo === 'DAS') || clienteId === '2'
+  const clientes = [
+    { id: '1', nome: 'A' },
+    { id: '2', nome: 'B' },
+    { id: '3', nome: 'C' },
+  ]
+  const linhas = linhasVisiveis(clientes, ['DAS', 'ISS'], porCliente, concluida, true)
+  assert.deepEqual(linhas.map(c => c.id), ['1', '3'])
 })
 
 test('valoresDistintos: campo atividade achata os arrays e ordena', () => {

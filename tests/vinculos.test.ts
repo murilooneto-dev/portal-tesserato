@@ -1,7 +1,7 @@
 // tests/vinculos.test.ts
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { agregarStatusVinculo, formatarBadgeVinculo, calcularNovosPares } from '../lib/vinculos'
+import { agregarStatusVinculo, formatarBadgeVinculo, calcularNovosPares, montarTiposPorSetor } from '../lib/vinculos'
 import type { TarefaVinculo } from '../lib/types'
 
 test('agregarStatusVinculo: uma origem concluída libera (total=1)', () => {
@@ -84,4 +84,23 @@ test('calcularNovosPares: pula pares que já existem no catálogo pro mesmo par 
 test('calcularNovosPares: não deduplica contra vínculo de outro par de setores com mesmo texto', () => {
   const pares = calcularNovosPares('pessoal', ['DAS'], 'contabil', ['Guia'], catalogoExistente)
   assert.deepEqual(pares, [{ tipoOrigem: 'DAS', tipoDestino: 'Guia' }])
+})
+
+test('montarTiposPorSetor: tarefa do catálogo aparece mesmo sem nenhum cliente usando', () => {
+  const r = montarTiposPorSetor(
+    [{ setor: 'fiscal', nome: 'CONFERÊNCIA ENTRADAS' }, { setor: 'societario', nome: 'ALTERAÇÃO' }],
+    { fiscal: [], contabil: [], pessoal: [] },
+  )
+  assert.deepEqual(r.fiscal, ['CONFERÊNCIA ENTRADAS'])
+  assert.deepEqual(r.societario, ['ALTERAÇÃO'])
+  assert.deepEqual(r.financeiro, [])
+})
+
+test('montarTiposPorSetor: une catálogo com nomes usados por clientes, sem duplicar e ordenado', () => {
+  const r = montarTiposPorSetor(
+    [{ setor: 'fiscal', nome: 'B' }, { setor: 'fiscal', nome: 'A' }],
+    { fiscal: ['B', 'ENTRADA'], contabil: ['X'], pessoal: [] },
+  )
+  assert.deepEqual(r.fiscal, ['A', 'B', 'ENTRADA'])
+  assert.deepEqual(r.contabil, ['X'])
 })

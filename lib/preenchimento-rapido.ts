@@ -28,6 +28,18 @@ export function nomesTarefaTipoData(tipos: TarefaTipoRaw[]): string[] {
     .map(t => t.nome)
 }
 
+// Nomes do catálogo que exigem edição na ficha do cliente (etapas, texto
+// livre ou checklist) e por isso nunca viram checkbox simples aqui — mesmo
+// que também estejam em tarefas_personalizadas de algum cliente. Complemento
+// de nomesTarefaTipoData: uma tarefa personalizada com nome que não aparece
+// em nenhum dos dois (não está no catálogo) é tratada como DATA por padrão,
+// mesmo critério que a ficha do cliente já usa pra tipo não cadastrado.
+export function nomesTarefaTipoNaoData(tipos: TarefaTipoRaw[]): string[] {
+  return tipos
+    .filter(t => t.tipo_resposta !== 'data' || (t.etapas && t.etapas.length > 0))
+    .map(t => t.nome)
+}
+
 export function valoresDistintos(clientes: ClienteFiltro[], campo: CampoFiltro): string[] {
   const valores = new Set<string>()
   for (const c of clientes) {
@@ -56,16 +68,25 @@ export function clientesPorValor(
 // calcularTarefasEsperadas (vínculo automático atividade+regime menos
 // tarefas_excluidas, mais tarefas_personalizadas), restrita ao conjunto de
 // tarefas tipo DATA sem etapas (as únicas que viram checkbox nesta tela).
+// Uma tarefa personalizada cujo nome não existe no catálogo (nem em
+// tiposData nem em tiposNaoData) entra do mesmo jeito — é o caso de
+// personalizadas que nunca ganharam entrada em tarefa_tipos e por isso
+// sumiam da grade; a ficha do cliente já trata esse mesmo caso como DATA
+// por padrão, então aqui vira checkbox igual.
 export function tarefasAplicaveisCliente(
   cliente: ClienteFiltro,
   mapa: MapaVinculosSetor,
   tiposData: Set<string>,
+  tiposNaoData: Set<string> = new Set(),
 ): Set<string> {
   const esperadas = calcularTarefasEsperadas(
     { ...cliente, tarefas_personalizadas: cliente.tarefas_personalizadas ?? [] },
     mapa,
   )
-  return new Set(esperadas.filter(t => tiposData.has(t)))
+  const personalizadas = new Set(cliente.tarefas_personalizadas ?? [])
+  return new Set(
+    esperadas.filter(t => tiposData.has(t) || (personalizadas.has(t) && !tiposNaoData.has(t))),
+  )
 }
 
 // União das tarefas aplicáveis de todo um grupo de clientes — usada pra
@@ -75,10 +96,32 @@ export function tarefasDisponiveisParaClientes(
   clientes: ClienteFiltro[],
   mapa: MapaVinculosSetor,
   tiposData: Set<string>,
+  tiposNaoData: Set<string> = new Set(),
 ): string[] {
   const nomes = new Set<string>()
   for (const c of clientes) {
-    for (const t of tarefasAplicaveisCliente(c, mapa, tiposData)) nomes.add(t)
+    for (const t of tarefasAplicaveisCliente(c, mapa, tiposData, tiposNaoData)) nomes.add(t)
   }
   return Array.from(nomes).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+}
+
+// Linhas (clientes) que devem aparecer na grade pras colunas selecionadas:
+// precisa ter pelo menos uma delas realmente aplicável. Com
+// apenasPendentes=true, exige além disso que pelo menos uma dessas
+// aplicáveis ainda não esteja concluída — cliente com todas as colunas já
+// marcadas simplesmente some da lista, mesmo que a tarefa continue
+// aplicável a ele.
+export function linhasVisiveis(
+  clientes: ClienteFiltro[],
+  colunas: string[],
+  tarefasAplicaveisPorCliente: Record<string, Set<string>>,
+  concluida: (clienteId: string, tipo: string) => boolean,
+  apenasPendentes: boolean,
+): ClienteFiltro[] {
+  return clientes.filter(c => {
+    const aplicaveis = colunas.filter(tipo => tarefasAplicaveisPorCliente[c.id]?.has(tipo))
+    if (aplicaveis.length === 0) return false
+    if (!apenasPendentes) return true
+    return aplicaveis.some(tipo => !concluida(c.id, tipo))
+  })
 }
