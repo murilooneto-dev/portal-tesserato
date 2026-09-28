@@ -89,7 +89,16 @@ export async function proxy(request: NextRequest) {
 
     if (!podeAcessarSetor(profile, setorDaRota) || !podeAcessarPagina(profile, setorDaRota, pagina)) {
       const primeiroSetor = profile?.setores?.[0] as UserSetor | undefined
-      const destino = primeiroSetor ? SETOR_HOME[primeiroSetor] : '/intranet'
+      let destino = primeiroSetor ? SETOR_HOME[primeiroSetor] : '/intranet'
+      // A home de alguns setores (Financeiro, Societário) é uma página
+      // controlável por permissão, não um dashboard sempre liberado — se o
+      // usuário também não tem acesso a ELA, redirecionar pra lá de novo
+      // criaria um loop infinito (a própria home nega e redireciona pra
+      // si mesma). Cai pra /intranet, que nunca é bloqueada por setor.
+      if (primeiroSetor) {
+        const { pagina: paginaDestino } = resolveSetorPagina(destino)
+        if (!podeAcessarPagina(profile, primeiroSetor, paginaDestino)) destino = '/intranet'
+      }
       return redirectComCookies(new URL(destino, request.url), supabaseResponse)
     }
   }
