@@ -92,6 +92,7 @@ export default async function PreenchimentoRapidoPessoalPage() {
         mapaVinculos={mapaVinculos}
         tiposData={tiposData}
         tiposNaoData={tiposNaoData}
+        filtroPendentes
         estadoInicial={estadoInicial}
         onToggle={onToggle}
       />
