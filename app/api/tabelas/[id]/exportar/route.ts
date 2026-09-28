@@ -46,9 +46,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const bytes = montarXlsx(planilha.nome as string, colunas, linhas)
   const arquivo = nomeArquivoSeguro(planilha.nome as string)
-  const buffer = new ArrayBuffer(bytes.byteLength)
-  new Uint8Array(buffer).set(bytes)
-  return new Response(new Blob([buffer], { type: XLSX_MIME }), {
+  return new Response(bytes as BodyInit, {
     headers: {
       'Content-Type': XLSX_MIME,
       'Content-Disposition': `attachment; filename="${arquivo}"`,
