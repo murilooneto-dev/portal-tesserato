@@ -48,7 +48,7 @@ Toda linha apagada de uma tabela protegida, **por qualquer caminho** (tela, Serv
 
 Índices: `(grupo)`, `(excluido_em desc)`, `(expira_em)`.
 
-**RLS ligada; só admin** (`is_admin()`) lê e altera. Nenhuma outra policy: usuários comuns e anônimo não enxergam nada. A tabela **não** tem trigger próprio (a limpeza não cai em laço).
+**RLS ligada; só admin LÊ** (policy `select` com `is_admin()`); escrita apenas pelo trigger e pelas funções, com INSERT/UPDATE/DELETE revogados de `anon` e `authenticated`. Nenhuma outra policy: usuários comuns e anônimo não enxergam nada. A tabela **não** tem trigger próprio (a limpeza não cai em laço).
 
 ### 4.2 Tabelas protegidas (1ª entrega)
 
@@ -94,7 +94,7 @@ No app, `createAdminClient(usuarioId?)` passa `global.headers['x-app-usuario']`,
 ## 8. Interface e código da aplicação
 
 - **`lib/lixeira.ts`** (puro, testável): agrupa as linhas por `grupo`; escolhe a **raiz** por prioridade de tabela; monta o título e o resumo ("Cliente ACME + 19 tarefas, 3 anexos") a partir de `dados`; rótulos de tabela; texto de expiração.
-- **`public.lixeira_listar(p_limite)`** (SQL, `SECURITY DEFINER`, só `service_role`): devolve as linhas da lixeira **sem** o conteúdo (`dados`), apenas um subconjunto de campos para título (`nome`, `name`, `titulo`, `empresa`, `secao`, `tipo`, `mes`, `ano`, `natureza`, `valor`, `setor`). Assim o `content_base64` dos anexos nunca trafega para a listagem.
+- **`public.lixeira_listar(p_limite)`** (SQL, `SECURITY DEFINER`, só `service_role`): devolve as linhas da lixeira **sem** o conteúdo (`dados`), apenas um subconjunto de campos para título (`nome`, `name`, `titulo`, `empresa`, `secao`, `tipo`, `mes`, `ano`, `natureza`, `valor`, `setor`, `responsavel`, `cliente_id`). A tela usa `cliente_id` para acrescentar o nome do cliente ao título das exclusões cuja raiz não é a linha do cliente (ex.: "remover do setor"). Assim o `content_base64` dos anexos nunca trafega para a listagem.
 - **`lib/lixeira-actions.ts`** (`'use server'`): `listarExclusoes()` (chama a limpeza antes, agrupa e resolve o nome de quem apagou) e `restaurarExclusao(grupo)`; ambas exigem `role = 'admin'`, devolvem `{ error }` em vez de lançar.
 - **`app/admin/lixeira/page.tsx`** + componente cliente: lista com data, autor, resumo, expiração e botão **Restaurar** (com confirmação); mostra o erro em português quando a restauração é recusada. Item "Lixeira" no menu de admin.
 - **`createAdminClient(usuarioId?)`** e **`getAuthenticatedAdmin()`** em `lib/supabase/server.ts` (header de autoria).
@@ -120,3 +120,5 @@ No app, `createAdminClient(usuarioId?)` passa `global.headers['x-app-usuario']`,
 ## 12. Fora do escopo (futuro)
 
 Planilhas, catálogos, agenda e logs na lixeira; excluir definitivamente / esvaziar manualmente; restauração por linha (só por exclusão inteira); alertas; ligar os `confirm()` nativos restantes (parcelamento, procedimento, tipos de tarefa, anexo de evento) a mensagens que apontem para a Lixeira; backup ter/qui/sáb (frente separada).
+
+`TRUNCATE` não é capturado (só exclusão linha a linha); um `DELETE` em massa feito direto no SQL Editor **é** capturado (autor desconhecido).

@@ -11,6 +11,13 @@ begin
   assert (select relrowsecurity from pg_class where oid = 'public.lixeira'::regclass), 'RLS desligada em lixeira';
   assert (select count(*) from pg_policies where tablename = 'lixeira') = 1, 'lixeira deve ter exatamente 1 policy';
   assert (select qual from pg_policies where tablename = 'lixeira') like '%is_admin%', 'a policy da lixeira nao e de admin';
+  assert (select cmd from pg_policies where tablename = 'lixeira') = 'SELECT', 'a policy da lixeira deve ser so de leitura';
+  assert not has_table_privilege('authenticated', 'public.lixeira', 'insert'), 'authenticated insere na lixeira';
+  assert not has_table_privilege('authenticated', 'public.lixeira', 'update'), 'authenticated altera a lixeira';
+  assert not has_table_privilege('authenticated', 'public.lixeira', 'delete'), 'authenticated apaga da lixeira';
+  assert not has_table_privilege('anon', 'public.lixeira', 'insert'), 'anon insere na lixeira';
+  assert not has_table_privilege('anon', 'public.lixeira', 'update'), 'anon altera a lixeira';
+  assert not has_table_privilege('anon', 'public.lixeira', 'delete'), 'anon apaga da lixeira';
   assert (select column_default from information_schema.columns
            where table_schema = 'public' and table_name = 'lixeira' and column_name = 'expira_em') like '%60 days%',
          'retencao padrao nao e 60 dias';

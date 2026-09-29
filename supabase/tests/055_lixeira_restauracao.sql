@@ -201,6 +201,14 @@ select (count(*) > 0
 select 1/0;
 \endif
 
+select (bool_or(campos ? 'cliente_id')) as ok from public.lixeira_listar(500) where tabela = 'tarefas' \gset
+\if :ok
+\echo 'OK   R9c listagem inclui campos.cliente_id nas linhas de tarefas'
+\else
+\echo 'FALHOU R9c'
+select 1/0;
+\endif
+
 -- ---------- R10: limpeza remove so o que expirou ----------
 insert into public.lixeira (grupo, tabela, registro_id, dados, origem_autor, expira_em)
   values (999000001, 'clientes', 'zz-velho', '{"nome":"velho"}', 'desconhecido', now() - interval '1 day'),
@@ -215,6 +223,30 @@ select ((select count(*) from public.lixeira where registro_id = 'zz-velho') = 0
 \echo 'FALHOU R10'
 select 1/0;
 \endif
+
+-- ---------- R11: sessao de admin nao escreve na lixeira ----------
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'u_admin'::text, 'role', 'authenticated')::text, true) as zz \gset
+do $$
+begin
+  begin
+    insert into public.lixeira (grupo, tabela, dados, origem_autor) values (1, 'clientes', '{}', 'desconhecido');
+    raise exception 'DEVERIA TER FALHADO (insert)';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.lixeira set excluido_por = null;
+    raise exception 'DEVERIA TER FALHADO (update)';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from public.lixeira;
+    raise exception 'DEVERIA TER FALHADO (delete)';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+\echo 'OK   R11 sessao de admin nao consegue escrever na lixeira'
 
 rollback;
 \echo 'TUDO OK: 055 restauracao'

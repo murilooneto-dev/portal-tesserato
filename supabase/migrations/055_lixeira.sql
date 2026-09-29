@@ -17,6 +17,13 @@ begin
   if not exists (select 1 from pg_proc where proname = 'is_admin') then
     raise exception '055 abortada: funcao is_admin() nao existe';
   end if;
+  if to_regtype('public.user_setor') is null then
+    raise exception '055 abortada: tipo public.user_setor nao existe';
+  end if;
+  if not exists (select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'clientes' and column_name = 'setores') then
+    raise exception '055 abortada: coluna clientes.setores nao existe';
+  end if;
 end $$;
 
 -- ===== Tabela =====
@@ -40,8 +47,11 @@ create index if not exists lixeira_expira_em_idx   on public.lixeira (expira_em)
 
 alter table public.lixeira enable row level security;
 drop policy if exists "Admin gerencia lixeira" on public.lixeira;
-create policy "Admin gerencia lixeira" on public.lixeira
-  for all using (is_admin()) with check (is_admin());
+drop policy if exists "Admin le lixeira" on public.lixeira;
+create policy "Admin le lixeira" on public.lixeira
+  for select using (is_admin());
+-- A lixeira so e escrita pelo trigger e pelas funcoes SECURITY DEFINER (donas da tabela).
+revoke insert, update, delete on public.lixeira from anon, authenticated;
 
 -- ===== Captura =====
 -- SECURITY DEFINER porque quem apaga (um operador, por exemplo) nao tem
@@ -152,7 +162,7 @@ begin
         when unique_violation then
           raise exception 'Não foi possível restaurar: já existe um registro igual (%). Talvez esta exclusão já tenha sido desfeita por outro caminho.', v_tab;
         when foreign_key_violation then
-          raise exception 'Não foi possível restaurar: falta um registro do qual "%" depende (por exemplo, o cliente ou o parcelamento também foi apagado). Restaure primeiro a exclusão dele.', v_tab;
+          raise exception 'Não foi possível restaurar: falta um registro do qual "%" depende (por exemplo, o cliente, o parcelamento, um usuário ou um item de catálogo também foi apagado). Restaure primeiro a exclusão dele.', v_tab;
       end;
       v_n := v_n + 1;
     end loop;
@@ -213,7 +223,8 @@ as $$
            'secao',    l.dados->>'secao',    'tipo',     l.dados->>'tipo',
            'mes',      l.dados->>'mes',      'ano',      l.dados->>'ano',
            'natureza', l.dados->>'natureza', 'valor',    l.dados->>'valor',
-           'setor',    l.dados->>'setor',    'responsavel', l.dados->>'responsavel'
+           'setor',    l.dados->>'setor',    'responsavel', l.dados->>'responsavel',
+           'cliente_id', l.dados->>'cliente_id'
          )) as campos,
          l.excluido_em, l.excluido_por, l.origem_autor, l.expira_em, l.restaurado_em
     from public.lixeira l
