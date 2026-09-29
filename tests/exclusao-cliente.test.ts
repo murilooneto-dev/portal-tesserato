@@ -5,6 +5,7 @@ import {
   planejarExclusaoNoSetor,
   descreverImpactoExclusao,
   confirmacaoExclusaoValida,
+  mensagemErroExclusao,
 } from '../lib/exclusao-cliente'
 
 // ---------- planejarExclusaoNoSetor ----------
@@ -102,4 +103,29 @@ test('confirmacaoExclusaoValida: nível total aceita nome exato e DELETAR em qua
 
 test('confirmacaoExclusaoValida: nome vazio nunca confirma', () => {
   assert.equal(confirmacaoExclusaoValida('setor', 'ACME LTDA', '', ''), false)
+})
+
+// ---------- mensagemErroExclusao ----------
+
+test('mensagemErroExclusao: bloqueio por procedimentos do Societário vira explicação em português', () => {
+  const bruta = 'update or delete on table "clientes" violates foreign key constraint "procedimentos_societario_cliente_id_fkey" on table "procedimentos_societario"'
+  const msg = mensagemErroExclusao(bruta)
+  assert.match(msg, /procedimentos do Societário/)
+  assert.doesNotMatch(msg, /violates|constraint|fkey/)
+})
+
+test('mensagemErroExclusao: bloqueio por outra tabela vira aviso genérico de registros vinculados', () => {
+  const bruta = 'update or delete on table "clientes" violates foreign key constraint "outra_cliente_id_fkey" on table "outra"'
+  const msg = mensagemErroExclusao(bruta)
+  assert.match(msg, /registros vinculados/)
+  assert.doesNotMatch(msg, /violates|constraint|fkey/)
+})
+
+test('mensagemErroExclusao: reconhece a tabela mesmo com espaço ou quebra de linha no fim da mensagem', () => {
+  const bruta = 'update or delete on table "clientes" violates foreign key constraint "procedimentos_societario_cliente_id_fkey" on table "procedimentos_societario" \n'
+  assert.match(mensagemErroExclusao(bruta), /procedimentos do Societário/)
+})
+
+test('mensagemErroExclusao: erro que não é de vínculo passa sem alteração', () => {
+  assert.equal(mensagemErroExclusao('permission denied for table clientes'), 'permission denied for table clientes')
 })

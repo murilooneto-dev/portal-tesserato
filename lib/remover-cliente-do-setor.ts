@@ -11,7 +11,7 @@
 // Societário referenciando o cliente) nada foi apagado.
 
 import type { UserSetor } from './types'
-import { planejarExclusaoNoSetor } from './exclusao-cliente'
+import { planejarExclusaoNoSetor, mensagemErroExclusao } from './exclusao-cliente'
 
 interface Filtravel extends PromiseLike<{ error: { message: string } | null }> {
   eq(coluna: string, valor: unknown): Filtravel
@@ -43,21 +43,21 @@ export async function removerClienteDoSetor(
 
   if (plano.removeCliente) {
     const { error } = await supabase.from('clientes').delete().eq('id', clienteId)
-    if (error) return { error: error.message, clienteRemovidoDoTodo: false }
+    if (error) return { error: mensagemErroExclusao(error.message), clienteRemovidoDoTodo: false }
     return { error: null, clienteRemovidoDoTodo: true }
   }
 
   const tarefas = await supabase.from('tarefas').delete().eq('cliente_id', clienteId).eq('setor', setor)
-  if (tarefas.error) return { error: tarefas.error.message, clienteRemovidoDoTodo: false }
+  if (tarefas.error) return { error: mensagemErroExclusao(tarefas.error.message), clienteRemovidoDoTodo: false }
 
   const tabelaFicha = TABELA_FICHA_DO_SETOR[setor]
   if (tabelaFicha) {
     const ficha = await supabase.from(tabelaFicha).delete().eq('cliente_id', clienteId)
-    if (ficha.error) return { error: ficha.error.message, clienteRemovidoDoTodo: false }
+    if (ficha.error) return { error: mensagemErroExclusao(ficha.error.message), clienteRemovidoDoTodo: false }
   }
 
   const atualizacao = await supabase.from('clientes').update({ setores: plano.novosSetores }).eq('id', clienteId)
-  if (atualizacao.error) return { error: atualizacao.error.message, clienteRemovidoDoTodo: false }
+  if (atualizacao.error) return { error: mensagemErroExclusao(atualizacao.error.message), clienteRemovidoDoTodo: false }
 
   return { error: null, clienteRemovidoDoTodo: false }
 }

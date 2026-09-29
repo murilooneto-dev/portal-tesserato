@@ -87,3 +87,18 @@ export function confirmacaoExclusaoValida(
   if (nivel === 'setor') return true
   return palavraDigitada.trim().toUpperCase() === 'DELETAR'
 }
+
+// Tabelas que impedem apagar o cliente (FK sem cascata) e o nome amigável de
+// cada uma. Se o banco recusar por outra tabela, cai no aviso genérico.
+const BLOQUEIOS_CONHECIDOS: Record<string, string> = {
+  procedimentos_societario: 'procedimentos do Societário',
+}
+
+// Troca a mensagem crua do Postgres por uma explicação que quem usa o sistema
+// entende. Erros que não são de vínculo passam sem alteração.
+export function mensagemErroExclusao(mensagem: string): string {
+  if (!/foreign key constraint/i.test(mensagem)) return mensagem
+  const tabela = /on table "([^"]+)"\s*$/.exec(mensagem)?.[1]
+  const onde = (tabela && BLOQUEIOS_CONHECIDOS[tabela]) ?? 'registros vinculados em outra área do sistema'
+  return `Não foi possível excluir: este cliente ainda tem ${onde}. Remova ou resolva esses registros antes de excluir o cliente.`
+}

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarCliente, podeEditarTarefaTipo } from '@/lib/supabase/server'
+import { mensagemErroExclusao } from '@/lib/exclusao-cliente'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
 import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
@@ -326,7 +327,7 @@ export async function excluirCliente(id: string): Promise<{ error: string | null
   const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
   const { error } = await supabase.from('clientes').delete().eq('id', id)
-  if (error) return { error: error.message }
+  if (error) return { error: mensagemErroExclusao(error.message) }
 
   await registrarEvento(supabase, {
     setor: 'fiscal', clienteId: null, clienteNome: cliente?.nome ?? '—',

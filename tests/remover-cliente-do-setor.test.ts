@@ -36,9 +36,9 @@ test('cliente só no setor: apaga somente a linha do cliente (a cascata leva o r
 })
 
 test('cliente só no setor e o banco recusa apagar: devolve o erro e NÃO apagou mais nada antes', async () => {
-  const { client, chamadas } = clienteFalso({ 'clientes.delete': 'violates foreign key constraint' })
+  const { client, chamadas } = clienteFalso({ 'clientes.delete': 'update or delete on table "clientes" violates foreign key constraint "procedimentos_societario_cliente_id_fkey" on table "procedimentos_societario"' })
   const r = await removerClienteDoSetor(client, { clienteId: 'c1', setor: 'pessoal', setoresAtuais: ['pessoal'] })
-  assert.equal(r.error, 'violates foreign key constraint')
+  assert.match(r.error ?? '', /procedimentos do Societário/)
   assert.equal(r.clienteRemovidoDoTodo, false)
   assert.equal(chamadas.length, 1)
   assert.equal(chamadas[0].tabela, 'clientes')
