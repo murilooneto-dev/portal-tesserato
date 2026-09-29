@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { escolherClienteLeituraVinculos } from '@/lib/vinculos-cliente'
 
 // Service role client — bypassa RLS; requer SUPABASE_SERVICE_ROLE_KEY no Vercel
 export function createAdminClient() {
@@ -65,6 +66,23 @@ export async function getAuthenticatedAdmin() {
     }
   )
   return { user, supabase }
+}
+
+// Client usado só pelos selos de vínculo entre setores (lib/vinculos.ts): eles
+// leem a tarefa do setor de ORIGEM, que a RLS por setor esconderia de um
+// usuário de setor único. Devolve o client de serviço se houver usuário logado
+// e a chave configurada; senão, o client de sessão (comportamento anterior).
+// As funções de lib/vinculos.ts pedem só colunas de status (cliente_id, tipo,
+// concluida) das tarefas de origem.
+export async function createClienteLeituraVinculos() {
+  const sessao = await createClient()
+  const { data: { user } } = await sessao.auth.getUser()
+  return escolherClienteLeituraVinculos({
+    temUsuario: !!user,
+    temChaveServico: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    sessao,
+    criarServico: createAdminClient,
+  })
 }
 
 // Verifica se o usuário logado pode editar um cliente específico:

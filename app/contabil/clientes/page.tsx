@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createClienteLeituraVinculos } from '@/lib/supabase/server'
 import ClientesListaContabil from '@/components/contabil/ClientesListaContabil'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoAno } from '@/lib/tarefas-paginacao'
@@ -41,7 +41,7 @@ export default async function ClientesContabilPage() {
 
   const tarefasDoMes = tarefasDoAno.filter(t => t.mes === mes)
   const pendenciasVinculo = await buscarPendenciasVinculoPorCliente(
-    supabase,
+    await createClienteLeituraVinculos(),
     clientes.map(c => ({ id: c.id, tarefas_vinculadas_ativas: c.tarefas_vinculadas_ativas })),
     tarefasDoMes,
     'contabil',
