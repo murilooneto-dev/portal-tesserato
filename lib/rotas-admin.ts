@@ -6,7 +6,7 @@
 // /admin/configuracoes NÃO entra aqui: deixou de ser tudo-ou-nada por
 // role='admin' e passou a ser controlada pelo sistema de paginas_acesso
 // por setor/página (ver lib/route-permissions.ts), igual Fiscal/Pessoal.
-export const ROTAS_ADMIN = ['/fiscal/parametros', '/vinculos'] as const
+export const ROTAS_ADMIN = ['/fiscal/parametros', '/vinculos', '/admin/lixeira'] as const
 
 export function ehRotaAdmin(pathname: string): boolean {
   return ROTAS_ADMIN.some(rota => pathname === rota || pathname.startsWith(`${rota}/`))
