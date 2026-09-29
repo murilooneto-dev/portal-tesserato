@@ -151,6 +151,7 @@ export function agruparExclusoes(
   linhas: LinhaLixeira[],
   agora: Date,
   nomesPorId: Record<string, string> = {},
+  nomesClientePorId: Record<string, string> = {},
 ): ExclusaoAgrupada[] {
   const porGrupo = new Map<number, LinhaLixeira[]>()
   for (const l of linhas) {
@@ -168,9 +169,15 @@ export function agruparExclusoes(
     const linhaRaiz = grupoLinhas.find(l => l.tabela === tabelaRaiz) ?? grupoLinhas[0]
     const primeira = grupoLinhas[0]
 
+    let titulo = tituloDaLinha(tabelaRaiz, linhaRaiz.campos)
+    if (tabelaRaiz !== 'clientes') {
+      const nomeCliente = nomesClientePorId[linhaRaiz.campos.cliente_id ?? '']
+      if (nomeCliente) titulo = `${titulo} — ${nomeCliente}`
+    }
+
     resultado.push({
       grupo,
-      titulo: tituloDaLinha(tabelaRaiz, linhaRaiz.campos),
+      titulo,
       resumo: textoResumo(contagens),
       tabelaRaiz,
       contagens,

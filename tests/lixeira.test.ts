@@ -145,3 +145,36 @@ test('agruparExclusoes: calcula os dias restantes até expirar', () => {
 test('agruparExclusoes: lista vazia dá lista vazia', () => {
   assert.deepEqual(agruparExclusoes([], new Date()), [])
 })
+
+// ---------- agruparExclusoes: nome do cliente no título ----------
+
+const AGORA_CLI = new Date('2026-09-29T12:00:00Z')
+const CLI = '11111111-1111-4111-8111-111111111111'
+
+test('agruparExclusoes: tarefas soltas ganham o nome do cliente no título', () => {
+  const r = agruparExclusoes([
+    linha({ id: 1, grupo: 1, tabela: 'tarefas', campos: { tipo: 'ENTRADA', mes: '9', ano: '2026', cliente_id: CLI } }),
+  ], AGORA_CLI, {}, { [CLI]: 'ACME' })
+  assert.equal(r[0].titulo, 'ENTRADA (9/2026) — ACME')
+})
+
+test('agruparExclusoes: ficha do setor ganha o nome do cliente no título', () => {
+  const r = agruparExclusoes([
+    linha({ id: 1, grupo: 1, tabela: 'clientes_contabil', campos: { cliente_id: CLI } }),
+  ], AGORA_CLI, {}, { [CLI]: 'ACME' })
+  assert.equal(r[0].titulo, 'Ficha do Contábil — ACME')
+})
+
+test('agruparExclusoes: sem o id no mapa, o título fica sem sufixo', () => {
+  const r = agruparExclusoes([
+    linha({ id: 1, grupo: 1, tabela: 'tarefas', campos: { tipo: 'ENTRADA', mes: '9', ano: '2026', cliente_id: CLI } }),
+  ], AGORA_CLI, {}, {})
+  assert.equal(r[0].titulo, 'ENTRADA (9/2026)')
+})
+
+test('agruparExclusoes: raiz clientes nunca leva sufixo', () => {
+  const r = agruparExclusoes([
+    linha({ id: 1, grupo: 1, tabela: 'clientes', campos: { nome: 'ACME', cliente_id: CLI } }),
+  ], AGORA_CLI, {}, { [CLI]: 'ACME' })
+  assert.equal(r[0].titulo, 'ACME')
+})

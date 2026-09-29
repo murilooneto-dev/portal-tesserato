@@ -32,7 +32,14 @@ export default function LixeiraClient({ exclusoesIniciais, erroInicial }: Props)
     setRestaurando(grupo)
     setErro(null)
     setAviso(null)
-    const r = await restaurarExclusao(grupo)
+    let r: Awaited<ReturnType<typeof restaurarExclusao>>
+    try {
+      r = await restaurarExclusao(grupo)
+    } catch {
+      setRestaurando(null)
+      setErro('Não foi possível restaurar. Tente novamente.')
+      return
+    }
     setRestaurando(null)
     if (r.error) { setErro(r.error); return }
     setConfirmando(null)
@@ -46,6 +53,9 @@ export default function LixeiraClient({ exclusoesIniciais, erroInicial }: Props)
       <p className="text-[var(--fg)]/50 text-sm mb-6">
         Tudo o que é apagado do sistema fica aqui por 60 dias. Restaurar devolve a exclusão inteira
         (por exemplo, um cliente com as tarefas e anexos que foram junto).
+      </p>
+      <p className="text-[var(--fg)]/40 text-xs mb-6 -mt-4">
+        Remover um cliente de um setor gera duas entradas (as tarefas do setor e a ficha do setor). Restaure as tarefas antes da ficha.
       </p>
 
       {erro && <p className="mb-4 text-red-400 text-sm">{erro}</p>}

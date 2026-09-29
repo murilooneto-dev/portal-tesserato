@@ -32,7 +32,21 @@ export async function listarExclusoes(): Promise<{ data: ExclusaoAgrupada[]; err
     for (const p of perfis ?? []) nomes[p.id as string] = (p.nome as string) ?? ''
   }
 
-  return { data: agruparExclusoes(linhas, new Date(), nomes).slice(0, 200), error: null }
+  // Nome do cliente para exclusões cuja raiz não é o próprio cliente: primeiro
+  // das linhas de clientes apagadas na listagem, depois busca os que faltam.
+  const nomesCliente: Record<string, string> = {}
+  for (const l of linhas) {
+    if (l.tabela === 'clientes' && l.registro_id && l.campos.nome) nomesCliente[l.registro_id] = l.campos.nome
+  }
+  const faltantes = Array.from(new Set(
+    linhas.map(l => l.campos.cliente_id).filter((x): x is string => !!x && !(x in nomesCliente)),
+  ))
+  if (faltantes.length > 0) {
+    const { data: clientes } = await ctx.supabase.from('clientes').select('id, nome').in('id', faltantes)
+    for (const c of clientes ?? []) nomesCliente[c.id as string] = (c.nome as string) ?? ''
+  }
+
+  return { data: agruparExclusoes(linhas, new Date(), nomes, nomesCliente).slice(0, 200), error: null }
 }
 
 const ROTAS_A_ATUALIZAR = [
