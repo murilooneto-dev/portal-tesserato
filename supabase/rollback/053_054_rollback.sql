@@ -6,9 +6,9 @@
 -- Restaura o estado INSEGURO conhecido; depois entenda o que quebrou e
 -- corrija a policy em vez de deixar aberto.
 --
--- FIDELIDADE: as policies "true" são recriadas TO authenticated (confirmado).
--- As de auth.uid() is not null ficam sem TO (roles public): a coluna roles
--- delas não foi conferida em produção; funcionalmente é equivalente.
+-- FIDELIDADE (conferida contra o pg_policies de produção, com a coluna roles,
+-- em 2026-09-29): as policies "true" são TO authenticated; as de
+-- auth.uid() is not null são {public} (sem TO), exatamente como recriadas aqui.
 -- RECOMENDADO: antes de aplicar em produção, rode
 -- supabase/rollback/snapshot_pg_policies.sql e guarde o resultado; se houver
 -- divergência com este arquivo, o snapshot manda.

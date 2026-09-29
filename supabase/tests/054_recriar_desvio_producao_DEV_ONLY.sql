@@ -11,10 +11,9 @@
 -- arquivo como está NÃO executa nada, então não dá para colar e rodar por
 -- engano no projeto errado.
 --
--- Definições copiadas do pg_policies de produção (2026-09-29). As duas
--- "true" são TO authenticated (confirmado). As baseadas em auth.uid() não
--- tiveram a coluna roles conferida em produção; ficam sem TO (roles public),
--- o que é funcionalmente equivalente (auth.uid() já barra o anon).
+-- Definições copiadas do pg_policies de produção (2026-09-29), conferidas
+-- inclusive na coluna roles: as "true" são TO authenticated; as baseadas em
+-- auth.uid() são {public} (sem TO), como aqui.
 
 do $$
 declare
