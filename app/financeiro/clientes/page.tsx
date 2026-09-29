@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createClienteLeituraVinculos } from '@/lib/supabase/server'
 import ClientesListaFinanceiro from '@/components/financeiro/ClientesListaFinanceiro'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
@@ -67,7 +67,7 @@ export default async function ClientesFinanceiroPage() {
   }
 
   const pendenciasVinculo = await buscarPendenciasVinculoPorCliente(
-    supabase,
+    await createClienteLeituraVinculos(),
     clientes.map(c => ({ id: c.id, tarefas_vinculadas_ativas: c.tarefas_vinculadas_ativas ?? [] })),
     tarefas,
     'financeiro',
