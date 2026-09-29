@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
+import { escapeHtml } from '@/lib/escape-html'
 
 const UF_MAP: Record<string, string> = {
   '11':'RO','12':'AC','13':'AM','14':'RR','15':'PA','16':'AP','17':'TO',
@@ -193,16 +194,16 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
     const linhas = resultado.divergencias.map((e, i) => `
       <tr>
         <td>${i + 1}</td>
-        <td><strong>${e.uf}</strong></td>
-        <td>${e.numero || '—'}</td>
-        <td>${e.data || '—'}</td>
-        <td>${e.fornecedor || '—'}</td>
-        <td>${e.valor || '—'}</td>
-        <td class="mono">${e.chave}</td>
+        <td><strong>${escapeHtml(e.uf)}</strong></td>
+        <td>${escapeHtml(e.numero) || '—'}</td>
+        <td>${escapeHtml(e.data) || '—'}</td>
+        <td>${escapeHtml(e.fornecedor) || '—'}</td>
+        <td>${escapeHtml(e.valor) || '—'}</td>
+        <td class="mono">${escapeHtml(e.chave)}</td>
       </tr>`).join('')
 
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-    <title>Divergências DTE — ${clienteNome}</title>
+    <title>Divergências DTE — ${escapeHtml(clienteNome)}</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: Arial, sans-serif; font-size: 11px; color: #111; padding: 28px; }
@@ -225,7 +226,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
       @media print { body { padding: 12px; } }
     </style></head><body>
     <div class="header">
-      <h1>Divergências DTE — ${clienteNome}</h1>
+      <h1>Divergências DTE — ${escapeHtml(clienteNome)}</h1>
       <p>Gerado em ${agora} · Notas presentes no DTE mas ausentes no SISTEMA</p>
     </div>
     <div class="summary">

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import type { Tarefa } from '@/lib/types'
 import type { ClienteComContabil } from '@/lib/clientes-contabil'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
+import { escapeHtml } from '@/lib/escape-html'
 import { calcularTarefasEsperadas, type MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -100,7 +101,7 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
   @media print { button { display: none; } }
 </style></head><body>
 <h1>Relatório de Tarefas Contábeis</h1>
-<p class="sub">Competência: ${MESES_NOME[mes-1]} ${ano} &nbsp;|&nbsp; Gerado em: ${new Date().toLocaleString('pt-BR')} &nbsp;|&nbsp; ${filtroResp !== 'TODOS' ? `Responsável: ${filtroResp}` : 'Todos os responsáveis'}</p>
+<p class="sub">Competência: ${MESES_NOME[mes-1]} ${ano} &nbsp;|&nbsp; Gerado em: ${new Date().toLocaleString('pt-BR')} &nbsp;|&nbsp; ${filtroResp !== 'TODOS' ? `Responsável: ${escapeHtml(filtroResp)}` : 'Todos os responsáveis'}</p>
 <div class="stats">
   <div class="stat"><div class="n">${stats.total}</div><div>Total Clientes</div></div>
   <div class="stat" style="border-color:#10b981"><div class="n" style="color:#10b981">${stats.cem}</div><div>100% Concluídos</div></div>
@@ -112,13 +113,13 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
   <tbody>
     ${filtrados.map((r, i) => `<tr>
       <td>${i+1}</td>
-      <td><strong>${r.cliente.nome}</strong></td>
-      <td>${r.cliente.cnpj ?? '—'}</td>
-      <td>${r.cliente.responsavel ?? '—'}</td>
+      <td><strong>${escapeHtml(r.cliente.nome)}</strong></td>
+      <td>${escapeHtml(r.cliente.cnpj) || '—'}</td>
+      <td>${escapeHtml(r.cliente.responsavel) || '—'}</td>
       <td><span class="bar-bg"><span class="bar-fill" style="width:${r.pct}%"></span></span>${r.pct}%</td>
-      <td>${r.pct === 100 ? '✓ Concluído' : r.pendentes.join(', ')}</td>
-      <td>${obsPorCliente[r.cliente.id] ?? ''}</td>
-      <td>${r.cliente.mit ?? '—'}</td>
+      <td>${r.pct === 100 ? '✓ Concluído' : escapeHtml(r.pendentes.join(', '))}</td>
+      <td>${escapeHtml(obsPorCliente[r.cliente.id])}</td>
+      <td>${escapeHtml(r.cliente.mit) || '—'}</td>
     </tr>`).join('')}
   </tbody>
 </table>

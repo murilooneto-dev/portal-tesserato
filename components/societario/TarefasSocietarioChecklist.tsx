@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import type { TarefaEtapa } from '@/lib/types'
 import type { TarefaSocietarioAplicavel } from '@/app/societario/clientes/tarefas-actions'
+import { formatarDdMm, parseDdMmParaIso } from '@/lib/formatar-data'
 
 interface Props {
   tarefas: TarefaSocietarioAplicavel[]
@@ -18,18 +19,6 @@ const inputCls = (feito: boolean) => `text-xs px-2 py-1 rounded-lg border transi
     ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] focus:border-[var(--accent)]/60'
     : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60 focus:border-[var(--fg)]/30 placeholder-[var(--fg)]/20'
 }`
-
-function formatarDdMm(iso: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
-}
-
-function parseDdMmParaIso(valor: string): string | undefined {
-  const m = valor.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-  if (!m) return undefined
-  return `${m[3]}-${m[2]}-${m[1]}`
-}
 
 export default function TarefasSocietarioChecklist({
   tarefas, etapas, podeEditar, onToggle, onAtualizarEtapa, onSalvarTexto,
@@ -75,6 +64,13 @@ export default function TarefasSocietarioChecklist({
                   value={chaveData}
                   onChange={e => setDataDraft(prev => ({ ...prev, [t.nome]: e.target.value }))}
                   onBlur={() => {
+                    // Só dispara a Server Action se o campo realmente mudou
+                    // em relação ao valor original salvo — comparar contra
+                    // o original (já formatado de forma segura pra
+                    // date/timestamptz) evita que um blur sem edição
+                    // nenhuma reescreva concluida_em com "agora".
+                    const original = formatarDdMm(t.tarefa?.concluida_em ?? null)
+                    if (chaveData === original) return
                     const iso = parseDdMmParaIso(chaveData)
                     startTransition(() => { onToggle(t.nome, chaveData.trim() !== '', iso) })
                   }}
@@ -101,6 +97,11 @@ export default function TarefasSocietarioChecklist({
                         value={valor}
                         onChange={e => setEtapaDraft(prev => ({ ...prev, [chave]: e.target.value }))}
                         onBlur={() => {
+                          // Mesma proteção do campo de data acima: só
+                          // dispara se o valor mudou de verdade em relação
+                          // ao original salvo.
+                          const original = formatarDdMm(etapaAtual?.concluida_em ?? null)
+                          if (valor === original) return
                           const iso = parseDdMmParaIso(valor)
                           startTransition(() => { onAtualizarEtapa(t.nome, etapaNome, valor.trim() !== '', iso) })
                         }}

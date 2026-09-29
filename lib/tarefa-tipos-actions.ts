@@ -1,6 +1,7 @@
 'use server'
 
 import { getAuthenticatedAdmin } from './supabase/server'
+import { podeAcessarPagina } from './route-permissions'
 import type { UserSetor, TipoResposta } from './types'
 
 // ENTRADA/SAIDAS são reconhecidas por nome literal (case-sensitive) em
@@ -30,6 +31,32 @@ export async function criarTipoTarefa(
 
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!user || !supabase) return { error: 'Sessão inválida.' }
+
+  const { data: profile } = await supabase.from('profiles').select('role, setores, paginas_acesso').eq('id', user.id).single()
+  const podeConfigurar = podeAcessarPagina(profile, 'configuracoes', setor)
+  const membroDoSetor = profile?.role === 'admin' || (profile?.setores ?? []).includes(setor)
+  // Quem pode criar cliente geral (ClienteGeralModal, ver app/(comum)/clientes/page.tsx:
+  // admin ou membro do Societário) também pode criar ali, inline, um tipo de
+  // tarefa ad-hoc (padrao=false) pra qualquer setor preenchido no formulário
+  // — inclusive Fiscal, mesmo sem ser membro do Fiscal. É esse gate real (não
+  // "ser membro do setor alvo") que autoriza o fluxo do PR #140.
+  const podeCriarClienteGeral = profile?.role === 'admin' || (profile?.setores ?? []).includes('societario')
+  // Igual às ações-irmãs (excluirTarefaTipo, alternarAtivoTarefaTipo,
+  // podeConfigurarSetor em tarefa-tipo-vinculos-actions.ts): membro do setor
+  // OU quem tem permissão de configurar aquele setor já basta pra entrar
+  // aqui. Isso cobre dois fluxos reais: (a) Societário criando um tipo
+  // Fiscal inline no cadastro de cliente (ClienteGeralModal, PR #140) sem
+  // ser membro do Fiscal — coberto por podeCriarClienteGeral acima — e
+  // (b) alguém só em "Configurações" com configuracoes:<setor> via
+  // paginas_acesso, que já pode editar/excluir/ativar tipos daquele setor
+  // mas antes não conseguia criar um padrão. Marcar como padrão (catálogo
+  // global) continua exigindo especificamente podeConfigurar — não basta
+  // ser membro do setor, nem poder criar cliente geral, pra isso.
+  if (padrao) {
+    if (!podeConfigurar) return { error: 'Só quem configura o setor pode criar um tipo padrão.' }
+  } else {
+    if (!membroDoSetor && !podeConfigurar && !podeCriarClienteGeral) return { error: 'Acesso negado.' }
+  }
 
   // Por padrão (chamado a partir do cadastro de um cliente específico via
   // NovoTipoTarefaModal), `padrao` fica false — não deve ser copiado
