@@ -1,0 +1,140 @@
+// tests/exclusao-cliente.test.ts
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import {
+  planejarExclusaoNoSetor,
+  descreverImpactoExclusao,
+  confirmacaoExclusaoValida,
+  mensagemErroExclusao,
+  AVISO_RESTAURACAO,
+} from '../lib/exclusao-cliente'
+
+// ---------- planejarExclusaoNoSetor ----------
+
+test('planejarExclusaoNoSetor: setor único do cliente => apaga o cliente inteiro', () => {
+  const plano = planejarExclusaoNoSetor(['contabil'], 'contabil')
+  assert.deepEqual(plano, { removeCliente: true, novosSetores: [] })
+})
+
+test('planejarExclusaoNoSetor: cliente em outros setores => só tira o setor e mantém o cliente', () => {
+  const plano = planejarExclusaoNoSetor(['fiscal', 'contabil', 'pessoal'], 'contabil')
+  assert.deepEqual(plano, { removeCliente: false, novosSetores: ['fiscal', 'pessoal'] })
+})
+
+test('planejarExclusaoNoSetor: setor que o cliente não tem não apaga o cliente', () => {
+  const plano = planejarExclusaoNoSetor(['fiscal'], 'contabil')
+  assert.deepEqual(plano, { removeCliente: false, novosSetores: ['fiscal'] })
+})
+
+// ---------- descreverImpactoExclusao ----------
+
+test('descreverImpactoExclusao: remover do setor com o cliente em outros setores => nível setor, sem DELETAR', () => {
+  const i = descreverImpactoExclusao({
+    origem: 'contabil', acao: 'remover-do-setor', setoresDoCliente: ['fiscal', 'contabil', 'pessoal'],
+  })
+  assert.equal(i.nivel, 'setor')
+  assert.equal(i.exigeDeletar, false)
+  assert.equal(i.titulo, 'Remover do Contábil')
+  assert.match(i.descricao, /continua em: Fiscal, Pessoal/)
+})
+
+test('descreverImpactoExclusao: remover do setor sendo o único setor => vira exclusão total e avisa "inteiro"', () => {
+  const i = descreverImpactoExclusao({
+    origem: 'pessoal', acao: 'remover-do-setor', setoresDoCliente: ['pessoal'],
+  })
+  assert.equal(i.nivel, 'total')
+  assert.equal(i.exigeDeletar, true)
+  assert.equal(i.titulo, 'Excluir cliente')
+  assert.match(i.descricao, /sistema inteiro/)
+})
+
+test('descreverImpactoExclusao: excluir pelo Fiscal avisa os outros setores que também perdem dados', () => {
+  const i = descreverImpactoExclusao({
+    origem: 'fiscal', acao: 'excluir-do-sistema', setoresDoCliente: ['fiscal', 'contabil', 'pessoal'],
+  })
+  assert.equal(i.nivel, 'total')
+  assert.match(i.descricao, /Contábil, Pessoal/)
+  assert.doesNotMatch(i.descricao, /Fiscal,|, Fiscal/)
+})
+
+test('descreverImpactoExclusao: excluir pela tela Geral lista todos os setores do cliente', () => {
+  const i = descreverImpactoExclusao({
+    origem: 'geral', acao: 'excluir-do-sistema', setoresDoCliente: ['fiscal', 'contabil'],
+  })
+  assert.equal(i.nivel, 'total')
+  assert.match(i.descricao, /Fiscal, Contábil/)
+})
+
+test('descreverImpactoExclusao: exclusão total só em um setor não fala de "outros setores"', () => {
+  const i = descreverImpactoExclusao({
+    origem: 'fiscal', acao: 'excluir-do-sistema', setoresDoCliente: ['fiscal'],
+  })
+  assert.equal(i.nivel, 'total')
+  assert.doesNotMatch(i.descricao, /também/i)
+})
+
+test('descreverImpactoExclusao: exclusão total lista o que é perdido', () => {
+  const i = descreverImpactoExclusao({
+    origem: 'fiscal', acao: 'excluir-do-sistema', setoresDoCliente: ['fiscal'],
+  })
+  assert.ok(i.detalhes.length >= 3)
+  assert.ok(i.detalhes.some(d => /tarefas/i.test(d)))
+  assert.ok(i.detalhes.some(d => /anexos/i.test(d)))
+})
+
+// ---------- confirmacaoExclusaoValida ----------
+
+test('confirmacaoExclusaoValida: nível setor só exige o nome exato', () => {
+  assert.equal(confirmacaoExclusaoValida('setor', 'ACME LTDA', 'ACME LTDA', ''), true)
+})
+
+test('confirmacaoExclusaoValida: nome diferente (mesmo com maiúsculas trocadas) não confirma', () => {
+  assert.equal(confirmacaoExclusaoValida('setor', 'ACME LTDA', 'acme ltda', ''), false)
+  assert.equal(confirmacaoExclusaoValida('total', 'ACME LTDA', 'acme ltda', 'DELETAR'), false)
+})
+
+test('confirmacaoExclusaoValida: nível total sem a palavra DELETAR não confirma', () => {
+  assert.equal(confirmacaoExclusaoValida('total', 'ACME LTDA', 'ACME LTDA', ''), false)
+  assert.equal(confirmacaoExclusaoValida('total', 'ACME LTDA', 'ACME LTDA', 'APAGAR'), false)
+})
+
+test('confirmacaoExclusaoValida: nível total aceita nome exato e DELETAR em qualquer caixa, ignorando espaços nas pontas', () => {
+  assert.equal(confirmacaoExclusaoValida('total', 'ACME LTDA', '  ACME LTDA ', ' deletar '), true)
+})
+
+test('confirmacaoExclusaoValida: nome vazio nunca confirma', () => {
+  assert.equal(confirmacaoExclusaoValida('setor', 'ACME LTDA', '', ''), false)
+})
+
+// ---------- mensagemErroExclusao ----------
+
+test('mensagemErroExclusao: bloqueio por procedimentos do Societário vira explicação em português', () => {
+  const bruta = 'update or delete on table "clientes" violates foreign key constraint "procedimentos_societario_cliente_id_fkey" on table "procedimentos_societario"'
+  const msg = mensagemErroExclusao(bruta)
+  assert.match(msg, /procedimentos do Societário/)
+  assert.doesNotMatch(msg, /violates|constraint|fkey/)
+})
+
+test('mensagemErroExclusao: bloqueio por outra tabela vira aviso genérico de registros vinculados', () => {
+  const bruta = 'update or delete on table "clientes" violates foreign key constraint "outra_cliente_id_fkey" on table "outra"'
+  const msg = mensagemErroExclusao(bruta)
+  assert.match(msg, /registros vinculados/)
+  assert.doesNotMatch(msg, /violates|constraint|fkey/)
+})
+
+test('mensagemErroExclusao: reconhece a tabela mesmo com espaço ou quebra de linha no fim da mensagem', () => {
+  const bruta = 'update or delete on table "clientes" violates foreign key constraint "procedimentos_societario_cliente_id_fkey" on table "procedimentos_societario" \n'
+  assert.match(mensagemErroExclusao(bruta), /procedimentos do Societário/)
+})
+
+test('mensagemErroExclusao: erro que não é de vínculo passa sem alteração', () => {
+  assert.equal(mensagemErroExclusao('permission denied for table clientes'), 'permission denied for table clientes')
+})
+
+// ---------- AVISO_RESTAURACAO ----------
+
+test('AVISO_RESTAURACAO: diz que só administrador restaura e por quanto tempo (60 dias)', () => {
+  assert.match(AVISO_RESTAURACAO, /administrador/)
+  assert.match(AVISO_RESTAURACAO, /60 dias/)
+  assert.match(AVISO_RESTAURACAO, /Lixeira/)
+})

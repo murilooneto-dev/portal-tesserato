@@ -11,6 +11,8 @@ import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import { excluirClienteGeral, salvarClienteGeral, desabilitarClienteGeral, reabilitarClienteGeral } from '@/app/(comum)/clientes/actions'
+import ConfirmarExclusaoClienteModal from '@/components/geral/ConfirmarExclusaoClienteModal'
+import { descreverImpactoExclusao } from '@/lib/exclusao-cliente'
 import DesabilitarClienteModal from '@/components/geral/DesabilitarClienteModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
@@ -59,7 +61,10 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
   const [saving, setSaving] = useState(false)
   const [loadingCnpj, setLoadingCnpj] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const [excluindo, setExcluindo] = useState(false)
+  // Nome e setores GRAVADOS no banco (o formulário pode estar editado e não salvo):
+  // o aviso e a digitação de confirmação da exclusão usam estes.
+  const [identidadeSalva, setIdentidadeSalva] = useState<{ nome: string; setores: UserSetor[] } | null>(null)
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [desabilitarModalOpen, setDesabilitarModalOpen] = useState(false)
   const [reabilitando, setReabilitando] = useState(false)
   const [mostrarVinculos, setMostrarVinculos] = useState(false)
@@ -73,6 +78,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
     sb.from('clientes').select('*, clientes_fiscal(*)').eq('id', clienteId).single().then(({ data: raw }) => {
       if (!raw) return
       const data = flattenClienteFiscal(raw)
+      setIdentidadeSalva({ nome: data.nome ?? '', setores: (data.setores ?? ['fiscal']) as UserSetor[] })
       const mitParts = (data.mit ?? '').split('/')
       setForm({
         nome: data.nome ?? '',
@@ -230,19 +236,13 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
     onClose()
   }
 
-  async function handleExcluir() {
-    if (!clienteId) return
-    if (!confirm(`Excluir "${form.nome}" do sistema? Essa ação não pode ser desfeita e remove o cliente de todos os setores (tarefas, arquivos e parcelamentos vinculados a ele também são apagados).`)) return
-    setExcluindo(true)
-    setErro(null)
-    const { error } = await excluirClienteGeral(clienteId)
-    if (error) {
-      setExcluindo(false)
-      setErro(error)
-      return
-    }
+  async function executarExclusao(): Promise<{ error: string | null }> {
+    if (!clienteId) return { error: 'Cliente não identificado.' }
+    const r = await excluirClienteGeral(clienteId)
+    if (r.error) return r
     router.refresh()
     onClose()
+    return { error: null }
   }
 
   const mostraFiscal = form.setores.includes('fiscal')
@@ -384,9 +384,9 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
           <div className="flex gap-1">
             {!readOnly && isEdit && (
-              <button onClick={handleExcluir} disabled={excluindo}
+              <button onClick={() => setConfirmandoExclusao(true)} disabled={!identidadeSalva}
                 className="px-4 py-2.5 rounded-xl text-red-400/70 hover:text-red-400 text-sm transition-colors disabled:opacity-50">
-                {excluindo ? 'Excluindo...' : 'Excluir cliente'}
+                Excluir cliente
               </button>
             )}
             {podeDesabilitar && isEdit && temSetorDesabilitavel && (
@@ -424,6 +424,14 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         </div>
       </div>
     </div>
+    {confirmandoExclusao && identidadeSalva && (
+      <ConfirmarExclusaoClienteModal
+        nomeCliente={identidadeSalva.nome}
+        impacto={descreverImpactoExclusao({ origem: 'geral', acao: 'excluir-do-sistema', setoresDoCliente: identidadeSalva.setores })}
+        onConfirmar={executarExclusao}
+        onCancelar={() => setConfirmandoExclusao(false)}
+      />
+    )}
     {desabilitarModalOpen && clienteId && (
       <DesabilitarClienteModal
         clienteNome={form.nome}

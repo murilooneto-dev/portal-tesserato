@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { excluirClientePessoal } from '@/app/pessoal/clientes/actions'
 import EmpresaPessoalModal from './EmpresaPessoalModal'
+import ConfirmarExclusaoClienteModal from '@/components/geral/ConfirmarExclusaoClienteModal'
+import { descreverImpactoExclusao } from '@/lib/exclusao-cliente'
 import type { ClienteComPessoal } from '@/lib/clientes-pessoal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 
@@ -18,17 +20,17 @@ export default function ClientePessoalAcoes({ cliente, responsaveis, tarefasPadr
   const router = useRouter()
   const [editando, setEditando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
-  const [excluindo, setExcluindo] = useState(false)
 
+  // "Excluir" aqui tira o cliente do setor; se ele não estiver em mais nenhum,
+  // apaga o cliente do sistema inteiro. O modal avisa qual dos dois casos é.
+  const impacto = descreverImpactoExclusao({
+    origem: 'pessoal', acao: 'remover-do-setor', setoresDoCliente: cliente.setores ?? [],
+  })
 
   async function handleExcluir() {
-    setExcluindo(true)
-    try {
-      await excluirClientePessoal(cliente.id)
-      router.push('/pessoal/clientes')
-    } finally {
-      setExcluindo(false)
-    }
+    const r = await excluirClientePessoal(cliente.id)
+    if (!r.error) router.push('/pessoal/clientes')
+    return r
   }
 
   return (
@@ -38,24 +40,10 @@ export default function ClientePessoalAcoes({ cliente, responsaveis, tarefasPadr
         Editar
       </button>
 
-      {confirmando ? (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-red-400">Remover do Pessoal?</span>
-          <button onClick={handleExcluir} disabled={excluindo}
-            className="text-xs bg-red-500/20 border border-red-500/40 text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/30 transition-all disabled:opacity-50">
-            {excluindo ? 'Removendo...' : 'Confirmar'}
-          </button>
-          <button onClick={() => setConfirmando(false)}
-            className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]/70 px-2 py-1.5">
-            Cancelar
-          </button>
-        </div>
-      ) : (
-        <button onClick={() => setConfirmando(true)}
-          className="text-xs bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-red-400/70 hover:text-red-400 px-3 py-1.5 rounded-lg transition-all">
-          Excluir
-        </button>
-      )}
+      <button onClick={() => setConfirmando(true)}
+        className="text-xs bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-red-400/70 hover:text-red-400 px-3 py-1.5 rounded-lg transition-all">
+        Excluir
+      </button>
 
       {cliente.ativo === false && (
         <span className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15 uppercase tracking-wide">
@@ -70,6 +58,15 @@ export default function ClientePessoalAcoes({ cliente, responsaveis, tarefasPadr
           tarefasPadrao={tarefasPadrao}
           catalogo={catalogo}
           onClose={() => setEditando(false)}
+        />
+      )}
+
+      {confirmando && (
+        <ConfirmarExclusaoClienteModal
+          nomeCliente={cliente.nome}
+          impacto={impacto}
+          onConfirmar={handleExcluir}
+          onCancelar={() => setConfirmando(false)}
         />
       )}
 

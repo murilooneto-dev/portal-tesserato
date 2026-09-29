@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
+import { mensagemErroExclusao } from '@/lib/exclusao-cliente'
 import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel } from '@/lib/logs'
 import type { UserSetor } from '@/lib/types'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
@@ -185,7 +186,7 @@ export async function excluirClienteGeral(id: string): Promise<{ error: string |
   const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', id).single()
 
   const { error } = await supabase.from('clientes').delete().eq('id', id)
-  if (error) return { error: error.message }
+  if (error) return { error: mensagemErroExclusao(error.message) }
 
   await registrarEvento(supabase, {
     setor: null, clienteId: null, clienteNome: cliente?.nome ?? '—',
