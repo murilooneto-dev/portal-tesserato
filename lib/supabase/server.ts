@@ -2,15 +2,22 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { escolherClienteLeituraVinculos } from '@/lib/vinculos-cliente'
+import { cabecalhosDeAutoria } from '@/lib/lixeira'
 
 // Service role client — bypassa RLS; requer SUPABASE_SERVICE_ROLE_KEY no Vercel
-export function createAdminClient() {
+// `usuarioId` (opcional) vai no header x-app-usuario: o trigger da Lixeira usa
+// esse valor como autor das exclusões feitas com a chave de serviço (que não
+// tem auth.uid()). Só é honrado no banco com JWT service_role.
+export function createAdminClient(usuarioId?: string) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY não configurada. Adicione em: Vercel → Settings → Environment Variables')
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     key,
-    { auth: { autoRefreshToken: false, persistSession: false } }
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: { headers: cabecalhosDeAutoria(usuarioId) },
+    }
   )
 }
 
@@ -47,7 +54,7 @@ export async function getAuthenticatedAdmin() {
 
   // Tenta service role primeiro (mais confiável)
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { user, supabase: createAdminClient() }
+    return { user, supabase: createAdminClient(user.id) }
   }
 
   // Fallback: cliente com JWT explícito do usuário autenticado
