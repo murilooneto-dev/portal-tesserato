@@ -102,3 +102,8 @@ export function mensagemErroExclusao(mensagem: string): string {
   const onde = (tabela && BLOQUEIOS_CONHECIDOS[tabela]) ?? 'registros vinculados em outra área do sistema'
   return `Não foi possível excluir: este cliente ainda tem ${onde}. Remova ou resolva esses registros antes de excluir o cliente.`
 }
+
+// A exclusão passa a ser recuperável (Lixeira, 60 dias), mas só por um admin:
+// o alerta continua forte de propósito, porque funciona como freio.
+export const AVISO_RESTAURACAO =
+  'Você não consegue desfazer isto sozinho: só um administrador pode restaurar, pela Lixeira, por até 60 dias.'

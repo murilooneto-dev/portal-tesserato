@@ -6,6 +6,7 @@ import {
   descreverImpactoExclusao,
   confirmacaoExclusaoValida,
   mensagemErroExclusao,
+  AVISO_RESTAURACAO,
 } from '../lib/exclusao-cliente'
 
 // ---------- planejarExclusaoNoSetor ----------
@@ -128,4 +129,12 @@ test('mensagemErroExclusao: reconhece a tabela mesmo com espaço ou quebra de li
 
 test('mensagemErroExclusao: erro que não é de vínculo passa sem alteração', () => {
   assert.equal(mensagemErroExclusao('permission denied for table clientes'), 'permission denied for table clientes')
+})
+
+// ---------- AVISO_RESTAURACAO ----------
+
+test('AVISO_RESTAURACAO: diz que só administrador restaura e por quanto tempo (60 dias)', () => {
+  assert.match(AVISO_RESTAURACAO, /administrador/)
+  assert.match(AVISO_RESTAURACAO, /60 dias/)
+  assert.match(AVISO_RESTAURACAO, /Lixeira/)
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { confirmacaoExclusaoValida, type ImpactoExclusao } from '@/lib/exclusao-cliente'
+import { confirmacaoExclusaoValida, AVISO_RESTAURACAO, type ImpactoExclusao } from '@/lib/exclusao-cliente'
 
 interface Props {
   nomeCliente: string
@@ -49,7 +49,7 @@ export default function ConfirmarExclusaoClienteModal({ nomeCliente, impacto, on
         </ul>
 
         <p className="text-[var(--fg)]/50 text-sm mb-4">
-          Esta ação não pode ser desfeita.{' '}
+          {AVISO_RESTAURACAO}{' '}
           {impacto.exigeDeletar
             ? <>Pra confirmar, digite o nome do cliente e a palavra <span className="text-red-400 font-semibold">DELETAR</span> abaixo.</>
             : <>Pra confirmar, digite o nome do cliente abaixo.</>}
