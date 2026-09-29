@@ -39,6 +39,12 @@ export async function removerClienteDoSetor(
   input: { clienteId: string; setor: UserSetor; setoresAtuais: UserSetor[] },
 ): Promise<ResultadoRemocaoDoSetor> {
   const { clienteId, setor, setoresAtuais } = input
+  if (!setoresAtuais.includes(setor)) {
+    return {
+      error: 'Não foi possível confirmar os setores do cliente. Recarregue a página e tente de novo.',
+      clienteRemovidoDoTodo: false,
+    }
+  }
   const plano = planejarExclusaoNoSetor(setoresAtuais, setor)
 
   if (plano.removeCliente) {

@@ -249,6 +249,7 @@ export async function excluirClientePessoal(clienteId: string): Promise<{ error:
   if (!user || !supabase) return { error: 'Não autorizado.' }
 
   const { data: clienteAntes } = await supabase.from('clientes').select('nome, setores').eq('id', clienteId).single()
+  if (!clienteAntes) return { error: 'Cliente não encontrado.' }
   const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
   // Lógica única (e testada) em lib/remover-cliente-do-setor.ts: se o cliente

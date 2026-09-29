@@ -75,3 +75,19 @@ test('falha ao atualizar clientes.setores: o erro é devolvido, não engolido', 
   assert.equal(r.error, 'permission denied')
   assert.equal(r.clienteRemovidoDoTodo, false)
 })
+
+const ERRO_SETORES = 'Não foi possível confirmar os setores do cliente. Recarregue a página e tente de novo.'
+
+test('setoresAtuais vazio (leitura falhou): devolve erro e não chama o banco', async () => {
+  const { client, chamadas } = clienteFalso()
+  const r = await removerClienteDoSetor(client, { clienteId: 'c1', setor: 'contabil', setoresAtuais: [] })
+  assert.deepEqual(r, { error: ERRO_SETORES, clienteRemovidoDoTodo: false })
+  assert.equal(chamadas.length, 0)
+})
+
+test('setor pedido não está nos setoresAtuais: devolve erro e não chama o banco', async () => {
+  const { client, chamadas } = clienteFalso()
+  const r = await removerClienteDoSetor(client, { clienteId: 'c1', setor: 'contabil', setoresAtuais: ['fiscal'] })
+  assert.deepEqual(r, { error: ERRO_SETORES, clienteRemovidoDoTodo: false })
+  assert.equal(chamadas.length, 0)
+})
