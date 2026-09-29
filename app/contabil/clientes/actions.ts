@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarClienteContabil } from '@/lib/supabase/server'
+import { removerClienteDoSetor } from '@/lib/remover-cliente-do-setor'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
 import { tarefasRemovidasDoCliente, apagarTarefasDoCliente } from '@/lib/tarefas-do-cliente'
@@ -236,31 +237,21 @@ export async function atualizarEtapa(
   revalidatePath('/contabil/clientes')
 }
 
-export async function excluirClienteContabil(clienteId: string) {
-  if (!(await podeEditarClienteContabil(clienteId))) throw new Error('Não autorizado')
+export async function excluirClienteContabil(clienteId: string): Promise<{ error: string | null }> {
+  if (!(await podeEditarClienteContabil(clienteId))) return { error: 'Não autorizado.' }
   const { user, supabase } = await getAuthenticatedAdmin()
-  if (!user || !supabase) throw new Error('Não autorizado')
+  if (!user || !supabase) return { error: 'Não autorizado.' }
 
   const { data: clienteAntes } = await supabase.from('clientes').select('nome, setores').eq('id', clienteId).single()
   const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
-  // Apaga as tarefas do setor Contábil pra esse cliente (tarefa_etapas
-  // cascateia via FK em tarefas.id, não precisa apagar manualmente).
-  await supabase.from('tarefas').delete().eq('cliente_id', clienteId).eq('setor', 'contabil')
-
-  // Apaga os dados operacionais do Contábil.
-  await supabase.from('clientes_contabil').delete().eq('cliente_id', clienteId)
-
-  // Remove 'contabil' de clientes.setores. Se não sobrar nenhum setor,
-  // a linha de clientes deixa de fazer sentido — apaga também.
-  const novosSetores = (clienteAntes?.setores ?? []).filter((s: string) => s !== 'contabil')
-  const clienteRemovidoDoTodo = novosSetores.length === 0
-
-  if (clienteRemovidoDoTodo) {
-    await supabase.from('clientes').delete().eq('id', clienteId)
-  } else {
-    await supabase.from('clientes').update({ setores: novosSetores }).eq('id', clienteId)
-  }
+  // Lógica única (e testada) em lib/remover-cliente-do-setor.ts: se o cliente
+  // só estava neste setor, apaga a linha de clientes primeiro (a cascata leva o
+  // resto) e, se o banco recusar, nada foi apagado; senão tira só o setor.
+  const { error, clienteRemovidoDoTodo } = await removerClienteDoSetor(supabase, {
+    clienteId, setor: 'contabil', setoresAtuais: clienteAntes?.setores ?? [],
+  })
+  if (error) return { error }
 
   await registrarEvento(supabase, {
     setor: 'contabil', clienteId: clienteRemovidoDoTodo ? null : clienteId, clienteNome: clienteAntes?.nome ?? '—',
@@ -268,6 +259,7 @@ export async function excluirClienteContabil(clienteId: string) {
   })
 
   revalidatePath('/contabil/clientes')
+  return { error: null }
 }
 
 export async function salvarRespostaTexto(

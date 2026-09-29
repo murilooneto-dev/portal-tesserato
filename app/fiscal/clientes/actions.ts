@@ -315,16 +315,18 @@ export async function excluirArquivo(arquivoId: string) {
   return { error: null }
 }
 
-export async function excluirCliente(id: string) {
-  if (!(await podeEditarCliente(id))) throw new Error('Não autorizado')
+// Apaga o cliente de TODOS os setores (cascata). Erro esperado volta como valor,
+// não como exceção, para o modal mostrá-lo (o Next redige mensagens lançadas).
+export async function excluirCliente(id: string): Promise<{ error: string | null }> {
+  if (!(await podeEditarCliente(id))) return { error: 'Não autorizado.' }
   const { user, supabase } = await getAuthenticatedAdmin()
-  if (!user || !supabase) throw new Error('Não autorizado')
+  if (!user || !supabase) return { error: 'Não autorizado.' }
 
   const { data: cliente } = await supabase.from('clientes').select('nome').eq('id', id).single()
   const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
   const { error } = await supabase.from('clientes').delete().eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) return { error: error.message }
 
   await registrarEvento(supabase, {
     setor: 'fiscal', clienteId: null, clienteNome: cliente?.nome ?? '—',
@@ -332,6 +334,7 @@ export async function excluirCliente(id: string) {
   })
 
   revalidatePath('/fiscal/clientes')
+  return { error: null }
 }
 
 export async function atualizarEtapa(
