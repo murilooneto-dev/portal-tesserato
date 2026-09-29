@@ -72,7 +72,7 @@ Toda linha apagada de uma tabela protegida, **por qualquer caminho** (tela, Serv
 
 No app, `createAdminClient(usuarioId?)` passa `global.headers['x-app-usuario']`, e `getAuthenticatedAdmin()` o chama com o `user.id` que já autenticou. Uma única mudança cobre as ~28 Server Actions que usam a chave de serviço.
 
-**Risco a eliminar no início do plano (spike):** confirmar que o PostgREST do projeto expõe `request.headers` para o trigger. **Plano B, se não expuser:** a autoria das 4 exclusões de cliente passa por uma função SQL `excluir_cliente_registrando(cliente, usuario)` que fixa o usuário com `set_config(..., true)` na mesma transação; as demais ficam "desconhecido".
+**Risco eliminado (spike feito em 2026-09-29, dev):** o PostgREST do projeto expõe ao Postgres tanto o header customizado (`request.headers` → `x-app-usuario`) quanto as claims do JWT (`request.jwt.claims` → `role`, `sub`). Testado chamando uma função de diagnóstico temporária pela API REST com o login do admin e um header `x-app-usuario`; a função foi removida em seguida. O plano B (função SQL de exclusão de cliente que fixa o usuário) **não é necessário**.
 
 ## 6. Restauração
 
@@ -80,7 +80,7 @@ No app, `createAdminClient(usuarioId?)` passa `global.headers['x-app-usuario']`,
 
 - `SECURITY DEFINER`, `search_path` fixo. `EXECUTE` revogado de `public`, `anon` e `authenticated`; concedido só a `service_role`. Como é chamada por uma Server Action com chave de serviço (em que `auth.uid()` é nulo), **verifica dentro** que `p_usuario` tem `role = 'admin'` em `profiles`.
 - Recusa se o grupo não existir ou já estiver restaurado.
-- Reinsere as linhas **na ordem de dependência (pais antes de filhos)**: `clientes` → fichas por setor e histórico → `tarefas` → `tarefa_etapas`, `tarefa_arquivos` → `tarefas_avulsas` → `evento_arquivos`, `client_files`, notas, observações, grupos → `parcelamentos`, movimentos financeiros, procedimentos → `procedimento_arquivos`. Usa `jsonb_populate_record(null::<tabela>, dados)`.
+- Reinsere as linhas **na ordem de dependência (pais antes de filhos)**, derivada das chaves estrangeiras reais entre as 18 tabelas (verificadas no dev): `clientes`, `parcelamentos` (pai de `tarefas.parcelamento_id`), fichas por setor, histórico de responsável, notas, observações, grupos, `client_files`, `procedimentos_societario`, `tarefas`, `tarefas_avulsas`, `tarefa_etapas`, `tarefa_arquivos`, `evento_arquivos`, `procedimento_arquivos`, `financeiro_movimentos`. Usa `jsonb_populate_record(null::<tabela>, dados)`. Nenhuma das 18 tabelas tem coluna gerada ou `identity always`.
 - **Tudo ou nada:** se um id já existir ou um pai não existir (ex.: restaurar tarefas de um cliente que também foi apagado e ainda não foi restaurado), o Postgres recusa, a função devolve uma mensagem em português e **nada** é restaurado.
 - Ao restaurar uma ficha de setor (`clientes_contabil` etc.) cujo cliente ainda existe, **reinclui o setor em `clientes.setores`** (essa alteração é um `UPDATE` e não passa pela lixeira). Vale para o caso "remover do Contábil".
 - Marca `restaurado_em` e `restaurado_por` e devolve o resumo por tabela.
@@ -94,7 +94,8 @@ No app, `createAdminClient(usuarioId?)` passa `global.headers['x-app-usuario']`,
 ## 8. Interface e código da aplicação
 
 - **`lib/lixeira.ts`** (puro, testável): agrupa as linhas por `grupo`; escolhe a **raiz** por prioridade de tabela; monta o título e o resumo ("Cliente ACME + 19 tarefas, 3 anexos") a partir de `dados`; rótulos de tabela; texto de expiração.
-- **`lib/lixeira-actions.ts`** (`'use server'`): `listarExclusoes()` (últimos 200 grupos, chama a limpeza antes) e `restaurarExclusao(grupo)`; ambas exigem `role = 'admin'`, devolvem `{ error }` em vez de lançar.
+- **`public.lixeira_listar(p_limite)`** (SQL, `SECURITY DEFINER`, só `service_role`): devolve as linhas da lixeira **sem** o conteúdo (`dados`), apenas um subconjunto de campos para título (`nome`, `name`, `titulo`, `empresa`, `secao`, `tipo`, `mes`, `ano`, `natureza`, `valor`, `setor`). Assim o `content_base64` dos anexos nunca trafega para a listagem.
+- **`lib/lixeira-actions.ts`** (`'use server'`): `listarExclusoes()` (chama a limpeza antes, agrupa e resolve o nome de quem apagou) e `restaurarExclusao(grupo)`; ambas exigem `role = 'admin'`, devolvem `{ error }` em vez de lançar.
 - **`app/admin/lixeira/page.tsx`** + componente cliente: lista com data, autor, resumo, expiração e botão **Restaurar** (com confirmação); mostra o erro em português quando a restauração é recusada. Item "Lixeira" no menu de admin.
 - **`createAdminClient(usuarioId?)`** e **`getAuthenticatedAdmin()`** em `lib/supabase/server.ts` (header de autoria).
 - **Ajuste no modal da #184:** o texto "Esta ação não pode ser desfeita" passa a dizer que só um administrador pode restaurar, por até 60 dias. O alerta continua forte de propósito (funciona como freio).
