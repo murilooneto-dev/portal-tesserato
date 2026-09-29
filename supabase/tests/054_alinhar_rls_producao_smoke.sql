@@ -53,6 +53,32 @@ begin
   perform 1 from pg_policies where tablename = 'observacoes_clientes' and policyname = 'Setores leitores leem observacoes_clientes';
   assert found, 'falta leitura por setor em observacoes_clientes';
 
+  -- 3b) RLS ligada nas tabelas alvo (senão todas as policies são inúteis)
+  for r in
+    select t.n from unnest(array['tarefas','clientes','client_files','parcelamentos','parcelamento_secoes',
+                                 'observacoes_clientes','procedimentos_societario','procedimento_arquivos','profiles']) as t(n)
+    where not exists (select 1 from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+                      where ns.nspname = 'public' and c.relname = t.n and c.relrowsecurity)
+  loop
+    raise exception 'RLS desligada em %', r.n;
+  end loop;
+
+  -- 3c) policies que precisam CONTINUAR (a app depende delas)
+  for r in
+    select x.t, x.p from (values
+      ('tarefas','Setor le suas tarefas'),
+      ('clientes','Admin gerencia clientes'),
+      ('clientes','Autenticados leem clientes'),
+      ('parcelamentos','Admin gerencia parcelamentos'),
+      ('parcelamentos','Autenticados leem parcelamentos'),
+      ('parcelamento_secoes','Autenticados leem parcelamento_secoes'),
+      ('profiles','Usuário lê próprio perfil')
+    ) as x(t, p)
+    where not exists (select 1 from pg_policies where tablename = x.t and policyname = x.p)
+  loop
+    raise exception 'policy que deveria continuar sumiu: %.%', r.t, r.p;
+  end loop;
+
   -- 4) tarefas: só UMA policy de escrita (ALL), a por setor
   assert (select count(*) from pg_policies where tablename = 'tarefas' and cmd = 'ALL') = 1,
     'tarefas deve ter exatamente 1 policy ALL';
