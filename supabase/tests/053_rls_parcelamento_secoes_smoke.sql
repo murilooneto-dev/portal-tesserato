@@ -40,3 +40,8 @@ begin
 end $$;
 
 rollback;
+
+-- O SQL Editor do Supabase não exibe RAISE NOTICE. Se o bloco acima terminou
+-- sem erro, chega aqui e mostra uma linha visível. Se deu erro, esta linha
+-- nunca aparece (aparece a mensagem do erro no lugar).
+select '053 OK' as resultado;
