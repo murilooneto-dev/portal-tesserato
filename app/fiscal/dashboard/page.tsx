@@ -9,7 +9,7 @@ import { proximoPrazo, diasRestantes, alertaColor, alertaLabel, labelDatas } fro
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { bucketDoRegime } from '@/lib/regime-bucket'
-import { buscarDonoNomePorTipo } from '@/lib/tarefa-tipo-donos'
+import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
 import { filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
   }
 
   // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % do cliente.
-  const donoNomePorTipo = await buscarDonoNomePorTipo(supabase, 'fiscal')
+  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
   for (const c of cs) {
     tiposMap[c.id] = new Set(filtrarTiposDoProgresso(tiposMap[c.id], c.responsavel, donoNomePorTipo))
   }

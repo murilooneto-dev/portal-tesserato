@@ -2,7 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 // tipo de tarefa do setor -> nome do usuário dono (tarefa_tipos.responsavel_id
 // resolvido em profiles.nome). Só entram tipos que têm dono; usado por
-// filtrarTiposDoProgresso (lib/tarefa-tipo-visibilidade.ts).
+// filtrarTiposDoProgresso (lib/tarefa-tipo-visibilidade.ts). Precisa de client
+// com acesso a profiles (admin): a RLS esconde perfis alheios do usuário comum,
+// então telas usam buscarDonoNomePorTipoFiscal (tarefa-tipo-donos-actions.ts).
 export async function buscarDonoNomePorTipo(
   supabase: SupabaseClient,
   setor: string,

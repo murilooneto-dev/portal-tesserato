@@ -11,7 +11,7 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas, type MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import { bucketDoRegime } from '@/lib/regime-bucket'
-import { buscarDonoNomePorTipo } from '@/lib/tarefa-tipo-donos'
+import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
 import { filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
 
 const TAREFAS: Record<string, string[]> = {
@@ -83,7 +83,7 @@ export default function RelatoriosPage() {
           buscarTodasTarefasDoMes<Tarefa>(sb, mes, ano),
           sb.from('observacoes_clientes').select('cliente_id,texto').eq('mes', mes).eq('ano', ano),
           buscarMapaVinculosSetor(sb, 'fiscal'),
-          buscarDonoNomePorTipo(sb, 'fiscal'),
+          buscarDonoNomePorTipoFiscal(),
           sb.from('atividades').select('nome').eq('setor', 'fiscal').eq('ativo', true).order('nome'),
         ]).then(([c, t, o, mapa, donos, at]) => {
           setClientes((c.data ?? []).map(flattenClienteFiscal))
