@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { tipoVisivelParaUsuario, tipoContaNoProgressoDoCliente } from '@/lib/tarefa-tipo-visibilidade'
-import { buscarDonoNomePorTipo } from '@/lib/tarefa-tipo-donos'
+import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
 import type { Tarefa } from '@/lib/types'
 
 export const metadata = { title: 'Tarefas — Tesserato Fiscal' }
@@ -35,7 +35,7 @@ export default async function TarefasPage() {
   const tipoVisivel = (tipo: string) =>
     tipoVisivelParaUsuario(responsavelIdPorTipo.get(tipo), user.id, profile?.role)
 
-  const donoNomePorTipo = await buscarDonoNomePorTipo(supabase, 'fiscal')
+  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
 
   const { data: clientes } = await supabase
     .from('clientes')
