@@ -61,3 +61,33 @@ test('switch expõe o estado para leitor de tela', () => {
   assert.match(html, /aria-checked="true"/)
   assert.match(html, /Mostrar desabilitados/)
 })
+
+test('com erro, a ajuda some e o campo não aponta para ela', () => {
+  const html = renderToStaticMarkup(
+    h(Field, {
+      rotulo: 'CNPJ',
+      ajuda: 'Só números',
+      erro: 'CNPJ incompleto',
+      children: (c: { id: string; describedBy?: string; invalido: boolean }) =>
+        h(Input, { id: c.id, 'aria-describedby': c.describedBy, invalido: c.invalido }),
+    }),
+  )
+  assert.doesNotMatch(html, /Só números/)
+  const alvos = html.match(/aria-describedby="([^"]+)"/)?.[1].split(' ') ?? []
+  assert.ok(alvos.length > 0)
+  for (const alvo of alvos) assert.ok(html.includes(`id="${alvo}"`), `aria-describedby aponta para id inexistente: ${alvo}`)
+})
+
+test('sem erro, a ajuda aparece e o campo aponta para ela', () => {
+  const html = renderToStaticMarkup(
+    h(Field, {
+      rotulo: 'CNPJ',
+      ajuda: 'Só números',
+      children: (c: { id: string; describedBy?: string; invalido: boolean }) =>
+        h(Input, { id: c.id, 'aria-describedby': c.describedBy, invalido: c.invalido }),
+    }),
+  )
+  assert.match(html, /Só números/)
+  const alvo = html.match(/aria-describedby="([^"]+)"/)?.[1]
+  assert.ok(alvo && html.includes(`id="${alvo}"`))
+})

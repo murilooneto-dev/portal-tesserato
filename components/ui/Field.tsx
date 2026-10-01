@@ -18,7 +18,7 @@ export function Field({ rotulo, ajuda, erro, obrigatorio = false, className, chi
   children: (c: CampoIds) => ReactNode
 }) {
   const id = useId()
-  const idAjuda = ajuda ? `${id}-ajuda` : undefined
+  const idAjuda = ajuda && !erro ? `${id}-ajuda` : undefined
   const idErro = erro ? `${id}-erro` : undefined
   const describedBy = [idErro, idAjuda].filter(Boolean).join(' ') || undefined
   return (
