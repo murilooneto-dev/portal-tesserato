@@ -130,7 +130,7 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
         )}
 
         <button onClick={handleCriar} disabled={saving || tiposOrigem.length === 0 || tiposDestino.length === 0}
-          className="mt-4 px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+          className="mt-4 px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
           {saving ? 'Salvando...' : `+ Criar vínculo${tiposOrigem.length * tiposDestino.length > 1 ? `s (${tiposOrigem.length * tiposDestino.length})` : ''}`}
         </button>
       </div>

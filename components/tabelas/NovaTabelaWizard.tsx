@@ -166,7 +166,7 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
   if (!aberto) {
     return (
       <button onClick={() => setAberto(true)}
-        className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors">
+        className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors">
         Nova tabela
       </button>
     )
@@ -297,7 +297,7 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
           <button onClick={fechar} disabled={criando}
             className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm">Cancelar</button>
           <button onClick={criar} disabled={!planilha || !nome.trim() || criando || erroLeitura !== null || nomeDuplicado !== null}
-            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
+            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
             {criando ? 'Criando...' : 'Criar tabela'}
           </button>
         </div>

@@ -92,7 +92,7 @@ export default function MovimentoListClient({ natureza, titulo, botaoNovo, movim
           <p className="text-[var(--fg)]/40 text-sm mt-1">Total: {formatarValor(total)}</p>
         </div>
         <button onClick={() => setModalAberto(true)}
-          className="px-5 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors">
+          className="px-5 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors">
           {botaoNovo}
         </button>
       </div>

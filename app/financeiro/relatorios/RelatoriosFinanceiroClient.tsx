@@ -83,7 +83,7 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
       <div className="print:hidden flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[var(--fg)]">Relatórios — Financeiro</h1>
         <button onClick={() => window.print()}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors">
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors">
           Gerar relatório
         </button>
       </div>

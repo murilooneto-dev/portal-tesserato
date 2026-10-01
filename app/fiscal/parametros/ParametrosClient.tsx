@@ -291,7 +291,7 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
             <button
               onClick={handleSaveComunicado}
               disabled={savingAnn}
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
             >
               {savingAnn ? 'Salvando...' : 'Salvar comunicado'}
             </button>
@@ -355,7 +355,7 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
 
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={handleSaveEmail} disabled={savingEmail}
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
               {savingEmail ? 'Salvando...' : 'Salvar configuração'}
             </button>
             <button onClick={handleEnviarRelatorios} disabled={enviandoRelatorio}
@@ -440,7 +440,7 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
               {novoUserOk && <p className="text-green-400 text-sm">Usuário criado com sucesso!</p>}
 
               <button onClick={handleCriarUsuario} disabled={criandoUser}
-                className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+                className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                 {criandoUser ? 'Criando...' : 'Criar usuário'}
               </button>
             </div>
@@ -536,7 +536,7 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
                         ))}
                         <div className="flex gap-2">
                           <button onClick={() => handleSaveProfile(p.id)} disabled={savingProfile === p.id}
-                            className="flex-1 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--fg)] text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+                            className="flex-1 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--accent-ink)] text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                             {savingProfile === p.id ? 'Salvando...' : 'Salvar'}
                           </button>
                           <button onClick={() => { setEditingProfile(null); setProfileEdits(prev => { const n = { ...prev }; delete n[p.id]; return n }) }}

@@ -103,7 +103,7 @@ function EtapaBloco({ etapa, onRemoverEtapa, onRenomearEtapa, onAdicionarSubetap
                 {FORMATOS_SUBETAPA.map(f => (
                   <button key={f.value} type="button" onClick={() => onEditarSubetapa(i, sub.nome, f.value)}
                     className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-colors ${
-                      sub.tipoResposta === f.value ? 'bg-[var(--accent)] text-[var(--fg)]' : 'bg-[var(--fg)]/5 text-[var(--fg)]/50 hover:text-[var(--fg)]'
+                      sub.tipoResposta === f.value ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'bg-[var(--fg)]/5 text-[var(--fg)]/50 hover:text-[var(--fg)]'
                     }`}>
                     {f.label}
                   </button>
@@ -118,7 +118,7 @@ function EtapaBloco({ etapa, onRemoverEtapa, onRenomearEtapa, onAdicionarSubetap
         {FORMATOS_SUBETAPA.map(f => (
           <button key={f.value} type="button" onClick={() => setFormato(f.value)}
             className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
-              formato === f.value ? 'bg-[var(--accent)] text-[var(--fg)]' : 'bg-[var(--fg)]/5 text-[var(--fg)]/50 hover:text-[var(--fg)]'
+              formato === f.value ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'bg-[var(--fg)]/5 text-[var(--fg)]/50 hover:text-[var(--fg)]'
             }`}>
             {f.label}
           </button>
@@ -271,7 +271,7 @@ export default function ProcessosTab() {
         <button
           onClick={handleCriar}
           disabled={salvando || !novoNome.trim() || etapas.length === 0}
-          className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50"
+          className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50"
         >
           {salvando ? 'Criando...' : '+ Criar tipo de processo'}
         </button>

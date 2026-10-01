@@ -215,7 +215,7 @@ export default function AgendaPage() {
                 >
                   {dia && (
                     <>
-                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isHoje ? 'bg-[var(--accent)] text-[var(--fg)]' : 'text-[var(--fg)]/50'}`}>{dia}</span>
+                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isHoje ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'text-[var(--fg)]/50'}`}>{dia}</span>
                       <div className="flex flex-wrap gap-0.5 mt-1">
                         {itsDia.map(it => (
                           <span key={it.id} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: STATUS_COR[it.status] }} />
@@ -308,7 +308,7 @@ export default function AgendaPage() {
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setModalAberto(false)} className="text-sm text-[var(--fg)]/50 hover:text-[var(--fg)] px-4 py-2 rounded-xl border border-[var(--fg)]/10 hover:border-[var(--fg)]/20 transition-all">Cancelar</button>
               <button onClick={salvar} disabled={salvando || !editando.titulo || !editando.data_compromisso}
-                className="text-sm bg-[var(--accent)] text-[var(--fg)] px-5 py-2 rounded-xl hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50">
+                className="text-sm bg-[var(--accent)] text-[var(--accent-ink)] px-5 py-2 rounded-xl hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50">
                 {salvando ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

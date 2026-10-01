@@ -239,7 +239,7 @@ export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, tem
             )}
 
             <button onClick={calcularPrevia} disabled={processando}
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
+              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
               {processando ? 'Calculando…' : 'Calcular prévia'}
             </button>
           </>)}
@@ -309,7 +309,7 @@ export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, tem
             )}
 
             <button onClick={confirmar} disabled={processando}
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
+              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
               {processando ? 'Aplicando…' : 'Aplicar reenvio'}
             </button>
           </>)}

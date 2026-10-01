@@ -227,7 +227,7 @@ export default function AgendaPessoal() {
                 {dia && (
                   <>
                     <div className={`w-7 h-7 flex items-center justify-center rounded-full mx-auto text-sm font-medium mb-1 ${
-                      isHoje ? 'bg-[var(--accent)] text-[var(--fg)] font-bold' : 'text-[var(--fg)]/50'
+                      isHoje ? 'bg-[var(--accent)] text-[var(--accent-ink)] font-bold' : 'text-[var(--fg)]/50'
                     }`}>
                       {dia}
                     </div>
@@ -392,7 +392,7 @@ export default function AgendaPessoal() {
                 Cancelar
               </button>
               <button onClick={salvar} disabled={salvando || !form.titulo || !form.data_compromisso}
-                className="text-sm bg-[var(--accent)] text-[var(--fg)] px-5 py-2 rounded-xl hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50">
+                className="text-sm bg-[var(--accent)] text-[var(--accent-ink)] px-5 py-2 rounded-xl hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50">
                 {salvando ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
                 {erro && <p className="text-red-400 text-sm">{erro}</p>}
 
                 <button type="submit" disabled={salvando}
-                  className="mt-1 py-3 rounded-xl bg-[var(--accent)] text-[var(--fg)] font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+                  className="mt-1 py-3 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                   {salvando ? 'Salvando...' : 'Salvar nova senha'}
                 </button>
               </form>

@@ -277,7 +277,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
         <button
           onClick={comparar}
           disabled={comparando || !sistemFile}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-40"
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-40"
         >
           {comparando ? '⏳ Comparando...' : '🔍 Comparar'}
         </button>

@@ -67,7 +67,7 @@ function BotCard({ bot, config, onSave }: {
             className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-2.5 text-[var(--fg)] text-sm placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)] transition-colors" />
         </div>
         <button onClick={handleSave} disabled={salvando}
-          className="self-end mt-1 px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+          className="self-end mt-1 px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
           {sucesso ? '✓ Salvo' : salvando ? 'Salvando...' : 'Salvar'}
         </button>
       </div>

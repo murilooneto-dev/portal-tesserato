@@ -100,7 +100,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
         </label>
         <button
           onClick={() => setModalNovoOpen(true)}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
           + Novo Cliente
         </button>
       </div>

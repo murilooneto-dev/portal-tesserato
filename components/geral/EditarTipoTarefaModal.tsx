@@ -166,7 +166,7 @@ export default function EditarTipoTarefaModal({ id, nome, setor, tipoResposta, e
             Cancelar
           </button>
           <button onClick={handleSalvar} disabled={salvando || (temEtapas && etapasForm.length === 0)}
-            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
             {salvando ? 'Salvando...' : 'Salvar alterações'}
           </button>
         </div>

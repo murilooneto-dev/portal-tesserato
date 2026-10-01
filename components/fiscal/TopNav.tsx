@@ -44,7 +44,7 @@ export default function TopNav({ profile, setorAtivo }: Props) {
             onClick={() => trocarSetor(setor)}
             className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               setor === setorAtivo
-                ? 'bg-[var(--accent)] text-[var(--fg)]'
+                ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
                 : 'text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/6'
             }`}
           >

@@ -361,7 +361,7 @@ export default function ParcelamentosPage() {
           Relatório
         </button>
         <button onClick={openCreate}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
           + Novo Parcelamento
         </button>
       </div>
@@ -540,7 +540,7 @@ export default function ParcelamentosPage() {
                       className={inputCls + ' flex-1'}
                     />
                     <button type="button" onClick={handleCriarSecao} disabled={novaSecaoSalvando || !novaSecaoNome.trim()}
-                      className="px-4 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 whitespace-nowrap">
+                      className="px-4 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 whitespace-nowrap">
                       {novaSecaoSalvando ? 'Criando...' : 'Criar'}
                     </button>
                     <button type="button" onClick={() => { setCriandoSecao(false); setNovaSecaoNome(''); setNovaSecaoErro(null) }}
@@ -723,7 +723,7 @@ export default function ParcelamentosPage() {
                 Cancelar
               </button>
               <button onClick={handleSave} disabled={saving || !form.empresa.trim() || !form.secao}
-                className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+                className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
