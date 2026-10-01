@@ -52,7 +52,7 @@ test('select e textarea marcam inválido', () => {
 
 test('checkbox tem rótulo clicável', () => {
   const html = renderToStaticMarkup(h(Checkbox, { rotulo: 'Sem movimento', defaultChecked: true }))
-  assert.match(html, /<label[^>]*>.*type="checkbox".*Sem movimento.*<\/label>/s)
+  assert.match(html, /<label[^>]*>[\s\S]*type="checkbox"[\s\S]*Sem movimento[\s\S]*<\/label>/)
 })
 
 test('switch expõe o estado para leitor de tela', () => {
