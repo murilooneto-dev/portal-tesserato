@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useId, useRef, type ReactNode, type RefObject } from 'react'
 import { X } from 'lucide-react'
 import { cn } from './cn'
 import { IconButton } from './Button'
@@ -26,7 +26,9 @@ interface BaseProps {
 function useJanela(aberto: boolean, painel: RefObject<HTMLDivElement | null>, tentarFechar: (m: MotivoFechar) => void) {
   const fecharRef = useRef(tentarFechar)
   const idRef = useRef(Symbol('janela'))
-  fecharRef.current = tentarFechar
+  useLayoutEffect(() => {
+    fecharRef.current = tentarFechar
+  })
   useEffect(() => {
     if (!aberto) return
     const id = idRef.current
