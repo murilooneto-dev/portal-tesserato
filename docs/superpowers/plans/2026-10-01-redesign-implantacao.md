@@ -153,7 +153,7 @@ Mensagem sugerida para colar:
 
 | Fase | Branch | PR | Situação |
 |---|---|---|---|
-| 1 Base visual | feat/redesign-fase1-base-visual | (a abrir) | pronta; revisão final e PR pelo controller |
+| 1 Base visual | feat/redesign-fase1-base-visual | #192 | PR aberta contra dev, aguardando teste do usuário |
 | 2 Casca | — | — | não iniciada |
 | 3 Geral | — | — | não iniciada |
 | 4 Fiscal | — | — | não iniciada |
