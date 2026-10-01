@@ -75,3 +75,12 @@ test('impressão força fundo branco e texto preto também nas variáveis novas'
   for (const nome of ['page', 'surface', 'raised', 'inset', 'bg-page', 'bg-surface']) assert.match(b, new RegExp(`--${nome}:\\s*#ffffff`, 'i'), `print --${nome}`)
   assert.match(b, /--fg:\s*#000000/i)
 })
+
+test('impressão também fixa os tokens de texto, linha e estado', () => {
+  const b = CSS.slice(CSS.indexOf('@media print'))
+  assert.match(b, /--fg-2:\s*#333333/i)
+  assert.match(b, /--fg-3:\s*#555555/i)
+  assert.match(b, /--ph:\s*#666666/i)
+  assert.match(b, /--acc-text:\s*#006B80/i)
+  assert.match(b, /--danger:\s*#B91C1C/i)
+})

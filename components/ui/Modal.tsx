@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useId, useRef, type ReactNode, type RefObje
 import { X } from 'lucide-react'
 import { cn } from './cn'
 import { IconButton } from './Button'
-import { podeFechar, proximoIndiceDeFoco, SELETOR_FOCAVEL, type MotivoFechar, abrirNaPilha, fecharNaPilha, estaNoTopo, salvarEBloquearScroll, restaurarScroll } from './overlay'
+import { cliqueNaBarraDeRolagem, podeFechar, proximoIndiceDeFoco, SELETOR_FOCAVEL, type MotivoFechar, abrirNaPilha, fecharNaPilha, estaNoTopo, salvarEBloquearScroll, restaurarScroll } from './overlay'
 
 interface BaseProps {
   aberto: boolean
@@ -100,8 +100,8 @@ export function Modal({
   if (!aberto) return null
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 sm:p-10"
-      onMouseDown={e => { if (e.target === e.currentTarget) tentarFechar('fundo') }}
+      className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 sm:p-10"
+      onMouseDown={e => { if (e.target === e.currentTarget && !cliqueNaBarraDeRolagem(e.clientX - e.currentTarget.getBoundingClientRect().left, e.currentTarget.clientWidth)) tentarFechar('fundo') }}
     >
       <div
         ref={painel}
@@ -132,7 +132,7 @@ export function Drawer({
   if (!aberto) return null
   return (
     <div
-      className="fixed inset-0 z-50 bg-[var(--scrim)]"
+      className="fixed inset-0 z-[70] bg-[var(--scrim)]"
       onMouseDown={e => { if (e.target === e.currentTarget) tentarFechar('fundo') }}
     >
       <div

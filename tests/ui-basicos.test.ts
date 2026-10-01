@@ -87,3 +87,10 @@ test('nome do cliente aceita conteúdo logo depois do nome (P1, observação)', 
   const html = renderToStaticMarkup(h(NomeCliente, { nome: 'Cliente', depoisDoNome: h(Badge, { tom: 'dng' }, 'P1') }))
   assert.ok(html.indexOf('Cliente') < html.indexOf('P1'))
 })
+
+test('NomeCliente aguenta nome nulo e CNPJ só com espaços', () => {
+  const a = renderToStaticMarkup(h(NomeCliente, { nome: null as unknown as string }))
+  assert.ok(a.includes('>Sem nome<'))
+  const b = renderToStaticMarkup(h(NomeCliente, { nome: 'Acme', cnpj: '   ' }))
+  assert.ok(b.includes('CNPJ não informado'))
+})

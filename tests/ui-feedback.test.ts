@@ -62,3 +62,7 @@ test('layout raiz monta os providers de confirmação e aviso', () => {
   const layout = readFileSync(join(__dirname, '..', 'app', 'layout.tsx'), 'utf8')
   assert.match(layout, /<Providers>\s*\{children\}\s*<\/Providers>/)
 })
+
+test('região de avisos fica acima de qualquer janela (z-[80])', () => {
+  assert.ok(readFileSync(join(process.cwd(), 'components/ui/Toast.tsx'), 'utf8').includes('z-[80]'))
+})

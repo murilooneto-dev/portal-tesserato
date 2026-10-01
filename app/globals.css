@@ -77,7 +77,7 @@
   --bg-surface: var(--surface);
   --bg-surface-2: var(--raised);
   --accent: var(--acc);
-  --accent-hover: #008fac;
+  --accent-hover: #0099b5;
   --accent-ink: var(--acc-ink);
 }
 
@@ -148,6 +148,18 @@ body {
     --bg-page: #ffffff;
     --bg-surface: #ffffff;
     --fg: #000000;
+    --fg-2: #333333;
+    --fg-3: #555555;
+    --ph: #666666;
+    --acc-text: #006B80;
+    --line: rgba(0, 0, 0, .2);
+    --line-soft: rgba(0, 0, 0, .1);
+    --nav: #ffffff;
+    --top: #ffffff;
+    --ok: #047857;
+    --warn: #92400E;
+    --danger: #B91C1C;
+    --info: #1D4ED8;
   }
 
   body { background: #ffffff; }

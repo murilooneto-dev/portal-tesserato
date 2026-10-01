@@ -51,3 +51,8 @@ export function restaurarScroll(): void {
     overflowAnterior = null
   }
 }
+
+// O clique na barra de rolagem do fundo tem o próprio fundo como alvo; não deve fechar.
+export function cliqueNaBarraDeRolagem(clientX: number, larguraUtil: number): boolean {
+  return clientX >= larguraUtil
+}

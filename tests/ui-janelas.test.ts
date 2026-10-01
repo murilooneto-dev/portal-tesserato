@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createElement as h } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { podeFechar, proximoIndiceDeFoco, abrirNaPilha, fecharNaPilha, estaNoTopo, pilhaVazia } from '../components/ui/overlay'
+import { cliqueNaBarraDeRolagem, podeFechar, proximoIndiceDeFoco, abrirNaPilha, fecharNaPilha, estaNoTopo, pilhaVazia } from '../components/ui/overlay'
 import { Modal, Drawer } from '../components/ui/Modal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
@@ -106,4 +106,17 @@ test('botão de fechar não recebe o foco inicial e confirmação foca Cancelar'
   assert.match(conf, /data-autofocus=""[^>]*>Cancelar</)
   const alvo = conf.match(/aria-describedby="([^"]+)"/)?.[1]
   assert.ok(alvo && conf.includes(`id="${alvo}"`))
+})
+
+test('Modal e Drawer ficam acima das janelas antigas (z-[70], nunca z-50)', () => {
+  for (const C of [Modal, Drawer]) {
+    const html = renderToStaticMarkup(h(C, { aberto: true, onFechar: () => {}, titulo: 'X' }, 'x'))
+    assert.ok(html.includes('z-[70]'))
+    assert.ok(!html.includes('z-50'))
+  }
+})
+
+test('clique na barra de rolagem do fundo não conta como clique fora', () => {
+  assert.equal(cliqueNaBarraDeRolagem(990, 985), true)
+  assert.equal(cliqueNaBarraDeRolagem(500, 985), false)
 })

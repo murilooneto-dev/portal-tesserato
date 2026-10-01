@@ -9,7 +9,7 @@ export function NomeCliente({ nome, cnpj, depoisDoNome, abaixo }: {
   depoisDoNome?: ReactNode
   abaixo?: ReactNode
 }) {
-  const texto = nome.trim() || 'Sem nome'
+  const texto = (nome ?? '').trim() || 'Sem nome'
   return (
     <div className="min-w-0">
       <div className="flex min-w-0 items-center gap-2 leading-tight">
@@ -17,7 +17,7 @@ export function NomeCliente({ nome, cnpj, depoisDoNome, abaixo }: {
         {depoisDoNome}
       </div>
       {cnpj !== undefined && (
-        <div className="mt-0.5 truncate font-mono text-[13px] text-fg-3">{cnpj || 'CNPJ não informado'}</div>
+        <div className="mt-0.5 truncate font-mono text-[13px] text-fg-3">{cnpj?.trim() || 'CNPJ não informado'}</div>
       )}
       {abaixo}
     </div>
