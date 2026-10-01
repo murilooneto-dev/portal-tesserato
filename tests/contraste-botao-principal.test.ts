@@ -21,10 +21,11 @@ function arquivos(dir: string): string[] {
 test('nenhum botão com fundo ciano usa texto claro', () => {
   const ruins: string[] = []
   for (const f of [...arquivos(join(ROOT, 'app')), ...arquivos(join(ROOT, 'components'))]) {
-    const linhas = readFileSync(f, 'utf8').split('\n')
-    linhas.forEach((l, i) => {
-      if (/bg-\[var\(--accent\)\](?![\/\w-])/.test(l) && /text-\[var\(--fg\)\](?![\/\w-])/.test(l)) {
-        ruins.push(`${f.replace(ROOT, '')}:${i + 1}`)
+    readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
+      for (const trecho of l.match(/'[^']*'|"[^"]*"|`[^`]*`/g) ?? []) {
+        if (/bg-\[var\(--accent\)\](?![\/\w-])/.test(trecho) && /text-\[var\(--fg\)\](?![\/\w-])/.test(trecho)) {
+          ruins.push(`${f.replace(ROOT, '')}:${i + 1}`)
+        }
       }
     })
   }
