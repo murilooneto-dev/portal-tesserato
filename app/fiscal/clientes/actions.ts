@@ -5,7 +5,7 @@ import { getAuthenticatedAdmin, podeEditarCliente, podeEditarTarefaTipo } from '
 import { mensagemErroExclusao } from '@/lib/exclusao-cliente'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
-import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
+import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
 import { tarefasRemovidasDoCliente, apagarTarefasDoCliente } from '@/lib/tarefas-do-cliente'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
@@ -70,6 +70,13 @@ export async function salvarCliente(
     const { error: errLimpeza } = await apagarTarefasDoCliente(supabase, clienteId, 'fiscal', removidas)
     if (errLimpeza) return { error: errLimpeza }
 
+    await registrarMudancaTarefas(supabase, {
+      setor: 'fiscal', clienteId, clienteNome: clientePayload.nome,
+      usuarioId: user.id, usuarioNome,
+      antes: antes ? calcularTarefasEsperadas({ ...antes, tarefas_personalizadas: antes.tarefas_personalizadas ?? [] }, mapaVinculos) : null,
+      depois: calcularTarefasEsperadas(fiscalPayload, mapaVinculos),
+    })
+
     await trocarResponsavel(supabase, {
       clienteId, clienteNome: clientePayload.nome, setor: 'fiscal',
       responsavelAntigo: antes?.responsavel, responsavelNovo: fiscalPayload.responsavel,
@@ -99,6 +106,12 @@ export async function salvarCliente(
     await registrarEvento(supabase, {
       setor: 'fiscal', clienteId: novoCliente.id, clienteNome: clientePayload.nome,
       tipoEvento: 'criacao', usuarioId: user.id, usuarioNome,
+    })
+    await registrarMudancaTarefas(supabase, {
+      setor: 'fiscal', clienteId: novoCliente.id, clienteNome: clientePayload.nome,
+      usuarioId: user.id, usuarioNome,
+      antes: null,
+      depois: calcularTarefasEsperadas(fiscalPayload, await buscarMapaVinculosSetor(supabase, 'fiscal')),
     })
     if (fiscalPayload.responsavel) {
       await abrirHistoricoResponsavel(supabase, {

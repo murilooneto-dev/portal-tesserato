@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 import { mensagemErroExclusao } from '@/lib/exclusao-cliente'
-import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel } from '@/lib/logs'
+import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, registrarMudancaTarefas } from '@/lib/logs'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import type { UserSetor } from '@/lib/types'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 
@@ -35,6 +36,22 @@ interface FiscalPayload {
   tarefas_excluidas: string[]
 }
 
+type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
+
+// Setor recém-provisionado pra um cliente: as tarefas com que ele nasce
+// entram no log de tarefas como "adicionadas".
+async function logTarefasSetorNovo(
+  supabase: SupabaseAdmin,
+  setor: UserSetor,
+  cliente: { tarefas_personalizadas: string[]; tarefas_excluidas?: string[]; regime?: string | null; atividade?: string[] | null },
+  base: { clienteId: string; clienteNome: string; usuarioId: string; usuarioNome: string },
+) {
+  await registrarMudancaTarefas(supabase, {
+    setor, ...base, antes: null,
+    depois: calcularTarefasEsperadas(cliente, await buscarMapaVinculosSetor(supabase, setor)),
+  })
+}
+
 // Mesma lógica de provisionamento condicional que já vivia no client-side
 // de ClienteGeralModal.tsx: cada setor marcado ganha (se ainda não tiver)
 // uma linha na tabela filha correspondente; desmarcado, perde a linha. O
@@ -63,6 +80,7 @@ export async function salvarClienteGeral(
   const setoresEfetivos = clientePayload.setores
 
   if (clienteId) {
+    const logBase = { clienteId, clienteNome: clientePayload.nome, usuarioId: user.id, usuarioNome }
     const { data: clienteAntes } = await supabase.from('clientes')
       .select('nome, cnpj, municipio, uf, contato_chat, setores').eq('id', clienteId).single()
 
@@ -83,6 +101,7 @@ export async function salvarClienteGeral(
       if (!existente) {
         const { error: errFiscal } = await supabase.from('clientes_fiscal').insert({ cliente_id: clienteId, ...fiscalPayload })
         if (errFiscal) return { error: errFiscal.message }
+        await logTarefasSetorNovo(supabase, 'fiscal', fiscalPayload, logBase)
         if (fiscalPayload.responsavel) {
           await abrirHistoricoResponsavel(supabase, {
             clienteId, setor: 'fiscal', responsavel: fiscalPayload.responsavel, usuarioId: user.id, usuarioNome,
@@ -103,6 +122,7 @@ export async function salvarClienteGeral(
           tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
         })
         if (errContabil) return { error: errContabil.message }
+        await logTarefasSetorNovo(supabase, 'contabil', { tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome) }, logBase)
       }
     } else {
       const { error: errRemoveContabil } = await supabase.from('clientes_contabil').delete().eq('cliente_id', clienteId)
@@ -118,6 +138,7 @@ export async function salvarClienteGeral(
           tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome),
         })
         if (errPessoal) return { error: errPessoal.message }
+        await logTarefasSetorNovo(supabase, 'pessoal', { tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome) }, logBase)
       }
     } else {
       const { error: errRemovePessoal } = await supabase.from('clientes_pessoal').delete().eq('cliente_id', clienteId)
@@ -128,10 +149,13 @@ export async function salvarClienteGeral(
     if (errCliente || !novoCliente) return { error: errCliente?.message ?? 'Falha ao criar cliente' }
     const novoId: string = novoCliente.id
     clienteId = novoId
+    // Log das tarefas só depois do evento de criação, pra ordem do log fazer sentido.
+    const tarefasSetoresNovos: { setor: UserSetor; cliente: Parameters<typeof logTarefasSetorNovo>[2] }[] = []
 
     if (setoresEfetivos.includes('fiscal')) {
       const { error: errFiscal } = await supabase.from('clientes_fiscal').insert({ cliente_id: novoId, ...fiscalPayload })
       if (errFiscal) return { error: errFiscal.message }
+      tarefasSetoresNovos.push({ setor: 'fiscal', cliente: fiscalPayload })
       if (fiscalPayload.responsavel) {
         await abrirHistoricoResponsavel(supabase, {
           clienteId: novoId, setor: 'fiscal', responsavel: fiscalPayload.responsavel, usuarioId: user.id, usuarioNome,
@@ -145,6 +169,7 @@ export async function salvarClienteGeral(
         tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
       })
       if (errContabil) return { error: errContabil.message }
+      tarefasSetoresNovos.push({ setor: 'contabil', cliente: { tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome) } })
     }
     if (setoresEfetivos.includes('pessoal')) {
       const { data: tiposPessoal } = await supabase.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).order('nome')
@@ -153,12 +178,18 @@ export async function salvarClienteGeral(
         tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome),
       })
       if (errPessoal) return { error: errPessoal.message }
+      tarefasSetoresNovos.push({ setor: 'pessoal', cliente: { tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome) } })
     }
 
     await registrarEvento(supabase, {
       setor: null, clienteId: novoId, clienteNome: clientePayload.nome,
       tipoEvento: 'criacao', usuarioId: user.id, usuarioNome,
     })
+    for (const { setor, cliente } of tarefasSetoresNovos) {
+      await logTarefasSetorNovo(supabase, setor, cliente, {
+        clienteId: novoId, clienteNome: clientePayload.nome, usuarioId: user.id, usuarioNome,
+      })
+    }
   }
 
   revalidatePath('/clientes')
