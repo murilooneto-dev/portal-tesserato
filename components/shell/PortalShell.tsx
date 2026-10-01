@@ -1,8 +1,10 @@
-// components/shell/PortalShell.tsx
-import Sidebar from '@/components/fiscal/Sidebar'
-import TopNav from '@/components/fiscal/TopNav'
+// components/shell/PortalShell.tsx — casca de todas as telas (servidor).
+// O menu é calculado aqui, no servidor, com as mesmas regras de permissão
+// que o proxy usa; o ShellCliente só desenha.
 import { MesAnoProvider } from '@/lib/mes-atual-context'
+import { montarMenu, setoresVisiveis, atalhosCelular } from '@/lib/navegacao'
 import type { Profile, UserSetor } from '@/lib/types'
+import { ShellCliente } from './ShellCliente'
 
 interface Props {
   profile: Profile
@@ -13,25 +15,20 @@ interface Props {
 }
 
 export default function PortalShell({ profile, mes, ano, setorAtivo, children }: Props) {
-  const mostraTopNav = profile.role === 'admin' || profile.setores.length > 1
-
+  const grupos = montarMenu(profile, setorAtivo)
   return (
     <MesAnoProvider mes={mes} ano={ano}>
-      <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-page)] print:h-auto print:overflow-visible">
-        {mostraTopNav && (
-          <div className="print:hidden">
-            <TopNav profile={profile} setorAtivo={setorAtivo} />
-          </div>
-        )}
-        <div className="flex flex-1 overflow-hidden print:overflow-visible">
-          <div className="shrink-0 print:hidden">
-            <Sidebar profile={profile} mes={mes} ano={ano} setorAtivo={setorAtivo} />
-          </div>
-          <main className="flex-1 overflow-y-auto print:overflow-visible print:h-auto">
-            {children}
-          </main>
-        </div>
-      </div>
+      <ShellCliente
+        profile={profile}
+        mes={mes}
+        ano={ano}
+        setorAtivo={setorAtivo}
+        grupos={grupos}
+        setores={setoresVisiveis(profile)}
+        atalhos={atalhosCelular(grupos)}
+      >
+        {children}
+      </ShellCliente>
     </MesAnoProvider>
   )
 }
