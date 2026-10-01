@@ -30,3 +30,17 @@ test('nenhum botão com fundo ciano usa texto claro', () => {
   }
   assert.deepEqual(ruins, [], `texto claro sobre ciano em:\n${ruins.join('\n')}`)
 })
+
+test('texto escuro do ciano não vaza para trechos sem fundo ciano', () => {
+  const ruins: string[] = []
+  for (const f of [...arquivos(join(ROOT, 'app')), ...arquivos(join(ROOT, 'components'))]) {
+    readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
+      for (const trecho of l.match(/'[^']*'|"[^"]*"|`[^`]*`/g) ?? []) {
+        if (trecho.includes('text-[var(--accent-ink)]') && !/bg-\[var\(--accent\)\](?![\/\w-])/.test(trecho)) {
+          ruins.push(`${f.replace(ROOT, '')}:${i + 1}`)
+        }
+      }
+    })
+  }
+  assert.deepEqual(ruins, [], `texto escuro fora de fundo ciano em:\n${ruins.join('\n')}`)
+})
