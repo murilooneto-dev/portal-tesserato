@@ -64,3 +64,18 @@ test('atalhos do celular: Início e até duas páginas do setor', () => {
   assert.deepEqual(atalhosCelular(montarMenu(operadorFiscal, 'fiscal')).map(i => i.rotulo), ['Início', 'Dashboard'])
   assert.deepEqual(atalhosCelular(montarMenu({ role: 'operador', setores: ['societario'], paginas_acesso: [] }, 'societario')).map(i => i.rotulo), ['Início'])
 })
+
+test('setor do cookie que o usuário não tem não aparece no menu', () => {
+  const g = montarMenu({ role: 'operador', setores: ['fiscal'], paginas_acesso: [] }, 'contabil')
+  assert.deepEqual(g.map(x => x.id), ['geral'])
+})
+
+test('Configurações sem o setor não aparece como grupo do setor', () => {
+  const g = montarMenu({ role: 'operador', setores: ['fiscal'], paginas_acesso: ['configuracoes:fiscal'] }, 'configuracoes')
+  assert.deepEqual(g.map(x => x.id), ['geral'])
+})
+
+test('admin continua vendo o grupo de qualquer setor', () => {
+  const g = montarMenu({ role: 'admin', setores: [], paginas_acesso: [] }, 'pessoal')
+  assert.ok(g.some(x => x.id === 'setor' && x.titulo === 'Pessoal'))
+})

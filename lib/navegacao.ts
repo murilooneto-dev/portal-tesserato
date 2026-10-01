@@ -6,7 +6,7 @@
 // quem bloqueia de verdade continua sendo o proxy e o getPortalContext.
 import { SETORES, SETOR_LABEL, type Profile, type UserSetor } from './types'
 import { PAGINAS_POR_SETOR } from './paginas-setor'
-import { podeAcessarPagina } from './route-permissions'
+import { podeAcessarPagina, podeAcessarSetor } from './route-permissions'
 
 export type IconeMenu =
   | 'inicio' | 'cadastro' | 'ferramentas' | 'dashboard' | 'clientes' | 'calendario'
@@ -39,6 +39,7 @@ const ICONE_PAGINA: Record<string, IconeMenu> = {
 }
 
 function itensDoSetor(profile: PerfilMenu, setor: UserSetor): ItemMenu[] {
+  if (!podeAcessarSetor(profile, setor)) return []
   const paginas = PAGINAS_POR_SETOR[setor]
   if (paginas.length === 0) return [{ href: `/${setor}`, rotulo: 'Em construção', icone: 'em-construcao' }]
   const prefixo = setor === 'configuracoes' ? '/admin/configuracoes' : `/${setor}`
