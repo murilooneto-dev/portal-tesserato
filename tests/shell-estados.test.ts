@@ -11,13 +11,12 @@ import NaoEncontrada from '../app/not-found'
 const ROOT = join(__dirname, '..')
 const AREAS = ['fiscal', 'contabil', 'pessoal', 'societario', 'financeiro', 'admin', '(comum)']
 
-test('cada área tem carregando e erro que reaproveitam as peças', () => {
+test('cada área tem erro que reaproveita a peça e nenhuma tem loading.tsx', () => {
   for (const a of AREAS) {
     const l = join(ROOT, 'app', a, 'loading.tsx')
     const e = join(ROOT, 'app', a, 'error.tsx')
-    assert.ok(existsSync(l), `falta ${l}`)
+    assert.equal(existsSync(l), false, `loading.tsx liga o prefetch do layout (getPortalContext) em todo link — ver ledger da Fase 2 (${l})`)
     assert.ok(existsSync(e), `falta ${e}`)
-    assert.match(readFileSync(l, 'utf8'), /CarregandoPagina/)
     const err = readFileSync(e, 'utf8')
     assert.match(err, /^'use client'/)
     assert.match(err, /ErroPagina/)

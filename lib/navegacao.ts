@@ -88,5 +88,5 @@ export function setoresVisiveis(profile: PerfilMenu): UserSetor[] {
 
 export function atalhosCelular(grupos: GrupoMenu[]): ItemMenu[] {
   const doSetor = grupos.find(g => g.id === 'setor')?.itens ?? []
-  return [ITENS_GERAIS[0], ...doSetor.slice(0, 2)]
+  return [ITENS_GERAIS.find(i => i.href === '/intranet')!, ...doSetor.slice(0, 2)]
 }

@@ -17,7 +17,7 @@ const perfil = (setores: Profile['setores'], role: Profile['role'] = 'operador')
 
 const barra = (p: Profile, setores: Profile['setores']) => renderToStaticMarkup(h(BarraTopo, {
   profile: p, setores, setorAtivo: 'fiscal', tema: 'dark', seletorMes: h('div', null, 'MES'),
-  onTrocarSetor: nada, onAlternarTema: nada, onSair: nada, onAbrirMenu: nada,
+  onTrocarSetor: nada, onAlternarTema: nada, onSair: nada, onAbrirMenu: nada, menuAberto: false,
 }))
 
 test('barra do topo: marca, mês, tema, conta e um único Sair', () => {
@@ -28,6 +28,9 @@ test('barra do topo: marca, mês, tema, conta e um único Sair', () => {
   assert.match(html, /Admin Dev/)
   assert.equal((html.match(/aria-label="Sair"/g) ?? []).length, 1)
   assert.match(html, /aria-label="Abrir menu"/)
+  const abrir = html.match(/<button[^>]*aria-label="Abrir menu"[^>]*>/)?.[0] ?? ''
+  assert.match(abrir, /aria-expanded="false"/)
+  assert.match(abrir, /aria-haspopup="dialog"/)
 })
 
 test('abas de setor só com mais de um setor, com o atual marcado', () => {
@@ -39,17 +42,20 @@ test('abas de setor só com mais de um setor, com o atual marcado', () => {
 
 test('barra do topo, menu e barra inferior saem da impressão', () => {
   assert.match(barra(perfil(['fiscal']), ['fiscal']), /<header[^>]*print:hidden/)
-  const inf = renderToStaticMarkup(h(BarraInferior, { atalhos: atalhosCelular(montarMenu(perfil(['fiscal'], 'admin'), 'fiscal')), pathname: '/fiscal/dashboard', onMais: nada }))
+  const inf = renderToStaticMarkup(h(BarraInferior, { atalhos: atalhosCelular(montarMenu(perfil(['fiscal'], 'admin'), 'fiscal')), pathname: '/fiscal/dashboard', onMais: nada, menuAberto: false }))
   assert.match(inf, /<nav[^>]*print:hidden/)
   const shell = readFileSync(join(ROOT, 'components', 'shell', 'ShellCliente.tsx'), 'utf8')
   assert.match(shell, /print:hidden/)
 })
 
 test('barra inferior: atalhos com a página atual e o botão Mais, alvos de 44 px', () => {
-  const inf = renderToStaticMarkup(h(BarraInferior, { atalhos: atalhosCelular(montarMenu(perfil(['fiscal'], 'admin'), 'fiscal')), pathname: '/fiscal/clientes', onMais: nada }))
+  const inf = renderToStaticMarkup(h(BarraInferior, { atalhos: atalhosCelular(montarMenu(perfil(['fiscal'], 'admin'), 'fiscal')), pathname: '/fiscal/clientes', onMais: nada, menuAberto: false }))
   assert.match(inf, /aria-label="Atalhos"/)
   assert.match(inf, /aria-current="page"[^>]*href="\/fiscal\/clientes"|href="\/fiscal\/clientes"[^>]*aria-current="page"/)
   assert.match(inf, />Mais</)
+  const mais = inf.match(/<button[^>]*>/)?.[0] ?? ''
+  assert.match(mais, /aria-expanded="false"/)
+  assert.match(mais, /aria-haspopup="dialog"/)
   assert.match(inf, /lg:hidden/)
   assert.match(inf, /min-h-11|h-16/)
 })
@@ -88,4 +94,10 @@ test('componentes antigos da casca foram removidos e ninguém mais os importa', 
   const ruins = [...arquivos(join(ROOT, 'app')), ...arquivos(join(ROOT, 'components')), ...arquivos(join(ROOT, 'lib'))]
     .filter(f => /fiscal\/(TopNav|Sidebar|MesSeletor)['"]/.test(readFileSync(f, 'utf8')))
   assert.deepEqual(ruins, [])
+})
+
+test('casca ocupa a altura dinâmica do celular (h-dvh, não h-screen)', () => {
+  const shell = readFileSync(join(ROOT, 'components', 'shell', 'ShellCliente.tsx'), 'utf8')
+  assert.ok(shell.includes('h-dvh'))
+  assert.ok(!shell.includes('h-screen'))
 })

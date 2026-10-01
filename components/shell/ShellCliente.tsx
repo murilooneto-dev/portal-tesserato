@@ -28,6 +28,14 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
   const { theme, toggleTheme } = useTheme()
   const [menuAberto, setMenuAberto] = useState(false)
 
+  // Qualquer navegação (inclusive voltar/avançar) fecha a gaveta. Ajuste de estado na renderização:
+  // o lint do projeto proíbe setState direto dentro de useEffect.
+  const [pathAnterior, setPathAnterior] = useState(pathname)
+  if (pathAnterior !== pathname) {
+    setPathAnterior(pathname)
+    setMenuAberto(false)
+  }
+
   async function sair() {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -42,7 +50,7 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-page print:h-auto print:overflow-visible">
+    <div className="flex h-dvh flex-col overflow-hidden bg-page print:h-auto print:overflow-visible">
       <BarraTopo
         profile={profile}
         setores={setores}
@@ -53,6 +61,7 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
         onAlternarTema={toggleTheme}
         onSair={sair}
         onAbrirMenu={() => setMenuAberto(true)}
+        menuAberto={menuAberto}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden print:overflow-visible">
         <aside className="hidden w-[248px] shrink-0 border-r border-line-soft bg-nav print:hidden lg:flex lg:flex-col">
@@ -75,7 +84,7 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
         onAlternarTema={toggleTheme}
         onSair={sair}
       />
-      <BarraInferior atalhos={atalhos} pathname={pathname} onMais={() => setMenuAberto(true)} />
+      <BarraInferior atalhos={atalhos} pathname={pathname} onMais={() => setMenuAberto(true)} menuAberto={menuAberto} />
     </div>
   )
 }

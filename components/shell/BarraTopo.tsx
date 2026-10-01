@@ -5,7 +5,7 @@ import { IconButton } from '@/components/ui/Button'
 import { cn } from '@/components/ui/cn'
 import { SETOR_LABEL, type Profile, type UserSetor } from '@/lib/types'
 
-export function BarraTopo({ profile, setores, setorAtivo, tema, seletorMes, onTrocarSetor, onAlternarTema, onSair, onAbrirMenu }: {
+export function BarraTopo({ profile, setores, setorAtivo, tema, seletorMes, onTrocarSetor, onAlternarTema, onSair, onAbrirMenu, menuAberto }: {
   profile: Profile
   setores: UserSetor[]
   setorAtivo: UserSetor
@@ -15,17 +15,18 @@ export function BarraTopo({ profile, setores, setorAtivo, tema, seletorMes, onTr
   onAlternarTema: () => void
   onSair: () => void
   onAbrirMenu: () => void
+  menuAberto: boolean
 }) {
   const nome = profile.nome ?? 'Usuário'
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line-soft bg-top px-2 print:hidden sm:gap-3 lg:px-4">
-      <IconButton rotulo="Abrir menu" icone={<Menu size={22} aria-hidden="true" />} onClick={onAbrirMenu} className="h-11 w-11 lg:hidden" />
+      <IconButton rotulo="Abrir menu" icone={<Menu size={22} aria-hidden="true" />} onClick={onAbrirMenu} aria-haspopup="dialog" aria-expanded={menuAberto} className="h-11 w-11 lg:hidden" />
       <div className="flex shrink-0 items-center gap-2.5 font-bold tracking-[.01em] text-fg lg:w-[216px]">
         <Image src="/logo.ico" alt="" width={28} height={28} className="rounded-lg" />
         <span className="hidden sm:inline">Tesserato</span>
       </div>
       {setores.length > 1 && (
-        <nav aria-label="Setores" className="hidden min-w-0 gap-1 overflow-x-auto lg:flex">
+        <nav aria-label="Setores" className="hidden min-w-0 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex">
           {setores.map(s => {
             const atual = s === setorAtivo
             return (
@@ -54,7 +55,7 @@ export function BarraTopo({ profile, setores, setorAtivo, tema, seletorMes, onTr
         onClick={onAlternarTema}
         className="hidden sm:inline-grid"
       />
-      <div className="hidden items-center gap-2.5 border-l border-line-soft pl-3.5 lg:flex">
+      <div className="hidden shrink-0 items-center gap-2.5 border-l border-line-soft pl-3.5 lg:flex">
         <span aria-hidden="true" className="grid h-[30px] w-[30px] place-items-center rounded-full text-[13px] font-bold text-white" style={{ backgroundColor: profile.cor }}>
           {nome.charAt(0).toUpperCase()}
         </span>

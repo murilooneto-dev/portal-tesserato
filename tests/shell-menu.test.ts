@@ -33,3 +33,14 @@ test('todo ícone do modelo tem desenho', () => {
   const todos: IconeMenu[] = ['inicio', 'cadastro', 'ferramentas', 'dashboard', 'clientes', 'calendario', 'relatorios', 'parcelamentos', 'preenchimento', 'minhas-tarefas', 'procedimentos', 'tabelas', 'recebimentos', 'pagamentos', 'configuracoes', 'vinculos', 'parametros', 'lixeira', 'em-construcao']
   for (const i of todos) assert.ok(ICONE[i], `sem ícone para ${i}`)
 })
+
+test('espaço acima dos títulos: primeiro pt-1, demais pt-3.5', () => {
+  const html = renderToStaticMarkup(h(MenuLateral, { grupos, pathname: '/' }))
+  const titulos: string[] = html.match(/<p class="[^"]*uppercase[^"]*">[^<]*<\/p>/g) ?? []
+  assert.ok(titulos.length >= 3)
+  assert.match(titulos[0]!, /pt-1(?![.\d])/)
+  assert.doesNotMatch(titulos[0]!, /pt-3\.5/)
+  assert.match(titulos[1]!, />Fiscal</)
+  assert.match(titulos[1]!, /pt-3\.5/)
+  assert.match(titulos[titulos.length - 1]!, /pt-1(?![.\d])/)
+})

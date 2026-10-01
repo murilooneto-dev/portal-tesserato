@@ -1,3 +1,5 @@
+// Para usar dentro de páginas com <Suspense> nas próximas fases. Não há loading.tsx por área:
+// ele ligaria o prefetch do layout (getPortalContext) em todo link visível.
 // Esqueleto com o formato de uma tela (título, filtros, lista) enquanto ela carrega.
 export default function CarregandoPagina() {
   return (

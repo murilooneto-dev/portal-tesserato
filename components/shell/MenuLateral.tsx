@@ -12,12 +12,12 @@ export function MenuLateral({ grupos, pathname, toque = false, onNavegar, classN
 }) {
   return (
     <nav aria-label="Menu" className={cn('flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3.5', className)}>
-      {grupos.map(grupo => (
+      {grupos.map((grupo, i) => (
         <div
           key={grupo.id}
           className={cn('flex flex-col gap-0.5', grupo.id === 'admin' && 'mt-auto border-t border-line-soft pt-3')}
         >
-          <p className="px-2.5 pb-1.5 pt-3.5 text-xs font-semibold uppercase tracking-[.06em] text-fg-3 first:pt-1">{grupo.titulo}</p>
+          <p className={cn('px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-[.06em] text-fg-3', i === 0 || grupo.id === 'admin' ? 'pt-1' : 'pt-3.5')}>{grupo.titulo}</p>
           {grupo.itens.map(item => {
             const ativo = estaAtivo(pathname, item.href)
             const Icone = ICONE[item.icone]
