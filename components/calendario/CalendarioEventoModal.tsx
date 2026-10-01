@@ -132,7 +132,7 @@ export default function CalendarioEventoModal({ setor, evento, onClose }: Props)
             Cancelar
           </button>
           <button onClick={handleSave} disabled={saving || !titulo.trim()}
-            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
             {saving ? 'Salvando...' : 'Salvar evento'}
           </button>
         </div>

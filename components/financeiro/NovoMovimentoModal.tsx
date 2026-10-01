@@ -220,7 +220,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
                   autoFocus
                 />
                 <button type="button" onClick={handleCriarTipo} disabled={salvandoTipo || !novoTipoNome.trim()}
-                  className="px-4 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50 shrink-0">
+                  className="px-4 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50 shrink-0">
                   Criar
                 </button>
               </div>
@@ -256,7 +256,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
                   autoFocus
                 />
                 <button type="button" onClick={handleCriarCentro} disabled={salvandoCentro || !novoCentroNome.trim()}
-                  className="px-4 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50 shrink-0">
+                  className="px-4 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50 shrink-0">
                   Criar
                 </button>
               </div>
@@ -290,7 +290,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
             {movimento ? 'Cancelar' : 'Limpar'}
           </button>
           <button onClick={handleSave} disabled={saving || !tipoId || !data || !valor}
-            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>

@@ -111,7 +111,7 @@ export default function LoginForm() {
         {erroReset && <p className="text-red-400 text-sm">{erroReset}</p>}
 
         <button type="submit" disabled={enviandoReset}
-          className="py-3 rounded-xl bg-[var(--accent)] text-[var(--fg)] font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+          className="py-3 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
           {enviandoReset ? 'Enviando...' : 'Enviar link de redefinição'}
         </button>
 
@@ -202,7 +202,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={carregando}
-        className="mt-1 py-3 rounded-xl bg-[var(--accent)] text-[var(--fg)] font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="mt-1 py-3 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {carregando ? 'Entrando...' : 'Entrar'}
       </button>

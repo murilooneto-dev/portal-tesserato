@@ -18,7 +18,7 @@ const CATEGORIAS: { value: Categoria; label: string }[] = [
 const botaoCls = (ativo: boolean) =>
   `px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
     ativo
-      ? 'bg-[var(--accent)] text-[var(--fg)]'
+      ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
       : 'bg-[var(--fg)]/5 text-[var(--fg)]/50 hover:text-[var(--fg)]'
   }`
 

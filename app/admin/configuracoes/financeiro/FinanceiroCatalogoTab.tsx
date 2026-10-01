@@ -92,7 +92,7 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label }: Props) 
         <button
           onClick={handleCriar}
           disabled={salvandoNovo || !novoNome.trim()}
-          className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50"
+          className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50"
         >
           + Criar
         </button>

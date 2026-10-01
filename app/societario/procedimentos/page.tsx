@@ -347,7 +347,7 @@ export default function ProcedimentosSocietarioPage() {
           {STATUS_OPCOES.map(s => <option key={s.valor} value={s.valor} className="bg-[var(--bg-surface)]">{s.label}</option>)}
         </select>
         <button onClick={openCreate}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
           + Novo
         </button>
       </div>
@@ -686,7 +686,7 @@ export default function ProcedimentosSocietarioPage() {
                 </button>
               )}
               <button onClick={handleSave} disabled={saving || !form.processo_tipo_id || !form.empresa.trim()}
-                className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+                className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

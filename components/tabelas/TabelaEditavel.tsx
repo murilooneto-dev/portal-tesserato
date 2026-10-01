@@ -245,7 +245,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
       {podeEditar && (
         <div className="flex items-center gap-3 mb-3">
           <button onClick={aoAdicionar} disabled={ocupado}
-            className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
+            className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
             Adicionar linha
           </button>
           {erroGeral && <span className="text-xs text-red-400">{erroGeral}</span>}

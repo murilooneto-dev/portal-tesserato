@@ -77,7 +77,7 @@ export default function BarraConsulta({ base, consulta, colunas, exportarHref }:
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar em todas as colunas…"
           aria-label="Buscar em todas as colunas" maxLength={200} className={`${inputCls} flex-1 min-w-[14rem]`} />
         <button type="submit"
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)]">
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)]">
           Buscar
         </button>
         <button type="button" onClick={() => setAberto(a => !a)}
@@ -128,7 +128,7 @@ export default function BarraConsulta({ base, consulta, colunas, exportarHref }:
           </div>
           <div className="flex gap-2 mt-4">
             <button type="submit"
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)]">
+              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)]">
               Aplicar filtros
             </button>
             <button type="button" onClick={limpar}

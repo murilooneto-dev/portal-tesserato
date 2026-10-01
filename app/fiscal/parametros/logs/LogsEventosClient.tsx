@@ -106,7 +106,7 @@ export default function LogsEventosClient({ logs, clientes, filtros }: Props) {
         </div>
         <button
           onClick={() => window.print()}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors"
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors"
         >
           Gerar relatório
         </button>

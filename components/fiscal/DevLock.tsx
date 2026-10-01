@@ -49,7 +49,7 @@ export default function DevLock({ children }: { children: React.ReactNode }) {
         <button
           onClick={handleDesbloquear}
           disabled={verificando || !login || !senha}
-          className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--fg)] text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+          className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--accent-ink)] text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
           {verificando ? 'Verificando...' : 'Desbloquear'}
         </button>
         {erro && <p className="text-red-400 text-xs">{erro}</p>}

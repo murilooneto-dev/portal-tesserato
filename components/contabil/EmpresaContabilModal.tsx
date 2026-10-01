@@ -313,7 +313,7 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
               Cancelar
             </button>
             <button onClick={handleSave} disabled={saving || !form.nome.trim()}
-              className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
+              className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
               {saving ? 'Salvando...' : 'Salvar empresa'}
             </button>
           </>)}
