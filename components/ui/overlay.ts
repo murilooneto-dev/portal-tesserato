@@ -16,3 +16,38 @@ export function proximoIndiceDeFoco(total: number, atual: number, paraTras: bool
 
 export const SELETOR_FOCAVEL =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+// Gerenciar pilha de diálogos abertos
+const pilhaDialogos: symbol[] = []
+let overflowAnterior: string | null = null
+
+export function abrirNaPilha(id: symbol): void {
+  if (!pilhaDialogos.includes(id)) pilhaDialogos.push(id)
+}
+
+export function fecharNaPilha(id: symbol): void {
+  const i = pilhaDialogos.indexOf(id)
+  if (i >= 0) pilhaDialogos.splice(i, 1)
+}
+
+export function estaNoTopo(id: symbol): boolean {
+  return pilhaDialogos[pilhaDialogos.length - 1] === id
+}
+
+export function pilhaVazia(): boolean {
+  return pilhaDialogos.length === 0
+}
+
+export function salvarEBloquearScroll(): void {
+  if (pilhaVazia()) {
+    overflowAnterior = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+  }
+}
+
+export function restaurarScroll(): void {
+  if (pilhaVazia() && overflowAnterior !== null) {
+    document.body.style.overflow = overflowAnterior
+    overflowAnterior = null
+  }
+}

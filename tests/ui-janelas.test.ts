@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createElement as h } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { podeFechar, proximoIndiceDeFoco } from '../components/ui/overlay'
+import { podeFechar, proximoIndiceDeFoco, abrirNaPilha, fecharNaPilha, estaNoTopo, pilhaVazia } from '../components/ui/overlay'
 import { Modal, Drawer } from '../components/ui/Modal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
@@ -76,4 +76,34 @@ test('confirmação de perigo usa botão vermelho sólido e mostra o efeito', ()
   assert.match(html, /Lixeira por 60 dias/)
   assert.match(html, /bg-danger-solid[^"]*"[^>]*>Excluir</)
   assert.match(html, />Cancelar</)
+})
+
+test('só a janela do topo responde ao teclado', () => {
+  const a = Symbol('a'), b = Symbol('b')
+  abrirNaPilha(a); abrirNaPilha(b)
+  assert.equal(estaNoTopo(b), true)
+  assert.equal(estaNoTopo(a), false)
+  fecharNaPilha(b)
+  assert.equal(estaNoTopo(a), true)
+  fecharNaPilha(a)
+  assert.equal(pilhaVazia(), true)
+})
+
+test('fechar fora de ordem não quebra a pilha', () => {
+  const a = Symbol('a'), b = Symbol('b')
+  abrirNaPilha(a); abrirNaPilha(b)
+  fecharNaPilha(a)
+  assert.equal(estaNoTopo(b), true)
+  fecharNaPilha(b)
+  assert.equal(pilhaVazia(), true)
+})
+
+test('botão de fechar não recebe o foco inicial e confirmação foca Cancelar', () => {
+  const modal = renderToStaticMarkup(h(Modal, { aberto: true, onFechar: () => {}, titulo: 'X' }, 'x'))
+  assert.match(modal, /data-fechar=""/)
+  assert.match(modal, /role="dialog"[^>]*tabindex="-1"|tabindex="-1"[^>]*role="dialog"/)
+  const conf = renderToStaticMarkup(h(ConfirmDialog, { aberto: true, titulo: 'Excluir?', descricao: 'Vai para a Lixeira.', onConfirmar: () => {}, onCancelar: () => {} }))
+  assert.match(conf, /data-autofocus=""[^>]*>Cancelar</)
+  const alvo = conf.match(/aria-describedby="([^"]+)"/)?.[1]
+  assert.ok(alvo && conf.includes(`id="${alvo}"`))
 })

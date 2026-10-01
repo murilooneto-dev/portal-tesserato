@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react'
 import { X } from 'lucide-react'
 import { cn } from './cn'
 import { IconButton } from './Button'
-import { podeFechar, proximoIndiceDeFoco, SELETOR_FOCAVEL, type MotivoFechar } from './overlay'
+import { podeFechar, proximoIndiceDeFoco, SELETOR_FOCAVEL, type MotivoFechar, abrirNaPilha, fecharNaPilha, estaNoTopo, salvarEBloquearScroll, restaurarScroll } from './overlay'
 
 interface BaseProps {
   aberto: boolean
@@ -15,6 +15,7 @@ interface BaseProps {
   rodape?: ReactNode
   fecharAoClicarFora?: boolean
   bloqueado?: boolean
+  idDescricao?: string
   children?: ReactNode
 }
 
@@ -24,16 +25,32 @@ interface BaseProps {
 // abrir/fechar (senão o foco pularia para o primeiro campo a cada tecla).
 function useJanela(aberto: boolean, painel: RefObject<HTMLDivElement | null>, tentarFechar: (m: MotivoFechar) => void) {
   const fecharRef = useRef(tentarFechar)
+  const idRef = useRef(Symbol('janela'))
   fecharRef.current = tentarFechar
   useEffect(() => {
     if (!aberto) return
+    const id = idRef.current
     const anterior = document.activeElement as HTMLElement | null
-    const overflowAnterior = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    salvarEBloquearScroll()
+    abrirNaPilha(id)
+
     const focaveis = () => Array.from(painel.current?.querySelectorAll<HTMLElement>(SELETOR_FOCAVEL) ?? [])
-    focaveis()[0]?.focus()
+
+    // Foco inicial: autofocus > primeiro sem data-fechar > painel
+    const comAutofocus = painel.current?.querySelector<HTMLElement>('[data-autofocus]')
+    if (comAutofocus) {
+      comAutofocus.focus()
+    } else {
+      const semFechar = focaveis().find(el => !el.hasAttribute('data-fechar'))
+      if (semFechar) {
+        semFechar.focus()
+      } else {
+        painel.current?.focus()
+      }
+    }
 
     function onKey(e: KeyboardEvent) {
+      if (!estaNoTopo(id) || e.defaultPrevented || e.isComposing) return
       if (e.key === 'Escape') { e.preventDefault(); fecharRef.current('esc'); return }
       if (e.key !== 'Tab') return
       const itens = focaveis()
@@ -45,7 +62,8 @@ function useJanela(aberto: boolean, painel: RefObject<HTMLDivElement | null>, te
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = overflowAnterior
+      fecharNaPilha(id)
+      restaurarScroll()
       anterior?.focus?.()
     }
   }, [aberto, painel])
@@ -61,7 +79,7 @@ function Cabecalho({ idTitulo, idSub, titulo, subtitulo, icone, onFechar, bloque
         <h2 id={idTitulo} className="text-[17px] font-semibold text-fg">{titulo}</h2>
         {subtitulo && <p id={idSub} className="mt-0.5 text-[13px] text-fg-3">{subtitulo}</p>}
       </div>
-      <IconButton rotulo="Fechar (Esc)" icone={<X size={18} aria-hidden="true" />} onClick={onFechar} disabled={bloqueado} />
+      <IconButton rotulo="Fechar (Esc)" icone={<X size={18} aria-hidden="true" />} onClick={onFechar} disabled={bloqueado} data-fechar="" />
     </div>
   )
 }
@@ -70,7 +88,7 @@ const LARGURA = { p: 'max-w-[520px]', m: 'max-w-[640px]', g: 'max-w-[780px]' } a
 
 export function Modal({
   aberto, onFechar, titulo, subtitulo, icone, rodape, children,
-  largura = 'm', fecharAoClicarFora = true, bloqueado = false,
+  largura = 'm', fecharAoClicarFora = true, bloqueado = false, idDescricao,
 }: BaseProps & { largura?: keyof typeof LARGURA }) {
   const painel = useRef<HTMLDivElement>(null)
   const idTitulo = useId()
@@ -88,7 +106,8 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
-        aria-describedby={subtitulo ? idSub : undefined}
+        aria-describedby={idDescricao ?? (subtitulo ? idSub : undefined)}
+        tabIndex={-1}
         className={cn('flex w-full flex-col overflow-hidden rounded-[14px] border border-line bg-surface shadow-modal', LARGURA[largura])}
       >
         <Cabecalho idTitulo={idTitulo} idSub={idSub} titulo={titulo} subtitulo={subtitulo} icone={icone} onFechar={() => tentarFechar('botao')} bloqueado={bloqueado} />
@@ -101,7 +120,7 @@ export function Modal({
 
 export function Drawer({
   aberto, onFechar, titulo, subtitulo, icone, rodape, children,
-  larguraPx = 520, fecharAoClicarFora = true, bloqueado = false,
+  larguraPx = 520, fecharAoClicarFora = true, bloqueado = false, idDescricao,
 }: BaseProps & { larguraPx?: number }) {
   const painel = useRef<HTMLDivElement>(null)
   const idTitulo = useId()
@@ -119,7 +138,8 @@ export function Drawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
-        aria-describedby={subtitulo ? idSub : undefined}
+        aria-describedby={idDescricao ?? (subtitulo ? idSub : undefined)}
+        tabIndex={-1}
         style={{ width: `min(${larguraPx}px, 100vw)` }}
         className="absolute right-0 top-0 flex h-full flex-col border-l border-line bg-surface shadow-modal"
       >

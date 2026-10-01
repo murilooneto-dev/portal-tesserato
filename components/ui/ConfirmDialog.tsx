@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useId, useRef, useState, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Modal } from './Modal'
 import { Button } from './Button'
@@ -19,6 +19,7 @@ export function ConfirmDialog({
   onConfirmar: () => void
   onCancelar: () => void
 }) {
+  const idDesc = useId()
   return (
     <Modal
       aberto={aberto}
@@ -26,6 +27,7 @@ export function ConfirmDialog({
       titulo={titulo}
       largura="p"
       bloqueado={carregando}
+      idDescricao={descricao ? idDesc : undefined}
       icone={perigo ? (
         <span className="grid h-9 w-9 flex-none place-items-center rounded-[10px] bg-danger-soft text-danger" aria-hidden="true">
           <AlertTriangle size={18} />
@@ -33,12 +35,12 @@ export function ConfirmDialog({
       ) : undefined}
       rodape={
         <div className="ml-auto flex gap-2.5">
-          <Button variante="fantasma" onClick={onCancelar} disabled={carregando}>{textoCancelar}</Button>
+          <Button variante="fantasma" onClick={onCancelar} disabled={carregando} data-autofocus="">{textoCancelar}</Button>
           <Button variante={perigo ? 'perigo-solido' : 'primario'} onClick={onConfirmar} carregando={carregando}>{textoConfirmar}</Button>
         </div>
       }
     >
-      {descricao && <div className="text-sm leading-relaxed text-fg-2">{descricao}</div>}
+      {descricao && <div id={idDesc} className="text-sm leading-relaxed text-fg-2">{descricao}</div>}
     </Modal>
   )
 }
