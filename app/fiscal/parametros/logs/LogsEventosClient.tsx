@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { descreverEventoTarefas, type DetalhesTarefas } from '@/lib/logs-tarefas'
 
 const TIPO_EVENTO_LABEL: Record<string, string> = {
   criacao: 'Criação',
@@ -11,6 +12,7 @@ const TIPO_EVENTO_LABEL: Record<string, string> = {
   desabilitacao: 'Desabilitação',
   reabilitacao: 'Reabilitação',
   troca_responsavel: 'Troca de responsável',
+  tarefas: 'Tarefas',
 }
 
 const SETOR_LABEL: Record<string, string> = {
@@ -27,7 +29,7 @@ interface EventoLog {
   setor: string | null
   cliente_nome: string | null
   tipo_evento: string
-  detalhes: { campos?: string[]; responsavel_antigo?: string | null; responsavel_novo?: string | null } | null
+  detalhes: { campos?: string[]; responsavel_antigo?: string | null; responsavel_novo?: string | null } & Partial<DetalhesTarefas> | null
 }
 
 interface Cliente {
@@ -56,6 +58,9 @@ function formatDate(s: string) {
 function detalheTexto(log: EventoLog) {
   if (log.tipo_evento === 'troca_responsavel' && log.detalhes) {
     return `de ${log.detalhes.responsavel_antigo ?? '—'} para ${log.detalhes.responsavel_novo ?? '—'}`
+  }
+  if (log.tipo_evento === 'tarefas') {
+    return descreverEventoTarefas(log.detalhes as DetalhesTarefas | null)
   }
   if (log.tipo_evento === 'edicao' && log.detalhes?.campos) {
     return log.detalhes.campos.join(', ')
