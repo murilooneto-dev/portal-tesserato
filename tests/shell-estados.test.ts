@@ -21,6 +21,7 @@ test('cada área tem carregando e erro que reaproveitam as peças', () => {
     const err = readFileSync(e, 'utf8')
     assert.match(err, /^'use client'/)
     assert.match(err, /ErroPagina/)
+    assert.match(err, /unstable_retry/)
   }
 })
 
@@ -32,7 +33,7 @@ test('carregando é anunciado e não é texto solto', () => {
 })
 
 test('erro explica e oferece tentar de novo', () => {
-  const html = renderToStaticMarkup(h(ErroPagina, { error: new Error('x'), reset: () => {} }))
+  const html = renderToStaticMarkup(h(ErroPagina, { error: new Error('x'), tentarDeNovo: () => {} }))
   assert.match(html, /Não foi possível abrir esta página/)
   assert.match(html, />Tentar de novo</)
   assert.match(html, /href="\/intranet"/)

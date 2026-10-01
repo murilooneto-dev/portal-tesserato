@@ -6,7 +6,7 @@ import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-export default function ErroPagina({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function ErroPagina({ error, tentarDeNovo }: { error: Error & { digest?: string }; tentarDeNovo: () => void }) {
   useEffect(() => {
     console.error(error)
   }, [error])
@@ -19,7 +19,7 @@ export default function ErroPagina({ error, reset }: { error: Error & { digest?:
         descricao="Tente de novo. Se continuar, avise o administrador do portal."
         acao={
           <div className="flex flex-wrap items-center justify-center gap-2.5">
-            <Button variante="primario" onClick={reset}>Tentar de novo</Button>
+            <Button variante="primario" onClick={tentarDeNovo}>Tentar de novo</Button>
             <Link href="/intranet" className="text-sm font-medium text-acc-text hover:underline">Voltar ao Início</Link>
           </div>
         }
