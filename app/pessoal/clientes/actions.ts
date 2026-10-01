@@ -5,7 +5,7 @@ import { getAuthenticatedAdmin, podeEditarClientePessoal } from '@/lib/supabase/
 import { removerClienteDoSetor } from '@/lib/remover-cliente-do-setor'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
-import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel } from '@/lib/logs'
+import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
 import { tarefasRemovidasDoCliente, apagarTarefasDoCliente } from '@/lib/tarefas-do-cliente'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
@@ -63,6 +63,13 @@ export async function salvarClientePessoal(
     const { error: errLimpeza } = await apagarTarefasDoCliente(supabase, clienteId, 'pessoal', removidas)
     if (errLimpeza) return { error: errLimpeza }
 
+    await registrarMudancaTarefas(supabase, {
+      setor: 'pessoal', clienteId, clienteNome: clientePayload.nome,
+      usuarioId: user.id, usuarioNome,
+      antes: antes ? calcularTarefasEsperadas({ ...antes, tarefas_personalizadas: antes.tarefas_personalizadas ?? [] }, mapaVinculos) : null,
+      depois: calcularTarefasEsperadas(pessoalPayload, mapaVinculos),
+    })
+
     await trocarResponsavel(supabase, {
       clienteId, clienteNome: clientePayload.nome, setor: 'pessoal',
       responsavelAntigo: antes?.responsavel, responsavelNovo: pessoalPayload.responsavel,
@@ -85,6 +92,12 @@ export async function salvarClientePessoal(
     await registrarEvento(supabase, {
       setor: 'pessoal', clienteId: novoCliente.id, clienteNome: clientePayload.nome,
       tipoEvento: 'criacao', usuarioId: user.id, usuarioNome,
+    })
+    await registrarMudancaTarefas(supabase, {
+      setor: 'pessoal', clienteId: novoCliente.id, clienteNome: clientePayload.nome,
+      usuarioId: user.id, usuarioNome,
+      antes: null,
+      depois: calcularTarefasEsperadas(pessoalPayload, await buscarMapaVinculosSetor(supabase, 'pessoal')),
     })
     if (pessoalPayload.responsavel) {
       await abrirHistoricoResponsavel(supabase, {
