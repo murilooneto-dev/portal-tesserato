@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createClienteLeituraVinculos } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
@@ -76,7 +76,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
   const notas = await buscarNotasCliente(supabase, id, 'pessoal')
 
   const vinculos = await buscarVinculosDoCliente(
-    supabase, id, cliente.tarefas_vinculadas_ativas ?? [], 'pessoal', mes, ano
+    await createClienteLeituraVinculos(), id, cliente.tarefas_vinculadas_ativas ?? [], 'pessoal', mes, ano
   )
 
   const responsaveis = Array.from(new Set(

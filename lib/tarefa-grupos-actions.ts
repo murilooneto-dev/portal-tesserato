@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarCliente, podeEditarClienteContabil, podeEditarClientePessoal } from '@/lib/supabase/server'
+import { setorValido } from '@/lib/route-permissions'
 import { registrarEventoTarefas } from '@/lib/logs'
 import type { DetalhesTarefas } from '@/lib/logs-tarefas'
 import type { UserSetor, TarefaGrupo } from '@/lib/types'
@@ -71,13 +72,20 @@ export async function listarGruposDoSetor(
   return { data: (data ?? []) as Pick<TarefaGrupo, 'nome' | 'tarefas'>[], error: null }
 }
 
+async function verificarPermissao(setor: string, clienteId: string): Promise<string | null> {
+  if (!setorValido(setor)) return 'Setor inválido.'
+  if (!(await PODE_EDITAR_POR_SETOR[setor](clienteId))) return 'Sem permissão pra editar esse cliente.'
+  return null
+}
+
 export async function criarGrupoTarefas(
   clienteId: string,
   setor: UserSetor,
   nome: string,
   tarefas: string[],
 ): Promise<{ error: string | null }> {
-  if (!(await PODE_EDITAR_POR_SETOR[setor](clienteId))) return { error: 'Sem permissão pra editar esse cliente.' }
+  const erroPermissao = await verificarPermissao(setor, clienteId)
+  if (erroPermissao) return { error: erroPermissao }
 
   const nomeTrim = nome.trim()
   if (!nomeTrim) return { error: 'Dê um nome ao grupo.' }
@@ -108,7 +116,8 @@ export async function atualizarGrupoTarefas(
   nome: string,
   tarefas: string[],
 ): Promise<{ error: string | null }> {
-  if (!(await PODE_EDITAR_POR_SETOR[setor](clienteId))) return { error: 'Sem permissão pra editar esse cliente.' }
+  const erroPermissao = await verificarPermissao(setor, clienteId)
+  if (erroPermissao) return { error: erroPermissao }
 
   const nomeTrim = nome.trim()
   if (!nomeTrim) return { error: 'Dê um nome ao grupo.' }
@@ -117,15 +126,23 @@ export async function atualizarGrupoTarefas(
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!user || !supabase) return { error: 'Sessão inválida.' }
 
-  const { data: grupoAntes } = await supabase.from('tarefa_grupos').select('nome, tarefas').eq('id', grupoId).maybeSingle()
+  const { data: grupoAntes } = await supabase.from('tarefa_grupos').select('nome, tarefas').eq('id', grupoId).eq('cliente_id', clienteId).eq('setor', setor).maybeSingle()
 
+  // O grupo precisa pertencer ao MESMO cliente/setor já validados acima —
+  // sem isso, um grupoId de outro cliente seria editado mesmo com a
+  // permissão checada contra o cliente errado (IDOR).
   const { error } = await supabase
     .from('tarefa_grupos')
     .update({ nome: nomeTrim, tarefas })
     .eq('id', grupoId)
+    .eq('cliente_id', clienteId)
+    .eq('setor', setor)
+    .select('id')
+    .single()
 
   if (error) {
     if (error.code === '23505') return { error: 'Já existe um grupo com esse nome pra esse cliente.' }
+    if (error.code === 'PGRST116') return { error: 'Grupo não encontrado pra esse cliente.' }
     return { error: error.message }
   }
 
@@ -145,15 +162,23 @@ export async function excluirGrupoTarefas(
   clienteId: string,
   setor: UserSetor,
 ): Promise<{ error: string | null }> {
-  if (!(await PODE_EDITAR_POR_SETOR[setor](clienteId))) return { error: 'Sem permissão pra editar esse cliente.' }
+  const erroPermissao = await verificarPermissao(setor, clienteId)
+  if (erroPermissao) return { error: erroPermissao }
 
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!user || !supabase) return { error: 'Sessão inválida.' }
 
-  const { data: grupoAntes } = await supabase.from('tarefa_grupos').select('nome').eq('id', grupoId).maybeSingle()
+  const { data: grupoAntes } = await supabase.from('tarefa_grupos').select('nome').eq('id', grupoId).eq('cliente_id', clienteId).eq('setor', setor).maybeSingle()
 
-  const { error } = await supabase.from('tarefa_grupos').delete().eq('id', grupoId)
+  const { error, count } = await supabase
+    .from('tarefa_grupos')
+    .delete({ count: 'exact' })
+    .eq('id', grupoId)
+    .eq('cliente_id', clienteId)
+    .eq('setor', setor)
+
   if (error) return { error: error.message }
+  if (!count) return { error: 'Grupo não encontrado pra esse cliente.' }
 
   await logGrupo(supabase, user.id, clienteId, setor, { acao: 'grupo_excluido', grupo: grupoAntes?.nome ?? undefined })
 

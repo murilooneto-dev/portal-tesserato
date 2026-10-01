@@ -1,24 +1,42 @@
 'use server'
 
 import { getAuthenticatedAdmin } from './supabase/server'
+import { podeAcessarPagina } from './route-permissions'
 
-// Apesar do nome, getAuthenticatedAdmin só devolve um client autenticado
-// (com service role quando disponível) — não é uma checagem de role admin.
-// Mesmo padrão de lib/tarefa-tipos-actions.ts: qualquer usuário autenticado
-// pode chamar essas actions.
+// Parcelamento é um conceito exclusivo do setor Fiscal. Criar uma seção nova
+// é baixo risco (só adiciona uma linha ao catálogo, não reatribui nem apaga
+// parcelamento nenhum já existente) e é chamada legitimamente por qualquer
+// usuário Fiscal no fluxo normal de "Novo Parcelamento" — exige só ser
+// membro do setor. Renomear/remover mexem em dado já existente (reatribuição
+// em massa / exclusão), então exigem a permissão mais alta de quem configura
+// o setor ("configuracoes:fiscal").
+async function contextoFiscal() {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Sessão inválida.' as const }
+  const { data: profile } = await supabase.from('profiles').select('role, setores, paginas_acesso').eq('id', user.id).single()
+  const membroDoSetor = profile?.role === 'admin' || (profile?.setores ?? []).includes('fiscal')
+  if (!membroDoSetor) return { error: 'Acesso negado.' as const }
+  return { error: null, supabase }
+}
+
+async function contextoConfigFiscal() {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return { error: 'Sessão inválida.' as const }
+  const { data: profile } = await supabase.from('profiles').select('role, setores, paginas_acesso').eq('id', user.id).single()
+  if (!podeAcessarPagina(profile, 'configuracoes', 'fiscal')) return { error: 'Acesso negado.' as const }
+  return { error: null, supabase }
+}
 
 export async function criarSecaoParcelamento(nome: string): Promise<{ error: string | null }> {
   const nomeNormalizado = nome.trim().toUpperCase()
   if (!nomeNormalizado) return { error: 'Nome não pode ser vazio.' }
 
-  const { user, supabase } = await getAuthenticatedAdmin()
-  if (!user || !supabase) return { error: 'Sessão inválida.' }
+  const ctx = await contextoFiscal()
+  if (ctx.error !== null) return { error: ctx.error }
 
-  const { error } = await supabase.from('parcelamento_secoes').insert({ nome: nomeNormalizado })
+  const { error } = await ctx.supabase.from('parcelamento_secoes').insert({ nome: nomeNormalizado })
 
   if (error) {
-    // unique(nome): outra pessoa criou essa seção nesse meio tempo —
-    // tratado como sucesso, é exatamente o resultado que queríamos.
     if (error.code === '23505') return { error: null }
     return { error: error.message }
   }
@@ -28,17 +46,20 @@ export async function criarSecaoParcelamento(nome: string): Promise<{ error: str
 
 export async function renomearSecaoParcelamento(
   id: string,
-  nomeAntigo: string,
   nomeNovo: string,
 ): Promise<{ error: string | null }> {
   const nomeNormalizado = nomeNovo.trim().toUpperCase()
   if (!nomeNormalizado) return { error: 'Nome não pode ser vazio.' }
+
+  const ctx = await contextoConfigFiscal()
+  if (ctx.error !== null) return { error: ctx.error }
+
+  const { data: secaoAtual } = await ctx.supabase.from('parcelamento_secoes').select('nome').eq('id', id).maybeSingle()
+  if (!secaoAtual) return { error: 'Seção não encontrada.' }
+  const nomeAntigo = secaoAtual.nome as string
   if (nomeNormalizado === nomeAntigo) return { error: null }
 
-  const { user, supabase } = await getAuthenticatedAdmin()
-  if (!user || !supabase) return { error: 'Sessão inválida.' }
-
-  const { error } = await supabase
+  const { error } = await ctx.supabase
     .from('parcelamento_secoes')
     .update({ nome: nomeNormalizado })
     .eq('id', id)
@@ -48,11 +69,7 @@ export async function renomearSecaoParcelamento(
     return { error: error.message }
   }
 
-  // secao em parcelamentos é texto livre, não uma FK pra
-  // parcelamento_secoes — precisa atualizar manualmente aqui pra nenhum
-  // parcelamento existente ficar com um nome de seção que não existe mais
-  // no catálogo.
-  const { error: erroCascata } = await supabase
+  const { error: erroCascata } = await ctx.supabase
     .from('parcelamentos')
     .update({ secao: nomeNormalizado })
     .eq('secao', nomeAntigo)
@@ -64,11 +81,15 @@ export async function renomearSecaoParcelamento(
   return { error: null }
 }
 
-export async function removerSecaoParcelamento(id: string, nome: string): Promise<{ error: string | null }> {
-  const { user, supabase } = await getAuthenticatedAdmin()
-  if (!user || !supabase) return { error: 'Sessão inválida.' }
+export async function removerSecaoParcelamento(id: string): Promise<{ error: string | null }> {
+  const ctx = await contextoConfigFiscal()
+  if (ctx.error !== null) return { error: ctx.error }
 
-  const { count, error: erroContagem } = await supabase
+  const { data: secaoAtual } = await ctx.supabase.from('parcelamento_secoes').select('nome').eq('id', id).maybeSingle()
+  if (!secaoAtual) return { error: 'Seção não encontrada.' }
+  const nome = secaoAtual.nome as string
+
+  const { count, error: erroContagem } = await ctx.supabase
     .from('parcelamentos')
     .select('id', { count: 'exact', head: true })
     .eq('secao', nome)
@@ -79,7 +100,7 @@ export async function removerSecaoParcelamento(id: string, nome: string): Promis
     return { error: `Não é possível remover: ${count} parcelamento${count !== 1 ? 's' : ''} usa${count !== 1 ? 'm' : ''} essa seção.` }
   }
 
-  const { error } = await supabase.from('parcelamento_secoes').delete().eq('id', id)
+  const { error } = await ctx.supabase.from('parcelamento_secoes').delete().eq('id', id)
   if (error) return { error: error.message }
 
   return { error: null }

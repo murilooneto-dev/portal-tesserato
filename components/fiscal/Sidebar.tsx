@@ -10,7 +10,7 @@ import MesSeletor from './MesSeletor'
 import {
   Zap, LayoutGrid, Users, Calendar,
   FileText, CreditCard, Wrench, Settings, SlidersHorizontal,
-  Sun, Moon, Link2, ListChecks, Building2, UserCheck,
+  Sun, Moon, Link2, ListChecks, Building2, UserCheck, Trash2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -127,6 +127,7 @@ export default function Sidebar({ profile, mes, ano, setorAtivo }: Props) {
               <>
                 <NavLink item={{ href: '/fiscal/parametros', label: 'Parâmetros', icon: Settings }} active={pathname.startsWith('/fiscal/parametros')} />
                 <NavLink item={{ href: '/vinculos', label: 'Vínculos', icon: Link2 }} active={pathname.startsWith('/vinculos')} />
+                <NavLink item={{ href: '/admin/lixeira', label: 'Lixeira', icon: Trash2 }} active={pathname.startsWith('/admin/lixeira')} />
               </>
             )}
             <NavLink item={{ href: '/admin/configuracoes', label: 'Configurações', icon: SlidersHorizontal }} active={pathname.startsWith('/admin/configuracoes')} />

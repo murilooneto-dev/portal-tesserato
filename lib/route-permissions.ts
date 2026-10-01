@@ -18,6 +18,15 @@ export const PREFIXOS_SETOR: UserSetor[] = ['fiscal', 'contabil', 'pessoal', 'so
 // URL direta hoje — não são gerenciadas pela permissão por página.
 export const PAGINAS_SEMPRE_LIBERADAS = ['dashboard', 'agenda', 'bots', 'tarefas']
 
+// Valida `setor` contra a lista real ANTES de indexar qualquer objeto com
+// ele — sem isso, uma string como 'constructor' acha uma propriedade
+// herdada do protótipo do JS (Object) em vez de "chave não existe", e a
+// checagem de permissão passa sempre. Nunca indexar um Record<UserSetor, ...>
+// com um valor não validado primeiro.
+export function setorValido(setor: string): setor is UserSetor {
+  return (PREFIXOS_SETOR as readonly string[]).includes(setor)
+}
+
 interface PerfilPermissao {
   role?: string | null
   setores?: UserSetor[] | null

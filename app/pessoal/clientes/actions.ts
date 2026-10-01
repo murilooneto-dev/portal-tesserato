@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarClientePessoal } from '@/lib/supabase/server'
+import { removerClienteDoSetor } from '@/lib/remover-cliente-do-setor'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
 import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
@@ -255,25 +256,22 @@ export async function atualizarEtapa(
   revalidatePath('/pessoal/clientes')
 }
 
-export async function excluirClientePessoal(clienteId: string) {
-  if (!(await podeEditarClientePessoal(clienteId))) throw new Error('Não autorizado')
+export async function excluirClientePessoal(clienteId: string): Promise<{ error: string | null }> {
+  if (!(await podeEditarClientePessoal(clienteId))) return { error: 'Não autorizado.' }
   const { user, supabase } = await getAuthenticatedAdmin()
-  if (!user || !supabase) throw new Error('Não autorizado')
+  if (!user || !supabase) return { error: 'Não autorizado.' }
 
   const { data: clienteAntes } = await supabase.from('clientes').select('nome, setores').eq('id', clienteId).single()
+  if (!clienteAntes) return { error: 'Cliente não encontrado.' }
   const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
-  await supabase.from('tarefas').delete().eq('cliente_id', clienteId).eq('setor', 'pessoal')
-  await supabase.from('clientes_pessoal').delete().eq('cliente_id', clienteId)
-
-  const novosSetores = (clienteAntes?.setores ?? []).filter((s: string) => s !== 'pessoal')
-  const clienteRemovidoDoTodo = novosSetores.length === 0
-
-  if (clienteRemovidoDoTodo) {
-    await supabase.from('clientes').delete().eq('id', clienteId)
-  } else {
-    await supabase.from('clientes').update({ setores: novosSetores }).eq('id', clienteId)
-  }
+  // Lógica única (e testada) em lib/remover-cliente-do-setor.ts: se o cliente
+  // só estava neste setor, apaga a linha de clientes primeiro (a cascata leva o
+  // resto) e, se o banco recusar, nada foi apagado; senão tira só o setor.
+  const { error, clienteRemovidoDoTodo } = await removerClienteDoSetor(supabase, {
+    clienteId, setor: 'pessoal', setoresAtuais: clienteAntes?.setores ?? [],
+  })
+  if (error) return { error }
 
   await registrarEvento(supabase, {
     setor: 'pessoal', clienteId: clienteRemovidoDoTodo ? null : clienteId, clienteNome: clienteAntes?.nome ?? '—',
@@ -281,6 +279,7 @@ export async function excluirClientePessoal(clienteId: string) {
   })
 
   revalidatePath('/pessoal/clientes')
+  return { error: null }
 }
 
 export async function salvarRespostaTexto(

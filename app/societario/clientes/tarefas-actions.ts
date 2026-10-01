@@ -176,10 +176,22 @@ export async function salvarRespostaTextoSocietario(
   const textoTrimado = texto.trim()
   const concluida = textoTrimado !== ''
 
+  const { data: atual } = await supabase
+    .from('tarefas').select('resposta_texto, concluida_em')
+    .eq('id', tarefaId).maybeSingle()
+
+  // Só regrava concluida_em se o texto mudou de verdade — sem isso, o
+  // onBlur do textarea (que sempre dispara, mesmo sem editar nada) resetava
+  // a data de conclusão pra "agora" toda vez que o campo só perdia o foco.
+  const textoMudou = (atual?.resposta_texto ?? '') !== textoTrimado
+  const concluida_em = textoMudou
+    ? (concluida ? new Date().toISOString() : null)
+    : atual?.concluida_em ?? null
+
   const { error: updateError } = await supabase.from('tarefas').update({
     resposta_texto: textoTrimado,
     concluida,
-    concluida_em: concluida ? new Date().toISOString() : null,
+    concluida_em,
   }).eq('id', tarefaId)
   if (updateError) return { error: updateError.message }
 

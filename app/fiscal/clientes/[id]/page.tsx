@@ -1,6 +1,6 @@
 ﻿import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createClienteLeituraVinculos } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
@@ -115,7 +115,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const eventosAvulsos = await buscarTarefasAvulsasDoMes(id, 'fiscal', mes, ano)
 
   const vinculos = await buscarVinculosDoCliente(
-    supabase, id, cliente.tarefas_vinculadas_ativas ?? [], 'fiscal', mes, ano
+    await createClienteLeituraVinculos(), id, cliente.tarefas_vinculadas_ativas ?? [], 'fiscal', mes, ano
   )
 
   // Todas as tarefas do ano para o histórico
