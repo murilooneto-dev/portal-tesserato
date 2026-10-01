@@ -20,7 +20,7 @@ import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { tipoVisivelParaUsuario, filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
-import { buscarDonoNomePorTipo } from '@/lib/tarefa-tipo-donos'
+import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { bucketDoRegime } from '@/lib/regime-bucket'
 import HistoricoResponsavel from '@/components/HistoricoResponsavel'
@@ -94,7 +94,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const tarefasPersonalizadasVisiveis = tarefasPersonalizadasEfetivas.filter(ehDonoOuAdmin)
 
   // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % deste cliente.
-  const donoNomePorTipo = await buscarDonoNomePorTipo(supabase, 'fiscal')
+  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
   const tiposDoProgresso = filtrarTiposDoProgresso(tarefasPersonalizadasVisiveis, cliente.responsavel, donoNomePorTipo)
 
   const podeEditarPorTipo: Record<string, boolean> = {}
