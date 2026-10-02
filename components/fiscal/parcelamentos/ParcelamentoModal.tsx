@@ -41,7 +41,8 @@ interface Props {
   onClose: () => void
   /** Chamado depois de gravar com sucesso (recarrega a lista); a janela fecha em seguida. */
   onSalvo: () => Promise<void>
-  onGerenciarSecoes: () => void
+  /** Abre a janela de seções; `aoCriar` recebe o nome de uma seção criada ali (fica selecionada). */
+  onGerenciarSecoes: (aoCriar: (nome: string) => void) => void
 }
 
 function formInicial(item: Parcelamento | null, secoes: SecaoParcelamento[]): FormParcelamento {
@@ -59,6 +60,7 @@ export default function ParcelamentoModal({
   const sb = createClient()
   const [form, setForm] = useState<FormParcelamento>(() => formInicial(item, secoes))
   const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
   const [secoesVistas, setSecoesVistas] = useState(secoes)
 
   // Quando a lista de seções muda (renomear/remover na janela de seções), a
@@ -88,6 +90,7 @@ export default function ParcelamentoModal({
 
   async function handleSave() {
     setSaving(true)
+    setErro(null)
     try {
       // O CNPJ gravado é o que o campo mostra (segue o do cliente).
       const formFinal = { ...form, cnpj: cnpj.valor }
@@ -97,10 +100,12 @@ export default function ParcelamentoModal({
         // admin sobrescreve o que a ficha gravou com o valor capturado na
         // abertura. Avulso: nunca tem tarefa, meses entram no update.
         // Usa form.empresa_avulsa (valor ao vivo), nao o de item (obsoleto).
-        await sb.from('parcelamentos').update(montarUpdateParcelamento(formFinal, formFinal.empresa_avulsa)).eq('id', item.id)
+        const { error } = await sb.from('parcelamentos').update(montarUpdateParcelamento(formFinal, formFinal.empresa_avulsa)).eq('id', item.id)
+        if (error) { setErro('Não foi possível salvar o parcelamento. Tente de novo.'); return }
       } else {
         // Mesmo filtro do update: evita criar vinculado ja com meses.
-        await sb.from('parcelamentos').insert(montarUpdateParcelamento(formFinal, formFinal.empresa_avulsa))
+        const { error } = await sb.from('parcelamentos').insert(montarUpdateParcelamento(formFinal, formFinal.empresa_avulsa))
+        if (error) { setErro('Não foi possível salvar o parcelamento. Tente de novo.'); return }
       }
       await onSalvo()
       onClose()
@@ -126,6 +131,8 @@ export default function ParcelamentoModal({
         </div>
       }
     >
+      {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
+
       <section className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold text-fg">Empresa</h3>
         <Switch
@@ -174,7 +181,7 @@ export default function ParcelamentoModal({
       <section className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold text-fg">Parcelamento</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field rotulo="Seção" obrigatorio ajuda={secoes.length === 0 ? 'Nenhuma seção cadastrada ainda: crie uma em Gerenciar seções.' : undefined}>
+          <Field rotulo="Seção" obrigatorio ajuda={secoes.length === 0 ? 'Nenhuma seção cadastrada ainda: crie uma em Nova seção.' : undefined}>
             {c => (
               <div className="flex items-center gap-2">
                 <div className="min-w-0 flex-1">
@@ -182,7 +189,7 @@ export default function ParcelamentoModal({
                     {secoes.map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
                   </Select>
                 </div>
-                <Button tamanho="p" onClick={onGerenciarSecoes} disabled={saving}>Gerenciar seções</Button>
+                <Button tamanho="p" onClick={() => onGerenciarSecoes(nome => setF('secao', nome))} disabled={saving}>Nova seção</Button>
               </div>
             )}
           </Field>

@@ -28,7 +28,11 @@ export function decidirCnpj(entrada: {
 }): DecisaoCnpj {
   const { avulsa, empresa, cnpjAtual, clientes } = entrada
   if (avulsa) return { valor: cnpjAtual, editavel: true, avisoSemCnpj: false }
-  const cliente = clientes.find(c => c.nome === empresa)
+  // Dois clientes podem ter o mesmo nome: ao editar, se o CNPJ gravado e de um
+  // deles, ele e mantido (nao troca de cliente); senao vale o primeiro com o nome.
+  const cliente =
+    clientes.find(c => c.nome === empresa && cnpjAtual !== null && c.cnpj === cnpjAtual) ??
+    clientes.find(c => c.nome === empresa)
   if (!cliente) return { valor: cnpjAtual, editavel: false, avisoSemCnpj: false }
   const cnpj = cliente.cnpj?.trim() ? cliente.cnpj : null
   return { valor: cnpj, editavel: false, avisoSemCnpj: cnpj === null }

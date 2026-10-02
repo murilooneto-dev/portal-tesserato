@@ -30,6 +30,17 @@ test('nenhum cliente escolhido ou nome fora da lista: travado, sem aviso, mantem
   assert.deepEqual(decidirCnpj({ avulsa: false, empresa: 'ANTIGA', cnpjAtual: '55', clientes }), { valor: '55', editavel: false, avisoSemCnpj: false })
 })
 
+test('dois clientes com o mesmo nome: ao editar, mantem o CNPJ atual se ele for de um deles', () => {
+  const dup = [
+    { nome: 'ACME', cnpj: '11.222.333/0001-44' },
+    { nome: 'ACME', cnpj: '55.666.777/0001-88' },
+  ]
+  const d = decidirCnpj({ avulsa: false, empresa: 'ACME', cnpjAtual: '55.666.777/0001-88', clientes: dup })
+  assert.deepEqual(d, { valor: '55.666.777/0001-88', editavel: false, avisoSemCnpj: false })
+  const outro = decidirCnpj({ avulsa: false, empresa: 'ACME', cnpjAtual: '00', clientes: dup })
+  assert.equal(outro.valor, '11.222.333/0001-44')
+})
+
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 

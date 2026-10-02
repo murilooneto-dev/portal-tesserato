@@ -12,6 +12,7 @@ import {
 import { montarRelatorioHtml } from '@/lib/parcelamentos-relatorio'
 import GerenciarSecoesModal from '@/components/fiscal/GerenciarSecoesModal'
 import { Pagina } from '@/components/ui/Pagina'
+import { useToast } from '@/components/ui/Toast'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import ParcelamentoModal, { type ClienteCadastrado } from '@/components/fiscal/parcelamentos/ParcelamentoModal'
 import ParcelamentosCabecalho from '@/components/fiscal/parcelamentos/ParcelamentosCabecalho'
@@ -41,6 +42,8 @@ export default function ParcelamentosPage() {
 
   const { ano, mes } = useMesAno()
   const confirmar = useConfirmar()
+  const avisar = useToast()
+  const [aoCriarSecao, setAoCriarSecao] = useState<((nome: string) => void) | null>(null)
 
   const sb = createClient()
 
@@ -57,11 +60,12 @@ export default function ParcelamentosPage() {
     setLoading(false)
   }
 
-  async function carregarSecoes(): Promise<SecaoParcelamento[]> {
-    const { data } = await sb.from('parcelamento_secoes').select('id, nome').order('created_at')
-    const secoesFrescas = data ?? []
-    setSecoes(secoesFrescas)
-    return secoesFrescas
+  function carregarSecoes(): PromiseLike<SecaoParcelamento[]> {
+    return sb.from('parcelamento_secoes').select('id, nome').order('created_at').then(({ data }) => {
+      const secoesFrescas = data ?? []
+      setSecoes(secoesFrescas)
+      return secoesFrescas
+    })
   }
 
   useEffect(() => {
@@ -85,7 +89,7 @@ export default function ParcelamentosPage() {
     sb.from('regimes').select('nome').eq('setor', 'fiscal').eq('ativo', true).order('nome').then(({ data }) => {
       setRegimes((data ?? []).map(r => r.nome as string))
     })
-    sb.from('parcelamento_secoes').select('id, nome').order('created_at').then(({ data }) => setSecoes(data ?? []))
+    carregarSecoes()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -106,7 +110,8 @@ export default function ParcelamentosPage() {
       perigo: true,
     })
     if (!ok) return
-    await sb.from('parcelamentos').delete().eq('id', id)
+    const { error } = await sb.from('parcelamentos').delete().eq('id', id)
+    if (error) { avisar('Não foi possível excluir o parcelamento. Tente de novo.', 'dng'); return }
     setItems(prev => prev.filter(p => p.id !== id))
     if (selecionadoId === id) setSelecionadoId(null)
   }
@@ -171,7 +176,7 @@ export default function ParcelamentosPage() {
           regimes={regimes}
           onClose={() => setModalOpen(false)}
           onSalvo={() => load(isAdmin, userNome)}
-          onGerenciarSecoes={() => setGerenciarSecoesOpen(true)}
+          onGerenciarSecoes={aoCriar => { setAoCriarSecao(() => aoCriar); setGerenciarSecoesOpen(true) }}
         />
       )}
 
@@ -180,6 +185,7 @@ export default function ParcelamentosPage() {
           secoes={secoes}
           onClose={() => setGerenciarSecoesOpen(false)}
           onChanged={handleSecoesChanged}
+          onCriada={aoCriarSecao ?? undefined}
         />
       )}
     </Pagina>

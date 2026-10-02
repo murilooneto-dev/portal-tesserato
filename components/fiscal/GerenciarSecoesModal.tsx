@@ -19,10 +19,12 @@ interface SecaoParcelamento {
 interface Props {
   secoes: SecaoParcelamento[]
   onClose: () => void
-  onChanged: () => void
+  onChanged: () => void | Promise<void>
+  /** Chamado depois que uma seção nova foi criada e a lista recarregada (nome já normalizado). */
+  onCriada?: (nome: string) => void
 }
 
-export default function GerenciarSecoesModal({ secoes, onClose, onChanged }: Props) {
+export default function GerenciarSecoesModal({ secoes, onClose, onChanged, onCriada }: Props) {
   const confirmar = useConfirmar()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -79,14 +81,15 @@ export default function GerenciarSecoesModal({ secoes, onClose, onChanged }: Pro
 
   async function criar() {
     const nome = novoNome.trim()
-    if (!nome) return
+    if (!nome || ocupado) return
     setErro(null)
     setCriando(true)
     try {
       const { error } = await criarSecaoParcelamento(nome)
       if (error) { setErro(error); return }
       setNovoNome('')
-      onChanged()
+      await onChanged()
+      onCriada?.(nome.toUpperCase())
     } finally {
       setCriando(false)
     }
