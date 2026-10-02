@@ -57,7 +57,7 @@ export default function ParcelamentosConteudo({ grupos, selecionadoId, mesAtual,
       <ParcelamentosLista grupos={grupos} selecionadoId={aberto?.id ?? null} mesAtual={mesAtual} onSelecionar={onSelecionar} />
       {desktop && detalhe}
       {!desktop && (
-        <Drawer aberto={Boolean(aberto)} onFechar={() => onSelecionar(null)} titulo={aberto?.empresa ?? ''} larguraPx={9999}>
+        <Drawer aberto={Boolean(aberto)} onFechar={() => onSelecionar(null)} titulo={aberto?.empresa ?? ''} larguraPx={640}>
           {detalhe}
         </Drawer>
       )}

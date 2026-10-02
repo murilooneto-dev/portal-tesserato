@@ -128,7 +128,7 @@ test('page: exclusão usa useConfirmar (perigo) e não há confirm()', () => {
   assert.doesNotMatch(src, /\b(alert|confirm)\(/)
   assert.ok(src.includes('useConfirmar'))
   assert.match(src, /perigo: true/)
-  assert.ok(src.includes('montarUpdateParcelamento(form, form.empresa_avulsa)'))
+  assert.ok(ler('components/fiscal/parcelamentos/ParcelamentoModal.tsx').includes('montarUpdateParcelamento(formFinal, formFinal.empresa_avulsa)'))
 })
 
 test('relatório usa escapeHtml', () => {
