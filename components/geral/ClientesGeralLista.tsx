@@ -130,12 +130,13 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
           <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou os filtros." />
         ) : (
           <div className="overflow-x-auto">
-            <Tabela className="min-w-[760px]">
+            <Tabela className="min-w-[940px]">
               <thead>
                 <tr>
                   {thOrdenavel('nome', 'Razão social')}
                   {thOrdenavel('regime', 'Regime', 170)}
                   <Th largura={150}>Atividade</Th>
+                  <Th largura={180}>Contato</Th>
                   <Th>Setores</Th>
                   <Th largura={160} className="hidden print:table-cell">Município</Th>
                   <Th largura={56} className="print:hidden"><span className="sr-only">Ações</span></Th>
@@ -159,6 +160,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
                           : <span className="text-fg-3">—</span>}
                       </Td>
                       <Td className="text-fg-2">{atividades.length > 0 ? atividades.join(', ') : <span className="text-fg-3">—</span>}</Td>
+                      <Td className="text-fg-2">{c.contato_chat?.trim() ? <span className="block truncate" title={c.contato_chat}>{c.contato_chat}</span> : <span className="text-fg-3">—</span>}</Td>
                       <Td>
                         <div className="flex flex-wrap gap-1.5">
                           {setoresDoCliente(c.setores).map(s => <Badge key={s}>{SETOR_LABEL[s]}</Badge>)}
