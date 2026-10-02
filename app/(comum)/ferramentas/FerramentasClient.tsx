@@ -159,7 +159,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
               type="button"
               onClick={() => toggleCard(tipo)}
               aria-expanded={ativo}
-              aria-controls="lista-ferramenta"
+              aria-controls={ativo ? 'lista-ferramenta' : undefined}
               className="flex flex-col gap-3 rounded-xl border border-line-soft bg-surface px-5 py-[18px] text-left transition-colors hover:border-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
               style={ativo ? { borderColor: meta.cor, background: `color-mix(in srgb, ${meta.cor} 8%, var(--surface))` } : undefined}
             >
@@ -210,7 +210,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
               </thead>
               <tbody>
                 {listaFiltrada.length === 0 && (
-                  <tr><Td colSpan={7} alinhar="centro" className="py-10 text-fg-3">Nenhum cliente encontrado.</Td></tr>
+                  <tr><Td colSpan={3 + (aberto === 'ISS' ? 3 : 0) + (isAdmin ? 1 : 0)} alinhar="centro" className="py-10 text-fg-3">Nenhum cliente encontrado.</Td></tr>
                 )}
                 {listaFiltrada.map((c, i) => (
                   <tr key={c.id}>

@@ -16,7 +16,7 @@ export function CampoSenha({ invalido, className, ...rest }: Omit<InputHTMLAttri
         rotulo={mostrar ? 'Ocultar senha' : 'Mostrar senha'}
         icone={mostrar ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
         onClick={() => setMostrar(v => !v)}
-        className="absolute right-1.5 top-1/2 -translate-y-1/2"
+        className="absolute right-0.5 top-1/2 h-10 w-10 -translate-y-1/2"
       />
     </div>
   )

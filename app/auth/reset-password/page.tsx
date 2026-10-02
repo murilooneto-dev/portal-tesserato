@@ -50,7 +50,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <TelaAcesso rodape={<Link href="/login" className="text-center text-[13px] text-fg-2 hover:text-fg">Voltar ao login</Link>}>
+    <TelaAcesso rodape={<Link href="/login" className="inline-flex min-h-11 items-center justify-center text-center text-[13px] text-fg-2 hover:text-fg">Voltar ao login</Link>}>
       {ok ? (
         <div role="status" className="flex flex-col items-center gap-3 text-center">
           <span aria-hidden="true" className="grid h-[52px] w-[52px] place-items-center rounded-full bg-ok-soft text-ok"><CheckCircle2 size={24} /></span>

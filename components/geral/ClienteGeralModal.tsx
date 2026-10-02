@@ -263,16 +263,16 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
       <Modal
         aberto
         onFechar={onClose}
-        bloqueado={saving}
+        bloqueado={saving || reabilitando}
         largura="g"
         titulo={titulo}
         subtitulo={isEdit ? (identidadeSalva?.nome || undefined) : 'Cadastro geral, vale para todos os setores'}
         rodape={
           <div className="flex w-full flex-wrap items-center gap-2.5">
-            {!readOnly && isEdit && (
+            {!readOnly && isEdit && !loading && (
               <Button variante="perigo" icone={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmandoExclusao(true)} disabled={!identidadeSalva || saving}>Excluir cliente</Button>
             )}
-            {podeDesabilitar && isEdit && temSetorDesabilitavel && (
+            {podeDesabilitar && isEdit && !loading && temSetorDesabilitavel && (
               desabilitada
                 ? <Button variante="fantasma" onClick={handleReabilitar} carregando={reabilitando}>{reabilitando ? 'Reabilitando…' : 'Reabilitar'}</Button>
                 : <Button variante="fantasma" onClick={() => setDesabilitarModalOpen(true)} disabled={saving}>Desabilitar</Button>
@@ -303,7 +303,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
                     value={form.cnpj} onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }} />}
                 </Field>
                 <Field rotulo="Razão social" obrigatorio className="sm:col-span-2">
-                  {c => <Input id={c.id} disabled={readOnly} value={form.nome} onChange={e => set('nome', e.target.value)} />}
+                  {c => <Input id={c.id} data-autofocus disabled={readOnly} value={form.nome} onChange={e => set('nome', e.target.value)} />}
                 </Field>
                 <Field rotulo="Município" className="sm:col-span-2">
                   {c => <Input id={c.id} disabled={readOnly} value={form.municipio} onChange={e => set('municipio', e.target.value)} />}

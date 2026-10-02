@@ -23,6 +23,15 @@ export function DiaModal({ aberto, titulo, ehHoje, itens, hoje, onNovo, onEditar
   onFechar: () => void
 }) {
   const [aberta, setAberta] = useState<string | null>(itens[0]?.id ?? null)
+  // Compromisso novo criado com o dia aberto aparece expandido (ajuste de estado na renderização).
+  const idsAtuais = itens.map(i => i.id).join('|')
+  const [idsAnteriores, setIdsAnteriores] = useState(idsAtuais)
+  if (idsAnteriores !== idsAtuais) {
+    const antes = new Set(idsAnteriores.split('|'))
+    const novo = itens.find(i => !antes.has(i.id))
+    setIdsAnteriores(idsAtuais)
+    if (novo) setAberta(novo.id)
+  }
   return (
     <Modal
       aberto={aberto}

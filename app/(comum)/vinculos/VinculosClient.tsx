@@ -49,10 +49,7 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
 
   async function handleCriar() {
     if (tiposOrigem.length === 0 || tiposDestino.length === 0) return
-    if (pares.length === 0) {
-      setErro('Todos os vínculos selecionados já existem no catálogo.')
-      return
-    }
+    if (pares.length === 0) return
     setSaving(true)
     setErro(null)
     const { error } = await criarVinculos({ setorOrigem, setorDestino, pares })
@@ -76,6 +73,7 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
     const { error } = await excluirVinculo(v.id)
     setExcluindoId(null)
     if (error) { setErro(error); return }
+    setErro(null)
     avisar('Vínculo excluído.', 'ok')
     router.refresh()
   }
@@ -122,14 +120,14 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
 
       <Card titulo="Novo vínculo">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_48px_1fr] md:items-start">
-          <LadoVinculo titulo="origem" setor={setorOrigem} onSetor={s => { setSetorOrigem(s); setTiposOrigem([]) }}
-            tipos={tiposOrigemDisponiveis} marcados={tiposOrigem} onMarcar={t => toggleTipo(tiposOrigem, setTiposOrigem, t)} />
-          <div aria-hidden="true" className="grid place-items-center text-acc-text md:pt-[124px]">
+          <LadoVinculo titulo="origem" setor={setorOrigem} onSetor={s => { setSetorOrigem(s); setTiposOrigem([]); setErro(null) }}
+            tipos={tiposOrigemDisponiveis} marcados={tiposOrigem} onMarcar={t => { toggleTipo(tiposOrigem, setTiposOrigem, t); setErro(null) }} />
+          <div aria-hidden="true" className="grid place-items-center text-acc-text md:self-center">
             <ChevronDown size={28} className="md:hidden" />
             <ChevronRight size={28} className="hidden md:block" />
           </div>
-          <LadoVinculo titulo="destino" setor={setorDestino} onSetor={s => { setSetorDestino(s); setTiposDestino([]) }}
-            tipos={tiposDestinoDisponiveis} marcados={tiposDestino} onMarcar={t => toggleTipo(tiposDestino, setTiposDestino, t)} />
+          <LadoVinculo titulo="destino" setor={setorDestino} onSetor={s => { setSetorDestino(s); setTiposDestino([]); setErro(null) }}
+            tipos={tiposDestinoDisponiveis} marcados={tiposDestino} onMarcar={t => { toggleTipo(tiposDestino, setTiposDestino, t); setErro(null) }} />
         </div>
         {erro && <div role="alert" className="mt-4"><Aviso tom="dng">{erro}</Aviso></div>}
         <div className="mt-[18px] flex flex-wrap items-center gap-3 border-t border-line-soft pt-4">

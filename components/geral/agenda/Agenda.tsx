@@ -21,7 +21,7 @@ import { CompromissoModal } from './CompromissoModal'
 // Agenda pessoal (tabela `agenda`, só os compromissos do próprio usuário).
 // Usada no Início e em /fiscal/agenda.
 export default function Agenda({ titulo, subtitulo, topo }: { titulo: string; subtitulo: string; topo?: ReactNode }) {
-  const [hoje] = useState(() => new Date())
+  const [hoje, setHoje] = useState(() => new Date())
   const [mes, setMes] = useState(hoje.getMonth() + 1)
   const [ano, setAno] = useState(hoje.getFullYear())
   const [itens, setItens] = useState<Compromisso[]>([])
@@ -44,6 +44,21 @@ export default function Agenda({ titulo, subtitulo, topo }: { titulo: string; su
       if (user) { setUserId(user.id); carregar(user.id) }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // "Hoje" não fica congelado: se a janela volta ao foco em outro dia, recalcula.
+  useEffect(() => {
+    function atualizarHoje() {
+      const agora = new Date()
+      setHoje(atual => (chaveDeHoje(atual) === chaveDeHoje(agora) ? atual : agora))
+    }
+    function aoVoltar() { if (document.visibilityState === 'visible') atualizarHoje() }
+    window.addEventListener('focus', atualizarHoje)
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => {
+      window.removeEventListener('focus', atualizarHoje)
+      document.removeEventListener('visibilitychange', aoVoltar)
+    }
   }, [])
 
   function irPara(delta: -1 | 1) {

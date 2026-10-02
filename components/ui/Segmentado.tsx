@@ -19,6 +19,7 @@ export function Segmentado<T extends string>({ rotulo, opcoes, valor, onMudar, d
     onMudar(opcoes[indice].valor)
     e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')[indice]?.focus()
   }
+  const temAtivo = opcoes.some(o => o.valor === valor)
   return (
     <div
       role="radiogroup"
@@ -26,7 +27,7 @@ export function Segmentado<T extends string>({ rotulo, opcoes, valor, onMudar, d
       onKeyDown={teclado}
       className={cn('inline-flex h-9 max-w-full overflow-hidden rounded-[9px] border border-line bg-inset', className)}
     >
-      {opcoes.map(o => {
+      {opcoes.map((o, i) => {
         const ativo = o.valor === valor
         return (
           <button
@@ -34,7 +35,7 @@ export function Segmentado<T extends string>({ rotulo, opcoes, valor, onMudar, d
             type="button"
             role="radio"
             aria-checked={ativo}
-            tabIndex={ativo ? 0 : -1}
+            tabIndex={ativo || (!temAtivo && i === 0) ? 0 : -1}
             disabled={disabled}
             onClick={() => onMudar(o.valor)}
             className={cn(

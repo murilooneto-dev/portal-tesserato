@@ -80,7 +80,7 @@ export default function LoginForm() {
         <p className="text-[13px] text-fg-2">
           Abra a caixa de entrada de <b className="font-semibold text-fg">{emailReset}</b> e siga o link para criar a nova senha.
         </p>
-        <button type="button" onClick={() => { setView('login'); setEmailReset('') }} className="mt-1 text-[13px] font-semibold text-acc-text hover:underline">
+        <button type="button" onClick={() => { setView('login'); setEmailReset('') }} className="mt-1 inline-flex min-h-11 items-center text-[13px] font-semibold text-acc-text hover:underline">
           Voltar ao login
         </button>
       </div>
@@ -103,7 +103,7 @@ export default function LoginForm() {
         <Button type="submit" variante="primario" tamanho="g" carregando={enviandoReset} className="w-full">
           {enviandoReset ? 'Enviando…' : 'Enviar link'}
         </Button>
-        <button type="button" onClick={() => setView('login')} className="text-center text-[13px] text-fg-2 hover:text-fg">Voltar ao login</button>
+        <button type="button" onClick={() => setView('login')} className="min-h-11 text-center text-[13px] text-fg-2 hover:text-fg">Voltar ao login</button>
       </form>
     )
   }
@@ -123,8 +123,8 @@ export default function LoginForm() {
         )}
       </Field>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Checkbox rotulo="Permanecer conectado" checked={lembrar} onChange={e => setLembrar(e.target.checked)} />
-        <button type="button" onClick={() => { setView('forgot'); setEmailReset(email) }} className="text-[13px] font-semibold text-acc-text hover:underline">
+        <Checkbox rotulo="Permanecer conectado" className="min-h-11" checked={lembrar} onChange={e => setLembrar(e.target.checked)} />
+        <button type="button" onClick={() => { setView('forgot'); setEmailReset(email) }} className="inline-flex min-h-11 items-center text-[13px] font-semibold text-acc-text hover:underline">
           Esqueci minha senha
         </button>
       </div>

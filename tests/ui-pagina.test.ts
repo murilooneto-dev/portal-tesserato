@@ -47,3 +47,14 @@ test('Chip: aria-pressed e marca de seleção só quando ativo', () => {
   assert.doesNotMatch(off, /<svg/)
   assert.match(off, /type="button"/)
 })
+
+test('Segmentado: valor inexistente deixa a primeira opção no Tab', () => {
+  const html = renderToStaticMarkup(h(Segmentado, {
+    rotulo: 'Situação',
+    opcoes: [{ valor: 'a', rotulo: 'A' }, { valor: 'b', rotulo: 'B' }],
+    valor: 'zzz',
+    onMudar: nada,
+  }))
+  assert.equal((html.match(/tabindex="0"/g) ?? []).length, 1)
+  assert.match(html, /tabindex="0"[^>]*>A</)
+})

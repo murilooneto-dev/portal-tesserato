@@ -41,6 +41,18 @@ export default function LinksUteis({ links, isAdmin }: { links: LinkRapido[]; is
   function editar(l: LinkRapido, campo: keyof EdicaoLink, v: string) {
     setEdicoes(p => ({ ...p, [l.id]: { ...valor(l), [campo]: v } }))
     setErros(p => semChave(p, l.id))
+    setErroGeral(null)
+  }
+
+  const temNovoPreenchido = novo.titulo.trim() !== '' || novo.url.trim() !== ''
+
+  // Sair da edição sem salvar: se o cartão de link novo tem texto, pede confirmação antes de apagar.
+  async function descartar() {
+    if (temNovoPreenchido) {
+      const ok = await confirmar({ titulo: 'Descartar o link novo?', descricao: 'O que você digitou no link novo será apagado.', textoConfirmar: 'Descartar', perigo: true })
+      if (!ok) return
+    }
+    sairDaEdicao()
   }
 
   function sairDaEdicao() {
@@ -60,7 +72,7 @@ export default function LinksUteis({ links, isAdmin }: { links: LinkRapido[]; is
     }
     setErros(novosErros)
     if (Object.keys(novosErros).length > 0) return
-    if (pendentes.length === 0) { sairDaEdicao(); return }
+    if (pendentes.length === 0) { void descartar(); return }
     setErroGeral(null)
     iniciar(async () => {
       const falhas: string[] = []
@@ -71,6 +83,7 @@ export default function LinksUteis({ links, isAdmin }: { links: LinkRapido[]; is
       router.refresh()
       if (falhas.length > 0) {
         setEdicoes(prev => Object.fromEntries(Object.entries(prev).filter(([id]) => falhas.includes(id))))
+        setErros(Object.fromEntries(falhas.map(id => [id, { url: 'Não foi possível salvar.' }])))
         setErroGeral(`Não foi possível salvar ${contar(falhas.length)}. Tente de novo.`)
         return
       }
@@ -105,7 +118,7 @@ export default function LinksUteis({ links, isAdmin }: { links: LinkRapido[]; is
 
   const acoes = !isAdmin ? undefined : editando ? (
     <>
-      {pendentes.length > 0 && <Button variante="fantasma" tamanho="p" onClick={sairDaEdicao} disabled={ocupado}>Descartar</Button>}
+      {pendentes.length > 0 && <Button variante="fantasma" tamanho="p" onClick={descartar} disabled={ocupado}>Descartar</Button>}
       <Button tamanho="p" icone={<Check size={14} aria-hidden="true" />} onClick={concluir} carregando={ocupado}>Concluir edição</Button>
     </>
   ) : (
@@ -143,10 +156,10 @@ export default function LinksUteis({ links, isAdmin }: { links: LinkRapido[]; is
             <li className="flex flex-col gap-2.5 rounded-xl border border-dashed border-line p-3.5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field rotulo="Nome" erro={erroNovo.titulo}>
-                  {c => <Input id={c.id} aria-describedby={c.describedBy} invalido={c.invalido} placeholder="Ex.: Portal da Prefeitura" value={novo.titulo} onChange={ev => setNovo(p => ({ ...p, titulo: ev.target.value }))} />}
+                  {c => <Input id={c.id} aria-describedby={c.describedBy} invalido={c.invalido} placeholder="Ex.: Portal da Prefeitura" value={novo.titulo} onChange={ev => { setNovo(p => ({ ...p, titulo: ev.target.value })); setErroGeral(null) }} />}
                 </Field>
                 <Field rotulo="Endereço" erro={erroNovo.url}>
-                  {c => <Input id={c.id} aria-describedby={c.describedBy} invalido={c.invalido} inputMode="url" placeholder="https://" value={novo.url} onChange={ev => setNovo(p => ({ ...p, url: ev.target.value }))} />}
+                  {c => <Input id={c.id} aria-describedby={c.describedBy} invalido={c.invalido} inputMode="url" placeholder="https://" value={novo.url} onChange={ev => { setNovo(p => ({ ...p, url: ev.target.value })); setErroGeral(null) }} />}
                 </Field>
               </div>
               <div className="flex justify-end">

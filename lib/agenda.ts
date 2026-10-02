@@ -105,10 +105,18 @@ export function formVazio(data = ''): FormCompromisso {
   return { titulo: '', descricao: '', data_compromisso: data, hora_compromisso: '', status: 'pendente', lembrete_3_dias: false }
 }
 
+/** AAAA-MM-DD que existe no calendário (recusa 2026-02-30 e 2026-13-45). */
+function dataValida(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+  const [a, m, d] = s.split('-').map(Number)
+  const dt = new Date(a, m - 1, d)
+  return dt.getFullYear() === a && dt.getMonth() === m - 1 && dt.getDate() === d
+}
+
 export function validarCompromisso(f: FormCompromisso): { titulo?: string; data_compromisso?: string } {
   const erros: { titulo?: string; data_compromisso?: string } = {}
   if (!f.titulo.trim()) erros.titulo = 'Informe o título.'
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(f.data_compromisso)) erros.data_compromisso = 'Informe a data.'
+  if (!dataValida(f.data_compromisso)) erros.data_compromisso = 'Informe a data.'
   return erros
 }
 

@@ -100,3 +100,10 @@ test('formulário: título e data obrigatórios; payload limpa espaços e vazios
   assert.equal(p.hora_compromisso, null)
   assert.equal(formVazio('2026-09-30').status, 'pendente')
 })
+
+test('validarCompromisso: data no formato certo mas impossível também é inválida', () => {
+  for (const d of ['2026-13-45', '2026-02-30', '2026-00-10', '2026-04-31']) {
+    assert.deepEqual(validarCompromisso({ ...formVazio(d), titulo: 'X' }), { data_compromisso: 'Informe a data.' }, d)
+  }
+  assert.deepEqual(validarCompromisso({ ...formVazio('2028-02-29'), titulo: 'X' }), {})
+})

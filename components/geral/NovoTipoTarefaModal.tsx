@@ -128,7 +128,7 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
               {etapas.map((e, i) => (
                 <li key={i} className="inline-flex h-[30px] items-center gap-1 rounded-full border border-line bg-acc-soft pl-3 pr-1 text-[13px] text-fg">
                   {e}
-                  <IconButton rotulo={`Remover ${e}`} icone={<X size={14} aria-hidden="true" />} onClick={() => setEtapas(prev => prev.filter((_, idx) => idx !== i))} className="h-6 w-6" />
+                  <IconButton rotulo={`Remover ${e}`} icone={<X size={14} aria-hidden="true" />} onClick={() => setEtapas(prev => prev.filter((_, idx) => idx !== i))} className="h-8 w-8" />
                 </li>
               ))}
             </ul>
