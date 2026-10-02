@@ -1,28 +1,26 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import type { Cliente, TarefaVinculo } from '@/lib/types'
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Pencil, Plus, Printer, Search, Users } from 'lucide-react'
+import { SETOR_LABEL, type Cliente, type TarefaVinculo } from '@/lib/types'
 import ClienteGeralModal from './ClienteGeralModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { empresaDesabilitada, empresaTemSetorDesabilitavel } from '@/lib/cliente-ativo'
-
-const CORES_REGIME: Record<string, string> = {
-  simples:   '#10b981',
-  presumido: '#0ea5e9',
-  real:      '#8b5cf6',
-  mei:       '#f59e0b',
-  isenta:    '#6b7280',
-  normal:    '#3b82f6',
-}
-
-function corRegime(regime: string): string {
-  const r = regime.toLowerCase()
-  for (const [key, cor] of Object.entries(CORES_REGIME)) {
-    if (r.includes(key)) return cor
-  }
-  return '#6b7280'
-}
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Chip } from '@/components/ui/Chip'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Input, Select } from '@/components/ui/Input'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
+import {
+  SETORES_DE_CLIENTE, TODOS, filtrarClientesGeral, proximaOrdenacao, ariaSort, setoresDoCliente,
+  type Ordenacao, type CampoOrdem,
+} from '@/lib/clientes-geral'
 
 type ClienteComDadosFiscais = Cliente & {
   clientes_fiscal: { regime: string | null; atividade: string[]; ativo: boolean } | null
@@ -35,19 +33,19 @@ interface Props {
   isAdmin: boolean
   podeCriar: boolean
   podeDesabilitar: boolean
-  responsaveis: string[]
   vinculosCatalogo: TarefaVinculo[]
   catalogoFiscal: CatalogoCliente
 }
 
-export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeDesabilitar, responsaveis, vinculosCatalogo, catalogoFiscal }: Props) {
+export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeDesabilitar, vinculosCatalogo, catalogoFiscal }: Props) {
   const [busca, setBusca] = useState('')
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
   const [clienteAbertoId, setClienteAbertoId] = useState<string | null>(null)
   const clienteAberto = clientes.find(c => c.id === clienteAbertoId)
-  const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientesGeral:regime', 'TODOS')
+  const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientesGeral:regime', TODOS)
+  const [filtroSetor, setFiltroSetor] = useFiltroPersistente('clientesGeral:setor', TODOS)
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('clientesGeral:atividade', [])
-  const [ordenacao, setOrdenacao] = useState<{ campo: 'nome' | 'regime'; direcao: 'asc' | 'desc' } | null>(null)
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>(null)
 
   function toggleAtividade(nome: string) {
     setFiltroAtividade(
@@ -55,170 +53,140 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
     )
   }
 
-  function toggleOrdenacao(campo: 'nome' | 'regime') {
-    setOrdenacao(atual => {
-      if (atual?.campo !== campo) return { campo, direcao: 'asc' }
-      if (atual.direcao === 'asc') return { campo, direcao: 'desc' }
-      return null
-    })
-  }
+  const filtrados = useMemo(
+    () => filtrarClientesGeral(clientes, { busca, regime: filtroRegime, setor: filtroSetor, atividades: filtroAtividade }, ordenacao),
+    [clientes, busca, filtroRegime, filtroSetor, filtroAtividade, ordenacao],
+  )
 
-  const filtrados = useMemo(() => {
-    const lista = clientes.filter(c => {
-      if (busca) {
-        const q = busca.toLowerCase()
-        if (!c.nome.toLowerCase().includes(q) && !(c.cnpj ?? '').includes(q)) return false
-      }
-      if (filtroRegime !== 'TODOS' && c.clientes_fiscal?.regime !== filtroRegime) return false
-      if (filtroAtividade.length > 0 && !filtroAtividade.some(a => (c.clientes_fiscal?.atividade ?? []).includes(a))) return false
-      return true
-    })
+  const total = clientes.length
+  const subtitulo = filtrados.length === total
+    ? `${total} ${total === 1 ? 'cliente' : 'clientes'} · todos os setores`
+    : `${filtrados.length} de ${total} clientes · todos os setores`
 
-    if (!ordenacao) return lista
-
-    const valor = (c: ClienteComDadosFiscais) => ordenacao.campo === 'nome'
-      ? c.nome.toLowerCase()
-      : (c.clientes_fiscal?.regime ?? '').toLowerCase()
-
-    return [...lista].sort((a, b) => {
-      const cmp = valor(a).localeCompare(valor(b))
-      return ordenacao.direcao === 'asc' ? cmp : -cmp
-    })
-  }, [clientes, busca, filtroRegime, filtroAtividade, ordenacao])
-
-  function iconeOrdenacao(campo: 'nome' | 'regime') {
-    if (ordenacao?.campo !== campo) return <span className="text-[var(--fg)]/20">↕</span>
-    return <span className="text-[var(--accent)]">{ordenacao.direcao === 'asc' ? '↑' : '↓'}</span>
-  }
-
-  const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
+  const thOrdenavel = (campo: CampoOrdem, rotulo: string, largura?: number) => (
+    <Th largura={largura} aria-sort={ariaSort(ordenacao, campo)}>
+      <button
+        type="button"
+        onClick={() => setOrdenacao(o => proximaOrdenacao(o, campo))}
+        className="inline-flex items-center gap-1.5 rounded uppercase hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+      >
+        {rotulo}
+        {ordenacao?.campo !== campo
+          ? <ArrowUpDown size={14} aria-hidden="true" />
+          : ordenacao.direcao === 'asc'
+            ? <ArrowUp size={14} aria-hidden="true" className="text-acc-text" />
+            : <ArrowDown size={14} aria-hidden="true" className="text-acc-text" />}
+      </button>
+    </Th>
+  )
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6 no-print">
-        <h1 className="text-2xl font-bold text-[var(--fg)]">Clientes</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => window.print()}
-            className="px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/15 text-[var(--fg)] text-sm font-semibold hover:border-[var(--fg)]/30 transition-colors whitespace-nowrap">
-            Imprimir
-          </button>
-          {podeCriar && (
-            <button
-              onClick={() => setModalNovoOpen(true)}
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
-              + Novo Cliente
-            </button>
+    <Pagina>
+      <CabecalhoPagina
+        titulo="Cadastro de clientes"
+        subtitulo={subtitulo}
+        acoes={
+          <>
+            <Button icone={<Printer size={16} aria-hidden="true" />} onClick={() => window.print()}>Imprimir</Button>
+            {podeCriar && <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalNovoOpen(true)}>Novo cliente</Button>}
+          </>
+        }
+      />
+
+      <div className="flex flex-wrap items-end gap-3 print:hidden">
+        <Field rotulo="Buscar" className="w-full sm:w-[300px]">
+          {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Nome ou CNPJ" value={busca} onChange={e => setBusca(e.target.value)} />}
+        </Field>
+        <Field rotulo="Regime" className="w-full sm:w-[190px]">
+          {c => (
+            <Select id={c.id} value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)}>
+              <option value={TODOS}>Todos</option>
+              {catalogoFiscal.regimes.map(r => <option key={r} value={r}>{r}</option>)}
+            </Select>
           )}
-        </div>
-      </div>
-
-      <h1 className="hidden print-only text-2xl font-bold text-[var(--fg)] mb-6">Clientes</h1>
-
-      <div className="flex flex-wrap items-center gap-2 mb-3 no-print">
-        <input
-          type="text"
-          placeholder="Buscar por nome ou CNPJ..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-        />
-        <select value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os regimes</option>
-          {catalogoFiscal.regimes.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
-        </select>
-      </div>
-
-      {catalogoFiscal.atividades.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-3 no-print">
-          <span className="text-xs text-[var(--fg)]/40">Atividade:</span>
-          {catalogoFiscal.atividades.map(nome => (
-            <button
-              key={nome}
-              type="button"
-              onClick={() => toggleAtividade(nome)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                filtroAtividade.includes(nome)
-                  ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
-                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
-              }`}
-            >
-              {nome}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="overflow-x-auto rounded-xl border border-[var(--fg)]/12">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[var(--fg)]/12">
-              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">
-                <button type="button" onClick={() => toggleOrdenacao('nome')} className="flex items-center gap-1.5 hover:text-[var(--fg)] transition-colors">
-                  Razão Social {iconeOrdenacao('nome')}
-                </button>
-              </th>
-              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">CNPJ</th>
-              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">Endereço</th>
-              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">
-                <button type="button" onClick={() => toggleOrdenacao('regime')} className="flex items-center gap-1.5 hover:text-[var(--fg)] transition-colors">
-                  Regime {iconeOrdenacao('regime')}
-                </button>
-              </th>
-              <th className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">Atividade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtrados.map(c => (
-              <tr key={c.id}
-                className="border-b border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 transition-colors">
-                <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
-                  <button type="button" onClick={() => setClienteAbertoId(c.id)}
-                    className="text-[var(--fg)] hover:text-[var(--accent)] hover:underline cursor-pointer transition-colors text-left">
-                    {c.nome}
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-[var(--fg)]/50 text-xs font-mono whitespace-nowrap">{c.cnpj ?? '—'}</td>
-                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs whitespace-nowrap">
-                  {[c.municipio, c.uf].filter(Boolean).join('/') || '—'}
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {c.clientes_fiscal?.regime ? (
-                    <span className="font-bold px-2 py-0.5 rounded-md"
-                      style={{ backgroundColor: corRegime(c.clientes_fiscal.regime) + '25', color: corRegime(c.clientes_fiscal.regime), border: `1px solid ${corRegime(c.clientes_fiscal.regime)}50` }}>
-                      {c.clientes_fiscal.regime.split('/')[0].trim()}
-                    </span>
-                  ) : (
-                    <span className="text-[var(--fg)]/30">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  <div className="flex flex-wrap gap-1">
-                    {(c.clientes_fiscal?.atividade ?? []).map(a => (
-                      <span key={a} className="font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-                        {a}
-                      </span>
-                    ))}
-                    {(c.clientes_fiscal?.atividade ?? []).length === 0 && (
-                      <span className="text-[var(--fg)]/30">—</span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtrados.length === 0 && (
-          <p className="text-center text-[var(--fg)]/30 py-12 text-sm">Nenhum cliente encontrado.</p>
+        </Field>
+        <Field rotulo="Setor" className="w-full sm:w-[170px]">
+          {c => (
+            <Select id={c.id} value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)}>
+              <option value={TODOS}>Todos</option>
+              {SETORES_DE_CLIENTE.map(s => <option key={s} value={s}>{SETOR_LABEL[s]}</option>)}
+            </Select>
+          )}
+        </Field>
+        {catalogoFiscal.atividades.length > 0 && (
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span id="rotulo-filtro-atividade" className="text-[13px] font-medium text-fg-2">Atividade</span>
+            <div role="group" aria-labelledby="rotulo-filtro-atividade" className="flex flex-wrap gap-2">
+              {catalogoFiscal.atividades.map(nome => (
+                <Chip key={nome} ativo={filtroAtividade.includes(nome)} onClick={() => toggleAtividade(nome)}>{nome}</Chip>
+              ))}
+            </div>
+          </div>
         )}
       </div>
+
+      <Card semPadding className="overflow-hidden">
+        {filtrados.length === 0 ? (
+          <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou os filtros." />
+        ) : (
+          <div className="overflow-x-auto">
+            <Tabela className="min-w-[940px]">
+              <thead>
+                <tr>
+                  {thOrdenavel('nome', 'Razão social')}
+                  {thOrdenavel('regime', 'Regime', 170)}
+                  <Th largura={150}>Atividade</Th>
+                  <Th largura={180}>Contato</Th>
+                  <Th>Setores</Th>
+                  <Th largura={160} className="hidden print:table-cell">Município</Th>
+                  <Th largura={56} className="print:hidden"><span className="sr-only">Ações</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map(c => {
+                  const desabilitado = empresaDesabilitada([c.clientes_fiscal, c.clientes_contabil, c.clientes_pessoal])
+                  const regime = c.clientes_fiscal?.regime
+                  const atividades = c.clientes_fiscal?.atividade ?? []
+                  return (
+                    <tr key={c.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
+                      <Td>
+                        <button type="button" onClick={() => setClienteAbertoId(c.id)} className="block w-full min-w-0 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <NomeCliente nome={c.nome} cnpj={c.cnpj} depoisDoNome={desabilitado ? <Badge tom="warn">Desabilitado</Badge> : undefined} />
+                        </button>
+                      </Td>
+                      <Td>
+                        {regime
+                          ? <Badge tom="acc" className="max-w-full overflow-hidden"><span className="truncate" title={regime}>{regime.split('/')[0].trim()}</span></Badge>
+                          : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td className="text-fg-2">{atividades.length > 0 ? atividades.join(', ') : <span className="text-fg-3">—</span>}</Td>
+                      <Td className="text-fg-2">{c.contato_chat?.trim() ? <span className="block truncate" title={c.contato_chat}>{c.contato_chat}</span> : <span className="text-fg-3">—</span>}</Td>
+                      <Td>
+                        <div className="flex flex-wrap gap-1.5">
+                          {setoresDoCliente(c.setores).map(s => <Badge key={s}>{SETOR_LABEL[s]}</Badge>)}
+                        </div>
+                      </Td>
+                      <Td className="hidden text-fg-2 print:table-cell">{[c.municipio, c.uf].filter(Boolean).join('/') || '—'}</Td>
+                      <Td alinhar="dir" className="print:hidden">
+                        <IconButton
+                          rotulo={`${isAdmin ? 'Editar' : 'Ver'} ${c.nome}`}
+                          icone={isAdmin ? <Pencil size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                          onClick={() => setClienteAbertoId(c.id)}
+                        />
+                      </Td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </Tabela>
+          </div>
+        )}
+      </Card>
 
       {modalNovoOpen && (
         <ClienteGeralModal
           clienteId={null}
-          responsaveis={responsaveis}
           vinculosCatalogo={vinculosCatalogo}
-          catalogoFiscal={catalogoFiscal}
           onClose={() => setModalNovoOpen(false)}
         />
       )}
@@ -226,9 +194,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
       {clienteAbertoId && (
         <ClienteGeralModal
           clienteId={clienteAbertoId}
-          responsaveis={responsaveis}
           vinculosCatalogo={vinculosCatalogo}
-          catalogoFiscal={catalogoFiscal}
           readOnly={!isAdmin}
           podeDesabilitar={podeDesabilitar}
           desabilitada={empresaDesabilitada([clienteAberto?.clientes_fiscal, clienteAberto?.clientes_contabil, clienteAberto?.clientes_pessoal])}
@@ -236,6 +202,6 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
           onClose={() => setClienteAbertoId(null)}
         />
       )}
-    </div>
+    </Pagina>
   )
 }

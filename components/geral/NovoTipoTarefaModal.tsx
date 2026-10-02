@@ -1,6 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { Plus, X } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Select } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
+import { cn } from '@/components/ui/cn'
 import { criarTipoTarefa } from '@/lib/tarefa-tipos-actions'
 import { mesesVisiveisDaPeriodicidade, type Periodicidade } from '@/lib/tarefas-societario-periodicidade'
 import type { UserSetor, TipoResposta } from '@/lib/types'
@@ -19,9 +26,6 @@ interface Props {
   onCancel: () => void
   onCriado: (nome: string) => void
 }
-
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
 const FORMATOS_BASE: { value: Formato; label: string; desc: string }[] = [
   { value: 'data', label: 'Data', desc: 'Checkbox simples com data de conclusão' },
@@ -76,90 +80,67 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onCancel()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
-
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">Novo tipo de tarefa</h2>
-          <button onClick={onCancel} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          <p className="text-[var(--fg)]/60 text-sm">
-            &quot;<span className="font-semibold text-[var(--fg)]">{nome}</span>&quot; ainda não existe no catálogo. Escolha o formato de resposta:
-          </p>
-
-          {(setor === 'societario' || setor === 'financeiro') && (
-            <div>
-              <label className={labelCls}>Periodicidade</label>
-              <select value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)} className={inputCls}>
-                {PERIODICIDADES.map(p => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
+    <Modal
+      aberto
+      onFechar={onCancel}
+      bloqueado={salvando}
+      titulo="Novo tipo de tarefa"
+      subtitulo={`"${nome}" ainda não existe no catálogo`}
+      largura="p"
+      rodape={
+        <>
+          <Button variante="fantasma" onClick={onCancel} disabled={salvando} className="ml-auto">Cancelar</Button>
+          <Button variante="primario" onClick={handleCriar} disabled={temEtapas && etapas.length === 0} carregando={salvando}>
+            {salvando ? 'Criando…' : 'Criar tipo'}
+          </Button>
+        </>
+      }
+    >
+      {(setor === 'societario' || setor === 'financeiro') && (
+        <Field rotulo="Periodicidade">
+          {c => (
+            <Select id={c.id} value={periodicidade} onChange={e => setPeriodicidade(e.target.value as Periodicidade)}>
+              {PERIODICIDADES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </Select>
           )}
-
-          <div className="space-y-2">
-            {FORMATOS.map(f => (
-              <label key={f.value}
-                className={`flex items-start gap-3 cursor-pointer px-4 py-3 rounded-xl border transition-all ${
-                  formato === f.value ? 'border-[var(--accent)]/50 bg-[var(--accent)]/8' : 'border-[var(--fg)]/8 bg-[var(--fg)]/2'
-                }`}>
-                <input type="radio" name="formato" checked={formato === f.value}
-                  onChange={() => setFormato(f.value)} className="mt-0.5 accent-[var(--accent)]" />
-                <span>
-                  <span className="block text-sm font-semibold text-[var(--fg)]">{f.label}</span>
-                  <span className="block text-xs text-[var(--fg)]/40">{f.desc}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-
-          {temEtapas && (
-            <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4">
-              <label className={labelCls}>{formato === 'checklist' ? 'Opções' : 'Etapas'} ({etapas.length})</label>
-              <div className="flex flex-wrap gap-1.5 mb-3 mt-2 min-h-[32px]">
-                {etapas.map((e, i) => (
-                  <span key={i} className="flex items-center gap-1.5 text-xs bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] px-2.5 py-1 rounded-lg">
-                    {e}
-                    <button type="button" onClick={() => setEtapas(prev => prev.filter((_, idx) => idx !== i))}
-                      className="text-[var(--fg)]/40 hover:text-red-400 transition-colors font-bold">×</button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input value={novaEtapa} onChange={e => setNovaEtapa(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addEtapa())}
-                  placeholder="Digitar nome da etapa e pressionar Enter..."
-                  className={inputCls + ' flex-1 text-xs'} />
-                <button type="button" onClick={addEtapa}
-                  className="px-4 py-2 rounded-xl bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/30 text-xs font-semibold transition-colors whitespace-nowrap">
-                  + Adicionar
-                </button>
-              </div>
-            </div>
+        </Field>
+      )}
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1.5 text-[13px] font-medium text-fg-2">Formato de resposta</legend>
+        {FORMATOS.map(f => {
+          const ativo = formato === f.value
+          return (
+            <label key={f.value} className={cn('flex cursor-pointer items-start gap-3 rounded-[10px] border px-3.5 py-3', ativo ? 'border-acc bg-acc-soft' : 'border-line-soft')}>
+              <input type="radio" name="formato" checked={ativo} onChange={() => setFormato(f.value)} className="mt-0.5 h-[18px] w-[18px] accent-[var(--acc)]" />
+              <span>
+                <span className="block text-sm font-semibold text-fg">{f.label}</span>
+                <span className="block text-[13px] text-fg-3">{f.desc}</span>
+              </span>
+            </label>
+          )
+        })}
+      </fieldset>
+      {temEtapas && (
+        <div className="flex flex-col gap-2.5 rounded-[10px] border border-line-soft p-3.5">
+          <span className="text-[13px] font-medium text-fg-2">{formato === 'checklist' ? 'Opções' : 'Etapas'} ({etapas.length})</span>
+          {etapas.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5">
+              {etapas.map((e, i) => (
+                <li key={i} className="inline-flex h-[30px] items-center gap-1 rounded-full border border-line bg-acc-soft pl-3 pr-1 text-[13px] text-fg">
+                  {e}
+                  <IconButton rotulo={`Remover ${e}`} icone={<X size={14} aria-hidden="true" />} onClick={() => setEtapas(prev => prev.filter((_, idx) => idx !== i))} className="h-8 w-8" />
+                </li>
+              ))}
+            </ul>
           )}
-        </div>
-
-        {erro && (
-          <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            ⚠ {erro}
+          <div className="flex gap-2">
+            <Input aria-label={formato === 'checklist' ? 'Nova opção' : 'Nova etapa'} value={novaEtapa} onChange={e => setNovaEtapa(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEtapa() } }} placeholder="Digite e tecle Enter" />
+            <Button icone={<Plus size={16} aria-hidden="true" />} onClick={addEtapa}>Adicionar</Button>
           </div>
-        )}
-
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <button onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-            Cancelar
-          </button>
-          <button onClick={handleCriar} disabled={salvando || (temEtapas && etapas.length === 0)}
-            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-            {salvando ? 'Criando...' : 'Criar tipo'}
-          </button>
         </div>
-      </div>
-    </div>
+      )}
+      {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
+    </Modal>
   )
 }

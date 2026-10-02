@@ -1,20 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { ArrowRight, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
-import CamposFiscais, { type CamposFiscaisData } from '@/components/fiscal/CamposFiscais'
-import SectorSection from '@/components/geral/SectorSection'
+import type { CamposFiscaisData } from '@/components/fiscal/CamposFiscais'
 import { flattenClienteFiscal } from '@/lib/clientes-fiscal'
-import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
-import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
-import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
+import { SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
 import { excluirClienteGeral, salvarClienteGeral, desabilitarClienteGeral, reabilitarClienteGeral } from '@/app/(comum)/clientes/actions'
 import ConfirmarExclusaoClienteModal from '@/components/geral/ConfirmarExclusaoClienteModal'
 import { descreverImpactoExclusao } from '@/lib/exclusao-cliente'
 import DesabilitarClienteModal from '@/components/geral/DesabilitarClienteModal'
-import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import { SETORES_DE_CLIENTE } from '@/lib/clientes-geral'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Checkbox, Switch } from '@/components/ui/Input'
+import { Chip } from '@/components/ui/Chip'
+import { Aviso } from '@/components/ui/Aviso'
+import { useConfirmar } from '@/components/ui/ConfirmDialog'
+import { cn } from '@/components/ui/cn'
 
 interface FormData extends CamposFiscaisData {
   nome: string
@@ -28,9 +34,7 @@ interface FormData extends CamposFiscaisData {
 
 interface Props {
   clienteId: string | null
-  responsaveis: string[]
   vinculosCatalogo: TarefaVinculo[]
-  catalogoFiscal: CatalogoCliente
   onClose: () => void
   readOnly?: boolean
   podeDesabilitar?: boolean
@@ -47,18 +51,17 @@ const emptyForm = (): FormData => ({
   tarefas_personalizadas: [], tarefas_excluidas: [],
 })
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
-export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCatalogo, catalogoFiscal, onClose, readOnly = false, podeDesabilitar = false, desabilitada = false, temSetorDesabilitavel = false }: Props) {
+export default function ClienteGeralModal({ clienteId, vinculosCatalogo, onClose, readOnly = false, podeDesabilitar = false, desabilitada = false, temSetorDesabilitavel = false }: Props) {
   const router = useRouter()
+  const confirmar = useConfirmar()
   const sb = createClient()
   const isEdit = !!clienteId
 
   const [form, setForm] = useState<FormData>(emptyForm())
-  const [novaTarefa, setNovaTarefa] = useState('')
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
+  const [falhaAoCarregar, setFalhaAoCarregar] = useState(false)
   const [loadingCnpj, setLoadingCnpj] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   // Nome e setores GRAVADOS no banco (o formulário pode estar editado e não salvo):
@@ -68,15 +71,18 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
   const [desabilitarModalOpen, setDesabilitarModalOpen] = useState(false)
   const [reabilitando, setReabilitando] = useState(false)
   const [mostrarVinculos, setMostrarVinculos] = useState(false)
-  const [catalogoNomes, setCatalogoNomes] = useState<string[]>([])
-  const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
+  const identificacaoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!clienteId) return
     // Left join (não !inner): um cliente pode não ter setor Fiscal marcado e,
     // nesse caso, legitimamente não tem linha em clientes_fiscal.
-    sb.from('clientes').select('*, clientes_fiscal(*)').eq('id', clienteId).single().then(({ data: raw }) => {
-      if (!raw) return
+    sb.from('clientes').select('*, clientes_fiscal(*)').eq('id', clienteId).single().then(({ data: raw, error: erroBusca }) => {
+      if (erroBusca || !raw) {
+        setFalhaAoCarregar(true)
+        setLoading(false)
+        return
+      }
       const data = flattenClienteFiscal(raw)
       setIdentidadeSalva({ nome: data.nome ?? '', setores: (data.setores ?? ['fiscal']) as UserSetor[] })
       const mitParts = (data.mit ?? '').split('/')
@@ -86,7 +92,8 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         municipio: data.municipio ?? mitParts[0] ?? '',
         uf: data.uf ?? mitParts[1] ?? '',
         contato_chat: data.contato_chat ?? '',
-        setores: (data.setores ?? ['fiscal']) as UserSetor[],
+        // Só setores de cliente: um 'configuracoes' antigo ficaria invisível e burlaria a validação de setor.
+        setores: ((data.setores ?? ['fiscal']) as UserSetor[]).filter(s => SETORES_DE_CLIENTE.includes(s)),
         vinculosAtivos: data.tarefas_vinculadas_ativas ?? [],
         cod: data.cod ?? '',
         regime: data.regime ?? '',
@@ -105,14 +112,13 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
       })
       setMostrarVinculos((data.tarefas_vinculadas_ativas ?? []).length > 0)
       setLoading(false)
+      // O foco inicial do Modal rodou com o formulário ainda carregando: foca a Razão social agora.
+      if (!readOnly) {
+        requestAnimationFrame(() => requestAnimationFrame(() => identificacaoRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus()))
+      }
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId])
-
-  useEffect(() => {
-    sb.from('tarefa_tipos').select('nome').eq('setor', 'fiscal').then(({ data }) => {
-      setCatalogoNomes((data ?? []).map(t => t.nome as string))
-    })
-  }, [])
 
   async function fetchCnpj(raw: string) {
     setLoadingCnpj(true)
@@ -137,24 +143,6 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
       ...p,
       setores: p.setores.includes(setor) ? p.setores.filter(s => s !== setor) : [...p.setores, setor],
     }))
-  }
-
-  function addTarefa() {
-    const t = novaTarefa.trim()
-    if (!t) return
-    if (tarefaExisteNoCatalogo(catalogoNomes, t)) {
-      set('tarefas_personalizadas', [...form.tarefas_personalizadas, t])
-      setNovaTarefa('')
-    } else {
-      setNomeParaCriar(t)
-    }
-  }
-
-  function handleTipoCriado(nome: string) {
-    setCatalogoNomes(prev => [...prev, nome])
-    set('tarefas_personalizadas', [...form.tarefas_personalizadas, nome])
-    setNovaTarefa('')
-    setNomeParaCriar(null)
   }
 
   async function handleSave() {
@@ -226,7 +214,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
 
   async function handleReabilitar() {
     if (!clienteId) return
-    if (!confirm(`Reabilitar "${form.nome}"? A empresa volta a aparecer nos setores onde estava desabilitada.`)) return
+    if (!(await confirmar({ titulo: 'Reabilitar cliente?', descricao: `"${form.nome}" volta a aparecer nos setores onde estava desabilitado.`, textoConfirmar: 'Reabilitar' }))) return
     setReabilitando(true)
     setErro(null)
     const { error } = await reabilitarClienteGeral(clienteId)
@@ -245,209 +233,145 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
     return { error: null }
   }
 
-  const mostraFiscal = form.setores.includes('fiscal')
+  const titulo = readOnly ? 'Ver cliente' : isEdit ? 'Editar cliente' : 'Novo cliente'
+  const vinculosAplicaveis = vinculosCatalogo.filter(v => form.setores.includes(v.setor_origem) && form.setores.includes(v.setor_destino))
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
-
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">{readOnly ? 'Visualizar Cliente' : isEdit ? 'Editar Cliente' : 'Novo Cliente'}</h2>
-          <button onClick={onClose} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          {loading ? (
-            <p className="text-[var(--fg)]/30 text-sm text-center py-8">Carregando...</p>
-          ) : (<>
-
-            <div>
-              <label className={labelCls}>CNPJ {loadingCnpj && <span className="text-[var(--accent)] normal-case tracking-normal">Buscando...</span>}</label>
-              <input className={inputCls + ' font-mono'} value={form.cnpj}
-                onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }}
-                placeholder="00.000.000/0000-00" disabled={readOnly} />
-            </div>
-
-            <div>
-              <label className={labelCls}>Razão Social *</label>
-              <input className={inputCls} value={form.nome} onChange={e => set('nome', e.target.value)} required disabled={readOnly} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Município</label>
-                <input className={inputCls} value={form.municipio} onChange={e => set('municipio', e.target.value)} disabled={readOnly} />
-              </div>
-              <div>
-                <label className={labelCls}>UF</label>
-                <input className={inputCls + ' uppercase'} value={form.uf}
-                  onChange={e => set('uf', e.target.value.toUpperCase().slice(0, 2))} maxLength={2} disabled={readOnly} />
-              </div>
-            </div>
-
-            <div>
-              <label className={labelCls}>Contato</label>
-              <input className={inputCls} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} disabled={readOnly} />
-            </div>
-
-            <div>
-              <label className={labelCls}>Setores</label>
-              <div className="grid grid-cols-2 gap-2">
-                {SETORES.map(setor => (
-                  <label key={setor} className="flex items-center gap-2 cursor-pointer select-none">
-                    <input type="checkbox" checked={form.setores.includes(setor)} onChange={() => toggleSetor(setor)}
-                      className="w-3.5 h-3.5 accent-[var(--accent)]" disabled={readOnly} />
-                    <span className="text-[var(--fg)]/60 text-xs">{SETOR_LABEL[setor]}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4">
-              <label className="flex items-center gap-2 cursor-pointer select-none mb-1">
-                <input type="checkbox" checked={mostrarVinculos}
-                  onChange={e => { setMostrarVinculos(e.target.checked); if (!e.target.checked) set('vinculosAtivos', []) }}
-                  className="w-3.5 h-3.5 accent-[var(--accent)]" disabled={readOnly} />
-                <span className={labelCls + ' mb-0'}>Este cliente possui tarefas vinculadas entre setores?</span>
-              </label>
-
-              {mostrarVinculos && (
-                <div className="mt-3 flex flex-col gap-1.5">
-                  {vinculosCatalogo
-                    .filter(v => form.setores.includes(v.setor_origem) && form.setores.includes(v.setor_destino))
-                    .map(v => (
-                      <label key={v.id} className="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="checkbox" checked={form.vinculosAtivos.includes(v.id)}
-                          onChange={() => set('vinculosAtivos',
-                            form.vinculosAtivos.includes(v.id)
-                              ? form.vinculosAtivos.filter(id => id !== v.id)
-                              : [...form.vinculosAtivos, v.id])}
-                          className="w-3.5 h-3.5 accent-[var(--accent)]" disabled={readOnly} />
-                        <span className="text-[var(--fg)]/70 text-xs">
-                          {v.tipo_origem} ({SETOR_LABEL[v.setor_origem]}) → {v.tipo_destino} ({SETOR_LABEL[v.setor_destino]})
-                        </span>
-                      </label>
-                    ))}
-                  {vinculosCatalogo.filter(v => form.setores.includes(v.setor_origem) && form.setores.includes(v.setor_destino)).length === 0 && (
-                    <p className="text-[var(--fg)]/30 text-xs">Nenhum vínculo do catálogo se aplica aos setores marcados acima.</p>
-                  )}
-                </div>
+      <Modal
+        aberto
+        onFechar={onClose}
+        bloqueado={saving || reabilitando}
+        largura="g"
+        titulo={titulo}
+        subtitulo={isEdit ? (identidadeSalva?.nome || undefined) : 'Cadastro geral, vale para todos os setores'}
+        rodape={
+          falhaAoCarregar ? (
+            <div className="flex w-full justify-end"><Button onClick={onClose}>Fechar</Button></div>
+          ) : (
+          <div className="flex w-full flex-wrap items-center gap-2.5">
+            {!readOnly && isEdit && !loading && (
+              <Button variante="perigo" icone={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmandoExclusao(true)} disabled={!identidadeSalva || saving}>Excluir cliente</Button>
+            )}
+            {podeDesabilitar && isEdit && !loading && temSetorDesabilitavel && (
+              desabilitada
+                ? <Button variante="fantasma" onClick={handleReabilitar} carregando={reabilitando}>{reabilitando ? 'Reabilitando…' : 'Reabilitar'}</Button>
+                : <Button variante="fantasma" onClick={() => setDesabilitarModalOpen(true)} disabled={saving}>Desabilitar</Button>
+            )}
+            <div className="ml-auto flex gap-2.5">
+              {readOnly ? (
+                <Button onClick={onClose}>Fechar</Button>
+              ) : (
+                <>
+                  <Button variante="fantasma" onClick={onClose} disabled={saving}>Cancelar</Button>
+                  <Button variante="primario" onClick={handleSave} carregando={saving} disabled={loading || !form.nome.trim() || form.setores.length === 0}>
+                    {saving ? 'Salvando…' : 'Salvar cliente'}
+                  </Button>
+                </>
               )}
             </div>
-
-            {mostraFiscal && isEdit && (
-              <SectorSection title="Dados do Fiscal" note="Somente leitura — edite em Fiscal → Clientes" defaultOpen={false}>
-                <CamposFiscais
-                  form={form}
-                  set={set as <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void}
-                  responsaveis={responsaveis}
-                  catalogo={catalogoFiscal}
-                  isEdit={isEdit}
-                  clienteId={clienteId}
-                  readOnly={true}
-                  novaTarefa={novaTarefa}
-                  setNovaTarefa={setNovaTarefa}
-                  addTarefa={addTarefa}
-                />
-              </SectorSection>
-            )}
-
-            {mostraFiscal && !isEdit && (
-              <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/3 p-4 space-y-5">
-                <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">Dados do Fiscal</p>
-                <CamposFiscais
-                  form={form}
-                  set={set as <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void}
-                  responsaveis={responsaveis}
-                  catalogo={catalogoFiscal}
-                  isEdit={isEdit}
-                  clienteId={clienteId}
-                  readOnly={readOnly}
-                  novaTarefa={novaTarefa}
-                  setNovaTarefa={setNovaTarefa}
-                  addTarefa={addTarefa}
-                />
+          </div>
+          )
+        }
+      >
+        {falhaAoCarregar ? (
+          <div role="alert"><Aviso tom="dng">Não foi possível carregar o cliente. Feche a janela e tente de novo.</Aviso></div>
+        ) : loading ? (
+          <p role="status" className="py-8 text-center text-sm text-fg-3">Carregando…</p>
+        ) : (
+          <>
+            <Secao titulo="Identificação">
+              <div ref={identificacaoRef} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                <Field rotulo="CNPJ" ajuda={loadingCnpj ? 'Buscando dados do CNPJ…' : undefined} className="sm:col-span-2">
+                  {c => <Input id={c.id} aria-describedby={c.describedBy} className="font-mono" placeholder="00.000.000/0000-00" disabled={readOnly}
+                    value={form.cnpj} onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }} />}
+                </Field>
+                <Field rotulo="Razão social" obrigatorio className="sm:col-span-2">
+                  {c => <Input id={c.id} data-autofocus disabled={readOnly} value={form.nome} onChange={e => set('nome', e.target.value)} />}
+                </Field>
+                <Field rotulo="Município" className="sm:col-span-2">
+                  {c => <Input id={c.id} disabled={readOnly} value={form.municipio} onChange={e => set('municipio', e.target.value)} />}
+                </Field>
+                <Field rotulo="UF">
+                  {c => <Input id={c.id} className="uppercase" maxLength={2} disabled={readOnly} value={form.uf} onChange={e => set('uf', e.target.value.toUpperCase().slice(0, 2))} />}
+                </Field>
+                <Field rotulo="Contato">
+                  {c => <Input id={c.id} placeholder="Nome ou telefone" disabled={readOnly} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} />}
+                </Field>
               </div>
-            )}
+            </Secao>
 
-          </>)}
-        </div>
+            <Secao titulo="Setores em que o cliente aparece">
+              <div role="group" aria-label="Setores" className="flex flex-wrap gap-2">
+                {SETORES_DE_CLIENTE.map(s => (
+                  <Chip key={s} ativo={form.setores.includes(s)} onClick={() => toggleSetor(s)} disabled={readOnly}>{SETOR_LABEL[s]}</Chip>
+                ))}
+              </div>
+              {!readOnly && form.setores.length === 0 && <p role="alert" className="text-xs text-danger">Selecione ao menos um setor.</p>}
+            </Secao>
 
-        {erro && (
-          <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            ⚠ {erro}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <div className="flex gap-1">
-            {!readOnly && isEdit && (
-              <button onClick={() => setConfirmandoExclusao(true)} disabled={!identidadeSalva}
-                className="px-4 py-2.5 rounded-xl text-red-400/70 hover:text-red-400 text-sm transition-colors disabled:opacity-50">
-                Excluir cliente
-              </button>
-            )}
-            {podeDesabilitar && isEdit && temSetorDesabilitavel && (
-              desabilitada ? (
-                <button onClick={handleReabilitar} disabled={reabilitando}
-                  className="px-4 py-2.5 rounded-xl text-emerald-400/70 hover:text-emerald-400 text-sm transition-colors disabled:opacity-50">
-                  {reabilitando ? 'Reabilitando...' : 'Reabilitar empresa'}
-                </button>
+            <Secao titulo="Tarefas vinculadas entre setores">
+              <Switch
+                ligado={mostrarVinculos}
+                onMudar={v => { setMostrarVinculos(v); if (!v) set('vinculosAtivos', []) }}
+                rotulo="Este cliente tem tarefas que liberam outras em outro setor"
+                disabled={readOnly}
+              />
+              {mostrarVinculos && (vinculosAplicaveis.length === 0 ? (
+                <p className="text-[13px] text-fg-3">Nenhum vínculo do catálogo se aplica aos setores marcados.</p>
               ) : (
-                <button onClick={() => setDesabilitarModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl text-amber-400/70 hover:text-amber-400 text-sm transition-colors">
-                  Desabilitar empresa
-                </button>
-              )
-            )}
-          </div>
+                <ul className="overflow-hidden rounded-[10px] border border-line-soft">
+                  {vinculosAplicaveis.map((v, i) => (
+                    <li key={v.id} className={cn('px-3.5 py-2.5', i > 0 && 'border-t border-line-soft')}>
+                      <Checkbox
+                        checked={form.vinculosAtivos.includes(v.id)}
+                        disabled={readOnly}
+                        onChange={() => set('vinculosAtivos', form.vinculosAtivos.includes(v.id)
+                          ? form.vinculosAtivos.filter(id => id !== v.id)
+                          : [...form.vinculosAtivos, v.id])}
+                        rotulo={
+                          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-fg">
+                            {v.tipo_origem} <span className="text-fg-3">({SETOR_LABEL[v.setor_origem]})</span>
+                            <ArrowRight size={14} aria-hidden="true" className="text-fg-3" /><span className="sr-only">libera</span>
+                            {v.tipo_destino} <span className="text-fg-3">({SETOR_LABEL[v.setor_destino]})</span>
+                          </span>
+                        }
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ))}
+            </Secao>
 
-          <div className="flex gap-3">
-            {readOnly ? (
-              <button onClick={onClose}
-                className="px-6 py-2.5 rounded-xl bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-sm transition-colors">
-                Fechar
-              </button>
-            ) : (<>
-              <button onClick={onClose}
-                className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-                Cancelar
-              </button>
-              <button onClick={handleSave} disabled={saving || !form.nome.trim() || form.setores.length === 0}
-                className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-                {saving ? 'Salvando...' : 'Salvar cliente'}
-              </button>
-            </>)}
-          </div>
-        </div>
-      </div>
-    </div>
-    {confirmandoExclusao && identidadeSalva && (
-      <ConfirmarExclusaoClienteModal
-        nomeCliente={identidadeSalva.nome}
-        impacto={descreverImpactoExclusao({ origem: 'geral', acao: 'excluir-do-sistema', setoresDoCliente: identidadeSalva.setores })}
-        onConfirmar={executarExclusao}
-        onCancelar={() => setConfirmandoExclusao(false)}
-      />
-    )}
-    {desabilitarModalOpen && clienteId && (
-      <DesabilitarClienteModal
-        clienteNome={form.nome}
-        onClose={() => setDesabilitarModalOpen(false)}
-        onConfirm={senha => desabilitarClienteGeral(clienteId, senha)}
-        onConfirmado={() => { router.refresh(); onClose() }}
-      />
-    )}
-    {nomeParaCriar && (
-      <NovoTipoTarefaModal
-        nome={nomeParaCriar}
-        setor="fiscal"
-        onCancel={() => setNomeParaCriar(null)}
-        onCriado={handleTipoCriado}
-      />
-    )}
+            {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
+          </>
+        )}
+      </Modal>
+      {confirmandoExclusao && identidadeSalva && (
+        <ConfirmarExclusaoClienteModal
+          nomeCliente={identidadeSalva.nome}
+          impacto={descreverImpactoExclusao({ origem: 'geral', acao: 'excluir-do-sistema', setoresDoCliente: identidadeSalva.setores })}
+          onConfirmar={executarExclusao}
+          onCancelar={() => setConfirmandoExclusao(false)}
+        />
+      )}
+      {desabilitarModalOpen && clienteId && (
+        <DesabilitarClienteModal
+          clienteNome={form.nome}
+          onClose={() => setDesabilitarModalOpen(false)}
+          onConfirm={senha => desabilitarClienteGeral(clienteId, senha)}
+          onConfirmado={() => { router.refresh(); onClose() }}
+        />
+      )}
     </>
+  )
+}
+
+function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold text-fg">{titulo}</h3>
+      {children}
+    </section>
   )
 }
