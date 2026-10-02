@@ -20,7 +20,7 @@ export default function SectorSection({ title, note, defaultOpen = false, childr
       <button
         type="button"
         aria-expanded={open}
-        aria-controls={id}
+        aria-controls={open ? id : undefined}
         onClick={() => setOpen(o => !o)}
         className="flex w-full flex-wrap items-center gap-x-2 px-3.5 py-3 text-left hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-acc"
       >

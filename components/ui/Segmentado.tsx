@@ -12,10 +12,12 @@ export function Segmentado<T extends string>({ rotulo, opcoes, valor, onMudar, d
   className?: string
 }) {
   function teclado(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+    const proxima = e.key === 'ArrowRight' || e.key === 'ArrowDown'
+    if (!proxima && e.key !== 'ArrowLeft' && e.key !== 'ArrowUp') return
     e.preventDefault()
     const atual = opcoes.findIndex(o => o.valor === valor)
-    const indice = (atual + (e.key === 'ArrowRight' ? 1 : -1) + opcoes.length) % opcoes.length
+    // Sem opção ativa: seta para trás vai à última, para frente à primeira.
+    const indice = atual < 0 ? (proxima ? 0 : opcoes.length - 1) : (atual + (proxima ? 1 : -1) + opcoes.length) % opcoes.length
     onMudar(opcoes[indice].valor)
     e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')[indice]?.focus()
   }

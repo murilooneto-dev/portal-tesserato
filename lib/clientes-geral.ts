@@ -20,11 +20,13 @@ const soDigitos = (s: string) => s.replace(/\D/g, '')
 
 export function filtrarClientesGeral<T extends ClienteGeralLinha>(lista: T[], f: FiltrosClientesGeral, ordem: Ordenacao): T[] {
   const termo = semAcento(f.busca.trim())
-  const digitos = soDigitos(f.busca)
+  // Só compara com o CNPJ quando o texto parece CNPJ (sem letras) e tem ao menos 3 dígitos.
+  const pareceCnpj = /^[\d.\/\-\s]+$/.test(f.busca.trim())
+  const digitos = pareceCnpj ? soDigitos(f.busca) : ''
   const filtrados = lista.filter(c => {
     if (termo) {
       const noNome = semAcento(c.nome).includes(termo)
-      const noCnpj = digitos.length > 0 && soDigitos(c.cnpj ?? '').includes(digitos)
+      const noCnpj = digitos.length >= 3 && soDigitos(c.cnpj ?? '').includes(digitos)
       if (!noNome && !noCnpj) return false
     }
     if (f.regime !== TODOS && c.clientes_fiscal?.regime !== f.regime) return false

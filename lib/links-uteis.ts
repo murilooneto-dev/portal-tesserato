@@ -20,7 +20,11 @@ export function inicialDoLink(titulo: string): string {
 
 function enderecoCompleto(url: string): boolean {
   let host: string
-  try { host = new URL(hrefDoLink(url)).hostname } catch { return false }
+  let porta: string
+  try { const u = new URL(hrefDoLink(url)); host = u.hostname; porta = u.port } catch { return false }
+  // Rede interna: IPv4 ou host com porta explícita (servidor:8080, localhost:3000).
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true
+  if (porta && /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i.test(host)) return true
   const partes = host.replace(/^www\./i, '').split('.')
   return partes.length >= 2 && partes.every(Boolean) && /^[a-z]{2,}$/i.test(partes[partes.length - 1])
 }

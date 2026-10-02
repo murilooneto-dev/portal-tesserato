@@ -34,6 +34,14 @@ test('busca por CNPJ com ou sem pontuação', () => {
   assert.deepEqual(nomes(filtrarClientesGeral(lista, f({ busca: '98.765.432/0001-10' }), null)), ['Beta Indústria'])
 })
 
+test('busca com letras procura só no nome; CNPJ só com pelo menos 3 dígitos', () => {
+  const l = [cli('Padaria Central', { cnpj: '12.345.678/0001-90' }), cli('Posto 2 Irmãos')]
+  assert.deepEqual(nomes(filtrarClientesGeral(l, f({ busca: 'Posto 2' }), null)), ['Posto 2 Irmãos'])
+  assert.deepEqual(nomes(filtrarClientesGeral(l, f({ busca: 'Padaria 1' }), null)), [])
+  assert.deepEqual(nomes(filtrarClientesGeral(l, f({ busca: '12' }), null)), [])
+  assert.deepEqual(nomes(filtrarClientesGeral(l, f({ busca: '12.345' }), null)), ['Padaria Central'])
+})
+
 test('filtros de regime, setor e atividade', () => {
   assert.deepEqual(nomes(filtrarClientesGeral(lista, f({ regime: 'Lucro Presumido' }), null)), ['Beta Indústria'])
   assert.deepEqual(nomes(filtrarClientesGeral(lista, f({ setor: 'financeiro' }), null)), ['Alfa Serviços'])

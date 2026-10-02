@@ -68,13 +68,13 @@ export default function ResetPasswordPage() {
           <Field rotulo="Nova senha" ajuda={`Mínimo de ${SENHA_MINIMA} caracteres`} erro={erroCampo?.campo === 'nova' ? erroCampo.mensagem : null}>
             {c => (
               <CampoSenha id={c.id} aria-describedby={c.describedBy} invalido={c.invalido} autoComplete="new-password" autoFocus
-                value={novaSenha} onChange={e => setNovaSenha(e.target.value)} />
+                value={novaSenha} onChange={e => { setNovaSenha(e.target.value); if (erroCampo?.campo === 'nova') setErroCampo(null) }} />
             )}
           </Field>
           <Field rotulo="Confirmar senha" erro={erroCampo?.campo === 'confirmar' ? erroCampo.mensagem : null}>
             {c => (
               <CampoSenha id={c.id} aria-describedby={c.describedBy} invalido={c.invalido} autoComplete="new-password"
-                value={confirmar} onChange={e => setConfirmar(e.target.value)} />
+                value={confirmar} onChange={e => { setConfirmar(e.target.value); if (erroCampo?.campo === 'confirmar') setErroCampo(null) }} />
             )}
           </Field>
           {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}

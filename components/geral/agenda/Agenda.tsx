@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/components/ui/cn'
 import { mesVizinho } from '@/lib/mes-navegacao'
 import {
-  chaveDia, chaveDeHoje, compromissosDoDia, formVazio, horaCurta, lembretesProximos, payloadCompromisso,
+  chaveDia, chaveDeHoje, compromissosDoDia, dataDaChave, formVazio, horaCurta, lembretesProximos, payloadCompromisso,
   rotuloLembrete, tituloDoDia, tomDoCompromisso, type Compromisso, type FormCompromisso,
 } from '@/lib/agenda'
 import { CalendarioMes, PONTO_DO_TOM } from './CalendarioMes'
@@ -20,8 +20,9 @@ import { CompromissoModal } from './CompromissoModal'
 
 // Agenda pessoal (tabela `agenda`, só os compromissos do próprio usuário).
 // Usada no Início e em /fiscal/agenda.
-export default function Agenda({ titulo, subtitulo, topo }: { titulo: string; subtitulo: string; topo?: ReactNode }) {
-  const [hoje, setHoje] = useState(() => new Date())
+// `hojeInicial` (aaaa-mm-dd, fuso de São Paulo) vem do servidor: servidor e navegador renderizam o mesmo dia.
+export default function Agenda({ titulo, subtitulo, topo, hojeInicial }: { titulo: string; subtitulo: string; topo?: ReactNode; hojeInicial: string }) {
+  const [hoje, setHoje] = useState(() => dataDaChave(hojeInicial))
   const [mes, setMes] = useState(hoje.getMonth() + 1)
   const [ano, setAno] = useState(hoje.getFullYear())
   const [itens, setItens] = useState<Compromisso[]>([])
@@ -86,7 +87,8 @@ export default function Agenda({ titulo, subtitulo, topo }: { titulo: string; su
   }
 
   async function salvar(f: FormCompromisso) {
-    if (!userId || !form) return
+    if (!form) return
+    if (!userId) { avisar('Aguarde a agenda carregar e tente de novo.', 'dng'); return }
     setSalvando(true)
     const dados = payloadCompromisso(f)
     const { error } = form.id

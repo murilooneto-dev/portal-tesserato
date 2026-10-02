@@ -32,6 +32,17 @@ export function chaveDeHoje(hoje: Date): string {
   return chaveDia(hoje.getFullYear(), hoje.getMonth() + 1, hoje.getDate())
 }
 
+/** Dia de hoje (aaaa-mm-dd) no fuso de São Paulo: igual no servidor e no navegador. */
+export function chaveHojeNoBrasil(agora: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(agora)
+}
+
+/** Meio-dia local da data aaaa-mm-dd. */
+export function dataDaChave(chave: string): Date {
+  const [a, m, d] = chave.split('-').map(Number)
+  return new Date(a, m - 1, d, 12)
+}
+
 /** Grade do mês começando no domingo; `null` = casa vazia. Sempre múltiplo de 7. */
 export function celulasDoMes(ano: number, mes: number): (number | null)[] {
   const primeiro = new Date(ano, mes - 1, 1).getDay()

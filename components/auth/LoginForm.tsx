@@ -112,13 +112,13 @@ export default function LoginForm() {
     <form onSubmit={handleSubmit} aria-label="Entrar" className="flex flex-col gap-4">
       <Field rotulo="E-mail">
         {c => (
-          <Input id={c.id} type="email" autoComplete="email" required invalido={Boolean(erro)}
+          <Input id={c.id} aria-describedby={erro ? 'login-erro' : c.describedBy} type="email" autoComplete="email" required invalido={Boolean(erro)}
             value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" className="h-11" />
         )}
       </Field>
       <Field rotulo="Senha">
         {c => (
-          <CampoSenha id={c.id} autoComplete="current-password" required invalido={Boolean(erro)}
+          <CampoSenha id={c.id} aria-describedby={erro ? 'login-erro' : c.describedBy} autoComplete="current-password" required invalido={Boolean(erro)}
             value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••••" />
         )}
       </Field>
@@ -129,7 +129,7 @@ export default function LoginForm() {
         </button>
       </div>
       {erro && (
-        <div role="alert">
+        <div id="login-erro" role="alert">
           <Aviso tom="dng"><b>{erro}</b> Confira e tente de novo.</Aviso>
         </div>
       )}

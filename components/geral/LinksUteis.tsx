@@ -99,7 +99,8 @@ export default function LinksUteis({ links, isAdmin }: { links: LinkRapido[]; is
     const ok = await confirmar({ titulo: 'Excluir link?', descricao: `"${l.titulo}" sai dos links úteis de todos.`, textoConfirmar: 'Excluir', perigo: true })
     if (!ok) return
     iniciar(async () => {
-      await excluirLink(l.id)
+      const { error } = await excluirLink(l.id)
+      if (error) { setErroGeral(error); return }
       setEdicoes(p => semChave(p, l.id))
       avisar('Link excluído.', 'ok')
       router.refresh()

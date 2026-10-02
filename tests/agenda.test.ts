@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  celulasDoMes, chaveDia, chaveDeHoje, diasAte, tomDoCompromisso, compromissosDoDia, lembretesProximos,
+  celulasDoMes, chaveDia, chaveDeHoje, chaveHojeNoBrasil, dataDaChave, diasAte, tomDoCompromisso, compromissosDoDia, lembretesProximos,
   rotuloLembrete, tituloDoDia, contarCompromissos, validarCompromisso, payloadCompromisso, formVazio, horaCurta,
   type Compromisso,
 } from '../lib/agenda'
@@ -106,4 +106,12 @@ test('validarCompromisso: data no formato certo mas impossível também é invá
     assert.deepEqual(validarCompromisso({ ...formVazio(d), titulo: 'X' }), { data_compromisso: 'Informe a data.' }, d)
   }
   assert.deepEqual(validarCompromisso({ ...formVazio('2028-02-29'), titulo: 'X' }), {})
+})
+
+test('chaveHojeNoBrasil usa o fuso de São Paulo; dataDaChave volta ao meio-dia local', () => {
+  assert.equal(chaveHojeNoBrasil(new Date('2026-10-03T01:30:00Z')), '2026-10-02')
+  assert.equal(chaveHojeNoBrasil(new Date('2026-10-02T15:00:00Z')), '2026-10-02')
+  const d = dataDaChave('2026-10-02')
+  assert.equal(chaveDeHoje(d), '2026-10-02')
+  assert.equal(d.getHours(), 12)
 })

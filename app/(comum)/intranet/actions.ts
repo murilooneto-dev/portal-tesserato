@@ -40,12 +40,14 @@ export async function atualizarLink(id: string, titulo: string, url: string): Pr
   return { error: null }
 }
 
-export async function excluirLink(id: string) {
+export async function excluirLink(id: string): Promise<{ error: string | null }> {
   const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase || !user) return
+  if (!supabase || !user) return { error: 'Não autorizado.' }
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
 
-  await supabase.from('links_rapidos').delete().eq('id', id)
+  const { error } = await supabase.from('links_rapidos').delete().eq('id', id)
+  if (error) return { error: error.message }
   revalidatePath('/intranet')
+  return { error: null }
 }

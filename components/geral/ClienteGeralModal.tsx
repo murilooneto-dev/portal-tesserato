@@ -85,8 +85,12 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
     if (!clienteId) return
     // Left join (não !inner): um cliente pode não ter setor Fiscal marcado e,
     // nesse caso, legitimamente não tem linha em clientes_fiscal.
-    sb.from('clientes').select('*, clientes_fiscal(*)').eq('id', clienteId).single().then(({ data: raw }) => {
-      if (!raw) return
+    sb.from('clientes').select('*, clientes_fiscal(*)').eq('id', clienteId).single().then(({ data: raw, error: erroBusca }) => {
+      if (erroBusca || !raw) {
+        setErro('Não foi possível carregar o cliente.')
+        setLoading(false)
+        return
+      }
       const data = flattenClienteFiscal(raw)
       setIdentidadeSalva({ nome: data.nome ?? '', setores: (data.setores ?? ['fiscal']) as UserSetor[] })
       const mitParts = (data.mit ?? '').split('/')
@@ -96,7 +100,8 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         municipio: data.municipio ?? mitParts[0] ?? '',
         uf: data.uf ?? mitParts[1] ?? '',
         contato_chat: data.contato_chat ?? '',
-        setores: (data.setores ?? ['fiscal']) as UserSetor[],
+        // Só setores de cliente: um 'configuracoes' antigo ficaria invisível e burlaria a validação de setor.
+        setores: ((data.setores ?? ['fiscal']) as UserSetor[]).filter(s => SETORES_DE_CLIENTE.includes(s)),
         vinculosAtivos: data.tarefas_vinculadas_ativas ?? [],
         cod: data.cod ?? '',
         regime: data.regime ?? '',
@@ -116,7 +121,9 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
       setMostrarVinculos((data.tarefas_vinculadas_ativas ?? []).length > 0)
       setLoading(false)
       // O foco inicial do Modal rodou com o formulário ainda carregando: foca a Razão social agora.
-      if (!readOnly) setTimeout(() => identificacaoRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus(), 0)
+      if (!readOnly) {
+        requestAnimationFrame(() => requestAnimationFrame(() => identificacaoRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus()))
+      }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId])
