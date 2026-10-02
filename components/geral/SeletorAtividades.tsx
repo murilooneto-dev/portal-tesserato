@@ -1,5 +1,7 @@
 'use client'
 
+import { Chip } from '@/components/ui/Chip'
+
 interface Props {
   valores: string[]
   opcoes: string[]
@@ -17,24 +19,15 @@ export default function SeletorAtividades({ valores, opcoes, onChange, readOnly 
   }
 
   if (todas.length === 0) {
-    return <p className="text-[var(--fg)]/20 text-xs">Nenhuma atividade cadastrada no catálogo.</p>
+    return <p className="text-xs text-fg-3">Nenhuma atividade cadastrada no catálogo.</p>
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div role="group" aria-label="Atividades" className="flex flex-wrap gap-2">
       {todas.map(nome => (
-        <label key={nome} className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={valores.includes(nome)}
-            onChange={() => toggle(nome)}
-            className="w-3.5 h-3.5 accent-[var(--accent)]"
-            disabled={readOnly}
-          />
-          <span className="text-[var(--fg)]/60 text-xs">
-            {nome}{extras.includes(nome) ? ' (atual)' : ''}
-          </span>
-        </label>
+        <Chip key={nome} ativo={valores.includes(nome)} onClick={() => toggle(nome)} disabled={readOnly}>
+          {nome}{extras.includes(nome) ? ' (atual)' : ''}
+        </Chip>
       ))}
     </div>
   )

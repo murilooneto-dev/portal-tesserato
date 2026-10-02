@@ -1,15 +1,21 @@
-﻿'use client'
+'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
-import CamposFiscais, { type CamposFiscaisData } from './CamposFiscais'
+import CamposFiscais, { Secao, type CamposFiscaisData } from './CamposFiscais'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import { salvarCliente } from '@/app/fiscal/clientes/actions'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Select } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
+import { useConfirmar } from '@/components/ui/ConfirmDialog'
 
 interface FormData {
   cod: string
@@ -49,13 +55,17 @@ const emptyForm = (): FormData => ({
   tarefas_personalizadas: [], tarefas_excluidas: [],
 })
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
+const UFS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB',
+  'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
+]
 
 export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnly = false, catalogo }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
+  const confirmar = useConfirmar()
+  const identificacaoRef = useRef<HTMLDivElement>(null)
 
   const [form, setForm] = useState<FormData>(emptyForm())
   const [personalizadasOriginais, setPersonalizadasOriginais] = useState<string[]>([])
@@ -96,7 +106,12 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
       })
       setPersonalizadasOriginais(data.tarefas_personalizadas ?? [])
       setLoading(false)
+      // O foco inicial do Modal rodou com o formulário ainda carregando: foca a Razão social agora.
+      if (!readOnly) {
+        requestAnimationFrame(() => requestAnimationFrame(() => identificacaoRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus()))
+      }
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId])
 
   useEffect(() => {
@@ -144,7 +159,12 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
   async function handleSave() {
     if (!form.nome.trim()) return
     const removidas = personalizadasOriginais.filter(t => !form.tarefas_personalizadas.includes(t))
-    if (removidas.length > 0 && !confirm(`Remover ${removidas.map(t => `"${t}"`).join(', ')} deste cliente apaga o histórico dessa tarefa nele (concluída, respostas, anexos). Outros clientes não são afetados. Continuar?`)) return
+    if (removidas.length > 0 && !(await confirmar({
+      titulo: 'Remover tarefas deste cliente?',
+      descricao: `Remover ${removidas.map(t => `"${t}"`).join(', ')} deste cliente apaga o histórico dessa tarefa nele (concluída, respostas, anexos). Outros clientes não são afetados. Continuar?`,
+      textoConfirmar: 'Continuar',
+      perigo: true,
+    }))) return
     setSaving(true)
     setErro(null)
     const mit = form.municipio && form.uf
@@ -182,57 +202,67 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
     onClose()
   }
 
+  const titulo = readOnly ? 'Visualizar empresa' : isEdit ? 'Editar empresa' : 'Nova empresa'
+  // UF já gravada que não está na lista continua selecionável.
+  const ufForaDaLista = form.uf && !UFS.includes(form.uf)
+
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">{readOnly ? 'Visualizar Empresa' : isEdit ? 'Editar Empresa' : 'Nova Empresa'}</h2>
-          <button onClick={onClose} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
-        </div>
-
-        {/* Body */}
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          {loading ? (
-            <p className="text-[var(--fg)]/30 text-sm text-center py-8">Carregando...</p>
-          ) : (<>
-
-            {/* CNPJ */}
-            <div>
-              <label className={labelCls}>CNPJ {loadingCnpj && <span className="text-[var(--accent)] normal-case tracking-normal">Buscando...</span>}</label>
-              <input className={inputCls + ' font-mono'} value={form.cnpj}
-                onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }}
-                placeholder="00.000.000/0000-00" disabled={readOnly} />
-            </div>
-
-            {/* Razão Social */}
-            <div>
-              <label className={labelCls}>Razão Social *</label>
-              <input className={inputCls} value={form.nome} onChange={e => set('nome', e.target.value)} required disabled={readOnly} />
-            </div>
-
-            {/* Município + UF */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Município</label>
-                <input className={inputCls} value={form.municipio} onChange={e => set('municipio', e.target.value)} disabled={readOnly} />
+      <Modal
+        aberto
+        onFechar={onClose}
+        bloqueado={saving}
+        largura="g"
+        titulo={titulo}
+        subtitulo={isEdit && form.nome ? form.nome : undefined}
+        rodape={
+          <div className="ml-auto flex gap-2.5">
+            {readOnly ? (
+              <Button onClick={onClose}>Fechar</Button>
+            ) : (
+              <>
+                <Button variante="fantasma" onClick={onClose} disabled={saving}>Cancelar</Button>
+                <Button variante="primario" onClick={handleSave} carregando={saving} disabled={loading || !form.nome.trim()}>
+                  {saving ? 'Salvando…' : 'Salvar empresa'}
+                </Button>
+              </>
+            )}
+          </div>
+        }
+      >
+        {loading ? (
+          <p role="status" className="py-8 text-center text-sm text-fg-3">Carregando…</p>
+        ) : (
+          <>
+            <Secao titulo="Identificação">
+              <div ref={identificacaoRef} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                <Field rotulo="CNPJ" ajuda={loadingCnpj ? 'Buscando dados do CNPJ…' : 'Buscamos os dados quando o CNPJ estiver completo'} className="sm:col-span-2">
+                  {c => <Input id={c.id} aria-describedby={c.describedBy} className="font-mono" placeholder="00.000.000/0000-00" disabled={readOnly}
+                    value={form.cnpj} onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }} />}
+                </Field>
+                <Field rotulo="Código">
+                  {c => <Input id={c.id} placeholder="00000" disabled={readOnly} value={form.cod} onChange={e => set('cod', e.target.value)} />}
+                </Field>
+                <Field rotulo="UF">
+                  {c => (
+                    <Select id={c.id} disabled={readOnly} value={form.uf} onChange={e => set('uf', e.target.value)}>
+                      <option value="">Selecionar…</option>
+                      {ufForaDaLista && <option value={form.uf}>{form.uf} (atual)</option>}
+                      {UFS.map(u => <option key={u} value={u}>{u}</option>)}
+                    </Select>
+                  )}
+                </Field>
+                <Field rotulo="Razão social" obrigatorio className="sm:col-span-3">
+                  {c => <Input id={c.id} data-autofocus disabled={readOnly} value={form.nome} onChange={e => set('nome', e.target.value)} />}
+                </Field>
+                <Field rotulo="Município">
+                  {c => <Input id={c.id} disabled={readOnly} value={form.municipio} onChange={e => set('municipio', e.target.value)} />}
+                </Field>
+                <Field rotulo="Contato" className="sm:col-span-2">
+                  {c => <Input id={c.id} placeholder="Nome ou telefone" disabled={readOnly} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} />}
+                </Field>
               </div>
-              <div>
-                <label className={labelCls}>UF</label>
-                <input className={inputCls + ' uppercase'} value={form.uf}
-                  onChange={e => set('uf', e.target.value.toUpperCase().slice(0, 2))} maxLength={2} disabled={readOnly} />
-              </div>
-            </div>
-
-            {/* Contato Chat */}
-            <div>
-              <label className={labelCls}>Contato Chat</label>
-              <input className={inputCls} value={form.contato_chat}
-                onChange={e => set('contato_chat', e.target.value)} disabled={readOnly} />
-            </div>
+            </Secao>
 
             <CamposFiscais
               form={form}
@@ -247,44 +277,18 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               addTarefa={addTarefa}
             />
 
-          </>)}
-        </div>
-
-        {/* Erro */}
-        {erro && (
-          <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            ⚠ {erro}
-          </div>
+            {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
+          </>
         )}
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          {readOnly ? (
-            <button onClick={onClose}
-              className="px-6 py-2.5 rounded-xl bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-sm transition-colors">
-              Fechar
-            </button>
-          ) : (<>
-            <button onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-              Cancelar
-            </button>
-            <button onClick={handleSave} disabled={saving || !form.nome.trim()}
-              className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-              {saving ? 'Salvando...' : 'Salvar empresa'}
-            </button>
-          </>)}
-        </div>
-      </div>
-    </div>
-    {nomeParaCriar && (
-      <NovoTipoTarefaModal
-        nome={nomeParaCriar}
-        setor="fiscal"
-        onCancel={() => setNomeParaCriar(null)}
-        onCriado={handleTipoCriado}
-      />
-    )}
+      </Modal>
+      {nomeParaCriar && (
+        <NovoTipoTarefaModal
+          nome={nomeParaCriar}
+          setor="fiscal"
+          onCancel={() => setNomeParaCriar(null)}
+          onCriado={handleTipoCriado}
+        />
+      )}
     </>
   )
 }

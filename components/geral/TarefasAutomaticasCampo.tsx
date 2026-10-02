@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { Undo2, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { buscarMapaVinculosSetor, tarefasAutomaticasVisiveis, type MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import type { UserSetor } from '@/lib/types'
@@ -47,22 +48,26 @@ export default function TarefasAutomaticasCampo({
   }
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className="mt-4 flex flex-col gap-4">
       <div>
-        <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">
-          Automáticas (vínculo de atividade) ({automaticasAtivas.length})
-        </label>
-        <div className="flex flex-wrap gap-1.5 min-h-[32px]">
+        <span className="mb-2 block text-[13px] font-medium text-fg-2">
+          Automáticas, pelo vínculo de regime e atividade ({automaticasAtivas.length})
+        </span>
+        <div className="flex min-h-[34px] flex-wrap gap-2">
           {automaticasAtivas.length === 0 && (
-            <p className="text-[var(--fg)]/20 text-xs">Nenhuma tarefa automática pra esse cliente.</p>
+            <p className="text-xs text-fg-3">Nenhuma tarefa automática para este cliente.</p>
           )}
           {automaticasAtivas.map(t => (
-            <span key={t} className="flex items-center gap-1.5 text-xs bg-[var(--fg)]/5 border border-[var(--fg)]/15 text-[var(--fg)] px-2.5 py-1 rounded-lg">
+            <span key={t} title="Vem do vínculo de regime/atividade"
+              className="inline-flex min-h-[30px] items-center gap-1.5 rounded-full border border-line px-3 text-[13px] text-fg-2">
               {t}
               {!readOnly && (
                 <button type="button" onClick={() => excluir(t)}
-                  title="Excluir essa tarefa automática só pra esse cliente"
-                  className="text-[var(--fg)]/40 hover:text-red-400 transition-colors font-bold">×</button>
+                  aria-label={`Excluir ${t} só para este cliente`}
+                  title="Excluir só para este cliente"
+                  className="-mr-1.5 inline-grid h-6 w-6 place-items-center rounded-full text-fg-3 transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                  <X size={13} aria-hidden="true" />
+                </button>
               )}
             </span>
           ))}
@@ -71,17 +76,21 @@ export default function TarefasAutomaticasCampo({
 
       {excluidas.length > 0 && (
         <div>
-          <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">
-            Excluídas pra esse cliente ({excluidas.length})
-          </label>
-          <div className="flex flex-wrap gap-1.5 min-h-[32px]">
+          <span className="mb-2 block text-[13px] font-medium text-fg-2">
+            Excluídas para este cliente ({excluidas.length})
+          </span>
+          <div className="flex min-h-[34px] flex-wrap gap-2">
             {excluidas.map(t => (
-              <span key={t} className="flex items-center gap-1.5 text-xs bg-[var(--fg)]/2 border border-[var(--fg)]/8 text-[var(--fg)]/30 line-through px-2.5 py-1 rounded-lg">
-                {t}
+              <span key={t}
+                className="inline-flex min-h-[30px] items-center gap-2 rounded-full border border-dashed border-line px-3 text-[13px] text-fg-3">
+                <span className="line-through">{t}</span>
                 {!readOnly && (
                   <button type="button" onClick={() => restaurar(t)}
-                    title="Restaurar essa tarefa pra esse cliente"
-                    className="text-[var(--fg)]/40 hover:text-[var(--accent)] transition-colors font-bold no-underline">↺</button>
+                    aria-label={`Restaurar ${t}`}
+                    title="Restaurar para este cliente"
+                    className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[13px] font-semibold text-acc-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                    <Undo2 size={13} aria-hidden="true" />Restaurar
+                  </button>
                 )}
               </span>
             ))}

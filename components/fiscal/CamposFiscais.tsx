@@ -1,10 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { Eye, EyeOff, Layers, Lock, Plus, X } from 'lucide-react'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import SeletorAtividades from '@/components/geral/SeletorAtividades'
 import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
 import GruposTarefasModal from '@/components/geral/GruposTarefasModal'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Select, Checkbox } from '@/components/ui/Input'
 
 export interface CamposFiscaisData {
   cod: string
@@ -23,10 +27,6 @@ export interface CamposFiscaisData {
   tarefas_excluidas: string[]
 }
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
-const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
-
 interface Props {
   form: CamposFiscaisData
   set: <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void
@@ -40,149 +40,148 @@ interface Props {
   addTarefa: () => void
 }
 
+export function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold text-fg">{titulo}</h3>
+      {children}
+    </section>
+  )
+}
+
+// As quatro seções da janela Editar empresa, depois de Identificação (que fica
+// no EmpresaModal): Enquadramento, Rotinas do cliente e Tarefas do cliente.
 export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdit, clienteId, readOnly, novaTarefa, setNovaTarefa, addTarefa }: Props) {
   const [gruposAberto, setGruposAberto] = useState(false)
+  const [senhaVisivel, setSenhaVisivel] = useState(false)
 
   return (
     <>
-      {/* Código + Regime */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>Código</label>
-          <input className={inputCls} value={form.cod} onChange={e => set('cod', e.target.value)} placeholder="00000" disabled={readOnly} />
-        </div>
-        <div>
-          <label className={labelCls}>Regime</label>
-          <select className={selectCls} value={form.regime} onChange={e => set('regime', e.target.value)} disabled={readOnly}>
-            <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
-            {form.regime && !catalogo.regimes.includes(form.regime) && (
-              <option value={form.regime} className="bg-[var(--bg-surface)]">{form.regime} (atual)</option>
+      <Secao titulo="Enquadramento">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field rotulo="Regime">
+            {c => (
+              <Select id={c.id} value={form.regime} onChange={e => set('regime', e.target.value)} disabled={readOnly}>
+                <option value="">Selecionar…</option>
+                {form.regime && !catalogo.regimes.includes(form.regime) && (
+                  <option value={form.regime}>{form.regime} (atual)</option>
+                )}
+                {catalogo.regimes.map(r => <option key={r} value={r}>{r}</option>)}
+              </Select>
             )}
-            {catalogo.regimes.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
-          </select>
+          </Field>
+          <Field rotulo="Responsável">
+            {c => (
+              <Select id={c.id} value={form.responsavel} onChange={e => set('responsavel', e.target.value)} disabled={readOnly}>
+                <option value="">Selecionar…</option>
+                {responsaveis.map(r => <option key={r} value={r}>{r}</option>)}
+              </Select>
+            )}
+          </Field>
         </div>
-      </div>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-fg-2">Atividades</span>
+          <SeletorAtividades
+            valores={form.atividade}
+            opcoes={catalogo.atividades}
+            onChange={v => set('atividade', v)}
+            readOnly={readOnly}
+          />
+        </div>
+      </Secao>
 
-      {/* Atividade */}
-      <div>
-        <label className={labelCls}>Atividade</label>
-        <SeletorAtividades
-          valores={form.atividade}
-          opcoes={catalogo.atividades}
-          onChange={v => set('atividade', v)}
-          readOnly={readOnly}
-        />
-      </div>
+      <Secao titulo="Rotinas do cliente">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <Checkbox rotulo="Envia ISS" checked={form.envia_iss} onChange={e => set('envia_iss', e.target.checked)} disabled={readOnly} />
+          <Checkbox rotulo="Confere SIGA" checked={form.confere_siga} onChange={e => set('confere_siga', e.target.checked)} disabled={readOnly} />
+          <Checkbox rotulo="Faz dossiê" checked={form.faz_dossie} onChange={e => set('faz_dossie', e.target.checked)} disabled={readOnly} />
+          <Checkbox rotulo="Declaração anual" checked={form.declaracao_anual} onChange={e => set('declaracao_anual', e.target.checked)} disabled={readOnly} />
+        </div>
 
-      {/* Checkbox Envia ISS */}
-      <div>
-        <label className={`flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border transition-all ${
-          form.envia_iss ? 'border-amber-500/50 bg-amber-500/8' : 'border-[var(--fg)]/8 bg-[var(--fg)]/2'
-        }`}>
-          <input type="checkbox" checked={form.envia_iss} onChange={e => set('envia_iss', e.target.checked)} className="w-4 h-4 accent-amber-400" disabled={readOnly} />
-          <span className={`text-xs font-bold uppercase tracking-widest ${form.envia_iss ? 'text-amber-400' : 'text-[var(--fg)]/40'}`}>
-            Envia ISS?
-          </span>
-          {form.envia_iss && <span className="text-amber-400/70 text-xs">✓ SIM — preencha as credenciais abaixo</span>}
-        </label>
-      </div>
-
-      {/* Credenciais ISS */}
-      {form.envia_iss && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-4">
-          <p className="text-[10px] font-bold text-amber-400/70 uppercase tracking-widest">🔒 Credenciais ISS</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Login ISS</label>
-              <input className={inputCls} value={form.login_iss} onChange={e => set('login_iss', e.target.value)} disabled={readOnly} />
+        {form.envia_iss && (
+          <div className="flex flex-col gap-3 rounded-[10px] border border-line-soft bg-page px-4 py-3.5">
+            <p className="flex items-center gap-1.5 text-[13px] font-medium text-fg-2">
+              <Lock size={14} aria-hidden="true" />Acesso ao ISS
+            </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field rotulo="Login do ISS">
+                {c => <Input id={c.id} autoComplete="off" value={form.login_iss} onChange={e => set('login_iss', e.target.value)} disabled={readOnly} />}
+              </Field>
+              <Field rotulo="Senha do ISS">
+                {c => (
+                  <div className="relative min-w-0">
+                    <Input
+                      id={c.id}
+                      className="pr-11"
+                      type={senhaVisivel ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={form.senha_iss}
+                      onChange={e => set('senha_iss', e.target.value)}
+                      disabled={readOnly}
+                    />
+                    <IconButton
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2"
+                      rotulo={senhaVisivel ? 'Ocultar senha' : 'Mostrar senha'}
+                      aria-pressed={senhaVisivel}
+                      icone={senhaVisivel ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                      onClick={() => setSenhaVisivel(v => !v)}
+                    />
+                  </div>
+                )}
+              </Field>
+              <Field rotulo="E-mail de envio">
+                {c => <Input id={c.id} type="email" placeholder="financeiro@cliente.com.br" value={form.email_envio_iss} onChange={e => set('email_envio_iss', e.target.value)} disabled={readOnly} />}
+              </Field>
             </div>
-            <div>
-              <label className={labelCls}>Senha ISS</label>
-              <input className={inputCls} value={form.senha_iss} onChange={e => set('senha_iss', e.target.value)} disabled={readOnly} />
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>Email Envio</label>
-            <input className={inputCls} type="email" value={form.email_envio_iss} onChange={e => set('email_envio_iss', e.target.value)} disabled={readOnly} />
-          </div>
-        </div>
-      )}
-
-      {/* Checkbox Confere SIGA */}
-      <div>
-        <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 transition-all">
-          <input type="checkbox" checked={form.confere_siga} onChange={e => set('confere_siga', e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" disabled={readOnly} />
-          <span className="text-xs font-bold uppercase tracking-widest text-[var(--fg)]/40">Confere SIGA?</span>
-        </label>
-      </div>
-
-      {/* Checkbox Faz Dossiê */}
-      <div>
-        <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 transition-all">
-          <input type="checkbox" checked={form.faz_dossie} onChange={e => set('faz_dossie', e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" disabled={readOnly} />
-          <span className="text-xs font-bold uppercase tracking-widest text-[var(--fg)]/40">Faz Dossiê?</span>
-        </label>
-      </div>
-
-      {/* Responsável */}
-      <div>
-        <label className={labelCls}>Responsável</label>
-        <select className={selectCls} value={form.responsavel} onChange={e => set('responsavel', e.target.value)} disabled={readOnly}>
-          <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
-          {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
-        </select>
-      </div>
-
-      {/* Declaração Anual */}
-      <div>
-        <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2">
-          <input type="checkbox" checked={form.declaracao_anual} onChange={e => set('declaracao_anual', e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" disabled={readOnly} />
-          <span className="text-xs font-bold uppercase tracking-widest text-[var(--fg)]/40">Declaração Anual</span>
-        </label>
-      </div>
-
-      {/* Tarefas */}
-      <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <label className={labelCls + ' mb-0'}>
-            Tarefas ({form.tarefas_personalizadas.length})
-          </label>
-          {isEdit && clienteId && !readOnly && (
-            <button type="button" onClick={() => setGruposAberto(true)}
-              className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] hover:border-[var(--fg)]/25 transition-colors">
-              Agrupar tarefas
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-1.5 mb-3 min-h-[32px]">
-          {form.tarefas_personalizadas.length === 0 && (
-            <p className="text-[var(--fg)]/20 text-xs">Nenhuma tarefa adicionada.</p>
-          )}
-          {form.tarefas_personalizadas.map((t, i) => (
-            <span key={i} className="flex items-center gap-1.5 text-xs bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] px-2.5 py-1 rounded-lg">
-              {t}
-              {!readOnly && (
-                <button type="button"
-                  onClick={() => set('tarefas_personalizadas', form.tarefas_personalizadas.filter((_, idx) => idx !== i))}
-                  className="text-[var(--fg)]/40 hover:text-red-400 transition-colors font-bold">×</button>
-              )}
-            </span>
-          ))}
-        </div>
-
-        {!readOnly && (
-          <div className="flex gap-2">
-            <input value={novaTarefa} onChange={e => setNovaTarefa(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefa())}
-              placeholder="Digitar nome da tarefa e pressionar Enter..."
-              className={inputCls + ' flex-1 text-xs'} />
-            <button type="button" onClick={addTarefa}
-              className="px-4 py-2 rounded-xl bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/30 text-xs font-semibold transition-colors whitespace-nowrap">
-              + Adicionar
-            </button>
           </div>
         )}
+      </Secao>
+
+      <Secao titulo="Tarefas do cliente">
+        <div>
+          <div className="mb-2 flex items-center gap-2.5">
+            <span className="text-[13px] font-medium text-fg-2">Tarefas ({form.tarefas_personalizadas.length})</span>
+            {isEdit && clienteId && !readOnly && (
+              <Button className="ml-auto" tamanho="p" icone={<Layers size={14} aria-hidden="true" />} onClick={() => setGruposAberto(true)}>
+                Agrupar tarefas
+              </Button>
+            )}
+          </div>
+
+          <div className="mb-3 flex min-h-[34px] flex-wrap gap-2">
+            {form.tarefas_personalizadas.length === 0 && (
+              <p className="text-xs text-fg-3">Nenhuma tarefa adicionada.</p>
+            )}
+            {form.tarefas_personalizadas.map((t, i) => (
+              <span key={i}
+                className="inline-flex min-h-[30px] items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--acc)_55%,transparent)] bg-acc-soft px-3 text-[13px] text-fg">
+                {t}
+                {!readOnly && (
+                  <button type="button"
+                    aria-label={`Remover ${t}`}
+                    onClick={() => set('tarefas_personalizadas', form.tarefas_personalizadas.filter((_, idx) => idx !== i))}
+                    className="-mr-1.5 inline-grid h-6 w-6 place-items-center rounded-full text-fg-3 transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                    <X size={13} aria-hidden="true" />
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+
+          {!readOnly && (
+            <div className="flex gap-2">
+              <Input
+                className="flex-1"
+                aria-label="Nome da nova tarefa"
+                value={novaTarefa}
+                onChange={e => setNovaTarefa(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefa())}
+                placeholder="Digite o nome da tarefa e pressione Enter"
+              />
+              <Button icone={<Plus size={16} aria-hidden="true" />} onClick={addTarefa}>Adicionar</Button>
+            </div>
+          )}
+        </div>
 
         <TarefasAutomaticasCampo
           setor="fiscal"
@@ -193,7 +192,7 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
           onChangeExcluidas={v => set('tarefas_excluidas', v)}
           readOnly={readOnly}
         />
-      </div>
+      </Secao>
 
       {gruposAberto && clienteId && (
         <GruposTarefasModal

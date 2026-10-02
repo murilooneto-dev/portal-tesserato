@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Pencil, Trash2 } from 'lucide-react'
 import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { excluirCliente } from '@/app/fiscal/clientes/actions'
 import EmpresaModal from './EmpresaModal'
 import ConfirmarExclusaoClienteModal from '@/components/geral/ConfirmarExclusaoClienteModal'
 import { descreverImpactoExclusao } from '@/lib/exclusao-cliente'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 
 interface Props {
   cliente: ClienteComFiscal
@@ -34,22 +37,10 @@ export default function ClienteAcoes({ cliente, responsaveis, catalogo }: Props)
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setModalOpen(true)}
-          className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)] px-3 py-1.5 rounded-lg border border-[var(--fg)]/10 hover:border-[var(--fg)]/20 transition-all">
-          Editar
-        </button>
-        <button
-          onClick={() => setConfirmandoExclusao(true)}
-          className="text-xs text-red-400/70 hover:text-red-400 px-3 py-1.5 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all">
-          Excluir
-        </button>
-        {cliente.ativo === false && (
-          <span className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15 uppercase tracking-wide">
-            Desabilitado
-          </span>
-        )}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button icone={<Pencil size={16} aria-hidden="true" />} onClick={() => setModalOpen(true)}>Editar</Button>
+        <Button variante="perigo" icone={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmandoExclusao(true)}>Excluir</Button>
+        {cliente.ativo === false && <Badge tom="neu">Desabilitado</Badge>}
       </div>
 
       {modalOpen && (
