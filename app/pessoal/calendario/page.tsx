@@ -17,9 +17,5 @@ export default async function CalendarioPessoalPage() {
   const eventos = (eventosRaw ?? []) as CalendarioEvento[]
   const isAdmin = profile?.role === 'admin'
 
-  return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <CalendarioSetor setor="pessoal" eventos={eventos} isAdmin={isAdmin} />
-    </div>
-  )
+  return <CalendarioSetor setor="pessoal" eventos={eventos} isAdmin={isAdmin} />
 }

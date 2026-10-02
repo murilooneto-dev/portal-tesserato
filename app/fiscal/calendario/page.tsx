@@ -17,9 +17,5 @@ export default async function CalendarioFiscalPage() {
   const eventos = (eventosRaw ?? []) as CalendarioEvento[]
   const isAdmin = profile?.role === 'admin'
 
-  return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <CalendarioSetor setor="fiscal" eventos={eventos} isAdmin={isAdmin} />
-    </div>
-  )
+  return <CalendarioSetor setor="fiscal" eventos={eventos} isAdmin={isAdmin} />
 }
