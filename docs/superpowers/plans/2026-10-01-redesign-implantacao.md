@@ -156,7 +156,7 @@ Mensagem sugerida para colar:
 | 1 Base visual | feat/redesign-fase1-base-visual | #192 | mergeada em dev |
 | 2 Casca | feat/redesign-fase2-casca | #193 | mergeada em dev |
 | 3 Geral | feat/redesign-fase3-geral | #194 | mergeada em dev |
-| 4 Fiscal | feat/redesign-fase4-fiscal | 4a: #196 | dividida em 4a (clientes, ficha, editar empresa), 4b, 4c, 4d; 4a pronta, PR contra dev |
+| 4 Fiscal | feat/redesign-fase4-fiscal | 4a: #196 · 4b: (a abrir) | dividida em 4a (clientes, ficha, editar empresa), 4b (painéis), 4c, 4d; 4a e 4b prontas, PRs contra dev |
 | 5 Contábil e Pessoal | — | — | não iniciada |
 | 6 Societário e Financeiro | — | — | não iniciada |
 | 7 Administração | — | — | não iniciada |
