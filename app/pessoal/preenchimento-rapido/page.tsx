@@ -8,7 +8,7 @@ import { toggleTarefaPessoal } from '@/app/pessoal/clientes/actions'
 import PreenchimentoRapido from '@/components/PreenchimentoRapido'
 import type { Tarefa } from '@/lib/types'
 
-export const metadata = { title: 'Preenchimento Rápido — Tesserato Pessoal' }
+export const metadata = { title: 'Preenchimento rápido — Tesserato Pessoal' }
 
 interface ClienteRow {
   id: string

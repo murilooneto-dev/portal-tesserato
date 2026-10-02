@@ -23,8 +23,10 @@ export function Badge({ tom = 'neu', icone, grande = false, className, children 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-[5px] whitespace-nowrap rounded-md font-semibold leading-none',
-        grande ? 'h-[26px] px-2.5 text-[13px]' : 'h-[22px] px-2 text-xs',
+        'inline-flex items-center gap-[5px] whitespace-nowrap rounded-md font-semibold',
+        // leading-none depois do tamanho: no tailwind-merge o tamanho da fonte
+        // anula a altura de linha que vem antes dele.
+        grande ? 'h-[26px] px-2.5 text-[13px] leading-none' : 'h-[22px] px-2 text-xs leading-none',
         TOM[tom],
         className,
       )}

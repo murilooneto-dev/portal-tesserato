@@ -86,7 +86,20 @@ export function setoresVisiveis(profile: PerfilMenu): UserSetor[] {
   return base.filter(s => s !== 'configuracoes')
 }
 
+// Páginas do setor que viram atalho no celular, na ordem de preferência do
+// desenho (Clientes e Minhas tarefas); sem elas, entram as primeiras do menu.
+const PREFERIDAS_NO_CELULAR = ['clientes', 'minhas-tarefas', 'recebimentos', 'procedimentos']
+
 export function atalhosCelular(grupos: GrupoMenu[]): ItemMenu[] {
   const doSetor = grupos.find(g => g.id === 'setor')?.itens ?? []
-  return [ITENS_GERAIS.find(i => i.href === '/intranet')!, ...doSetor.slice(0, 2)]
+  const prioridade = (item: ItemMenu) => {
+    const i = PREFERIDAS_NO_CELULAR.findIndex(slug => item.href.endsWith(`/${slug}`))
+    return i === -1 ? PREFERIDAS_NO_CELULAR.length : i
+  }
+  const escolhidos = doSetor
+    .map((item, ordem) => ({ item, ordem }))
+    .sort((a, b) => prioridade(a.item) - prioridade(b.item) || a.ordem - b.ordem)
+    .slice(0, 2)
+    .map(x => x.item)
+  return [ITENS_GERAIS.find(i => i.href === '/intranet')!, ...escolhidos]
 }

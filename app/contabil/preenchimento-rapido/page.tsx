@@ -8,7 +8,7 @@ import { toggleTarefaContabil } from '@/app/contabil/clientes/actions'
 import PreenchimentoRapido from '@/components/PreenchimentoRapido'
 import type { Tarefa } from '@/lib/types'
 
-export const metadata = { title: 'Preenchimento Rápido — Tesserato Contábil' }
+export const metadata = { title: 'Preenchimento rápido — Tesserato Contábil' }
 
 interface ClienteRow {
   id: string

@@ -94,3 +94,9 @@ test('NomeCliente aguenta nome nulo e CNPJ só com espaços', () => {
   const b = renderToStaticMarkup(h(NomeCliente, { nome: 'Acme', cnpj: '   ' }))
   assert.ok(b.includes('CNPJ não informado'))
 })
+
+test('Badge mantém a altura de linha 1 depois do tamanho da fonte', () => {
+  const html = renderToStaticMarkup(h(Badge, { tom: 'ok', children: 'Pago' }))
+  assert.match(html, /text-xs leading-none/)
+  assert.match(renderToStaticMarkup(h(Badge, { grande: true, children: 'Pago' })), /text-\[13px\] leading-none/)
+})

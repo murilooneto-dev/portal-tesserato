@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 
 export default function NaoEncontrada() {
   return (
-    <main className="grid min-h-screen place-items-center bg-page px-4">
+    <main className="grid min-h-dvh place-items-center bg-page px-4">
       <EmptyState
         icone={<SearchX size={24} />}
         titulo="Página não encontrada"

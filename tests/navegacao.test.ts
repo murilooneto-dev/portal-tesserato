@@ -59,8 +59,10 @@ test('abas de setor: sem Configurações; admin vê todos os setores de trabalho
   assert.deepEqual(setoresVisiveis({ role: 'operador', setores: ['contabil', 'configuracoes'], paginas_acesso: [] }), ['contabil'])
 })
 
-test('atalhos do celular: Início e até duas páginas do setor', () => {
-  assert.deepEqual(atalhosCelular(montarMenu(admin, 'fiscal')).map(i => i.rotulo), ['Início', 'Dashboard', 'Clientes'])
+test('atalhos do celular: Início e até duas páginas do setor, Clientes e Minhas tarefas primeiro', () => {
+  assert.deepEqual(atalhosCelular(montarMenu(admin, 'fiscal')).map(i => i.rotulo), ['Início', 'Clientes', 'Minhas tarefas'])
+  assert.deepEqual(atalhosCelular(montarMenu(admin, 'contabil')).map(i => i.rotulo), ['Início', 'Clientes', 'Dashboard'])
+  assert.deepEqual(atalhosCelular(montarMenu(admin, 'financeiro')).map(i => i.rotulo), ['Início', 'Clientes', 'Recebimentos'])
   assert.deepEqual(atalhosCelular(montarMenu(operadorFiscal, 'fiscal')).map(i => i.rotulo), ['Início', 'Dashboard'])
   assert.deepEqual(atalhosCelular(montarMenu({ role: 'operador', setores: ['societario'], paginas_acesso: [] }, 'societario')).map(i => i.rotulo), ['Início'])
 })
