@@ -1,5 +1,12 @@
-﻿import { redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { ClipboardList } from 'lucide-react'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { MonthPill } from '@/components/ui/MonthPill'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
@@ -66,51 +73,55 @@ export default async function TarefasPage() {
         c.responsavel?.toUpperCase() === profile?.nome?.toUpperCase()
       )
 
+  const linhas = clientesFiltrados.map(cliente => {
+    const ts = (tarefasPorCliente.get(cliente.id) ?? []).filter(t => tipoVisivel(t.tipo) && tipoContaNoProgressoDoCliente(donoNomePorTipo[t.tipo], cliente.responsavel))
+    const concluidas = ts.filter(t => t.concluida).length
+    const total = ts.length
+    const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
+    return { cliente, concluidas, total, pct }
+  })
+
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[var(--fg)]">Tarefas</h1>
-        <p className="text-[var(--fg)]/40 mt-1 text-sm">
-          Visão geral — {MESES[mes - 1]}/{ano}
-        </p>
-      </div>
+    <Pagina className="mx-auto w-full max-w-6xl">
+      <CabecalhoPagina titulo="Tarefas" subtitulo={`Visão geral — ${MESES[mes - 1]}/${ano}`} />
 
-      <div className="flex flex-col gap-2">
-        {clientesFiltrados.map(cliente => {
-          const ts = (tarefasPorCliente.get(cliente.id) ?? []).filter(t => tipoVisivel(t.tipo) && tipoContaNoProgressoDoCliente(donoNomePorTipo[t.tipo], cliente.responsavel))
-          const concluidas = ts.filter(t => t.concluida).length
-          const total = ts.length
-          const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
-
-          return (
-            <Link
-              key={cliente.id}
-              href={`/fiscal/clientes/${cliente.id}`}
-              className="flex items-center gap-4 p-4 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/6 hover:bg-[var(--fg)]/6 transition-all"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-[var(--fg)] text-sm font-medium truncate">{cliente.nome}</p>
-                <p className="text-[var(--fg)]/30 text-xs mt-0.5">{cliente.responsavel ?? '—'}</p>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <div className="w-24 h-1.5 bg-[var(--fg)]/8 rounded-full">
-                  <div
-                    className="h-full bg-[var(--accent)] rounded-full transition-all"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className="text-xs text-[var(--fg)]/40 w-12 text-right">
-                  {total > 0 ? `${concluidas}/${total}` : '—'}
-                </span>
-              </div>
-            </Link>
-          )
-        })}
-
-        {clientesFiltrados.length === 0 && (
-          <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
+      <Card semPadding className="overflow-hidden">
+        {linhas.length === 0 ? (
+          <EmptyState icone={<ClipboardList size={24} />} titulo="Nenhum cliente encontrado" />
+        ) : (
+          <div className="relative overflow-x-auto">
+            <Tabela className="min-w-[560px]">
+              <thead>
+                <tr>
+                  <Th>Cliente</Th>
+                  <Th largura={160}>Responsável</Th>
+                  <Th largura={150}>Progresso do mês</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map(({ cliente, concluidas, total, pct }) => (
+                  <tr key={cliente.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
+                    <Td>
+                      <Link href={`/fiscal/clientes/${cliente.id}`} className="block w-full min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                        <NomeCliente nome={cliente.nome} />
+                      </Link>
+                    </Td>
+                    <Td className="text-fg-2">{cliente.responsavel ? <span className="block truncate" title={cliente.responsavel}>{cliente.responsavel}</span> : <span className="text-fg-3">—</span>}</Td>
+                    <Td>
+                      {total > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <MonthPill percentual={pct} />
+                          <span className="text-[13px] text-fg-3">{concluidas}/{total}</span>
+                        </div>
+                      ) : <span className="text-fg-3">—</span>}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Tabela>
+          </div>
         )}
-      </div>
-    </div>
+      </Card>
+    </Pagina>
   )
 }

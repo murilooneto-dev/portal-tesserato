@@ -9,7 +9,7 @@ export function tipoVisivelParaUsuario(
   return role === 'admin' || !responsavelId || responsavelId === userId
 }
 
-function normalizarNome(nome: string | null | undefined): string {
+export function normalizarNome(nome: string | null | undefined): string {
   return (nome ?? '').trim().toLowerCase()
 }
 

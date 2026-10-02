@@ -1,7 +1,9 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { ArrowDown, ArrowUp, Check, ChevronRight, ClipboardList, Printer } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { escapeHtml } from '@/lib/escape-html'
 import type { Tarefa } from '@/lib/types'
@@ -13,6 +15,17 @@ import { buscarMapaVinculosSetor, calcularTarefasEsperadas, type MapaVinculosSet
 import { bucketDoRegime } from '@/lib/regime-bucket'
 import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
 import { filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Button } from '@/components/ui/Button'
+import { Badge, type BadgeTom } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Select, Switch } from '@/components/ui/Input'
+import { MonthPill } from '@/components/ui/MonthPill'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 
 const TAREFAS: Record<string, string[]> = {
   normal:  ['ENTRADA','SAIDAS','SIGET','SPEED GOV','ISS','ENV. DAS','PIS/COFINS','ICMS/ICMS ST','IRPJ/CSLL','REINF/INSS','EFD FISCAL','EFD PIS/COFINS'],
@@ -20,6 +33,8 @@ const TAREFAS: Record<string, string[]> = {
   mei:     ['DAS'],
 }
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+const TOM_REGIME: Record<string, BadgeTom> = { normal: 'info', simples: 'ok', mei: 'warn', isento: 'neu' }
 
 function tiposDoCliente(cliente: ClienteComFiscal, mapa: MapaVinculosSetor, donos: Record<string, string>) {
   // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % do cliente.
@@ -164,10 +179,9 @@ export default function RelatoriosPage() {
   <div class="stat" style="border-color:#ef4444"><div class="n" style="color:#ef4444">${stats.zero}</div><div>Não Iniciados</div></div>
 </div>
 <table>
-  <thead><tr><th>#</th><th>Cliente</th><th>CNPJ</th><th>Regime</th><th>Responsável</th><th>Progresso</th><th>Tarefas Pendentes</th><th>Observação</th><th>MIT</th></tr></thead>
+  <thead><tr><th>Cliente</th><th>CNPJ</th><th>Regime</th><th>Responsável</th><th>Progresso</th><th>Tarefas Pendentes</th><th>Observação</th><th>MIT</th></tr></thead>
   <tbody>
-    ${filtrados.map((r, i) => `<tr>
-      <td>${i+1}</td>
+    ${filtrados.map(r => `<tr>
       <td><strong>${escapeHtml(r.cliente.nome)}</strong></td>
       <td>${escapeHtml(r.cliente.cnpj) || '—'}</td>
       <td><span class="badge ${bucketDoRegime(r.cliente.regime)}">${escapeHtml(r.cliente.regime) || '—'}</span></td>
@@ -188,155 +202,180 @@ export default function RelatoriosPage() {
     setTimeout(() => win.print(), 500)
   }
 
+  const statsCards = [
+    { label: 'Total de clientes', val: stats.total, cor: 'text-fg' },
+    { label: '100% concluídos', val: stats.cem, cor: 'text-ok' },
+    { label: 'Em andamento', val: stats.andamento, cor: 'text-warn' },
+    { label: 'Não iniciados', val: stats.zero, cor: 'text-danger' },
+  ]
+
+  function pendencias(r: (typeof filtrados)[number]) {
+    if (r.pct === 100) return <Badge tom="ok" icone={<Check size={14} aria-hidden="true" />}>Concluído</Badge>
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {r.pendentes.slice(0, 3).map(p => <Badge key={p} tom="warn" className="max-w-full"><span className="truncate" title={p}>{p}</span></Badge>)}
+        {r.pendentes.length > 3 && <Badge>+{r.pendentes.length - 3}</Badge>}
+      </div>
+    )
+  }
+
+  function setaOrdem(campo: 'cliente' | 'progresso') {
+    if (ordenarPor !== campo) return null
+    return ordemAsc ? <ArrowUp size={14} aria-hidden="true" /> : <ArrowDown size={14} aria-hidden="true" />
+  }
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      {/* Barra de filtros + título + botão — tudo em uma linha */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-2xl font-bold text-[var(--fg)] mr-2">
-          Relatório <span className="text-[var(--fg)]/40 font-normal text-lg">{String(mes).padStart(2,'0')}/{ano}</span>
-        </h1>
+    <Pagina className="mx-auto w-full max-w-7xl">
+      <CabecalhoPagina
+        titulo="Relatório"
+        subtitulo={`Competência ${String(mes).padStart(2, '0')}/${ano}`}
+        acoes={<Button variante="secundario" icone={<Printer size={16} aria-hidden="true" />} onClick={imprimir}>Imprimir / Salvar PDF</Button>}
+      />
 
+      <div className="flex flex-wrap items-end gap-3">
         {isAdmin && (
-          <select value={filtroResp} onChange={e => setFiltroResp(e.target.value)}
-            className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
-            {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
-          </select>
+          <Field rotulo="Responsável" className="w-full sm:w-[190px]">
+            {c => (
+              <Select id={c.id} value={filtroResp} onChange={e => setFiltroResp(e.target.value)}>
+                {responsaveis.map(r => <option key={r} value={r}>{r === 'TODOS' ? 'Todos' : r}</option>)}
+              </Select>
+            )}
+          </Field>
         )}
-
-        <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)}
-          className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
-          <option value="TODOS" className="bg-[var(--bg-surface)]">Todos</option>
-          <option value="normal" className="bg-[var(--bg-surface)]">Regime Normal</option>
-          <option value="simples" className="bg-[var(--bg-surface)]">Simples Nacional</option>
-          <option value="mei" className="bg-[var(--bg-surface)]">MEI</option>
-          <option value="isento" className="bg-[var(--bg-surface)]">Isento</option>
-        </select>
-
-        <select value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)}
-          className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
-          <option value="TODAS" className="bg-[var(--bg-surface)]">Todas as tarefas</option>
-          {tarefasDisponiveis.map(t => <option key={t} value={t} className="bg-[var(--bg-surface)]">{t}</option>)}
-        </select>
-
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer hover:border-[var(--fg)]/20 transition-colors">
-          <input type="checkbox" checked={apenasP} onChange={e => setApenasP(e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" />
-          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Apenas pendências</span>
-        </label>
-
-        <div className="flex-1" />
-
-        <button onClick={imprimir}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--fg)] text-sm font-semibold px-5 py-2.5 rounded-xl transition-all whitespace-nowrap">
-          🖨 Imprimir / Salvar PDF
-        </button>
+        <Field rotulo="Regime" className="w-full sm:w-[190px]">
+          {c => (
+            <Select id={c.id} value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)}>
+              <option value="TODOS">Todos</option>
+              <option value="normal">Regime normal</option>
+              <option value="simples">Simples Nacional</option>
+              <option value="mei">MEI</option>
+              <option value="isento">Isento</option>
+            </Select>
+          )}
+        </Field>
+        <Field rotulo="Tarefa" className="w-full sm:w-[220px]">
+          {c => (
+            <Select id={c.id} value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)}>
+              <option value="TODAS">Todas as tarefas</option>
+              {tarefasDisponiveis.map(t => <option key={t} value={t}>{t}</option>)}
+            </Select>
+          )}
+        </Field>
+        {atividades.length > 0 && (
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span id="rotulo-filtro-atividade-rel" className="text-[13px] font-medium text-fg-2">Atividade</span>
+            <div role="group" aria-labelledby="rotulo-filtro-atividade-rel" className="flex flex-wrap gap-2">
+              {atividades.map(nome => (
+                <Chip key={nome} ativo={filtroAtividade.includes(nome)} onClick={() => toggleAtividade(nome)}>{nome}</Chip>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {atividades.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <span className="text-xs text-[var(--fg)]/40">Atividade:</span>
-          {atividades.map(nome => (
-            <button
-              key={nome}
-              type="button"
-              onClick={() => toggleAtividade(nome)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                filtroAtividade.includes(nome)
-                  ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
-                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
-              }`}
-            >
-              {nome}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <Switch ligado={apenasP} onMudar={setApenasP} rotulo="Apenas pendências" />
+      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Total Clientes', val: stats.total, cor: 'var(--fg)' },
-          { label: '100% Concluídos', val: stats.cem, cor: '#10b981' },
-          { label: 'Em Andamento', val: stats.andamento, cor: '#f59e0b' },
-          { label: 'Não Iniciados', val: stats.zero, cor: '#ef4444' },
-        ].map(s => (
-          <div key={s.label} className="p-4 rounded-xl bg-[var(--fg)]/6 border border-[var(--fg)]/12">
-            <p className="text-2xl font-bold" style={{ color: s.cor }}>{s.val}</p>
-            <p className="text-[var(--fg)]/60 text-xs mt-1">{s.label}</p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {statsCards.map(s => (
+          <div key={s.label} className="min-w-0 rounded-xl border border-line-soft bg-surface p-[18px]">
+            <p className="text-sm font-medium text-fg-3">{s.label}</p>
+            <p className={`mt-1 text-[32px] font-semibold leading-tight tabular-nums ${s.cor}`}>{s.val}</p>
           </div>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-[var(--fg)]/12">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[var(--fg)]/12">
-              {['#','Cliente','CNPJ','Regime','Responsável','Progresso','Tarefas Pendentes','Observação','MIT'].map(h => {
-                const campo = h === 'Cliente' ? 'cliente' : h === 'Progresso' ? 'progresso' : null
-                return (
-                  <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">
-                    {campo ? (
-                      <button
-                        onClick={() => toggleSort(campo)}
-                        className="flex items-center gap-1 hover:text-[var(--fg)] transition-colors"
-                      >
-                        {h}
-                        <span className="text-[10px] w-2.5 inline-block">{ordenarPor === campo ? (ordemAsc ? '▲' : '▼') : ''}</span>
-                      </button>
-                    ) : h}
-                  </th>
-                )
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {filtrados.map((r, i) => (
-              <tr
+      {filtrados.length === 0 ? (
+        <Card><EmptyState icone={<ClipboardList size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude os filtros." /></Card>
+      ) : (
+        <>
+          {/* Celular: um cartão por cliente */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            {filtrados.map(r => (
+              <Link
                 key={r.cliente.id}
-                onClick={() => router.push(`/fiscal/clientes/${r.cliente.id}`)}
-                className="border-b border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 cursor-pointer transition-colors"
+                href={`/fiscal/clientes/${r.cliente.id}`}
+                className="flex min-w-0 flex-col gap-3 rounded-xl border border-line-soft bg-surface p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
               >
-                <td className="px-4 py-3 text-[var(--fg)]/40 text-xs">{i+1}</td>
-                <td className="px-4 py-3 text-[var(--fg)] text-sm font-medium">{r.cliente.nome}</td>
-                <td className="px-4 py-3 text-[var(--fg)]/50 text-xs font-mono">{r.cliente.cnpj ?? '—'}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    bucketDoRegime(r.cliente.regime) === 'simples' ? 'bg-green-500/15 text-green-400' :
-                    bucketDoRegime(r.cliente.regime) === 'mei' ? 'bg-amber-500/15 text-amber-400' :
-                    bucketDoRegime(r.cliente.regime) === 'isento' ? 'bg-slate-500/15 text-slate-400' :
-                    'bg-blue-500/15 text-blue-400'
-                  }`}>{r.cliente.regime ?? '—'}</span>
-                </td>
-                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs">{r.cliente.responsavel ?? '—'}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-1.5 bg-[var(--fg)]/15 rounded-full overflow-hidden">
-                      <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${r.pct}%` }} />
-                    </div>
-                    <span className="text-xs text-[var(--fg)]/70">{r.pct}%</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm w-40">
-                  {r.pct === 100
-                    ? <span className="text-green-400 text-xs font-medium">✓ Concluído</span>
-                    : (
-                      <div className="text-[var(--fg)]/60 text-xs leading-relaxed space-y-0.5">
-                        {r.pendentes.slice(0, 3).map(p => <div key={p} className="truncate">{p}</div>)}
-                        {r.pendentes.length > 3 && <div className="text-[var(--fg)]/35">+{r.pendentes.length - 3}</div>}
-                      </div>
-                    )
-                  }
-                </td>
-                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs max-w-[200px] truncate" title={obsPorCliente[r.cliente.id]}>{obsPorCliente[r.cliente.id] ?? ''}</td>
-                <td className="px-4 py-3 text-[var(--fg)]/50 text-xs">{r.cliente.mit ?? '—'}</td>
-              </tr>
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="min-w-0 flex-1"><NomeCliente nome={r.cliente.nome} cnpj={r.cliente.cnpj} /></div>
+                  <MonthPill percentual={r.total > 0 ? r.pct : null} />
+                  <ChevronRight size={18} className="mt-0.5 text-fg-3" aria-hidden="true" />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[13px] text-fg-3">
+                  {r.cliente.regime && <Badge tom={TOM_REGIME[bucketDoRegime(r.cliente.regime)] ?? 'info'}>{r.cliente.regime}</Badge>}
+                  <span>{r.cliente.responsavel ?? '—'}</span>
+                  {r.cliente.mit && <span>MIT: {r.cliente.mit}</span>}
+                </div>
+                {pendencias(r)}
+                {obsPorCliente[r.cliente.id] && <p className="text-[13px] text-fg-2">{obsPorCliente[r.cliente.id]}</p>}
+              </Link>
             ))}
-          </tbody>
-        </table>
-        {filtrados.length === 0 && (
-          <p className="text-center text-[var(--fg)]/30 py-12 text-sm">Nenhum cliente encontrado.</p>
-        )}
-      </div>
-    </div>
+          </div>
+
+          {/* Tela larga: tabela */}
+          <Card semPadding className="hidden overflow-hidden sm:block">
+            <div className="relative overflow-x-auto">
+              <Tabela className="min-w-[1100px]">
+                <thead>
+                  <tr>
+                    <Th aria-sort={ordenarPor === 'cliente' ? (ordemAsc ? 'ascending' : 'descending') : undefined}>
+                      <button type="button" onClick={() => toggleSort('cliente')} className="inline-flex items-center gap-1 uppercase hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                        Cliente {setaOrdem('cliente')}
+                      </button>
+                    </Th>
+                    <Th largura={150}>Regime</Th>
+                    <Th largura={140}>Responsável</Th>
+                    <Th largura={150} aria-sort={ordenarPor === 'progresso' ? (ordemAsc ? 'ascending' : 'descending') : undefined}>
+                      <button type="button" onClick={() => toggleSort('progresso')} className="inline-flex items-center gap-1 uppercase hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                        Progresso {setaOrdem('progresso')}
+                      </button>
+                    </Th>
+                    <Th largura={220}>Tarefas pendentes</Th>
+                    <Th largura={180}>Observação</Th>
+                    <Th largura={90}>MIT</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtrados.map(r => (
+                    <tr
+                      key={r.cliente.id}
+                      onClick={() => router.push(`/fiscal/clientes/${r.cliente.id}`)}
+                      className="cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]"
+                    >
+                      <Td>
+                        <Link href={`/fiscal/clientes/${r.cliente.id}`} onClick={e => e.stopPropagation()} className="block w-full min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <NomeCliente nome={r.cliente.nome} cnpj={r.cliente.cnpj} />
+                        </Link>
+                      </Td>
+                      <Td>
+                        {r.cliente.regime
+                          ? <Badge tom={TOM_REGIME[bucketDoRegime(r.cliente.regime)] ?? 'info'} className="max-w-full overflow-hidden"><span className="truncate" title={r.cliente.regime}>{r.cliente.regime.split('/')[0].trim()}</span></Badge>
+                          : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td className="text-fg-2">{r.cliente.responsavel ? <span className="block truncate" title={r.cliente.responsavel}>{r.cliente.responsavel}</span> : <span className="text-fg-3">—</span>}</Td>
+                      <Td>
+                        <div className="flex items-center gap-2">
+                          <MonthPill percentual={r.total > 0 ? r.pct : null} />
+                          <span className="text-[13px] text-fg-3">{r.feitas}/{r.total}</span>
+                        </div>
+                      </Td>
+                      <Td>{pendencias(r)}</Td>
+                      <Td className="text-[13px] text-fg-2">
+                        {obsPorCliente[r.cliente.id]
+                          ? <span className="block truncate" title={obsPorCliente[r.cliente.id]}>{obsPorCliente[r.cliente.id]}</span>
+                          : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td className="text-fg-2">{r.cliente.mit ?? <span className="text-fg-3">—</span>}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Tabela>
+            </div>
+          </Card>
+        </>
+      )}
+    </Pagina>
   )
 }

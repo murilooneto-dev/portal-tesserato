@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useState, useTransition, type ReactNode } from 'react'
+import { Check } from 'lucide-react'
 import {
   type CampoFiltro,
   type ClienteFiltro,
@@ -11,6 +12,14 @@ import {
   linhasVisiveis as calcularLinhasVisiveis,
 } from '@/lib/preenchimento-rapido'
 import type { MapaVinculosSetor } from '@/lib/tarefas-esperadas'
+import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Checkbox, Select, Switch } from '@/components/ui/Input'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 
 const LABEL_CAMPO: Record<CampoFiltro, string> = {
   regime: 'Regime',
@@ -128,139 +137,145 @@ export default function PreenchimentoRapido({
     filtroPendentes && apenasPendentes,
   )
 
+  const passoPronto = modoDireto || Boolean(campo && valor)
+
   return (
-    <div className="flex flex-col gap-6">
-      {!modoDireto && (
-        <div className="flex flex-wrap gap-4">
-          <div>
-            <label className="block text-xs text-[var(--fg)]/40 mb-1">Filtrar por</label>
-            <select
-              value={campo ?? ''}
-              onChange={e => handleCampoChange(e.target.value as CampoFiltro)}
-              className="bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
-            >
-              <option value="" disabled className="bg-[var(--bg-surface)]">Selecione...</option>
-              {camposDisponiveis.map(c => (
-                <option key={c} value={c} className="bg-[var(--bg-surface)]">{LABEL_CAMPO[c]}</option>
-              ))}
-            </select>
-          </div>
+    <div className="flex flex-col gap-5">
+      <Card>
+        <div className="flex flex-col gap-5">
+          <Passo numero={1} titulo="Quais clientes?">
+            {modoDireto ? (
+              <p className="text-sm text-fg-3">Todos os clientes do setor.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3.5">
+                <Field rotulo="Filtrar por" className="w-full sm:w-[180px]">
+                  {({ id }) => (
+                    <Select id={id} value={campo ?? ''} onChange={e => handleCampoChange(e.target.value as CampoFiltro)}>
+                      <option value="" disabled>Selecione...</option>
+                      {camposDisponiveis.map(c => (
+                        <option key={c} value={c}>{LABEL_CAMPO[c]}</option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
+                {campo && (
+                  <Field rotulo={LABEL_CAMPO[campo]} className="w-full sm:w-[240px]">
+                    {({ id }) => (
+                      <Select id={id} value={valor ?? ''} onChange={e => handleValorChange(e.target.value)}>
+                        <option value="" disabled>Selecione...</option>
+                        {valores.map(v => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </Select>
+                    )}
+                  </Field>
+                )}
+              </div>
+            )}
+            {!modoDireto && campo && valores.length === 0 && (
+              <p className="mt-3 text-sm text-fg-3">
+                Nenhum cliente tem {LABEL_CAMPO[campo].toLowerCase()} cadastrado.
+              </p>
+            )}
+          </Passo>
 
-          {campo && (
-            <div>
-              <label className="block text-xs text-[var(--fg)]/40 mb-1">{LABEL_CAMPO[campo]}</label>
-              <select
-                value={valor ?? ''}
-                onChange={e => handleValorChange(e.target.value)}
-                className="bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
-              >
-                <option value="" disabled className="bg-[var(--bg-surface)]">Selecione...</option>
-                {valores.map(v => (
-                  <option key={v} value={v} className="bg-[var(--bg-surface)]">{v}</option>
+          <Passo numero={2} titulo="Quais tarefas?" dica="Cada uma vira uma coluna.">
+            {!passoPronto ? (
+              <p className="text-sm text-fg-3">Escolha primeiro os clientes no passo 1.</p>
+            ) : tarefasDisponiveis.length === 0 ? (
+              <p className="text-sm text-fg-3">
+                {modoDireto || !campo
+                  ? 'Nenhuma tarefa tipo data cadastrada nesse setor.'
+                  : `Nenhuma tarefa do tipo data vinculada a ${LABEL_CAMPO[campo].toLowerCase()} "${valor}".`}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {tarefasDisponiveis.map(tipo => (
+                  <Chip key={tipo} ativo={tarefasSelecionadas.has(tipo)} onClick={() => toggleTarefaSelecionada(tipo)}>
+                    {tipo}
+                  </Chip>
                 ))}
-              </select>
-            </div>
-          )}
+              </div>
+            )}
+          </Passo>
         </div>
-      )}
+      </Card>
 
-      {!modoDireto && campo && valores.length === 0 && (
-        <p className="text-sm text-[var(--fg)]/40">
-          Nenhum cliente tem {LABEL_CAMPO[campo].toLowerCase()} cadastrado.
-        </p>
-      )}
-
-      {!modoDireto && campo && valor && tarefasDisponiveis.length === 0 && (
-        <p className="text-sm text-[var(--fg)]/40">
-          Nenhuma tarefa do tipo data vinculada a {LABEL_CAMPO[campo].toLowerCase()} &quot;{valor}&quot;.
-        </p>
-      )}
-
-      {modoDireto && tarefasDisponiveis.length === 0 && (
-        <p className="text-sm text-[var(--fg)]/40">
-          Nenhuma tarefa tipo data cadastrada nesse setor.
-        </p>
-      )}
-
-      {(modoDireto || (campo && valor)) && tarefasDisponiveis.length > 0 && (
-        <div>
-          <label className="block text-xs text-[var(--fg)]/40 mb-2">Tarefas</label>
-          <div className="flex flex-wrap gap-2">
-            {tarefasDisponiveis.map(tipo => (
-              <button
-                key={tipo}
-                type="button"
-                onClick={() => toggleTarefaSelecionada(tipo)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                  tarefasSelecionadas.has(tipo)
-                    ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
-                    : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
-                }`}
-              >
-                {tipo}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {filtroPendentes && colunas.length > 0 && (
-        <label className="flex items-center gap-2 text-xs text-[var(--fg)]/60 cursor-pointer w-fit">
-          <input
-            type="checkbox"
-            checked={apenasPendentes}
-            onChange={e => setApenasPendentes(e.target.checked)}
-            className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
-          />
-          Só pendentes
-        </label>
-      )}
-
-      {colunas.length > 0 && (
-        linhas.length === 0 ? (
-          <p className="text-sm text-[var(--fg)]/40">
-            {apenasPendentes
+      <Card
+        titulo={<><span className="mr-2.5 inline-grid h-7 w-7 place-items-center rounded-full bg-acc align-middle text-sm font-semibold text-acc-ink"><span aria-hidden="true">3</span></span><span className="sr-only">Passo 3: </span>Marque o que já foi feito</>}
+        meta={colunas.length > 0 && linhas.length > 0 ? <Badge tom="neu">{linhas.length} {linhas.length === 1 ? 'cliente' : 'clientes'}</Badge> : undefined}
+        acoes={filtroPendentes && colunas.length > 0 ? (
+          <Switch ligado={apenasPendentes} onMudar={setApenasPendentes} rotulo="Só pendentes" />
+        ) : undefined}
+        semPadding
+      >
+        {colunas.length === 0 ? (
+          <p className="px-[18px] py-6 text-sm text-fg-3">
+            {passoPronto
+              ? 'Escolha ao menos uma tarefa no passo 2 para ver a grade.'
+              : 'Escolha os clientes e as tarefas nos passos acima para ver a grade.'}
+          </p>
+        ) : linhas.length === 0 ? (
+          <EmptyState
+            icone={<Check size={22} aria-hidden="true" />}
+            titulo={apenasPendentes
               ? 'Nenhum cliente com essa(s) tarefa(s) pendente(s).'
               : 'Nenhum cliente tem essa(s) tarefa(s) aplicável(is).'}
-          </p>
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="relative overflow-x-auto">
+            <Tabela className="min-w-max">
               <thead>
-                <tr className="border-b border-[var(--fg)]/10">
-                  <th className="text-left py-2 px-3 text-[var(--fg)]/40 font-medium">Empresa</th>
+                <tr>
+                  <Th className="sticky left-0 z-[1] min-w-[240px] bg-surface">Empresa</Th>
                   {colunas.map(tipo => (
-                    <th key={tipo} className="text-center py-2 px-3 text-[var(--fg)]/40 font-medium whitespace-nowrap">
-                      {tipo}
-                    </th>
+                    <Th key={tipo} alinhar="centro" largura={140}>{tipo}</Th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {linhas.map(cliente => (
-                  <tr key={cliente.id} className="border-b border-[var(--fg)]/5">
-                    <td className="py-2 px-3 text-[var(--fg)]">{cliente.nome}</td>
+                  <tr key={cliente.id}>
+                    <Td className="sticky left-0 z-[1] min-w-[240px] bg-surface">
+                      <NomeCliente nome={cliente.nome} />
+                    </Td>
                     {colunas.map(tipo => (
-                      <td key={tipo} className="text-center py-2 px-3">
+                      <Td key={tipo} alinhar="centro">
                         {tarefasAplicaveisPorCliente[cliente.id]?.has(tipo) ? (
-                          <input
-                            type="checkbox"
+                          <Checkbox
+                            rotulo={<span className="sr-only">{tipo} — {cliente.nome}</span>}
                             checked={getConcluida(cliente.id, tipo)}
                             onChange={() => handleCheckbox(cliente.id, tipo)}
-                            className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
+                            className="min-h-[44px] min-w-[44px] justify-center"
                           />
                         ) : (
-                          <span className="text-[var(--fg)]/20">—</span>
+                          <span className="text-fg-3" title="Não se aplica a este cliente">—</span>
                         )}
-                      </td>
+                      </Td>
                     ))}
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Tabela>
           </div>
-        )
-      )}
+        )}
+      </Card>
+      <p className="text-[13px] text-fg-3">&quot;—&quot; indica que a tarefa não se aplica ao cliente. Cada marcação é salva na hora.</p>
+    </div>
+  )
+}
+
+function Passo({ numero, titulo, dica, children }: { numero: number; titulo: string; dica?: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3.5">
+      <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-acc text-sm font-semibold text-acc-ink"><span aria-hidden="true">{numero}</span></span>
+      <div className="min-w-0 flex-1">
+        <p className="mb-2.5 text-sm font-semibold text-fg">
+          <span className="sr-only">{`Passo ${numero}: `}</span>{titulo}
+          {dica && <span className="ml-2 font-normal text-fg-3">{dica}</span>}
+        </p>
+        {children}
+      </div>
     </div>
   )
 }
