@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, podeEditarClienteContabil } from '@/lib/supabase/server'
 import { removerClienteDoSetor } from '@/lib/remover-cliente-do-setor'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
-import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
+import { registrarEvento, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
 import { tarefasRemovidasDoCliente, apagarTarefasDoCliente } from '@/lib/tarefas-do-cliente'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
@@ -43,7 +43,6 @@ export async function salvarClienteContabil(
   const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
   if (clienteId) {
-    const { data: clienteAntes } = await supabase.from('clientes').select('nome, cnpj, municipio, uf, contato_chat').eq('id', clienteId).single()
     const { data: antes } = await supabase.from('clientes_contabil').select('*').eq('cliente_id', clienteId).single()
 
     const { error: errCliente } = await supabase.from('clientes').update(clientePayload).eq('id', clienteId)
@@ -73,12 +72,6 @@ export async function salvarClienteContabil(
       clienteId, clienteNome: clientePayload.nome, setor: 'contabil',
       responsavelAntigo: antes?.responsavel, responsavelNovo: contabilPayload.responsavel,
       usuarioId: user.id, usuarioNome,
-    })
-
-    const campos = camposAlterados({ ...clienteAntes, ...antes }, { ...clientePayload, ...contabilPayload })
-    await registrarEdicao(supabase, {
-      setor: 'contabil', clienteId, clienteNome: clientePayload.nome,
-      usuarioId: user.id, usuarioNome, campos,
     })
   } else {
     const { data: novoCliente, error: errCliente } = await supabase.from('clientes')

@@ -5,7 +5,7 @@ import { getAuthenticatedAdmin, podeEditarCliente, podeEditarTarefaTipo } from '
 import { mensagemErroExclusao } from '@/lib/exclusao-cliente'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
-import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
+import { registrarEvento, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
 import { tarefasRemovidasDoCliente, apagarTarefasDoCliente } from '@/lib/tarefas-do-cliente'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
@@ -51,7 +51,7 @@ export async function salvarCliente(
   const usuarioNome = await nomeDoUsuario(supabase, user.id)
 
   if (clienteId) {
-    const { data: clienteAntes } = await supabase.from('clientes').select('nome, cnpj, mit, contato_chat').eq('id', clienteId).single()
+    const { data: clienteAntes } = await supabase.from('clientes').select('cnpj').eq('id', clienteId).single()
     const { data: antes } = await supabase.from('clientes_fiscal').select('*').eq('cliente_id', clienteId).single()
 
     const { error: errCliente } = await supabase.from('clientes').update(clientePayload).eq('id', clienteId)
@@ -91,12 +91,6 @@ export async function salvarCliente(
         revalidatePath('/fiscal/parcelamentos')
       }
     }
-
-    const campos = camposAlterados({ ...clienteAntes, ...antes }, { ...clientePayload, ...fiscalPayload })
-    await registrarEdicao(supabase, {
-      setor: 'fiscal', clienteId, clienteNome: clientePayload.nome,
-      usuarioId: user.id, usuarioNome, campos,
-    })
   } else {
     const { data: novoCliente, error: errCliente } = await supabase.from('clientes').insert(clientePayload).select('id').single()
     if (errCliente || !novoCliente) return { error: errCliente?.message ?? 'Falha ao criar cliente' }

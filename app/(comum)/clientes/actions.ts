@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 import { mensagemErroExclusao } from '@/lib/exclusao-cliente'
-import { registrarEvento, registrarEdicao, camposAlterados, abrirHistoricoResponsavel, registrarMudancaTarefas } from '@/lib/logs'
+import { registrarEvento, abrirHistoricoResponsavel, registrarMudancaTarefas } from '@/lib/logs'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import type { UserSetor } from '@/lib/types'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
@@ -81,26 +81,21 @@ export async function salvarClienteGeral(
 
   if (clienteId) {
     const logBase = { clienteId, clienteNome: clientePayload.nome, usuarioId: user.id, usuarioNome }
-    const { data: clienteAntes } = await supabase.from('clientes')
-      .select('nome, cnpj, municipio, uf, contato_chat, setores').eq('id', clienteId).single()
-
     const { error } = await supabase.from('clientes').update(clientePayload).eq('id', clienteId)
     if (error) return { error: error.message }
 
-    const campos = camposAlterados(clienteAntes, {
-      nome: clientePayload.nome, cnpj: clientePayload.cnpj, municipio: clientePayload.municipio,
-      uf: clientePayload.uf, contato_chat: clientePayload.contato_chat, setores: clientePayload.setores,
-    })
-    await registrarEdicao(supabase, {
-      setor: null, clienteId, clienteNome: clientePayload.nome,
-      usuarioId: user.id, usuarioNome, campos,
-    })
+    // Incluir/retirar o cliente de um setor = criação/exclusão naquele setor
+    // (mesmo registro de removerClienteDoSetor). O delete devolve as linhas
+    // pra só registrar quando o cliente estava de fato no setor.
+    const logSetor = (setor: UserSetor, tipoEvento: 'criacao' | 'exclusao') =>
+      registrarEvento(supabase, { ...logBase, setor, tipoEvento })
 
     if (setoresEfetivos.includes('fiscal')) {
       const { data: existente } = await supabase.from('clientes_fiscal').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
       if (!existente) {
         const { error: errFiscal } = await supabase.from('clientes_fiscal').insert({ cliente_id: clienteId, ...fiscalPayload })
         if (errFiscal) return { error: errFiscal.message }
+        await logSetor('fiscal', 'criacao')
         await logTarefasSetorNovo(supabase, 'fiscal', fiscalPayload, logBase)
         if (fiscalPayload.responsavel) {
           await abrirHistoricoResponsavel(supabase, {
@@ -109,8 +104,9 @@ export async function salvarClienteGeral(
         }
       }
     } else {
-      const { error: errRemoveFiscal } = await supabase.from('clientes_fiscal').delete().eq('cliente_id', clienteId)
+      const { data: removidoFiscal, error: errRemoveFiscal } = await supabase.from('clientes_fiscal').delete().eq('cliente_id', clienteId).select('cliente_id')
       if (errRemoveFiscal) return { error: errRemoveFiscal.message }
+      if (removidoFiscal?.length) await logSetor('fiscal', 'exclusao')
     }
 
     if (setoresEfetivos.includes('contabil')) {
@@ -122,11 +118,13 @@ export async function salvarClienteGeral(
           tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
         })
         if (errContabil) return { error: errContabil.message }
+        await logSetor('contabil', 'criacao')
         await logTarefasSetorNovo(supabase, 'contabil', { tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome) }, logBase)
       }
     } else {
-      const { error: errRemoveContabil } = await supabase.from('clientes_contabil').delete().eq('cliente_id', clienteId)
+      const { data: removidoContabil, error: errRemoveContabil } = await supabase.from('clientes_contabil').delete().eq('cliente_id', clienteId).select('cliente_id')
       if (errRemoveContabil) return { error: errRemoveContabil.message }
+      if (removidoContabil?.length) await logSetor('contabil', 'exclusao')
     }
 
     if (setoresEfetivos.includes('pessoal')) {
@@ -138,11 +136,13 @@ export async function salvarClienteGeral(
           tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome),
         })
         if (errPessoal) return { error: errPessoal.message }
+        await logSetor('pessoal', 'criacao')
         await logTarefasSetorNovo(supabase, 'pessoal', { tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome) }, logBase)
       }
     } else {
-      const { error: errRemovePessoal } = await supabase.from('clientes_pessoal').delete().eq('cliente_id', clienteId)
+      const { data: removidoPessoal, error: errRemovePessoal } = await supabase.from('clientes_pessoal').delete().eq('cliente_id', clienteId).select('cliente_id')
       if (errRemovePessoal) return { error: errRemovePessoal.message }
+      if (removidoPessoal?.length) await logSetor('pessoal', 'exclusao')
     }
   } else {
     const { data: novoCliente, error: errCliente } = await supabase.from('clientes').insert(clientePayload).select('id').single()

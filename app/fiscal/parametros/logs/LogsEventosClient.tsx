@@ -19,8 +19,22 @@ const SETOR_LABEL: Record<string, string> = {
   fiscal: 'Fiscal',
   contabil: 'Contábil',
   pessoal: 'Pessoal',
+  societario: 'Societário',
+  financeiro: 'Financeiro',
+  configuracoes: 'Configurações',
   geral: 'Geral',
 }
+
+// Tipos de item que aparecem em detalhes.entidade nos eventos de criação/
+// exclusão — os mesmos rótulos gravados pelas triggers da migration 058
+// (mais 'Usuário', gravado pela criação/exclusão de usuário em Parâmetros).
+const ITENS = [
+  'Anexo do evento', 'Arquivo do cliente', 'Anexo do procedimento', 'Nota', 'Parcelamento',
+  'Seção de parcelamento', 'Evento do calendário', 'Evento', 'Tipo de tarefa', 'Vínculo de tarefa',
+  'Vínculo entre setores', 'Processo', 'Procedimento', 'Tabela', 'Modelo de documentação',
+  'Atividade', 'Regime', 'Movimento financeiro', 'Tipo financeiro', 'Centro de custo',
+  'Link rápido', 'Compromisso na agenda', 'Usuário',
+].sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
 interface EventoLog {
   id: string
@@ -29,7 +43,7 @@ interface EventoLog {
   setor: string | null
   cliente_nome: string | null
   tipo_evento: string
-  detalhes: { campos?: string[]; responsavel_antigo?: string | null; responsavel_novo?: string | null } & Partial<DetalhesTarefas> | null
+  detalhes: { campos?: string[]; responsavel_antigo?: string | null; responsavel_novo?: string | null; entidade?: string; descricao?: string } & Partial<DetalhesTarefas> | null
 }
 
 interface Cliente {
@@ -41,6 +55,7 @@ interface Filtros {
   tipo: string
   setor: string
   clienteId: string
+  item: string
   de: string
   ate: string
 }
@@ -68,6 +83,13 @@ function detalheTexto(log: EventoLog) {
   return '—'
 }
 
+// Coluna "Item": o que foi criado/excluído (só eventos com entidade —
+// os de cliente não têm, o cliente já aparece na coluna Cliente).
+function itemTexto(log: EventoLog) {
+  if (!log.detalhes?.entidade) return '—'
+  return log.detalhes.descricao ? `${log.detalhes.entidade}: ${log.detalhes.descricao}` : log.detalhes.entidade
+}
+
 const inputCls = "px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
 export default function LogsEventosClient({ logs, clientes, filtros }: Props) {
@@ -79,13 +101,14 @@ export default function LogsEventosClient({ logs, clientes, filtros }: Props) {
     if (form.tipo) params.set('tipo', form.tipo)
     if (form.setor) params.set('setor', form.setor)
     if (form.clienteId) params.set('clienteId', form.clienteId)
+    if (form.item) params.set('item', form.item)
     if (form.de) params.set('de', form.de)
     if (form.ate) params.set('ate', form.ate)
     router.push(`/fiscal/parametros/logs?${params.toString()}`)
   }
 
   function limpar() {
-    setForm({ tipo: '', setor: '', clienteId: '', de: '', ate: '' })
+    setForm({ tipo: '', setor: '', clienteId: '', item: '', de: '', ate: '' })
     router.push('/fiscal/parametros/logs')
   }
 
@@ -93,6 +116,7 @@ export default function LogsEventosClient({ logs, clientes, filtros }: Props) {
     form.tipo && `Evento: ${TIPO_EVENTO_LABEL[form.tipo] ?? form.tipo}`,
     form.setor && `Setor: ${SETOR_LABEL[form.setor] ?? form.setor}`,
     form.clienteId && `Cliente: ${clientes.find(c => c.id === form.clienteId)?.nome ?? form.clienteId}`,
+    form.item && `Item: ${form.item}`,
     form.de && `De: ${form.de}`,
     form.ate && `Até: ${form.ate}`,
   ].filter(Boolean).join(' — ')
@@ -141,6 +165,15 @@ export default function LogsEventosClient({ logs, clientes, filtros }: Props) {
           </select>
         </div>
         <div>
+          <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1">Item</label>
+          <select className={inputCls} value={form.item} onChange={e => setForm(p => ({ ...p, item: e.target.value }))}>
+            <option value="" className="bg-[var(--bg-surface)]">Todos</option>
+            {ITENS.map(i => (
+              <option key={i} value={i} className="bg-[var(--bg-surface)]">{i}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1">De</label>
           <input type="date" className={inputCls} value={form.de} onChange={e => setForm(p => ({ ...p, de: e.target.value }))} />
         </div>
@@ -166,14 +199,14 @@ export default function LogsEventosClient({ logs, clientes, filtros }: Props) {
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-[var(--fg)]/8 print:border-black/20">
-              {['Data/Hora','Usuário','Setor','Cliente','Evento','Detalhes'].map(h => (
+              {['Data/Hora','Usuário','Setor','Cliente','Item','Evento','Detalhes'].map(h => (
                 <th key={h} className="text-left px-3 py-2 text-[var(--fg)]/40 print:text-black font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {logs.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-6 text-center text-[var(--fg)]/20">Nenhum registro</td></tr>
+              <tr><td colSpan={7} className="px-3 py-6 text-center text-[var(--fg)]/20">Nenhum registro</td></tr>
             )}
             {logs.map(log => (
               <tr key={log.id} className="border-b border-[var(--fg)]/5 print:border-black/10 hover:bg-[var(--fg)]/2">
@@ -181,6 +214,7 @@ export default function LogsEventosClient({ logs, clientes, filtros }: Props) {
                 <td className="px-3 py-2 text-[var(--fg)]/70 print:text-black">{log.usuario_nome ?? '—'}</td>
                 <td className="px-3 py-2 text-[var(--fg)]/70 print:text-black">{log.setor ? (SETOR_LABEL[log.setor] ?? log.setor) : 'Geral'}</td>
                 <td className="px-3 py-2 text-[var(--fg)]/70 print:text-black">{log.cliente_nome ?? '—'}</td>
+                <td className="px-3 py-2 text-[var(--fg)]/70 print:text-black">{itemTexto(log)}</td>
                 <td className="px-3 py-2 text-[var(--fg)]/70 print:text-black">{TIPO_EVENTO_LABEL[log.tipo_evento] ?? log.tipo_evento}</td>
                 <td className="px-3 py-2 text-[var(--fg)]/50 print:text-black">{detalheTexto(log)}</td>
               </tr>
