@@ -5,11 +5,11 @@ import LogsEventosClient from './LogsEventosClient'
 export const metadata = { title: 'Log de Eventos — Tesserato Fiscal' }
 
 interface Props {
-  searchParams: Promise<{ tipo?: string; setor?: string; clienteId?: string; de?: string; ate?: string }>
+  searchParams: Promise<{ tipo?: string; setor?: string; clienteId?: string; item?: string; de?: string; ate?: string }>
 }
 
 export default async function LogsEventosPage({ searchParams }: Props) {
-  const { tipo, setor, clienteId, de, ate } = await searchParams
+  const { tipo, setor, clienteId, item, de, ate } = await searchParams
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -23,6 +23,8 @@ export default async function LogsEventosPage({ searchParams }: Props) {
   if (setor === 'geral') query = query.is('setor', null)
   else if (setor) query = query.eq('setor', setor)
   if (clienteId) query = query.eq('cliente_id', clienteId)
+  // Tipo do item criado/excluído (gravado pelas triggers da 058 e pela criação/exclusão de usuário)
+  if (item) query = query.eq('detalhes->>entidade', item)
   if (de) query = query.gte('created_at', new Date(`${de}T00:00:00`).toISOString())
   if (ate) query = query.lte('created_at', new Date(`${ate}T23:59:59`).toISOString())
 
@@ -33,7 +35,7 @@ export default async function LogsEventosPage({ searchParams }: Props) {
     <LogsEventosClient
       logs={logs ?? []}
       clientes={clientes ?? []}
-      filtros={{ tipo: tipo ?? '', setor: setor ?? '', clienteId: clienteId ?? '', de: de ?? '', ate: ate ?? '' }}
+      filtros={{ tipo: tipo ?? '', setor: setor ?? '', clienteId: clienteId ?? '', item: item ?? '', de: de ?? '', ate: ate ?? '' }}
     />
   )
 }

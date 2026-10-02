@@ -2,6 +2,7 @@
 
 import { getAuthenticatedAdmin, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { registrarEvento } from '@/lib/logs'
 import { createClient as createClienteDescartavel } from '@supabase/supabase-js'
 
 // SECURITY_REPORT.md ALTA-1 (histórico): `requireAdminSection()` só
@@ -65,7 +66,7 @@ export async function criarUsuario(payload: {
 }): Promise<{ error?: string }> {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const { data: callerProfile } = await supabase.from('profiles').select('role, nome').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -99,6 +100,15 @@ export async function criarUsuario(payload: {
     return { error: profErr.message }
   }
 
+  // Log de Eventos: usuário não tem cliente nem setor — entra como item
+  // "Usuário", no mesmo formato dos eventos gravados pelas triggers (058).
+  await registrarEvento(admin, {
+    setor: null, clienteId: null, clienteNome: null,
+    tipoEvento: 'criacao',
+    usuarioId: user.id, usuarioNome: callerProfile?.nome ?? 'Desconhecido',
+    detalhes: { entidade: 'Usuário', descricao: payload.nome || payload.login },
+  })
+
   revalidatePath('/fiscal/parametros')
   return {}
 }
@@ -106,15 +116,31 @@ export async function criarUsuario(payload: {
 export async function deletarUsuario(id: string): Promise<{ error?: string }> {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const { data: callerProfile } = await supabase.from('profiles').select('role, nome').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
   if (id === user.id) return { error: 'Você não pode excluir seu próprio usuário.' }
 
   const admin = createAdminClient()
+  // Nome lido antes de apagar (pro Log de Eventos): o cascade abaixo leva a
+  // linha de profiles junto. Sem nome no perfil, cai pro e-mail do login.
+  const { data: alvo } = await admin.from('profiles').select('nome').eq('id', id).maybeSingle()
+  let descricaoAlvo = alvo?.nome || ''
+  if (!descricaoAlvo) {
+    const { data: alvoAuth } = await admin.auth.admin.getUserById(id)
+    descricaoAlvo = alvoAuth?.user?.email || '—'
+  }
+
   // profiles.id referencia auth.users on delete cascade — apagar o auth.user
   // já remove a linha em profiles junto.
   const { error } = await admin.auth.admin.deleteUser(id)
   if (error) return { error: error.message }
+
+  await registrarEvento(admin, {
+    setor: null, clienteId: null, clienteNome: null,
+    tipoEvento: 'exclusao',
+    usuarioId: user.id, usuarioNome: callerProfile?.nome ?? 'Desconhecido',
+    detalhes: { entidade: 'Usuário', descricao: descricaoAlvo },
+  })
 
   revalidatePath('/fiscal/parametros')
   return {}
