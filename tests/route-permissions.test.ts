@@ -41,7 +41,7 @@ test('página fora da lista sempre-liberada exige paginas_acesso explícito', ()
   )
 })
 
-test('páginas sempre-liberadas (dashboard/agenda/bots/tarefas) não exigem paginas_acesso', () => {
+test('páginas sempre-liberadas (dashboard/agenda/tarefas) não exigem paginas_acesso', () => {
   assert.equal(podeAcessarPagina(usuarioFiscal, 'fiscal', 'dashboard'), true)
   assert.equal(podeAcessarPagina(usuarioFiscal, 'fiscal', 'tarefas'), true)
 })

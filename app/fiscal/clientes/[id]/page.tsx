@@ -2,7 +2,6 @@
 import Link from 'next/link'
 import { createClient, createClienteLeituraVinculos } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
-import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import type { TarefaArquivo, TarefaEtapa, TipoResposta, TarefaGrupo } from '@/lib/types'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
@@ -19,8 +18,7 @@ import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
-import { tipoVisivelParaUsuario, filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
-import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
+import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { bucketDoRegime } from '@/lib/regime-bucket'
 import HistoricoResponsavel from '@/components/HistoricoResponsavel'
@@ -51,7 +49,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   const { mes, ano } = await getMesAno()
   await sincronizarTarefasParcelamento(supabase, 'fiscal', mes, ano)
-  const anoAtual = getMesAnoRealAgora().ano
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   // Tarefas do mês selecionado
@@ -93,10 +90,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   const tarefasPersonalizadasVisiveis = tarefasPersonalizadasEfetivas.filter(ehDonoOuAdmin)
 
-  // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % deste cliente.
-  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
-  const tiposDoProgresso = filtrarTiposDoProgresso(tarefasPersonalizadasVisiveis, cliente.responsavel, donoNomePorTipo)
-
   const podeEditarPorTipo: Record<string, boolean> = {}
   for (const tipo of tarefasPersonalizadasVisiveis) {
     podeEditarPorTipo[tipo] = responsavelIdPorTipo[tipo]
@@ -117,10 +110,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const vinculos = await buscarVinculosDoCliente(
     await createClienteLeituraVinculos(), id, cliente.tarefas_vinculadas_ativas ?? [], 'fiscal', mes, ano
   )
-
-  // Todas as tarefas do ano para o histórico
-  const { data: tarefasAno } = await supabase
-    .from('tarefas').select('mes,concluida,tipo').eq('cliente_id', id).eq('ano', ano).eq('setor', 'fiscal')
 
   // Arquivos do cliente (inclui content_base64 para conferência)
   const { data: arquivos } = await supabase
@@ -179,19 +168,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
     'use server'
     await excluirArquivoTarefa(arquivoId)
   }
-
-  // Histórico por mês — só conta os tipos visíveis pro usuário atual, senão
-  // uma tarefa de responsável exclusivo alheio continuaria influenciando a %
-  // de quem não deveria nem ver essa tarefa.
-  const historicoMeses = Array.from({ length: 12 }, (_, i) => {
-    const m = i + 1
-    const total = tiposDoProgresso.length
-    const feitas = (tarefasAno ?? []).filter(
-      t => t.mes === m && t.concluida && tiposDoProgresso.includes(t.tipo as string)
-    ).length
-    const pct = total > 0 ? Math.round((feitas / total) * 100) : 0
-    return { m, total, feitas, pct }
-  })
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -267,32 +243,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
         clienteNome={cliente.nome}
         arquivosDTE={(arquivos ?? []).filter(a => /\.xlsx?$/i.test(a.name)).map(a => ({ id: a.id, name: a.name, content_base64: a.content_base64 ?? '' }))}
       />
-
-      {/* Histórico anual */}
-      <div className="mt-10 pt-6 border-t border-[var(--fg)]/8">
-        <h3 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-4">
-          Histórico {ano}
-        </h3>
-        <div className="grid grid-cols-4 gap-2">
-          {historicoMeses.map(({ m, total, feitas, pct }) => {
-            const isAtual = m === mes && ano === anoAtual
-            return (
-              <div
-                key={m}
-                className={`p-3 rounded-xl border text-center ${
-                  isAtual
-                    ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40'
-                    : 'bg-[var(--fg)]/3 border-[var(--fg)]/8'
-                }`}
-              >
-                <p className="text-xs text-[var(--fg)]/50 mb-1">{MESES_ABREV[m-1]}</p>
-                <p className={`text-lg font-bold ${pct === 100 ? 'text-[var(--accent)]' : pct > 0 ? 'text-[var(--fg)]' : 'text-[var(--fg)]/20'}`}>{pct}%</p>
-                <p className="text-xs text-[var(--fg)]/30">{feitas}/{total}</p>
-              </div>
-            )
-          })}
-        </div>
-      </div>
 
       <HistoricoResponsavel clienteId={id} setor="fiscal" />
     </div>

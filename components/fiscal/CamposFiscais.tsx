@@ -133,13 +133,6 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
         </select>
       </div>
 
-      {/* Prioridade */}
-      <div>
-        <label className={labelCls}>Prioridade (0–5)</label>
-        <input className={inputCls} type="number" min={0} max={5} value={form.prioridade}
-          onChange={e => set('prioridade', Number(e.target.value))} disabled={readOnly} />
-      </div>
-
       {/* Declaração Anual */}
       <div>
         <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2">

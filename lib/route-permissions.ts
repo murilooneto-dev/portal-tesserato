@@ -13,10 +13,10 @@ export const PREFIXOS_SETOR: UserSetor[] = ['fiscal', 'contabil', 'pessoal', 'so
 // liberadas pra qualquer usuário que tenha o setor (não aparecem no menu
 // nem na tela de permissões, mas continuam acessíveis por URL direta).
 // `dashboard` é a home de cada setor (nunca pode ser bloqueada, senão o
-// usuário fica sem destino de redirecionamento). agenda/bots/tarefas são
+// usuário fica sem destino de redirecionamento). agenda/tarefas são
 // páginas operacionais por-usuário do Fiscal, que operadores já usam por
 // URL direta hoje — não são gerenciadas pela permissão por página.
-export const PAGINAS_SEMPRE_LIBERADAS = ['dashboard', 'agenda', 'bots', 'tarefas']
+export const PAGINAS_SEMPRE_LIBERADAS = ['dashboard', 'agenda', 'tarefas']
 
 // Valida `setor` contra a lista real ANTES de indexar qualquer objeto com
 // ele — sem isso, uma string como 'constructor' acha uma propriedade
