@@ -4,7 +4,7 @@ import ClientesGeralLista from '@/components/geral/ClientesGeralLista'
 import type { TarefaVinculo } from '@/lib/types'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 
-export const metadata = { title: 'Clientes — Tesserato' }
+export const metadata = { title: 'Cadastro de clientes — Tesserato' }
 
 export default async function ClientesGeralPage() {
   const supabase = await createClient()
@@ -33,16 +33,14 @@ export default async function ClientesGeralPage() {
   const catalogoFiscal = await buscarCatalogoCliente(supabase, 'fiscal')
 
   return (
-    <div className="p-8">
-      <ClientesGeralLista
-        clientes={clientes ?? []}
-        isAdmin={isAdmin}
-        podeCriar={podeCriar}
-        podeDesabilitar={podeDesabilitar}
-        responsaveis={responsaveis}
-        vinculosCatalogo={(vinculosCatalogo ?? []) as TarefaVinculo[]}
-        catalogoFiscal={catalogoFiscal}
-      />
-    </div>
+    <ClientesGeralLista
+      clientes={clientes ?? []}
+      isAdmin={isAdmin}
+      podeCriar={podeCriar}
+      podeDesabilitar={podeDesabilitar}
+      responsaveis={responsaveis}
+      vinculosCatalogo={(vinculosCatalogo ?? []) as TarefaVinculo[]}
+      catalogoFiscal={catalogoFiscal}
+    />
   )
 }
