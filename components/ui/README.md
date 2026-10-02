@@ -14,6 +14,9 @@ Base do redesign (artifact https://claude.ai/artifact/SdZ3EYdm8CbusrZnGzz7sV). U
 | `Modal`, `Drawer` | Janelas. Fecham com Esc e clique no fundo; `bloqueado` enquanto salva. |
 | `useConfirmar()` | **No lugar de `window.confirm()`**: `if (await confirmar({ titulo, descricao, perigo: true })) …` |
 | `useToast()` | Aviso de "salvo" ou de erro depois de uma ação. |
+| `Pagina` + `CabecalhoPagina` | Moldura e cabeçalho de toda página dentro da casca (título, subtítulo, ações). |
+| `Segmentado` | Escolha única entre 2–4 opções curtas (ex.: situação do compromisso). |
+| `Chip` | Filtro ou opção liga/desliga em pílula (`aria-pressed`). |
 | `Card`, `Aviso`, `EmptyState`, `Tabela`/`Th`/`Td` | Estrutura das telas. |
 
 **Imports permitidos nas peças:** `react`, `react-dom`, `lucide-react`, `tailwind-merge`, arquivos de `components/ui/`.
