@@ -68,6 +68,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
   const [novaTarefa, setNovaTarefa] = useState('')
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
+  const [falhaAoCarregar, setFalhaAoCarregar] = useState(false)
   const [loadingCnpj, setLoadingCnpj] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   // Nome e setores GRAVADOS no banco (o formulário pode estar editado e não salvo):
@@ -87,7 +88,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
     // nesse caso, legitimamente não tem linha em clientes_fiscal.
     sb.from('clientes').select('*, clientes_fiscal(*)').eq('id', clienteId).single().then(({ data: raw, error: erroBusca }) => {
       if (erroBusca || !raw) {
-        setErro('Não foi possível carregar o cliente.')
+        setFalhaAoCarregar(true)
         setLoading(false)
         return
       }
@@ -279,6 +280,9 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         titulo={titulo}
         subtitulo={isEdit ? (identidadeSalva?.nome || undefined) : 'Cadastro geral, vale para todos os setores'}
         rodape={
+          falhaAoCarregar ? (
+            <div className="flex w-full justify-end"><Button onClick={onClose}>Fechar</Button></div>
+          ) : (
           <div className="flex w-full flex-wrap items-center gap-2.5">
             {!readOnly && isEdit && !loading && (
               <Button variante="perigo" icone={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmandoExclusao(true)} disabled={!identidadeSalva || saving}>Excluir cliente</Button>
@@ -301,9 +305,12 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
               )}
             </div>
           </div>
+          )
         }
       >
-        {loading ? (
+        {falhaAoCarregar ? (
+          <div role="alert"><Aviso tom="dng">Não foi possível carregar o cliente. Feche a janela e tente de novo.</Aviso></div>
+        ) : loading ? (
           <p role="status" className="py-8 text-center text-sm text-fg-3">Carregando…</p>
         ) : (
           <>
