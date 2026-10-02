@@ -4,7 +4,7 @@ import VinculosClient from './VinculosClient'
 import type { TarefaVinculo } from '@/lib/types'
 import { montarTiposPorSetor } from '@/lib/vinculos'
 
-export const metadata = { title: 'Vínculos de Tarefas — Tesserato' }
+export const metadata = { title: 'Vínculos de tarefas — Tesserato' }
 
 export default async function VinculosPage() {
   const supabase = await createClient()
@@ -32,10 +32,6 @@ export default async function VinculosPage() {
   )
 
   return (
-    <>
-      <div className="p-8 max-w-4xl mx-auto">
-        <VinculosClient vinculosIniciais={vinculos} tiposPorSetor={tiposPorSetor} />
-      </div>
-    </>
+    <VinculosClient vinculosIniciais={vinculos} tiposPorSetor={tiposPorSetor} />
   )
 }

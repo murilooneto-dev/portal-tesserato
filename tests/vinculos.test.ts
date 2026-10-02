@@ -1,7 +1,7 @@
 // tests/vinculos.test.ts
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { agregarStatusVinculo, formatarBadgeVinculo, calcularNovosPares, montarTiposPorSetor } from '../lib/vinculos'
+import { agregarStatusVinculo, formatarBadgeVinculo, calcularNovosPares, montarTiposPorSetor, resumoNovosVinculos } from '../lib/vinculos'
 import type { TarefaVinculo } from '../lib/types'
 
 test('agregarStatusVinculo: uma origem concluída libera (total=1)', () => {
@@ -103,4 +103,16 @@ test('montarTiposPorSetor: une catálogo com nomes usados por clientes, sem dupl
   )
   assert.deepEqual(r.fiscal, ['A', 'B', 'ENTRADA'])
   assert.deepEqual(r.contabil, ['X'])
+})
+
+test('resumo do novo vínculo: nada marcado, um, vários e já existentes', () => {
+  assert.equal(resumoNovosVinculos('fiscal', [], 'contabil', ['B'], []), 'Marque ao menos uma tarefa de cada lado.')
+  assert.equal(resumoNovosVinculos('fiscal', ['DAS'], 'contabil', ['Envio de Documentos'], [{ tipoOrigem: 'DAS', tipoDestino: 'Envio de Documentos' }]),
+    'Será criado 1 vínculo: DAS (Fiscal) libera Envio de Documentos (Contábil).')
+  assert.equal(resumoNovosVinculos('fiscal', ['A', 'B'], 'contabil', ['C', 'D'], [
+    { tipoOrigem: 'A', tipoDestino: 'C' }, { tipoOrigem: 'A', tipoDestino: 'D' }, { tipoOrigem: 'B', tipoDestino: 'C' },
+  ]), 'Serão criados 3 vínculos (1 já existe).')
+  assert.equal(resumoNovosVinculos('fiscal', ['A'], 'contabil', ['C', 'D'], [{ tipoOrigem: 'A', tipoDestino: 'C' }, { tipoOrigem: 'A', tipoDestino: 'D' }]),
+    'Serão criados 2 vínculos.')
+  assert.equal(resumoNovosVinculos('fiscal', ['A'], 'contabil', ['C'], []), 'Todos os vínculos marcados já existem.')
 })

@@ -1,22 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronDown, ChevronRight, Link2, Plus, Trash2 } from 'lucide-react'
 import { criarVinculos, excluirVinculo } from './actions'
-import { calcularNovosPares } from '@/lib/vinculos'
-import { SETORES, SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
+import { calcularNovosPares, resumoNovosVinculos } from '@/lib/vinculos'
+import { SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
+import { SETORES_DE_CLIENTE } from '@/lib/clientes-geral'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Select, Checkbox } from '@/components/ui/Input'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Aviso } from '@/components/ui/Aviso'
+import { useConfirmar } from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
+import { cn } from '@/components/ui/cn'
 
 interface Props {
   vinculosIniciais: TarefaVinculo[]
   tiposPorSetor: Record<string, string[]>
 }
 
-const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
-const checkboxRowCls = "flex items-center gap-2 cursor-pointer select-none py-1"
-
 export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Props) {
   const router = useRouter()
+  const confirmar = useConfirmar()
+  const avisar = useToast()
 
   const [setorOrigem, setSetorOrigem] = useState<UserSetor>('fiscal')
   const [tiposOrigem, setTiposOrigem] = useState<string[]>([])
@@ -30,9 +42,13 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
     setLista(lista.includes(tipo) ? lista.filter(t => t !== tipo) : [...lista, tipo])
   }
 
+  const pares = useMemo(
+    () => calcularNovosPares(setorOrigem, tiposOrigem, setorDestino, tiposDestino, vinculosIniciais),
+    [setorOrigem, tiposOrigem, setorDestino, tiposDestino, vinculosIniciais],
+  )
+
   async function handleCriar() {
     if (tiposOrigem.length === 0 || tiposDestino.length === 0) return
-    const pares = calcularNovosPares(setorOrigem, tiposOrigem, setorDestino, tiposDestino, vinculosIniciais)
     if (pares.length === 0) {
       setErro('Todos os vínculos selecionados já existem no catálogo.')
       return
@@ -42,119 +58,124 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
     const { error } = await criarVinculos({ setorOrigem, setorDestino, pares })
     setSaving(false)
     if (error) { setErro(error); return }
+    avisar(pares.length === 1 ? 'Vínculo criado.' : `${pares.length} vínculos criados.`, 'ok')
     setTiposOrigem([])
     setTiposDestino([])
     router.refresh()
   }
 
-  async function handleExcluir(id: string) {
-    setExcluindoId(id)
-    const { error } = await excluirVinculo(id)
+  async function handleExcluir(v: TarefaVinculo) {
+    const ok = await confirmar({
+      titulo: 'Excluir vínculo?',
+      descricao: `${v.tipo_origem} (${SETOR_LABEL[v.setor_origem]}) deixa de liberar ${v.tipo_destino} (${SETOR_LABEL[v.setor_destino]}).`,
+      textoConfirmar: 'Excluir',
+      perigo: true,
+    })
+    if (!ok) return
+    setExcluindoId(v.id)
+    const { error } = await excluirVinculo(v.id)
     setExcluindoId(null)
     if (error) { setErro(error); return }
+    avisar('Vínculo excluído.', 'ok')
     router.refresh()
   }
 
   const tiposOrigemDisponiveis = tiposPorSetor[setorOrigem] ?? []
   const tiposDestinoDisponiveis = tiposPorSetor[setorDestino] ?? []
+  const resumo = resumoNovosVinculos(setorOrigem, tiposOrigem, setorDestino, tiposDestino, pares)
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-[var(--fg)] mb-1">Vínculos de Tarefas</h1>
-      <p className="text-sm text-[var(--fg)]/40 mb-6">Quando a(s) tarefa(s) de origem são concluídas, a tarefa de destino (do mesmo cliente, outro setor) mostra um aviso de liberada. Marque mais de uma tarefa dos dois lados pra criar vários vínculos de uma vez.</p>
+    <Pagina>
+      <CabecalhoPagina titulo="Vínculos de tarefas" subtitulo='Quando a tarefa de origem é concluída, a tarefa de destino do mesmo cliente mostra o selo "Liberada".' />
 
-      <div className="rounded-2xl border border-[var(--fg)]/10 bg-[var(--fg)]/3 p-5 mb-8">
-        <p className="text-xs font-bold text-[var(--fg)]/50 uppercase tracking-widest mb-4">Novo vínculo</p>
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <p className="text-[var(--fg)]/70 text-sm font-medium">Origem</p>
-            <div>
-              <label className={labelCls}>Setor</label>
-              <select className={selectCls} value={setorOrigem}
-                onChange={e => { setSetorOrigem(e.target.value as UserSetor); setTiposOrigem([]) }}>
-                {SETORES.map(s => <option key={s} value={s} className="bg-[var(--bg-surface)]">{SETOR_LABEL[s]}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Tarefas</label>
-              {tiposOrigemDisponiveis.length === 0 ? (
-                <p className="text-[var(--fg)]/30 text-xs">Nenhuma tarefa nesse setor.</p>
-              ) : (
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-[var(--fg)]/10 px-3 py-2">
-                  {tiposOrigemDisponiveis.map(t => (
-                    <label key={t} className={checkboxRowCls}>
-                      <input type="checkbox" checked={tiposOrigem.includes(t)}
-                        onChange={() => toggleTipo(tiposOrigem, setTiposOrigem, t)}
-                        className="w-3.5 h-3.5 accent-[var(--accent)]" />
-                      <span className="text-[var(--fg)]/80 text-sm">{t}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+      <Card titulo="Vínculos ativos" meta={<Badge>{vinculosIniciais.length}</Badge>} semPadding>
+        {vinculosIniciais.length === 0 ? (
+          <EmptyState icone={<Link2 size={24} />} titulo="Nenhum vínculo cadastrado" descricao="Crie o primeiro no quadro abaixo." />
+        ) : (
+          <div className="overflow-x-auto">
+            <Tabela className="min-w-[640px]">
+              <thead>
+                <tr>
+                  <Th>Quando concluir…</Th>
+                  <Th largura={48}><span className="sr-only">libera</span></Th>
+                  <Th>…libera</Th>
+                  <Th largura={56}><span className="sr-only">Ações</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {vinculosIniciais.map(v => (
+                  <tr key={v.id}>
+                    <Td><span className="font-semibold text-fg">{v.tipo_origem}</span> <Badge>{SETOR_LABEL[v.setor_origem]}</Badge></Td>
+                    <Td alinhar="centro"><ChevronRight size={18} aria-hidden="true" className="inline text-fg-3" /></Td>
+                    <Td><span className="font-semibold text-fg">{v.tipo_destino}</span> <Badge>{SETOR_LABEL[v.setor_destino]}</Badge></Td>
+                    <Td alinhar="dir">
+                      <IconButton rotulo={`Excluir vínculo ${v.tipo_origem} → ${v.tipo_destino}`} icone={<Trash2 size={16} aria-hidden="true" />}
+                        onClick={() => handleExcluir(v)} disabled={excluindoId === v.id} />
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Tabela>
           </div>
+        )}
+      </Card>
 
-          <div className="space-y-3">
-            <p className="text-[var(--fg)]/70 text-sm font-medium">Destino</p>
-            <div>
-              <label className={labelCls}>Setor</label>
-              <select className={selectCls} value={setorDestino}
-                onChange={e => { setSetorDestino(e.target.value as UserSetor); setTiposDestino([]) }}>
-                {SETORES.map(s => <option key={s} value={s} className="bg-[var(--bg-surface)]">{SETOR_LABEL[s]}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Tarefas</label>
-              {tiposDestinoDisponiveis.length === 0 ? (
-                <p className="text-[var(--fg)]/30 text-xs">Nenhuma tarefa nesse setor.</p>
-              ) : (
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-[var(--fg)]/10 px-3 py-2">
-                  {tiposDestinoDisponiveis.map(t => (
-                    <label key={t} className={checkboxRowCls}>
-                      <input type="checkbox" checked={tiposDestino.includes(t)}
-                        onChange={() => toggleTipo(tiposDestino, setTiposDestino, t)}
-                        className="w-3.5 h-3.5 accent-[var(--accent)]" />
-                      <span className="text-[var(--fg)]/80 text-sm">{t}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+      <Card titulo="Novo vínculo">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_48px_1fr] md:items-start">
+          <LadoVinculo titulo="origem" setor={setorOrigem} onSetor={s => { setSetorOrigem(s); setTiposOrigem([]) }}
+            tipos={tiposOrigemDisponiveis} marcados={tiposOrigem} onMarcar={t => toggleTipo(tiposOrigem, setTiposOrigem, t)} />
+          <div aria-hidden="true" className="grid place-items-center text-acc-text md:pt-[124px]">
+            <ChevronDown size={28} className="md:hidden" />
+            <ChevronRight size={28} className="hidden md:block" />
           </div>
+          <LadoVinculo titulo="destino" setor={setorDestino} onSetor={s => { setSetorDestino(s); setTiposDestino([]) }}
+            tipos={tiposDestinoDisponiveis} marcados={tiposDestino} onMarcar={t => toggleTipo(tiposDestino, setTiposDestino, t)} />
         </div>
+        {erro && <div role="alert" className="mt-4"><Aviso tom="dng">{erro}</Aviso></div>}
+        <div className="mt-[18px] flex flex-wrap items-center gap-3 border-t border-line-soft pt-4">
+          <p aria-live="polite" className="text-[13px] text-fg-2">{resumo}</p>
+          <Button variante="primario" className="ml-auto" icone={<Plus size={16} aria-hidden="true" />} onClick={handleCriar} carregando={saving} disabled={pares.length === 0}>
+            {pares.length > 1 ? `Criar ${pares.length} vínculos` : 'Criar vínculo'}
+          </Button>
+        </div>
+      </Card>
+    </Pagina>
+  )
+}
 
-        {erro && (
-          <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            ⚠ {erro}
-          </div>
+function LadoVinculo({ titulo, setor, onSetor, tipos, marcados, onMarcar }: {
+  titulo: 'origem' | 'destino'
+  setor: UserSetor
+  onSetor: (s: UserSetor) => void
+  tipos: string[]
+  marcados: string[]
+  onMarcar: (tipo: string) => void
+}) {
+  const idRotulo = useId()
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <Field rotulo={`Setor de ${titulo}`}>
+        {c => (
+          <Select id={c.id} value={setor} onChange={e => onSetor(e.target.value as UserSetor)}>
+            {SETORES_DE_CLIENTE.map(s => <option key={s} value={s}>{SETOR_LABEL[s]}</option>)}
+          </Select>
         )}
-
-        <button onClick={handleCriar} disabled={saving || tiposOrigem.length === 0 || tiposDestino.length === 0}
-          className="mt-4 px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-          {saving ? 'Salvando...' : `+ Criar vínculo${tiposOrigem.length * tiposDestino.length > 1 ? `s (${tiposOrigem.length * tiposDestino.length})` : ''}`}
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        {vinculosIniciais.length === 0 && (
-          <p className="text-center text-[var(--fg)]/30 py-8 text-sm">Nenhum vínculo cadastrado ainda.</p>
-        )}
-        {vinculosIniciais.map(v => (
-          <div key={v.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8">
-            <div className="flex-1 text-sm text-[var(--fg)]">
-              <span className="font-medium">{v.tipo_origem}</span>
-              <span className="text-[var(--fg)]/40"> ({SETOR_LABEL[v.setor_origem]})</span>
-              <span className="text-[var(--fg)]/30 mx-2">→</span>
-              <span className="font-medium">{v.tipo_destino}</span>
-              <span className="text-[var(--fg)]/40"> ({SETOR_LABEL[v.setor_destino]})</span>
-            </div>
-            <button onClick={() => handleExcluir(v.id)} disabled={excluindoId === v.id}
-              className="text-xs bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-red-400/70 hover:text-red-400 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50">
-              {excluindoId === v.id ? 'Removendo...' : 'Excluir'}
-            </button>
-          </div>
-        ))}
-      </div>
+      </Field>
+      <span id={idRotulo} className="text-[13px] font-medium text-fg-2">Tarefas de {titulo}</span>
+      {tipos.length === 0 ? (
+        <p className="text-[13px] text-fg-3">Nenhuma tarefa nesse setor.</p>
+      ) : (
+        <ul role="group" aria-labelledby={idRotulo} className="max-h-72 overflow-y-auto rounded-[10px] border border-line-soft bg-page">
+          {tipos.map((t, i) => {
+            const on = marcados.includes(t)
+            return (
+              <li key={t} className={cn('flex min-h-10 items-center px-3.5', i > 0 && 'border-t border-line-soft', on && 'bg-acc-soft')}>
+                <Checkbox rotulo={<span className="text-sm text-fg">{t}</span>} checked={on} onChange={() => onMarcar(t)} className="w-full py-2" />
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }

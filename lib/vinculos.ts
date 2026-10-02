@@ -85,6 +85,23 @@ export function calcularNovosPares(
   return pares
 }
 
+// Frase que a tela de Vínculos mostra antes de criar.
+export function resumoNovosVinculos(
+  setorOrigem: UserSetor,
+  tiposOrigem: string[],
+  setorDestino: UserSetor,
+  tiposDestino: string[],
+  pares: { tipoOrigem: string; tipoDestino: string }[],
+): string {
+  if (tiposOrigem.length === 0 || tiposDestino.length === 0) return 'Marque ao menos uma tarefa de cada lado.'
+  if (pares.length === 0) return 'Todos os vínculos marcados já existem.'
+  if (pares.length === 1) {
+    return `Será criado 1 vínculo: ${pares[0].tipoOrigem} (${SETOR_LABEL[setorOrigem]}) libera ${pares[0].tipoDestino} (${SETOR_LABEL[setorDestino]}).`
+  }
+  const jaExistem = tiposOrigem.length * tiposDestino.length - pares.length
+  return `Serão criados ${pares.length} vínculos${jaExistem > 0 ? ` (${jaExistem} já existe${jaExistem === 1 ? '' : 'm'})` : ''}.`
+}
+
 // Pra cada vínculo ativo do cliente cujo setor de destino é `setorAtual`,
 // verifica se a tarefa de origem (mesmo cliente, mesmo mês/ano) está
 // concluída. Retorna um mapa por tipo_destino — usado pelas checklists
