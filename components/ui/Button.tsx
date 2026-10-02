@@ -30,6 +30,18 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   carregando?: boolean
 }
 
+export function buttonClassName({
+  variante = 'secundario',
+  tamanho = 'm',
+  className,
+}: {
+  variante?: ButtonVariant
+  tamanho?: ButtonSize
+  className?: string
+}) {
+  return cn(BASE, VARIANTE[variante], TAMANHO[tamanho], className)
+}
+
 export function Button({
   variante = 'secundario',
   tamanho = 'm',
@@ -46,7 +58,7 @@ export function Button({
       type={type}
       disabled={disabled || carregando}
       aria-busy={carregando || undefined}
-      className={cn(BASE, VARIANTE[variante], TAMANHO[tamanho], className)}
+      className={buttonClassName({ variante, tamanho, className })}
       {...rest}
     >
       {icone}

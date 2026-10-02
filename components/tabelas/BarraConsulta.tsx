@@ -4,7 +4,7 @@
 import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Download, Search, SlidersHorizontal } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, buttonClassName } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Input, Select } from '@/components/ui/Input'
 import { parseConsulta, serializeConsulta, type Consulta } from '@/lib/tabelas/consulta'
@@ -93,8 +93,7 @@ export default function BarraConsulta({ base, consulta, colunas, exportarHref }:
           Filtros
           {ativos > 0 && <Badge tom="acc" className="ml-0.5">{ativos}</Badge>}
         </Button>
-        <a href={exportarHref}
-          className="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-line bg-raised px-3.5 text-sm font-medium text-fg transition-colors hover:border-fg-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+        <a href={exportarHref} className={buttonClassName({ variante: 'secundario', tamanho: 'm' })}>
           <Download size={16} aria-hidden="true" />Exportar Excel
         </a>
       </div>
