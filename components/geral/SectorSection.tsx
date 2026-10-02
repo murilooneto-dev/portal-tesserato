@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { cn } from '@/components/ui/cn'
 
 interface SectorSectionProps {
   title: string
@@ -9,32 +11,24 @@ interface SectorSectionProps {
   children: React.ReactNode
 }
 
+// Bloco recolhível dentro de janelas (ex.: "Dados do Fiscal" na janela de cliente).
 export default function SectorSection({ title, note, defaultOpen = false, children }: SectorSectionProps) {
   const [open, setOpen] = useState(defaultOpen)
-
+  const id = useId()
   return (
-    <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/3 overflow-hidden">
+    <div className="overflow-hidden rounded-[10px] border border-line-soft">
       <button
         type="button"
+        aria-expanded={open}
+        aria-controls={id}
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        className="flex w-full flex-wrap items-center gap-x-2 px-3.5 py-3 text-left hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-acc"
       >
-        <div>
-          <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{title}</p>
-          {note && <p className="text-[10px] text-[var(--fg)]/30 mt-0.5">{note}</p>}
-        </div>
-        <svg
-          className={`w-4 h-4 text-[var(--fg)]/40 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown size={16} aria-hidden="true" className={cn('flex-none text-fg-3 transition-transform', !open && '-rotate-90')} />
+        <span className="text-sm font-semibold text-fg">{title}</span>
+        {note && <span className="text-[13px] text-fg-3">· {note}</span>}
       </button>
-      {open && (
-        <div className="px-4 pb-4 space-y-5">
-          {children}
-        </div>
-      )}
+      {open && <div id={id} className="flex flex-col gap-5 px-3.5 pb-4 pt-1">{children}</div>}
     </div>
   )
 }

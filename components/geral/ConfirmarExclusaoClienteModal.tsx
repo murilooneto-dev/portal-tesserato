@@ -1,6 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
 import { confirmacaoExclusaoValida, AVISO_RESTAURACAO, type ImpactoExclusao } from '@/lib/exclusao-cliente'
 
 interface Props {
@@ -37,69 +43,37 @@ export default function ConfirmarExclusaoClienteModal({ nomeCliente, impacto, on
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && !executando && onCancelar()}>
-      <div role="dialog" aria-modal="true" aria-label={impacto.titulo}
-        className="bg-[var(--bg-surface)] border border-red-500/30 rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-[var(--fg)] font-bold text-base mb-1">{impacto.titulo}</h2>
-        <p className="text-[var(--fg)]/60 text-sm mb-3">{impacto.descricao}</p>
-
-        <ul className="mb-4 space-y-1 text-xs text-[var(--fg)]/50 list-disc pl-5">
-          {impacto.detalhes.map(d => <li key={d}>{d}</li>)}
-        </ul>
-
-        <p className="text-[var(--fg)]/50 text-sm mb-4">
-          {AVISO_RESTAURACAO}{' '}
-          {impacto.exigeDeletar
-            ? <>Pra confirmar, digite o nome do cliente e a palavra <span className="text-red-400 font-semibold">DELETAR</span> abaixo.</>
-            : <>Pra confirmar, digite o nome do cliente abaixo.</>}
-        </p>
-
-        <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">
-          Nome do cliente: <span className="text-[var(--fg)]/60 normal-case">{nomeCliente}</span>
-        </label>
-        <input
-          type="text"
-          value={nomeDigitado}
-          onChange={e => setNomeDigitado(e.target.value)}
-          placeholder="Digite o nome exatamente como acima"
-          autoComplete="off"
-          className="w-full mb-3 px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-red-500/50"
-        />
-
-        {impacto.exigeDeletar && (
-          <>
-            <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">
-              Digite DELETAR
-            </label>
-            <input
-              type="text"
-              value={palavraDigitada}
-              onChange={e => setPalavraDigitada(e.target.value)}
-              placeholder="DELETAR"
-              autoComplete="off"
-              className="w-full mb-3 px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-red-500/50"
-            />
-          </>
-        )}
-
-        {erro && <p className="text-red-400 text-xs mb-3">{erro}</p>}
-
-        <div className="flex justify-end gap-2 mt-2">
-          <button
-            onClick={onCancelar}
-            disabled={executando}
-            className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)] px-4 py-2 rounded-lg border border-[var(--fg)]/10 transition-all disabled:opacity-40">
-            Cancelar
-          </button>
-          <button
-            onClick={confirmar}
-            disabled={!valido || executando}
-            className="text-xs bg-red-500/20 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg hover:bg-red-500/30 transition-all disabled:opacity-40">
-            {executando ? 'Excluindo...' : impacto.rotuloBotao}
-          </button>
-        </div>
+    <Modal
+      aberto
+      onFechar={onCancelar}
+      bloqueado={executando}
+      titulo={impacto.titulo}
+      subtitulo={nomeCliente}
+      largura="p"
+      icone={<span aria-hidden="true" className="grid h-10 w-10 flex-none place-items-center rounded-[10px] bg-danger-soft text-danger"><Trash2 size={20} /></span>}
+      rodape={
+        <>
+          <Button variante="fantasma" onClick={onCancelar} disabled={executando} className="ml-auto">Cancelar</Button>
+          <Button variante="perigo-solido" onClick={confirmar} disabled={!valido} carregando={executando}>
+            {executando ? 'Excluindo…' : impacto.rotuloBotao}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-2 text-sm text-fg-2">
+        <p>{impacto.descricao}</p>
+        <ul className="list-disc space-y-1 pl-5">{impacto.detalhes.map(d => <li key={d}>{d}</li>)}</ul>
       </div>
-    </div>
+      <Aviso tom="info">{AVISO_RESTAURACAO}</Aviso>
+      <Field rotulo={<>Digite o nome do cliente: <b className="font-semibold text-fg">{nomeCliente}</b></>}>
+        {c => <Input id={c.id} data-autofocus autoComplete="off" value={nomeDigitado} onChange={e => setNomeDigitado(e.target.value)} />}
+      </Field>
+      {impacto.exigeDeletar && (
+        <Field rotulo="Digite DELETAR para confirmar">
+          {c => <Input id={c.id} autoComplete="off" placeholder="DELETAR" value={palavraDigitada} onChange={e => setPalavraDigitada(e.target.value)} />}
+        </Field>
+      )}
+      {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
+    </Modal>
   )
 }
