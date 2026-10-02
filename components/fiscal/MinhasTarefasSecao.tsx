@@ -7,6 +7,12 @@ import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-che
 import { desbloquearTarefa, marcarSemMovimento } from '@/app/fiscal/clientes/actions'
 import { filtrarClientes } from '@/lib/minhas-tarefas-filtro'
 import type { StatusFiltroMinhasTarefas } from './MinhasTarefasFiltro'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Checkbox, Input, Textarea } from '@/components/ui/Input'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 
 interface Props {
   tipo: string
@@ -24,12 +30,6 @@ interface Props {
   onToggle: (clienteId: string, tipo: string, concluida: boolean, data?: string) => Promise<void>
   onAtualizarEtapa: (clienteId: string, tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
 }
-
-const inputCls = (feito: boolean) => `text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none w-[106px] text-center ${
-  feito
-    ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] focus:border-[var(--accent)]/60'
-    : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60 focus:border-[var(--fg)]/30 placeholder-[var(--fg)]/20'
-}`
 
 export default function MinhasTarefasSecao({
   tipo,
@@ -150,118 +150,162 @@ export default function MinhasTarefasSecao({
     }
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-[var(--fg)] uppercase tracking-widest">{tipo}</h2>
-        {!etapasDefinidas && tipoResposta === 'data' && (
-          <span className="text-xs text-[var(--fg)]/40">{concluidas}/{clientes.length}</span>
-        )}
-      </div>
+  const colunas: (string | null)[] = etapasDefinidas ?? [null]
 
+  function campoData(clienteId: string, etapaNome: string | null, nomeCliente: string, classe: string) {
+    const iso = getSavedIso(clienteId, etapaNome)
+    return (
+      <Input
+        type="text"
+        value={getDisplayValue(clienteId, etapaNome)}
+        onChange={e => handleChange(clienteId, etapaNome, e.target.value)}
+        onBlur={() => handleBlur(clienteId, etapaNome)}
+        placeholder="dd/mm/aaaa"
+        aria-label={`${etapaNome ?? 'Data'} de ${nomeCliente}`}
+        maxLength={10}
+        disabled={somenteLeitura}
+        className={`text-center tabular-nums ${iso !== '' ? 'border-ok-soft text-ok' : ''} ${classe}`}
+      />
+    )
+  }
+
+  function formDesbloqueio(clienteId: string) {
+    return (
+      <div className="flex flex-col gap-2 rounded-[10px] border border-line-soft bg-inset p-3 text-left">
+        <p className="text-[13px] text-fg-2">Informe o motivo para desbloquear esta tarefa:</p>
+        <Textarea
+          value={motivo}
+          onChange={e => setMotivo(e.target.value)}
+          placeholder="Motivo obrigatório..."
+          aria-label="Motivo do desbloqueio"
+          rows={2}
+        />
+        <div className="flex justify-end gap-2">
+          <Button variante="fantasma" tamanho="p" className="max-sm:h-11" onClick={() => { setUnlockingCliente(null); setMotivo('') }}>
+            Cancelar
+          </Button>
+          <Button
+            variante="primario"
+            tamanho="p"
+            className="max-sm:h-11"
+            onClick={() => handleUnlock(clienteId)}
+            disabled={!motivo.trim() || unlockPending}
+          >
+            {unlockPending ? 'Aguarde...' : 'Confirmar desbloqueio'}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  function checkSemMovimento(clienteId: string) {
+    return (
+      <Checkbox
+        rotulo="Sem movimento"
+        checked={getSemMovimento(clienteId)}
+        onChange={() => handleToggleSemMovimento(clienteId)}
+        disabled={somenteLeitura}
+        className="min-h-11 whitespace-nowrap sm:min-h-0"
+      />
+    )
+  }
+
+  const contagem = !etapasDefinidas && tipoResposta === 'data'
+    ? `${concluidas}/${clientes.length}`
+    : String(clientes.length)
+
+  return (
+    <Card
+      titulo={tipo}
+      meta={<Badge tom="neu">{contagem}</Badge>}
+      semPadding
+      className="overflow-hidden"
+    >
       {clientes.length === 0 ? (
-        <p className="text-sm text-[var(--fg)]/40">Nenhum cliente com essa tarefa aplicável.</p>
+        <p className="px-[18px] py-4 text-sm text-fg-3">Nenhum cliente com essa tarefa aplicável.</p>
       ) : tipoResposta !== 'data' ? (
-        <p className="text-sm text-[var(--fg)]/40">
+        <p className="px-[18px] py-4 text-sm text-fg-3">
           Esse tipo não é de data/etapas — edite pela ficha de cada cliente.
         </p>
       ) : clientesFiltrados.length === 0 ? (
-        <p className="text-sm text-[var(--fg)]/40">Nenhum cliente encontrado com esse filtro.</p>
+        <p className="px-[18px] py-4 text-sm text-fg-3">Nenhum cliente encontrado com esse filtro.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--fg)]/10">
-                <th className="text-left py-2 px-3 text-[var(--fg)]/40 font-medium">Empresa</th>
-                {(etapasDefinidas ?? ['—']).map(col => (
-                  <th key={col} className="text-center py-2 px-3 text-[var(--fg)]/40 font-medium whitespace-nowrap">
-                    {etapasDefinidas ? col : 'Data'}
-                  </th>
-                ))}
-                <th className="text-center py-2 px-3 text-[var(--fg)]/40 font-medium whitespace-nowrap">Sem mov.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clientesFiltrados.map(cliente => {
-                const semMovimentoAtivo = getSemMovimento(cliente.id)
-                return (
-                <Fragment key={cliente.id}>
-                  <tr className="border-b border-[var(--fg)]/5">
-                    <td className="py-2 px-3 text-[var(--fg)]">
-                      <Link href={`/fiscal/clientes/${cliente.id}`} className="hover:underline">
-                        {cliente.nome}
-                      </Link>
-                    </td>
-                    {semMovimentoAtivo ? (
-                      <td colSpan={(etapasDefinidas ?? [null]).length} className="text-center py-2 px-3">
-                        <span className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
-                          SEM MOVIMENTO
-                        </span>
-                      </td>
-                    ) : (etapasDefinidas ?? [null]).map(etapaNome => {
-                      const iso = getSavedIso(cliente.id, etapaNome)
-                      return (
-                        <td key={etapaNome ?? '_'} className="text-center py-2 px-3">
-                          <input
-                            type="text"
-                            value={getDisplayValue(cliente.id, etapaNome)}
-                            onChange={e => handleChange(cliente.id, etapaNome, e.target.value)}
-                            onBlur={() => handleBlur(cliente.id, etapaNome)}
-                            placeholder="DD/MM/AAAA"
-                            maxLength={10}
-                            disabled={somenteLeitura}
-                            className={`${inputCls(iso !== '')} disabled:opacity-60 disabled:cursor-not-allowed`}
-                          />
-                        </td>
-                      )
-                    })}
-                    <td className="text-center py-2 px-3">
-                      <input
-                        type="checkbox"
-                        checked={semMovimentoAtivo}
-                        onChange={() => handleToggleSemMovimento(cliente.id)}
-                        disabled={somenteLeitura}
-                        className="w-3.5 h-3.5 accent-[var(--fg)]/50 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
-                      />
-                    </td>
-                  </tr>
-                  {!etapasDefinidas && unlockingCliente === cliente.id && (
-                    <tr className="border-b border-[var(--fg)]/5">
-                      <td colSpan={3} className="px-3 pb-3">
-                        <div className="p-3 bg-[var(--fg)]/3 border border-[var(--fg)]/10 rounded-xl flex flex-col gap-2">
-                          <p className="text-xs text-[var(--fg)]/50">Informe o motivo para desbloquear esta tarefa:</p>
-                          <textarea
-                            value={motivo}
-                            onChange={e => setMotivo(e.target.value)}
-                            placeholder="Motivo obrigatório..."
-                            rows={2}
-                            className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder-[var(--fg)]/20 resize-none focus:outline-none focus:border-[var(--accent)]/50"
-                          />
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => { setUnlockingCliente(null); setMotivo('') }}
-                              className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]/70 px-3 py-1.5"
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              onClick={() => handleUnlock(cliente.id)}
-                              disabled={!motivo.trim() || unlockPending}
-                              className="text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] px-3 py-1.5 rounded-lg hover:bg-[var(--accent)]/30 transition-all disabled:opacity-40"
-                            >
-                              {unlockPending ? 'Aguarde...' : 'Confirmar desbloqueio'}
-                            </button>
-                          </div>
+        <>
+          <div className="hidden sm:block"><div className="relative overflow-x-auto">
+            <Tabela className="min-w-[640px]">
+              <thead>
+                <tr>
+                  <Th>Cliente</Th>
+                  {(etapasDefinidas ?? ['Data']).map(col => (
+                    <Th key={col} alinhar="centro" largura={150}>{col}</Th>
+                  ))}
+                  <Th alinhar="centro" largura={170}>Sem movimento</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {clientesFiltrados.map(cliente => {
+                  const semMovimentoAtivo = getSemMovimento(cliente.id)
+                  return (
+                    <Fragment key={cliente.id}>
+                      <tr>
+                        <Td>
+                          <Link href={`/fiscal/clientes/${cliente.id}`} className="block w-full min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                            <NomeCliente nome={cliente.nome} />
+                          </Link>
+                        </Td>
+                        {semMovimentoAtivo ? (
+                          <Td colSpan={colunas.length} alinhar="centro">
+                            <Badge tom="neu">Sem movimento</Badge>
+                          </Td>
+                        ) : colunas.map(etapaNome => (
+                          <Td key={etapaNome ?? '_'} alinhar="centro">
+                            {campoData(cliente.id, etapaNome, cliente.nome, 'w-[128px]')}
+                          </Td>
+                        ))}
+                        <Td alinhar="centro">{checkSemMovimento(cliente.id)}</Td>
+                      </tr>
+                      {!etapasDefinidas && unlockingCliente === cliente.id && (
+                        <tr>
+                          <Td colSpan={colunas.length + 2}>{formDesbloqueio(cliente.id)}</Td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+            </Tabela>
+          </div></div>
+
+          <ul className="flex flex-col sm:hidden">
+            {clientesFiltrados.map(cliente => {
+              const semMovimentoAtivo = getSemMovimento(cliente.id)
+              return (
+                <li key={cliente.id} className="flex flex-col gap-2 border-b border-line-soft px-4 py-3 last:border-b-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <Link href={`/fiscal/clientes/${cliente.id}`} className="min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                      <NomeCliente nome={cliente.nome} />
+                    </Link>
+                    {checkSemMovimento(cliente.id)}
+                  </div>
+                  {semMovimentoAtivo ? (
+                    <Badge tom="neu" className="self-start">Sem movimento</Badge>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {colunas.map(etapaNome => (
+                        <div key={etapaNome ?? '_'} className="flex items-center justify-between gap-3">
+                          {etapaNome && <span className="min-w-0 flex-1 text-[13px] text-fg-2">{etapaNome}</span>}
+                          {campoData(cliente.id, etapaNome, cliente.nome, etapaNome ? 'h-11 w-[150px]' : 'h-11 w-full')}
                         </div>
-                      </td>
-                    </tr>
+                      ))}
+                    </div>
                   )}
-                </Fragment>
-              )})}
-            </tbody>
-          </table>
-        </div>
+                  {!etapasDefinidas && unlockingCliente === cliente.id && formDesbloqueio(cliente.id)}
+                </li>
+              )
+            })}
+          </ul>
+        </>
       )}
-    </div>
+    </Card>
   )
 }

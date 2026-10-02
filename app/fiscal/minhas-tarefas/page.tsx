@@ -11,6 +11,11 @@ import MinhasTarefasTabs from '@/components/fiscal/MinhasTarefasTabs'
 import MinhasTarefasSeletorUsuario from '@/components/fiscal/MinhasTarefasSeletorUsuario'
 import DossieSecao from '@/components/fiscal/DossieSecao'
 import EventosConsolidados from '@/components/fiscal/EventosConsolidados'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Card } from '@/components/ui/Card'
+import { ClipboardList, Users } from 'lucide-react'
 import type { StatusDossie } from '@/lib/status-dossie'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
 
@@ -69,22 +74,22 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
 
     if (!alvo) {
       return (
-        <div className="p-8 max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-[var(--fg)]">Minhas Tarefas</h1>
-            <p className="text-[var(--fg)]/40 mt-1 text-sm">
-              Selecione um usuário para ver o resumo de tarefas dele.
-            </p>
-          </div>
-          <div className="mb-8">
-            <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />
-          </div>
-          <p className="text-center text-[var(--fg)]/20 py-12 text-sm">
-            {usuariosElegiveis.length === 0
-              ? 'Nenhum usuário tem tipos de tarefa atribuídos no Fiscal ainda.'
-              : 'Selecione um usuário acima para ver as tarefas dele.'}
-          </p>
-        </div>
+        <Pagina>
+          <CabecalhoPagina
+            titulo="Minhas tarefas"
+            subtitulo="Selecione um usuário para ver o resumo de tarefas dele."
+          />
+          <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />
+          <Card semPadding>
+            <EmptyState
+              icone={<Users size={24} />}
+              titulo={usuariosElegiveis.length === 0 ? 'Nenhum usuário com tarefas' : 'Selecione um usuário'}
+              descricao={usuariosElegiveis.length === 0
+                ? 'Nenhum usuário tem tipos de tarefa atribuídos no Fiscal ainda.'
+                : 'Selecione um usuário acima para ver as tarefas dele.'}
+            />
+          </Card>
+        </Pagina>
       )
     }
 
@@ -104,24 +109,22 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
 
   if (meusTipos.length === 0) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--fg)]">Minhas Tarefas</h1>
-          <p className="text-[var(--fg)]/40 mt-1 text-sm">
-            Tipos de tarefa atribuídos exclusivamente a você, em todos os clientes.
-          </p>
-        </div>
-        {isAdmin && (
-          <div className="mb-8">
-            <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />
-          </div>
-        )}
-        <p className="text-center text-[var(--fg)]/20 py-12 text-sm">
-          {isAdmin
-            ? `Nenhum tipo de tarefa está atribuído a ${nomeAlvo}.`
-            : 'Nenhum tipo de tarefa está atribuído a você. Peça a um admin pra atribuir em Configurações.'}
-        </p>
-      </div>
+      <Pagina>
+        <CabecalhoPagina
+          titulo="Minhas tarefas"
+          subtitulo="Tipos de tarefa atribuídos exclusivamente a você, em todos os clientes."
+        />
+        {isAdmin && <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />}
+        <Card semPadding>
+          <EmptyState
+            icone={<ClipboardList size={24} />}
+            titulo="Nenhuma tarefa atribuída"
+            descricao={isAdmin
+              ? `Nenhum tipo de tarefa está atribuído a ${nomeAlvo}.`
+              : 'Nenhum tipo de tarefa está atribuído a você. Peça a um admin pra atribuir em Configurações.'}
+          />
+        </Card>
+      </Pagina>
     )
   }
 
@@ -212,23 +215,24 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[var(--fg)]">Minhas Tarefas</h1>
-        <p className="text-[var(--fg)]/40 mt-1 text-sm">
-          {isAdmin && somenteLeitura
-            ? `Visualizando as tarefas de ${nomeAlvo} (somente leitura).`
-            : 'Tipos de tarefa atribuídos exclusivamente a você, em todos os clientes.'}
-        </p>
-      </div>
+    <Pagina>
+      <CabecalhoPagina
+        titulo="Minhas tarefas"
+        subtitulo={isAdmin && somenteLeitura
+          ? `Visualizando as tarefas de ${nomeAlvo}.`
+          : 'Tipos de tarefa atribuídos exclusivamente a você, em todos os clientes.'}
+      />
 
-      {isAdmin && (
-        <div className="mb-8">
-          <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />
-        </div>
+      {isAdmin && <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />}
+
+      {isAdmin && somenteLeitura && (
+        <Aviso tom="info">
+          Você está vendo as tarefas de <b>{nomeAlvo}</b> em <b>somente leitura</b>.
+        </Aviso>
       )}
 
       <MinhasTarefasTabs
+        contagens={{ eventos: eventosConsolidados.length, dossie: clientesDossie.length }}
         tarefasContent={
           <MinhasTarefasFiltro
             secoes={meusTipos.map(tipoInfo => ({
@@ -263,6 +267,6 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
           />
         }
       />
-    </div>
+    </Pagina>
   )
 }

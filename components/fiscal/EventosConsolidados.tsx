@@ -1,10 +1,18 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { CalendarDays, Plus, Search } from 'lucide-react'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { TarefaAvulsaComCriador } from '@/lib/tarefas-avulsas'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import EventoAvulsoModal from '@/components/geral/EventoAvulsoModal'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Input } from '@/components/ui/Input'
+import { Modal } from '@/components/ui/Modal'
 
 interface GrupoCliente {
   clienteId: string
@@ -17,8 +25,6 @@ interface Props {
   eventos: TarefaAvulsaComCriador[]
   podeEditar: boolean
 }
-
-const inputCls = "flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
 export default function EventosConsolidados({ clientes, eventos, podeEditar }: Props) {
   const [busca, setBusca] = useFiltroPersistente('eventos-consolidados:busca', '')
@@ -61,33 +67,35 @@ export default function EventosConsolidados({ clientes, eventos, podeEditar }: P
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <input
-          type="text"
-          placeholder="Buscar por nome do cliente..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          className={inputCls}
-        />
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field rotulo="Buscar" className="w-full sm:w-[300px]">
+          {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Nome do cliente" value={busca} onChange={e => setBusca(e.target.value)} />}
+        </Field>
         {podeEditar && (
-          <button
-            type="button"
+          <Button
+            variante="primario"
+            icone={<Plus size={16} aria-hidden="true" />}
             onClick={() => setSeletorAberto(true)}
-            className="shrink-0 text-sm bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/30 px-4 py-2 rounded-xl transition-all font-semibold"
+            className="max-sm:h-11 max-sm:w-full sm:ml-auto"
           >
-            + Novo evento
-          </button>
+            Novo evento
+          </Button>
         )}
       </div>
 
       {gruposFiltrados.length === 0 ? (
-        <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum evento neste mês.</p>
+        <Card semPadding>
+          <EmptyState
+            icone={<CalendarDays size={24} />}
+            titulo="Nenhum evento neste mês"
+            descricao={busca ? 'Mude a busca para ver outros clientes.' : undefined}
+          />
+        </Card>
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {gruposFiltrados.map(grupo => (
-            <div key={grupo.clienteId}>
-              <h4 className="text-sm font-semibold text-[var(--fg)] mb-2">{grupo.clienteNome}</h4>
+            <Card key={grupo.clienteId} titulo={grupo.clienteNome} meta={<Badge tom="neu">{grupo.eventos.length}</Badge>}>
               <EventosAvulsosSecao
                 clienteId={grupo.clienteId}
                 setor="fiscal"
@@ -95,48 +103,48 @@ export default function EventosConsolidados({ clientes, eventos, podeEditar }: P
                 podeEditar={podeEditar}
                 compacto
               />
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
-      {seletorAberto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-          onClick={e => e.target === e.currentTarget && fecharSeletor()}>
-          <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col max-h-[80vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-              <h2 className="text-[var(--fg)] font-bold text-base">Escolha o cliente</h2>
-              <button onClick={fecharSeletor} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
-            </div>
-            <div className="px-6 py-3 border-b border-[var(--fg)]/8 shrink-0">
-              <input
-                type="text"
-                autoFocus
-                placeholder="Buscar cliente..."
-                value={buscaSeletor}
-                onChange={e => setBuscaSeletor(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-              />
-            </div>
-            <div className="overflow-y-auto flex-1 py-2">
-              {clientesSeletorFiltrados.length === 0 ? (
-                <p className="text-center text-[var(--fg)]/25 text-sm py-6">Nenhum cliente encontrado.</p>
-              ) : (
-                clientesSeletorFiltrados.map(c => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => { setClienteNovoEvento(c.id); fecharSeletor() }}
-                    className="w-full text-left px-6 py-2.5 text-sm text-[var(--fg)]/80 hover:bg-[var(--fg)]/5 hover:text-[var(--fg)] transition-colors"
-                  >
-                    {c.nome}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
+      <Modal
+        aberto={seletorAberto}
+        onFechar={fecharSeletor}
+        titulo="Escolha o cliente"
+        subtitulo="O evento será criado na ficha do cliente escolhido."
+        largura="p"
+      >
+        <Field rotulo="Buscar cliente">
+          {c => (
+            <Input
+              id={c.id}
+              type="search"
+              data-autofocus=""
+              iconeEsquerda={<Search size={16} />}
+              placeholder="Nome do cliente"
+              value={buscaSeletor}
+              onChange={e => setBuscaSeletor(e.target.value)}
+            />
+          )}
+        </Field>
+        <div className="-mx-2 flex max-h-[50vh] flex-col overflow-y-auto">
+          {clientesSeletorFiltrados.length === 0 ? (
+            <p className="py-6 text-center text-sm text-fg-3">Nenhum cliente encontrado.</p>
+          ) : (
+            clientesSeletorFiltrados.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => { setClienteNovoEvento(c.id); fecharSeletor() }}
+                className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-fg-2 transition-colors hover:bg-raised hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+              >
+                {c.nome}
+              </button>
+            ))
+          )}
         </div>
-      )}
+      </Modal>
 
       {clienteNovoEvento && (
         <EventoAvulsoModal
