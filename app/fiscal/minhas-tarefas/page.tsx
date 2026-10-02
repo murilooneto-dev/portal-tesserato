@@ -14,7 +14,7 @@ import EventosConsolidados from '@/components/fiscal/EventosConsolidados'
 import type { StatusDossie } from '@/lib/status-dossie'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
 
-export const metadata = { title: 'Minhas Tarefas — Tesserato Fiscal' }
+export const metadata = { title: 'Minhas tarefas — Tesserato Fiscal' }
 
 interface ClienteRow {
   id: string

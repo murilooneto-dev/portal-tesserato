@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { Providers } from "@/components/ui/Providers";
@@ -21,6 +21,11 @@ export const metadata: Metadata = {
   title: "Portal do Colaborador — Tesserato",
   description: "Portal interno da Tesserato Contabilidade.",
   icons: { icon: '/logo.ico' },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 const TEMA_SCRIPT = `

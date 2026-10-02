@@ -122,8 +122,8 @@ export function Modal({
 
 export function Drawer({
   aberto, onFechar, titulo, subtitulo, icone, rodape, children,
-  larguraPx = 520, fecharAoClicarFora = true, bloqueado = false, idDescricao,
-}: BaseProps & { larguraPx?: number }) {
+  larguraPx = 520, fecharAoClicarFora = true, bloqueado = false, idDescricao, lado = 'direita',
+}: BaseProps & { larguraPx?: number; lado?: 'esquerda' | 'direita' }) {
   const painel = useRef<HTMLDivElement>(null)
   const idTitulo = useId()
   const idSub = useId()
@@ -143,7 +143,10 @@ export function Drawer({
         aria-describedby={idDescricao ?? (subtitulo ? idSub : undefined)}
         tabIndex={-1}
         style={{ width: `min(${larguraPx}px, 100vw)` }}
-        className="absolute right-0 top-0 flex h-full flex-col border-l border-line bg-surface shadow-modal"
+        className={cn(
+          'absolute top-0 flex h-full flex-col border-line bg-surface shadow-modal',
+          lado === 'esquerda' ? 'left-0 border-r' : 'right-0 border-l',
+        )}
       >
         <Cabecalho idTitulo={idTitulo} idSub={idSub} titulo={titulo} subtitulo={subtitulo} icone={icone} onFechar={() => tentarFechar('botao')} bloqueado={bloqueado} />
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-[22px] py-5">{children}</div>

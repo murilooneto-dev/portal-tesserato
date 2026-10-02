@@ -6,7 +6,7 @@ export interface PaginaSetor {
 }
 
 // Fonte única da lista de páginas navegáveis por setor — usada tanto
-// pelo menu (components/fiscal/Sidebar.tsx) quanto pelo controle de
+// pelo menu (lib/navegacao.ts) quanto pelo controle de
 // acesso por página (proxy.ts, app/fiscal/parametros). Páginas fora da
 // navegação normal (agenda, bots, tarefas) e exclusivas de admin
 // (parametros, admin, vinculos) não entram aqui.
@@ -17,8 +17,8 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'calendario', label: 'Calendário' },
     { slug: 'relatorios', label: 'Relatórios' },
     { slug: 'parcelamentos', label: 'Parcelamentos' },
-    { slug: 'preenchimento-rapido', label: 'Preenchimento Rápido' },
-    { slug: 'minhas-tarefas', label: 'Minhas Tarefas' },
+    { slug: 'preenchimento-rapido', label: 'Preenchimento rápido' },
+    { slug: 'minhas-tarefas', label: 'Minhas tarefas' },
     { slug: 'tabelas', label: 'Tabelas' },
   ],
   contabil: [
@@ -26,7 +26,7 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'clientes', label: 'Clientes' },
     { slug: 'relatorios', label: 'Relatórios' },
     { slug: 'calendario', label: 'Calendário' },
-    { slug: 'preenchimento-rapido', label: 'Preenchimento Rápido' },
+    { slug: 'preenchimento-rapido', label: 'Preenchimento rápido' },
     { slug: 'tabelas', label: 'Tabelas' },
   ],
   pessoal: [
@@ -34,7 +34,7 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'clientes', label: 'Clientes' },
     { slug: 'relatorios', label: 'Relatórios' },
     { slug: 'calendario', label: 'Calendário' },
-    { slug: 'preenchimento-rapido', label: 'Preenchimento Rápido' },
+    { slug: 'preenchimento-rapido', label: 'Preenchimento rápido' },
     { slug: 'tabelas', label: 'Tabelas' },
   ],
   societario: [

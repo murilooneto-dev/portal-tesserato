@@ -33,7 +33,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={mostrar}>
       {children}
-      <div aria-live="polite" role="status" className="pointer-events-none fixed bottom-4 right-4 z-[80] flex flex-col gap-2">
+      <div aria-live="polite" role="status" className="pointer-events-none fixed bottom-20 right-4 z-[80] lg:bottom-4 flex flex-col gap-2">
         {fila.map(a => {
           const Icone = ICONE[a.tom]
           return (

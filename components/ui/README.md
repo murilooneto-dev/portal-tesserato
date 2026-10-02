@@ -16,4 +16,6 @@ Base do redesign (artifact https://claude.ai/artifact/SdZ3EYdm8CbusrZnGzz7sV). U
 | `useToast()` | Aviso de "salvo" ou de erro depois de uma ação. |
 | `Card`, `Aviso`, `EmptyState`, `Tabela`/`Th`/`Td` | Estrutura das telas. |
 
+**Imports permitidos nas peças:** `react`, `react-dom`, `lucide-react`, `tailwind-merge`, arquivos de `components/ui/`.
+
 Classes de cor disponíveis (Tailwind): `bg-page bg-surface bg-raised bg-inset`, `text-fg text-fg-2 text-fg-3`, `border-line border-line-soft`, `bg-acc text-acc-ink text-acc-text bg-acc-soft`, `text-ok/warn/danger/info` e `bg-*-soft`. Texto mínimo de 12 px.
