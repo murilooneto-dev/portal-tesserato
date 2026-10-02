@@ -10,6 +10,9 @@ import type { SetorTabela } from '@/lib/tabelas/montar-payload'
 import type { ClienteMatch } from '@/lib/tabelas/cliente-match'
 import TabelaEditavel, { type ColunaGrade, type LinhaGrade } from './TabelaEditavel'
 import { podeAcessarPagina } from '@/lib/route-permissions'
+import { ChevronLeft } from 'lucide-react'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Aviso } from '@/components/ui/Aviso'
 import GerenciarEstrutura from './GerenciarEstrutura'
 import BarraConsulta from './BarraConsulta'
 
@@ -67,22 +70,26 @@ export default async function TabelaDetalhe({ setor, id, params }: Props) {
   const exportarHref = `/api/tabelas/${id}/exportar${exportQs ? `?${exportQs}` : ''}`
   const hrefNovaLinha = href({ ...consulta, q: '', filtros: {} }, 999999)
 
+
+  const linkSemCliente = (ativo: boolean) =>
+    `inline-flex h-[30px] items-center rounded-[7px] border px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
+      ativo ? 'border-acc bg-acc-soft text-acc-text' : 'border-line text-fg-2 hover:border-fg-3 hover:text-fg'
+    }`
+  const linkPagina = 'inline-flex h-9 items-center rounded-lg border border-line bg-raised px-3.5 text-sm font-medium text-fg hover:border-fg-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc'
+
   return (
-    <div className="p-8">
-      <Link href={`/${setor}/tabelas`} className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]">← Tabelas</Link>
-      <div className="flex items-center justify-between gap-3 mt-2">
-        <h1 className="text-2xl font-bold text-[var(--fg)]">{planilha.nome}</h1>
-        {podeConfigurar && (
+    <Pagina>
+      <Link href={`/${setor}/tabelas`} className="inline-flex w-fit items-center gap-1 rounded text-[13px] text-fg-3 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+        <ChevronLeft size={14} aria-hidden="true" />Tabelas
+      </Link>
+      <CabecalhoPagina
+        titulo={planilha.nome}
+        subtitulo={`${total.toLocaleString('pt-BR')} ${total === 1 ? 'linha' : 'linhas'}${consultaAtiva ? ' na consulta' : ''}${totalPaginas > 1 ? ` · página ${pagina} de ${totalPaginas}` : ''}${podeEditar ? '' : ' · somente leitura'}`}
+        acoes={podeConfigurar ? (
           <GerenciarEstrutura planilhaId={id} nome={planilha.nome} setor={setor} colunas={colunas}
             temColunaChave={planilha.coluna_chave !== null} clientes={clientes} />
-        )}
-      </div>
-      <p className="text-sm text-[var(--fg)]/40 mt-1 mb-4">
-        {total.toLocaleString('pt-BR')} {total === 1 ? 'linha' : 'linhas'}
-        {consultaAtiva ? ' na consulta' : ''}
-        {totalPaginas > 1 ? ` · página ${pagina} de ${totalPaginas}` : ''}
-        {podeEditar ? '' : ' · somente leitura'}
-      </p>
+        ) : undefined}
+      />
 
       <BarraConsulta
         key={serializeConsulta(consulta, 1)}
@@ -93,22 +100,20 @@ export default async function TabelaDetalhe({ setor, id, params }: Props) {
       />
 
       {temColunaCliente && (
-        <div className="flex gap-2 mb-4 text-xs">
-          <Link href={href({ ...consulta, semCliente: false })}
-            className={`px-3 py-1.5 rounded-lg border ${!consulta.semCliente ? 'bg-[var(--fg)]/10 border-[var(--fg)]/20 text-[var(--fg)]' : 'border-[var(--fg)]/10 text-[var(--fg)]/50 hover:text-[var(--fg)]'}`}>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por vínculo com cliente">
+          <Link href={href({ ...consulta, semCliente: false })} aria-current={!consulta.semCliente ? 'true' : undefined} className={linkSemCliente(!consulta.semCliente)}>
             Todas
           </Link>
-          <Link href={href({ ...consulta, semCliente: true })}
-            className={`px-3 py-1.5 rounded-lg border ${consulta.semCliente ? 'bg-amber-500/15 border-amber-500/30 text-amber-400' : 'border-[var(--fg)]/10 text-[var(--fg)]/50 hover:text-[var(--fg)]'}`}>
+          <Link href={href({ ...consulta, semCliente: true })} aria-current={consulta.semCliente ? 'true' : undefined} className={linkSemCliente(consulta.semCliente)}>
             Só sem cliente
           </Link>
         </div>
       )}
 
       {resultado.error && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+        <Aviso tom="dng">
           Não foi possível carregar as linhas. Se acabou de atualizar o sistema, confirme que a migration 049 foi aplicada no banco.
-        </div>
+        </Aviso>
       )}
 
       <TabelaEditavel
@@ -121,19 +126,18 @@ export default async function TabelaDetalhe({ setor, id, params }: Props) {
         ordenacao={{ coluna: consulta.ordem, desc: consulta.desc, hrefs: hrefsOrdem }}
         consultaAtiva={consultaAtiva}
         hrefNovaLinha={hrefNovaLinha}
+        rodape={totalPaginas > 1 ? (
+          <nav aria-label="Paginação" className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft px-3.5 py-3 text-[13px] text-fg-3">
+            {pagina > 1
+              ? <Link href={href(consulta, pagina - 1)} className={linkPagina}>Anterior</Link>
+              : <span />}
+            <span>Página {pagina} de {totalPaginas} · {POR_PAGINA} por página</span>
+            {pagina < totalPaginas
+              ? <Link href={href(consulta, pagina + 1)} className={linkPagina}>Próxima</Link>
+              : <span />}
+          </nav>
+        ) : undefined}
       />
-
-      {totalPaginas > 1 && (
-        <div className="flex items-center justify-between mt-4 text-xs text-[var(--fg)]/50">
-          {pagina > 1
-            ? <Link href={href(consulta, pagina - 1)} className="px-3 py-1.5 rounded-lg border border-[var(--fg)]/10 hover:text-[var(--fg)]">← Anterior</Link>
-            : <span />}
-          <span>Página {pagina} de {totalPaginas} · {POR_PAGINA} por página</span>
-          {pagina < totalPaginas
-            ? <Link href={href(consulta, pagina + 1)} className="px-3 py-1.5 rounded-lg border border-[var(--fg)]/10 hover:text-[var(--fg)]">Próxima →</Link>
-            : <span />}
-        </div>
-      )}
-    </div>
+    </Pagina>
   )
 }

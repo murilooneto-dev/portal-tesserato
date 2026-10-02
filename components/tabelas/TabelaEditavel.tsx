@@ -4,6 +4,12 @@
 import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ArrowDown, ArrowUp, Plus, Table2, X } from 'lucide-react'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
+import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { editarCelula, definirClienteDaLinha, adicionarLinha, removerLinha } from '@/lib/tabelas-edicao-actions'
 import { formatarValor } from '@/lib/tabelas/formatar'
 import type { ClienteMatch } from '@/lib/tabelas/cliente-match'
@@ -21,11 +27,12 @@ interface Props {
   ordenacao: { coluna: string | null; desc: boolean; hrefs: Record<string, string> }
   consultaAtiva: boolean
   hrefNovaLinha: string
+  rodape?: ReactNode
 }
 
 type Estado = { estado: 'salvando' } | { estado: 'erro'; msg: string }
 
-const campoCls = 'w-full min-w-[8rem] px-2 py-1.5 rounded-lg bg-[var(--fg)]/5 border text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50'
+const campoCls = 'w-full min-w-[8rem] rounded-lg border bg-inset px-2 py-1.5 text-sm text-fg focus:border-acc focus:outline-none focus:ring-[3px] focus:ring-acc-soft disabled:opacity-60'
 
 // O que aparece dentro do campo de edição (não o texto formatado da leitura).
 function textoDeEdicao(tipo: TipoColuna, valor: ValorCelula): string {
@@ -34,8 +41,9 @@ function textoDeEdicao(tipo: TipoColuna, valor: ValorCelula): string {
   return String(valor)
 }
 
-export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, podeEditar, ordenacao, consultaAtiva, hrefNovaLinha }: Props) {
+export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, podeEditar, ordenacao, consultaAtiva, hrefNovaLinha, rodape }: Props) {
   const router = useRouter()
+  const confirmar = useConfirmar()
   // Valores já salvos com sucesso nesta sessão, por cima do que veio do servidor.
   const [salvos, setSalvos] = useState<Record<string, ValorCelula>>({})
   const [vinculos, setVinculos] = useState<Record<string, string | null>>({})
@@ -109,7 +117,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
   }
 
   async function aoRemover(l: LinhaGrade) {
-    if (!confirm('Remover esta linha? Essa ação não pode ser desfeita.')) return
+    if (!await confirmar({ titulo: 'Remover esta linha?', descricao: 'Essa ação não pode ser desfeita.', textoConfirmar: 'Remover', perigo: true })) return
     setOcupado(true); setErroGeral(null)
     try {
       const r = await removerLinha(l.id)
@@ -133,7 +141,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
             style={{ backgroundColor: cor + '25', color: cor, border: `1px solid ${cor}50` }}>{texto}</span>
         ) : texto}
         {c.tipo === 'cliente' && !clienteAtual(l) && valor !== null && (
-          <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">sem cliente</span>
+          <Badge tom="warn" className="ml-2">sem cliente</Badge>
         )}
       </>
     )
@@ -143,7 +151,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
     const k = chave(l.id, c.id)
     const est = estados[k]
     const valor = valorAtual(l, c)
-    const bordaCls = est?.estado === 'erro' ? 'border-red-500/60' : 'border-[var(--fg)]/10'
+    const bordaCls = est?.estado === 'erro' ? 'border-danger' : 'border-line'
     const desabilitado = est?.estado === 'salvando'
 
     let campo: ReactNode
@@ -167,7 +175,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
             className={`${campoCls} ${bordaCls} text-left cursor-pointer disabled:opacity-60`}>
             {valor !== null ? formatarValor(c.tipo, valor) : 'Sem cliente'}
             {!cid && valor !== null && (
-              <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">sem cliente</span>
+              <Badge tom="warn" className="ml-2">sem cliente</Badge>
             )}
           </button>
         )
@@ -205,7 +213,7 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
       }
       if (c.tipo === 'texto') {
         campo = (
-          <textarea aria-label={c.nome} rows={1} className={`${campoCls} ${bordaCls} resize-y`} disabled={desabilitado}
+          <textarea aria-label={c.nome} rows={1} className={`${campoCls} ${bordaCls} resize-none`} disabled={desabilitado}
             value={exibido}
             onChange={e => aoMudar(e.target.value)}
             onBlur={e => aoSair(e.currentTarget)}
@@ -234,61 +242,70 @@ export default function TabelaEditavel({ planilhaId, colunas, linhas, clientes, 
     return (
       <div>
         {campo}
-        {est?.estado === 'salvando' && <span className="text-[10px] text-[var(--fg)]/40">salvando…</span>}
-        {est?.estado === 'erro' && <span className="block text-[10px] text-red-400 mt-0.5 max-w-[16rem] whitespace-normal">{est.msg}</span>}
+        {est?.estado === 'salvando' && <span className="text-xs text-fg-3">salvando…</span>}
+        {est?.estado === 'erro' && <span role="alert" className="mt-0.5 block max-w-[16rem] whitespace-normal text-xs text-danger">{est.msg}</span>}
       </div>
     )
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-3">
       {podeEditar && (
-        <div className="flex items-center gap-3 mb-3">
-          <button onClick={aoAdicionar} disabled={ocupado}
-            className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={aoAdicionar} disabled={ocupado}>
             Adicionar linha
-          </button>
-          {erroGeral && <span className="text-xs text-red-400">{erroGeral}</span>}
+          </Button>
+          {erroGeral && <span role="alert" className="text-[13px] text-danger">{erroGeral}</span>}
         </div>
       )}
 
-      <div className="max-h-[75vh] overflow-auto rounded-xl border border-[var(--fg)]/12">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[var(--fg)]/12">
-              {colunas.map(c => (
-                <th key={c.id} aria-sort={ordenacao.coluna === c.id ? (ordenacao.desc ? 'descending' : 'ascending') : 'none'}
-                  className="sticky top-0 z-10 bg-[var(--bg-surface)] text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3 whitespace-nowrap">
-                  <Link href={ordenacao.hrefs[c.id] ?? '#'} className="inline-flex items-center gap-1 hover:text-[var(--fg)]">
-                    {c.nome}
-                    <span aria-hidden="true" className="text-[var(--fg)]/40">
-                      {ordenacao.coluna === c.id ? (ordenacao.desc ? '↓' : '↑') : ''}
-                    </span>
-                  </Link>
-                </th>
-              ))}
-              {podeEditar && <th className="sticky top-0 z-10 bg-[var(--bg-surface)] w-10" />}
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.map(l => (
-              <tr key={l.id} className="border-b border-[var(--fg)]/8 align-top">
-                {colunas.map(c => (
-                  <td key={c.id} className={`px-4 py-2.5 text-sm text-[var(--fg)] ${podeEditar ? '' : 'whitespace-nowrap'}`}>
-                    {podeEditar ? celulaEditavel(l, c) : celulaSomenteLeitura(l, c)}
-                  </td>
+      <div className="min-w-0 overflow-hidden rounded-xl border border-line-soft bg-surface">
+        {linhas.length === 0 ? (
+          <EmptyState icone={<Table2 size={24} />} titulo={consultaAtiva ? 'Nenhuma linha encontrada com esses filtros' : 'Nenhuma linha'} />
+        ) : (
+          <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto">
+            <Tabela className="w-max min-w-full table-auto">
+              <thead>
+                <tr>
+                  {colunas.map((c, i) => {
+                    const ativa = ordenacao.coluna === c.id
+                    return (
+                      <Th key={c.id} aria-sort={ativa ? (ordenacao.desc ? 'descending' : 'ascending') : 'none'}
+                        className={`sticky top-0 bg-surface ${i === 0 ? 'left-0 z-30 border-r border-line-soft' : 'z-20'}`}>
+                        <Link href={ordenacao.hrefs[c.id] ?? '#'} className="inline-flex items-center gap-1 rounded hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          {c.nome}
+                          {ativa && (ordenacao.desc
+                            ? <ArrowDown size={14} aria-hidden="true" className="text-acc-text" />
+                            : <ArrowUp size={14} aria-hidden="true" className="text-acc-text" />)}
+                        </Link>
+                      </Th>
+                    )
+                  })}
+                  {podeEditar && <Th className="sticky top-0 z-20 bg-surface" largura={48}><span className="sr-only">Ações</span></Th>}
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map(l => (
+                  <tr key={l.id} className="align-top">
+                    {colunas.map((c, i) => (
+                      <Td key={c.id}
+                        className={`${podeEditar ? '' : 'whitespace-nowrap'} ${i === 0 ? 'sticky left-0 z-10 border-r border-line-soft bg-surface' : ''}`}>
+                        {podeEditar ? celulaEditavel(l, c) : celulaSomenteLeitura(l, c)}
+                      </Td>
+                    ))}
+                    {podeEditar && (
+                      <Td className="px-2">
+                        <IconButton rotulo="Remover linha" icone={<X size={16} aria-hidden="true" />} onClick={() => aoRemover(l)} disabled={ocupado}
+                          className="text-danger hover:text-danger" />
+                      </Td>
+                    )}
+                  </tr>
                 ))}
-                {podeEditar && (
-                  <td className="px-2 py-2.5">
-                    <button onClick={() => aoRemover(l)} disabled={ocupado} title="Remover linha" aria-label="Remover linha"
-                      className="text-red-400/60 hover:text-red-400 text-lg leading-none px-1 disabled:opacity-40">×</button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {linhas.length === 0 && <p className="text-center text-[var(--fg)]/30 py-12 text-sm">{consultaAtiva ? 'Nenhuma linha encontrada com esses filtros.' : 'Nenhuma linha.'}</p>}
+              </tbody>
+            </Tabela>
+          </div>
+        )}
+        {rodape}
       </div>
     </div>
   )
