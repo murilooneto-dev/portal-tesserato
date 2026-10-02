@@ -4,6 +4,13 @@ import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { bucketDoRegime } from '@/lib/regime-bucket'
+import { ChevronDown, ChevronUp, Download, ExternalLink, Eye, EyeOff, FileText, Search, Store } from 'lucide-react'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Aviso } from '@/components/ui/Aviso'
 
 interface Props {
   clientes: ClienteComFiscal[]
@@ -13,26 +20,13 @@ interface Props {
 
 type Ferramenta = 'SIGA' | 'ISS' | 'MEI'
 
-const CARD_META: Record<Ferramenta, { titulo: string; descricao: string; cor: string; icon: string }> = {
-  SIGA: {
-    titulo: 'SIGA',
-    descricao: 'Clientes com conferência SIGA habilitada',
-    cor: '#6366f1',
-    icon: '🔎',
-  },
-  ISS: {
-    titulo: 'ISS',
-    descricao: 'Clientes com envio de ISS habilitado',
-    cor: 'var(--accent)',
-    icon: '📋',
-  },
-  MEI: {
-    titulo: 'MEI',
-    descricao: 'Clientes do grupo MEI',
-    cor: '#f59e0b',
-    icon: '🏪',
-  },
+const CARD_META: Record<Ferramenta, { titulo: string; descricao: string; cor: string; Icone: typeof Search }> = {
+  SIGA: { titulo: 'SIGA', descricao: 'Clientes com conferência SIGA habilitada', cor: '#8B93F8', Icone: Search },
+  ISS: { titulo: 'ISS', descricao: 'Clientes com envio de ISS habilitado', cor: 'var(--acc)', Icone: FileText },
+  MEI: { titulo: 'MEI', descricao: 'Clientes do grupo MEI', cor: 'var(--warn)', Icone: Store },
 }
+// Texto na cor da ferramenta com contraste nos dois temas (mistura com a cor do texto).
+const corDeTexto = (cor: string) => `color-mix(in srgb, ${cor} 72%, var(--fg))`
 
 function filtrarClientes(clientes: ClienteComFiscal[], tipo: Ferramenta): ClienteComFiscal[] {
   switch (tipo) {
@@ -50,7 +44,7 @@ function exportarPlanilha(clientes: ClienteComFiscal[], tipo: Ferramenta) {
   switch (tipo) {
     case 'SIGA':
       headers = ['CNPJ', 'Razão Social']
-      rows = clientes.map((c, i) => [c.cnpj ?? '', c.nome])
+      rows = clientes.map(c => [c.cnpj ?? '', c.nome])
       break
     case 'ISS':
       headers = ['CNPJ', 'Razão Social', 'Município', 'UF', 'Login ISS', 'Senha ISS']
@@ -138,199 +132,123 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
       )
     : []
 
+
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      {/* Cabeçalho */}
-      <div className="flex items-start justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--fg)]">Ferramentas</h1>
-          <p className="text-[var(--fg)]/40 mt-1 text-sm">
-            Acesso rápido às ferramentas do setor fiscal
-            {!isAdmin && userNome && <span className="text-[var(--fg)]/25"> · {userNome}</span>}
-          </p>
-        </div>
+    <Pagina>
+      <CabecalhoPagina
+        titulo="Ferramentas"
+        subtitulo={<>Acesso rápido às ferramentas do setor fiscal{!isAdmin && userNome && <span> · {userNome}</span>}</>}
+        acoes={
+          <a href="https://tesshub.com.br/login" target="_blank" rel="noopener noreferrer"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-acc bg-acc px-3.5 text-sm font-semibold text-acc-ink hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc focus-visible:ring-offset-2 focus-visible:ring-offset-page">
+            <ExternalLink size={16} aria-hidden="true" />
+            Acessar TessHub
+          </a>
+        }
+      />
 
-        {/* Botão TessHub */}
-        <a
-          href="https://tesshub.com.br/login"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[var(--fg)] text-sm font-semibold transition-colors shrink-0"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-            <polyline points="15 3 21 3 21 9"/>
-            <line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
-          Acessar TessHub
-        </a>
-      </div>
-
-      {/* 3 cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {ferramentas.map(tipo => {
-          const meta   = CARD_META[tipo]
-          const total  = filtrarClientes(clientes, tipo).length
-          const ativo  = aberto === tipo
-
+          const meta = CARD_META[tipo]
+          const total = filtrarClientes(clientes, tipo).length
+          const ativo = aberto === tipo
+          const Icone = meta.Icone
           return (
             <button
               key={tipo}
+              type="button"
               onClick={() => toggleCard(tipo)}
-              className="text-left rounded-2xl border p-6 transition-all cursor-pointer"
-              style={{
-                borderColor: ativo ? meta.cor : 'color-mix(in srgb, var(--fg) 8%, transparent)',
-                backgroundColor: ativo ? `${meta.cor}15` : 'color-mix(in srgb, var(--fg) 2%, transparent)',
-              }}
+              aria-expanded={ativo}
+              aria-controls="lista-ferramenta"
+              className="flex flex-col gap-3 rounded-xl border border-line-soft bg-surface px-5 py-[18px] text-left transition-colors hover:border-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+              style={ativo ? { borderColor: meta.cor, background: `color-mix(in srgb, ${meta.cor} 8%, var(--surface))` } : undefined}
             >
-              <div className="flex items-start justify-between mb-3">
-                <span className="text-3xl">{meta.icon}</span>
-                <span
-                  className="text-xs font-bold px-2.5 py-1 rounded-full"
-                  style={{ backgroundColor: `${meta.cor}20`, color: meta.cor }}
-                >
-                  {total} cliente{total !== 1 ? 's' : ''}
+              <span className="flex w-full items-center">
+                <span aria-hidden="true" className="grid h-10 w-10 place-items-center rounded-[10px]" style={{ background: `color-mix(in srgb, ${meta.cor} 18%, transparent)`, color: meta.cor }}>
+                  <Icone size={20} />
                 </span>
-              </div>
-              <p className="text-[var(--fg)] font-bold text-xl mb-1">{meta.titulo}</p>
-              <p className="text-[var(--fg)]/40 text-xs leading-relaxed">{meta.descricao}</p>
-              <div className="mt-4 flex items-center gap-1.5" style={{ color: meta.cor }}>
-                <span className="text-xs font-semibold">{ativo ? 'Fechar lista' : 'Ver lista'}</span>
-                <span className="text-xs">{ativo ? '▲' : '▼'}</span>
-              </div>
+                <span className="ml-auto inline-flex h-[22px] items-center rounded-md px-2 text-xs font-semibold" style={{ background: `color-mix(in srgb, ${meta.cor} 16%, transparent)`, color: corDeTexto(meta.cor) }}>
+                  {`${total} ${total === 1 ? 'cliente' : 'clientes'}`}
+                </span>
+              </span>
+              <span>
+                <span className="block text-lg font-semibold text-fg">{meta.titulo}</span>
+                <span className="text-[13px] text-fg-3">{meta.descricao}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: corDeTexto(meta.cor) }}>
+                {ativo ? 'Fechar lista' : 'Ver lista'}
+                {ativo ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+              </span>
             </button>
           )
         })}
       </div>
 
-      {/* Painel expandido */}
       {aberto && (
-        <div className="rounded-2xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 overflow-hidden">
-          {/* Header do painel */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8">
-            <div className="flex items-center gap-3">
-              <span className="text-xl">{CARD_META[aberto].icon}</span>
-              <div>
-                <p className="text-[var(--fg)] font-semibold">{CARD_META[aberto].titulo}</p>
-                <p className="text-[var(--fg)]/35 text-xs">{listaFiltrada.length} resultado{listaFiltrada.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="text"
-                placeholder="Buscar por nome ou CNPJ..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="px-4 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/20 text-sm focus:outline-none focus:border-[var(--accent)]/50 w-56"
-              />
-              <button
-                onClick={() => exportarPlanilha(listaFiltrada, aberto)}
-                disabled={listaFiltrada.length === 0}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600/80 hover:bg-green-600 text-[var(--fg)] text-sm font-semibold transition-colors disabled:opacity-40"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
+        <section id="lista-ferramenta" aria-label={`Clientes ${CARD_META[aberto].titulo}`} className="min-w-0 overflow-hidden rounded-xl border border-line-soft bg-surface">
+          <div className="flex flex-wrap items-center gap-2.5 border-b border-line-soft px-[18px] py-3.5">
+            <h2 className="text-[15px] font-semibold text-fg">{CARD_META[aberto].titulo}</h2>
+            <span className="text-[13px] text-fg-3">{listaFiltrada.length} {listaFiltrada.length === 1 ? 'resultado' : 'resultados'}</span>
+            <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+              <Input type="search" aria-label="Buscar por nome ou CNPJ" iconeEsquerda={<Search size={16} />} placeholder="Buscar por nome ou CNPJ"
+                value={search} onChange={e => setSearch(e.target.value)} className="sm:w-[280px]" />
+              <Button icone={<Download size={16} aria-hidden="true" />} onClick={() => exportarPlanilha(listaFiltrada, aberto)} disabled={listaFiltrada.length === 0}>
                 Exportar planilha
-              </button>
+              </Button>
             </div>
           </div>
-
-          {/* Tabela */}
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <Tabela className={aberto === 'ISS' ? 'min-w-[900px]' : 'min-w-[560px]'}>
               <thead>
-                <tr className="border-b border-[var(--fg)]/6">
-                  <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-6 py-3">#</th>
-                  <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Razão Social</th>
-                  <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">CNPJ</th>
-                  {aberto === 'ISS' && (
-                    <>
-                      <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Município</th>
-                      <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Login ISS</th>
-                      <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Senha ISS</th>
-                    </>
-                  )}
-                  {isAdmin && (
-                    <th className="text-left text-xs font-semibold text-[var(--fg)]/30 uppercase tracking-widest px-4 py-3">Responsável</th>
-                  )}
+                <tr>
+                  <Th largura={60}>#</Th>
+                  <Th>Razão social</Th>
+                  <Th largura={200}>CNPJ</Th>
+                  {aberto === 'ISS' && <><Th largura={180}>Município</Th><Th largura={160}>Login ISS</Th><Th largura={160}>Senha ISS</Th></>}
+                  {isAdmin && <Th largura={180}>Responsável</Th>}
                 </tr>
               </thead>
               <tbody>
                 {listaFiltrada.length === 0 && (
-                  <tr>
-                    <td colSpan={10} className="px-6 py-10 text-center text-[var(--fg)]/20 text-sm">
-                      Nenhum cliente encontrado.
-                    </td>
-                  </tr>
+                  <tr><Td colSpan={7} alinhar="centro" className="py-10 text-fg-3">Nenhum cliente encontrado.</Td></tr>
                 )}
                 {listaFiltrada.map((c, i) => (
-                  <tr key={c.id} className="border-b border-[var(--fg)]/5 hover:bg-[var(--fg)]/2 transition-colors">
-                    <td className="px-6 py-3 text-[var(--fg)]/25 text-xs">{i + 1}</td>
-                    <td className="px-4 py-3 text-[var(--fg)] font-medium">{c.nome}</td>
-                    <td className="px-4 py-3 text-[var(--fg)]/45 font-mono text-xs">{c.cnpj ?? '—'}</td>
+                  <tr key={c.id}>
+                    <Td className="font-mono text-[13px] text-fg-3">{i + 1}</Td>
+                    <Td><NomeCliente nome={c.nome} /></Td>
+                    <Td className="font-mono text-[13px] text-fg-2">{c.cnpj ?? '—'}</Td>
                     {aberto === 'ISS' && (
                       <>
-                        <td className="px-4 py-3 text-[var(--fg)]/60 text-xs">
-                          {c.municipio ?? c.mit ?? '—'}
-                          {c.uf ? <span className="text-[var(--fg)]/30"> / {c.uf}</span> : ''}
-                        </td>
-                        <td className="px-4 py-3 text-[var(--fg)]/60 text-xs font-mono">{c.login_iss ?? '—'}</td>
-                        <td className="px-4 py-3">
-                          <SenhaCell senha={c.senha_iss} />
-                        </td>
+                        <Td className="text-fg-2">{c.municipio ?? c.mit ?? '—'}{c.uf ? <span className="text-fg-3"> / {c.uf}</span> : ''}</Td>
+                        <Td className="font-mono text-[13px] text-fg-2">{c.login_iss ?? '—'}</Td>
+                        <Td><SenhaCell senha={c.senha_iss} /></Td>
                       </>
                     )}
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-[var(--fg)]/40 text-xs">{c.responsavel ?? '—'}</td>
-                    )}
+                    {isAdmin && <Td className="text-fg-2">{c.responsavel ?? '—'}</Td>}
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Tabela>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Nota sobre TessHub */}
-      <div className="mt-8 p-4 rounded-xl bg-[var(--fg)]/2 border border-[var(--fg)]/6">
-        <p className="text-[var(--fg)]/30 text-xs leading-relaxed">
-          <span className="text-[var(--fg)]/50 font-semibold">TessHub:</span> o botão acima abre o site em uma nova aba. Por razões de segurança dos navegadores, não é possível preencher automaticamente o login e senha de outro site. Você precisará inserir suas credenciais manualmente no TessHub — as mesmas usadas no Portal Fiscal.
-        </p>
-      </div>
-    </div>
+      <Aviso tom="info">
+        <b>O TessHub abre em uma nova aba.</b> Por segurança dos navegadores, o login não é preenchido automaticamente: use as mesmas credenciais do Portal.
+      </Aviso>
+    </Pagina>
   )
 }
 
 // Componente para mostrar/ocultar senha ISS na tabela
 function SenhaCell({ senha }: { senha: string | null }) {
   const [visivel, setVisivel] = useState(false)
-  if (!senha) return <span className="text-[var(--fg)]/25 text-xs">—</span>
+  if (!senha) return <span className="text-fg-3">—</span>
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-[var(--fg)]/60 text-xs font-mono">
-        {visivel ? senha : '••••••••'}
-      </span>
-      <button
-        onClick={() => setVisivel(v => !v)}
-        className="text-[var(--fg)]/25 hover:text-[var(--fg)]/60 transition-colors"
-        title={visivel ? 'Ocultar' : 'Mostrar'}
-      >
-        {visivel ? (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-            <line x1="1" y1="1" x2="23" y2="23"/>
-          </svg>
-        ) : (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-        )}
-      </button>
+    <div className="flex items-center gap-1">
+      <span className="font-mono text-[13px] text-fg-2">{visivel ? senha : '••••••••'}</span>
+      <IconButton rotulo={visivel ? 'Ocultar senha' : 'Mostrar senha'} icone={visivel ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+        onClick={() => setVisivel(v => !v)} className="h-7 w-7" />
     </div>
   )
 }

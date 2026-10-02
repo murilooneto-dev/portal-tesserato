@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import FerramentasClient from './FerramentasClient'
 
-export const metadata = { title: 'Ferramentas — Tesserato Fiscal' }
+export const metadata = { title: 'Ferramentas — Tesserato' }
 
 export default async function FerramentasPage() {
   const supabase = await createClient()
