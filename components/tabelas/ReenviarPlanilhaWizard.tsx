@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronLeft, Upload } from 'lucide-react'
 import { lerPlanilha, type PlanilhaLida } from '@/lib/tabelas/parse-planilha'
 import { detectarTipoColuna, type TipoColuna, type OpcaoColuna, type ValorCelula } from '@/lib/tabelas/tipos'
 import { agruparValoresCliente, type ClienteMatch } from '@/lib/tabelas/cliente-match'
@@ -9,6 +10,12 @@ import { casarColunas } from '@/lib/tabelas/reenvio'
 import { adicionarColuna } from '@/lib/tabelas-estrutura-actions'
 import { preVisualizarReenvio, aplicarReenvio, type PreviaReenvio } from '@/lib/tabelas-reenvio-actions'
 import { LIMITE_BYTES_PAYLOAD, type SetorTabela } from '@/lib/tabelas/montar-payload'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Select, Checkbox } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
+import { Segmentado } from '@/components/ui/Segmentado'
+import { cn } from '@/components/ui/cn'
 
 interface ColunaTabela { id: string; nome: string; tipo: TipoColuna; opcoes: OpcaoColuna[] | null }
 interface Props {
@@ -19,8 +26,17 @@ interface Props {
   clientes: ClienteMatch[]
 }
 
-const inputCls = 'px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50'
-const btnCls = 'px-3 py-1.5 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-xs'
+type ResolucaoConflito = 'sistema' | 'planilha'
+
+function StatCard({ valor, rotulo, tom }: { valor: number; rotulo: string; tom: 'ok' | 'info' | 'warn' | 'neu' }) {
+  const COR: Record<typeof tom, string> = { ok: 'text-ok', info: 'text-info', warn: 'text-warn', neu: 'text-fg-2' }
+  return (
+    <div className="rounded-[10px] border border-line-soft bg-surface p-3">
+      <p className={cn('text-xl font-semibold', COR[tom])}>{valor.toLocaleString('pt-BR')}</p>
+      <p className="text-xs text-fg-3">{rotulo}</p>
+    </div>
+  )
+}
 
 export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, temColunaChave, clientes }: Props) {
   void setor // reservado para uso futuro; o setor da tabela é sempre revalidado no servidor
@@ -32,7 +48,7 @@ export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, tem
   const [colunasNovasMarcadas, setColunasNovasMarcadas] = useState<Set<string>>(new Set())
   const [escolhasCliente, setEscolhasCliente] = useState<Record<string, string | null>>({})
   const [previa, setPrevia] = useState<PreviaReenvio | null>(null)
-  const [resolucoes, setResolucoes] = useState<Record<string, 'sistema' | 'planilha'>>({})
+  const [resolucoes, setResolucoes] = useState<Record<string, ResolucaoConflito>>({})
   const [processando, setProcessando] = useState(false)
 
   const casamento = useMemo(() => {
@@ -123,9 +139,9 @@ export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, tem
     }
   }
 
-  function aplicarResolucaoATodas(valor: 'sistema' | 'planilha') {
+  function aplicarResolucaoATodas(valor: ResolucaoConflito) {
     if (!previa) return
-    const novo: Record<string, 'sistema' | 'planilha'> = {}
+    const novo: Record<string, ResolucaoConflito> = {}
     for (const c of previa.comConflito) novo[c.linhaId] = valor
     setResolucoes(novo)
   }
@@ -171,150 +187,151 @@ export default function ReenviarPlanilhaWizard({ planilhaId, setor, colunas, tem
 
   if (!aberto) {
     return (
-      <button onClick={() => temColunaChave && setAberto(true)} disabled={!temColunaChave}
-        className={`${btnCls} disabled:opacity-40 disabled:cursor-not-allowed`}
+      <Button icone={<Upload size={16} aria-hidden="true" />} disabled={!temColunaChave} onClick={() => setAberto(true)}
         title={temColunaChave ? undefined : 'Esta tabela não tem uma coluna-chave definida. Defina uma coluna-chave na criação para poder reenviar.'}>
         Atualizar com planilha
-      </button>
+      </Button>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && !processando && fechar()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">Atualizar com planilha</h2>
-          <button onClick={fechar} disabled={processando} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl px-1">×</button>
-        </div>
-
-        <div className="overflow-y-auto px-6 py-5 space-y-5">
-          <div>
-            <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">Arquivo (.xlsx ou .csv)</label>
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={e => aoEscolherArquivo(e.target.files?.[0])} className="text-sm text-[var(--fg)]/70" />
-          </div>
-
-          {erroLeitura && <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">⚠ {erroLeitura}</div>}
-          {erro && <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">⚠ {erro}</div>}
-
-          {planilha && casamento && !previa && (<>
-            <p className="text-xs text-[var(--fg)]/50">{planilha.linhas.length.toLocaleString('pt-BR')} linhas · {casamento.casadas.length} coluna(s) reconhecida(s).</p>
-
-            {casamento.naoReconhecidas.length > 0 && (
-              <div className="rounded-xl border border-[var(--fg)]/12 p-4 space-y-2">
-                <p className="text-xs font-bold text-[var(--fg)]/40 uppercase tracking-widest">Colunas não reconhecidas</p>
-                {casamento.naoReconhecidas.map(n => (
-                  <label key={n.nome} className="flex items-center gap-2 text-sm text-[var(--fg)]">
-                    <input type="checkbox" checked={colunasNovasMarcadas.has(n.nome)}
-                      onChange={e => setColunasNovasMarcadas(s => {
-                        const novo = new Set(s)
-                        if (e.target.checked) novo.add(n.nome); else novo.delete(n.nome)
-                        return novo
-                      })} className="accent-[var(--accent)]" />
-                    {n.nome} <span className="text-[var(--fg)]/40 text-xs">— criar como coluna nova</span>
-                  </label>
-                ))}
-              </div>
+    <Modal
+      aberto
+      onFechar={fechar}
+      bloqueado={processando}
+      largura="g"
+      titulo="Atualizar com planilha"
+      subtitulo={previa ? 'Prévia do que vai mudar' : planilha ? `${planilha.linhas.length.toLocaleString('pt-BR')} linhas · ${casamento?.casadas.length ?? 0} coluna(s) reconhecida(s)` : undefined}
+      rodape={
+        <div className="flex w-full items-center gap-2.5">
+          {previa && (
+            <Button variante="fantasma" icone={<ChevronLeft size={16} aria-hidden="true" />} disabled={processando} onClick={() => setPrevia(null)}>
+              Voltar
+            </Button>
+          )}
+          <div className="ml-auto flex gap-2.5">
+            <Button variante="fantasma" onClick={fechar} disabled={processando}>Cancelar</Button>
+            {!previa ? (
+              <Button variante="primario" disabled={!planilha || !casamento || processando} carregando={processando} onClick={calcularPrevia}>
+                {processando ? 'Calculando…' : 'Calcular prévia'}
+              </Button>
+            ) : (
+              <Button variante="primario" disabled={processando} carregando={processando} onClick={confirmar}>
+                {processando ? 'Aplicando…' : 'Aplicar atualização'}
+              </Button>
             )}
+          </div>
+        </div>
+      }
+    >
+      {!previa && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-fg-2">Arquivo (.xlsx ou .csv)</span>
+          <div>
+            <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-line bg-raised px-3.5 text-sm font-medium text-fg transition-colors hover:border-fg-3 focus-within:outline-none focus-within:ring-2 focus-within:ring-acc">
+              <Upload size={15} aria-hidden="true" />
+              Escolher arquivo
+              <input type="file" accept=".xlsx,.xls,.csv" className="sr-only"
+                onChange={e => { aoEscolherArquivo(e.target.files?.[0]); e.target.value = '' }} />
+            </label>
+          </div>
+        </div>
+      )}
 
-            {colCliente && indiceColCliente !== null && (
-              <div>
-                <p className="text-sm font-semibold text-[var(--fg)] mb-1">Clientes da coluna &quot;{colCliente.nome}&quot;</p>
-                <div className="rounded-xl border border-[var(--fg)]/12 divide-y divide-[var(--fg)]/8 max-h-56 overflow-y-auto">
-                  {grupos.filter(g => g.match.status !== 'exato').map(g => (
-                    <div key={g.valor} className="flex flex-wrap items-center gap-3 px-4 py-2">
-                      <span className="flex-1 min-w-[10rem] text-sm text-[var(--fg)]">{g.valor}</span>
-                      <select className={`${inputCls} max-w-xs`} value={clienteDoValor(g.valor) ?? ''}
+      {erroLeitura && <Aviso tom="dng">{erroLeitura}</Aviso>}
+      {erro && <Aviso tom="dng">{erro}</Aviso>}
+
+      {planilha && casamento && !previa && (
+        <div className="flex flex-col gap-4">
+          {casamento.naoReconhecidas.length > 0 && (
+            <div className="flex flex-col gap-2 rounded-[10px] border border-line-soft p-3.5">
+              <span className="text-xs font-semibold uppercase tracking-[.04em] text-fg-3">Colunas não reconhecidas</span>
+              {casamento.naoReconhecidas.map(n => (
+                <Checkbox key={n.nome} checked={colunasNovasMarcadas.has(n.nome)}
+                  onChange={e => setColunasNovasMarcadas(s => {
+                    const novo = new Set(s)
+                    if (e.target.checked) novo.add(n.nome); else novo.delete(n.nome)
+                    return novo
+                  })}
+                  rotulo={<>{n.nome} <span className="text-xs text-fg-3">— criar como coluna nova</span></>}
+                />
+              ))}
+            </div>
+          )}
+
+          {colCliente && indiceColCliente !== null && (
+            <div>
+              <p className="mb-1.5 text-sm font-semibold text-fg">Clientes da coluna &quot;{colCliente.nome}&quot;</p>
+              {grupos.every(g => g.match.status === 'exato') ? (
+                <Aviso tom="ok">Todos os valores casaram com um cliente cadastrado.</Aviso>
+              ) : (
+                <ul className="max-h-56 overflow-y-auto rounded-[10px] border border-line-soft">
+                  {grupos.filter(g => g.match.status !== 'exato').map((g, i) => (
+                    <li key={g.valor} className={cn('flex flex-wrap items-center gap-3 px-3.5 py-2', i > 0 && 'border-t border-line-soft')}>
+                      <span className="min-w-[10rem] flex-1 text-sm text-fg">{g.valor}</span>
+                      <Select className="max-w-xs" value={clienteDoValor(g.valor) ?? ''} aria-label={`Cliente para "${g.valor}"`}
                         onChange={e => setEscolhasCliente(es => ({ ...es, [g.valor]: e.target.value || null }))}>
                         <option value="">Sem cliente</option>
                         {clientes.map(cl => <option key={cl.id} value={cl.id}>{cl.nome}</option>)}
-                      </select>
-                    </div>
+                      </Select>
+                    </li>
                   ))}
-                  {grupos.every(g => g.match.status === 'exato') && (
-                    <p className="px-4 py-3 text-sm text-emerald-400">Todos os valores casaram com um cliente cadastrado.</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <button onClick={calcularPrevia} disabled={processando}
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
-              {processando ? 'Calculando…' : 'Calcular prévia'}
-            </button>
-          </>)}
-
-          {previa && (<>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
-                <p className="text-emerald-400 font-bold">{previa.novas}</p>
-                <p className="text-[var(--fg)]/60 text-xs">linha(s) nova(s)</p>
-              </div>
-              <div className="rounded-xl border border-[var(--fg)]/12 p-3">
-                <p className="text-[var(--fg)] font-bold">{previa.semConflito}</p>
-                <p className="text-[var(--fg)]/60 text-xs">célula(s) preenchidas sem conflito</p>
-              </div>
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
-                <p className="text-amber-400 font-bold">{previa.comConflito.length}</p>
-                <p className="text-[var(--fg)]/60 text-xs">linha(s) com conflito</p>
-              </div>
-              <div className="rounded-xl border border-[var(--fg)]/12 p-3">
-                <p className="text-[var(--fg)] font-bold">{previa.ausentes}</p>
-                <p className="text-[var(--fg)]/60 text-xs">linha(s) ausente(s) no arquivo</p>
-              </div>
+                </ul>
+              )}
             </div>
+          )}
+        </div>
+      )}
 
-            {previa.naoConvertidas > 0 && (
-              <p className="text-xs text-amber-400">{previa.naoConvertidas} valor(es) não puderam ser convertidos para o tipo da coluna e serão mantidos como texto.</p>
-            )}
+      {previa && (
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard valor={previa.novas} rotulo="linha(s) nova(s)" tom="ok" />
+            <StatCard valor={previa.semConflito} rotulo="célula(s) preenchidas sem conflito" tom="info" />
+            <StatCard valor={previa.comConflito.length} rotulo="linha(s) com conflito" tom="warn" />
+            <StatCard valor={previa.ausentes} rotulo="linha(s) fora do arquivo" tom="neu" />
+          </div>
 
-            {previa.semChave > 0 && (
-              <p className="text-xs text-amber-400">{previa.semChave} linha(s) sem valor na coluna-chave foram ignoradas.</p>
-            )}
+          {previa.naoConvertidas > 0 && (
+            <Aviso tom="warn">{previa.naoConvertidas} valor(es) não puderam ser convertidos para o tipo da coluna e serão mantidos como texto.</Aviso>
+          )}
+          {previa.semChave > 0 && (
+            <Aviso tom="warn">{previa.semChave} linha(s) sem valor na coluna-chave foram ignoradas.</Aviso>
+          )}
 
-            {previa.comConflito.length > 0 && (
-              <div className="rounded-xl border border-amber-500/30 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-[var(--fg)]/40 uppercase tracking-widest">Linhas em conflito</p>
-                  <div className="flex gap-2">
-                    <button className={btnCls} onClick={() => aplicarResolucaoATodas('sistema')}>Manter sistema (todas)</button>
-                    <button className={btnCls} onClick={() => aplicarResolucaoATodas('planilha')}>Usar planilha (todas)</button>
-                  </div>
+          {previa.comConflito.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-[10px] border border-warn/30 p-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[.04em] text-fg-3">Linhas em conflito</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button tamanho="p" variante="fantasma" onClick={() => aplicarResolucaoATodas('sistema')}>Manter sistema (todas)</Button>
+                  <Button tamanho="p" variante="fantasma" onClick={() => aplicarResolucaoATodas('planilha')}>Usar planilha (todas)</Button>
                 </div>
-                <div className="divide-y divide-[var(--fg)]/8 max-h-64 overflow-y-auto">
-                  {previa.comConflito.map(c => (
-                    <div key={c.linhaId} className="py-2 space-y-1">
-                      <p className="text-xs font-semibold text-[var(--fg)]/70">Linha: {c.chave}</p>
+              </div>
+              <ul className="flex max-h-64 flex-col divide-y divide-line-soft overflow-y-auto">
+                {previa.comConflito.map(c => (
+                  <li key={c.linhaId} className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0">
+                    <div className="min-w-[12rem] flex-1">
+                      <p className="text-[13px] font-semibold text-fg-2">Linha: {c.chave}</p>
                       {c.celulas.map((cel, i) => (
-                        <p key={i} className="text-xs text-[var(--fg)]/70">
+                        <p key={i} className="text-xs text-fg-3">
                           {cel.colunaNome}: {cel.de === null ? '(vazio)' : String(cel.de)} → {cel.para === null ? '(vazio)' : String(cel.para)}
                         </p>
                       ))}
-                      <div className="flex gap-3 text-xs">
-                        <label className="flex items-center gap-1">
-                          <input type="radio" name={`res-${c.linhaId}`} checked={(resolucoes[c.linhaId] ?? 'sistema') === 'sistema'}
-                            onChange={() => setResolucoes(r => ({ ...r, [c.linhaId]: 'sistema' }))} className="accent-[var(--accent)]" />
-                          Manter sistema
-                        </label>
-                        <label className="flex items-center gap-1">
-                          <input type="radio" name={`res-${c.linhaId}`} checked={resolucoes[c.linhaId] === 'planilha'}
-                            onChange={() => setResolucoes(r => ({ ...r, [c.linhaId]: 'planilha' }))} className="accent-[var(--accent)]" />
-                          Usar planilha
-                        </label>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <button onClick={confirmar} disabled={processando}
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
-              {processando ? 'Aplicando…' : 'Aplicar reenvio'}
-            </button>
-          </>)}
+                    <Segmentado<ResolucaoConflito>
+                      rotulo={`Resolução para a linha ${c.chave}`}
+                      opcoes={[{ valor: 'sistema', rotulo: 'Manter sistema' }, { valor: 'planilha', rotulo: 'Usar planilha' }]}
+                      valor={resolucoes[c.linhaId] ?? 'sistema'}
+                      onMudar={v => setResolucoes(r => ({ ...r, [c.linhaId]: v }))}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   )
 }
