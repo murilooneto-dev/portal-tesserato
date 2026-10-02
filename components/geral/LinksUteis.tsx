@@ -88,7 +88,10 @@ export default function LinksUteis({ links, isAdmin }: { links: LinkRapido[]; is
         return
       }
       avisar(pendentes.length === 1 ? 'Link salvo.' : `${pendentes.length} links salvos.`, 'ok')
-      sairDaEdicao()
+      setEdicoes({})
+      setErros({})
+      setErroGeral(null)
+      void descartar()
     })
   }
 

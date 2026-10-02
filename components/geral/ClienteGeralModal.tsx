@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { ArrowRight, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -79,6 +79,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
   const [mostrarVinculos, setMostrarVinculos] = useState(false)
   const [catalogoNomes, setCatalogoNomes] = useState<string[]>([])
   const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
+  const identificacaoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!clienteId) return
@@ -114,7 +115,10 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
       })
       setMostrarVinculos((data.tarefas_vinculadas_ativas ?? []).length > 0)
       setLoading(false)
+      // O foco inicial do Modal rodou com o formulário ainda carregando: foca a Razão social agora.
+      if (!readOnly) setTimeout(() => identificacaoRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus(), 0)
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId])
 
   useEffect(() => {
@@ -297,7 +301,7 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
         ) : (
           <>
             <Secao titulo="Identificação">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+              <div ref={identificacaoRef} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                 <Field rotulo="CNPJ" ajuda={loadingCnpj ? 'Buscando dados do CNPJ…' : undefined} className="sm:col-span-2">
                   {c => <Input id={c.id} aria-describedby={c.describedBy} className="font-mono" placeholder="00.000.000/0000-00" disabled={readOnly}
                     value={form.cnpj} onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }} />}
