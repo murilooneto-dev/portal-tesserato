@@ -138,7 +138,7 @@ export default function EventosAvulsosSecao({ clienteId, setor, eventos, podeEdi
                 · {formatBytes(arq.size)}
                 {podeEditar && (
                   <button type="button" aria-label={`Remover anexo ${arq.name}`} onClick={() => handleExcluirArquivo(arq.id)}
-                    className="grid h-6 w-6 place-items-center rounded text-fg-3 hover:text-danger">
+                    className="grid h-6 w-6 max-sm:h-11 max-sm:w-11 place-items-center rounded text-fg-3 hover:text-danger">
                     <X size={14} aria-hidden="true" />
                   </button>
                 )}

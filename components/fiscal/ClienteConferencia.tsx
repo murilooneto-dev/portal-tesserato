@@ -282,7 +282,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
           </label>
 
           <Button
-            variante="primario"
+            variante="secundario"
             onClick={comparar}
             disabled={comparando || !sistemFile}
             icone={comparando ? <Loader2 size={16} aria-hidden="true" className="animate-spin" /> : <ScanSearch size={16} aria-hidden="true" />}

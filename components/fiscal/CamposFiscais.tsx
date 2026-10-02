@@ -160,7 +160,7 @@ export default function CamposFiscais({ form, set, responsaveis, catalogo, isEdi
                   <button type="button"
                     aria-label={`Remover ${t}`}
                     onClick={() => set('tarefas_personalizadas', form.tarefas_personalizadas.filter((_, idx) => idx !== i))}
-                    className="-mr-1.5 inline-grid h-6 w-6 place-items-center rounded-full text-fg-3 transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                    className="-mr-1.5 inline-grid h-6 w-6 max-sm:h-11 max-sm:w-11 place-items-center rounded-full text-fg-3 transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
                     <X size={13} aria-hidden="true" />
                   </button>
                 )}

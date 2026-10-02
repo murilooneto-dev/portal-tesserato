@@ -318,8 +318,8 @@ export default function TarefaChecklist({
 
           {campoData && (
             <span className="inline-flex items-center gap-2">
-              {feito && <Lock size={15} aria-hidden="true" className="text-fg-3" />}
-              {semPermissao && !feito && <Lock size={15} aria-label="Você não pode editar esta tarefa" className="text-fg-3" />}
+              {feito && <Lock size={15} role="img" aria-label="Data travada: desbloqueie para alterar" className="text-ok" />}
+              {semPermissao && !feito && <Lock size={15} role="img" aria-label="Você não pode editar esta tarefa" className="text-fg-3" />}
               <Input
                 type="text"
                 value={displayVal}
@@ -329,7 +329,7 @@ export default function TarefaChecklist({
                 placeholder="dd/mm/aaaa"
                 aria-label={`Data de conclusão de ${tipo}`}
                 maxLength={10}
-                className="w-[150px] text-center tabular-nums"
+                className={`w-[150px] text-center tabular-nums ${feito ? 'border-ok-soft text-ok' : ''}`}
               />
             </span>
           )}
@@ -360,6 +360,8 @@ export default function TarefaChecklist({
           <div className="mb-3 ml-[38px] mr-[18px] grid grid-cols-1 gap-x-[18px] gap-y-2.5 rounded-[10px] border border-line-soft p-3 sm:grid-cols-2 lg:grid-cols-3">
             {etapasDefinidas.map(etapaNome => {
               const etapaDisplay = getEtapaDisplayValue(tipo, etapaNome)
+              const etapaFeita = getSavedEtapaIso(tipo, etapaNome) !== ''
+
               return (
                 <div key={etapaNome} className="flex items-center justify-between gap-2.5">
                   <span className="flex-1 text-[13px] text-fg-2">{etapaNome}</span>
@@ -372,7 +374,7 @@ export default function TarefaChecklist({
                     placeholder="dd/mm/aaaa"
                     aria-label={`${etapaNome} de ${tipo}`}
                     maxLength={10}
-                    className="w-[128px] text-center tabular-nums"
+                    className={`w-[128px] text-center tabular-nums ${etapaFeita ? 'border-ok-soft text-ok' : ''}`}
                   />
                 </div>
               )

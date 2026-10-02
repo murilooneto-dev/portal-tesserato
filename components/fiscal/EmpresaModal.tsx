@@ -216,6 +216,8 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
         titulo={titulo}
         subtitulo={isEdit && form.nome ? form.nome : undefined}
         rodape={
+          <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2">
+            {erro && <div role="alert" className="min-w-0 flex-1 basis-60"><Aviso tom="dng">{erro}</Aviso></div>}
           <div className="ml-auto flex gap-2.5">
             {readOnly ? (
               <Button onClick={onClose}>Fechar</Button>
@@ -227,6 +229,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
                 </Button>
               </>
             )}
+          </div>
           </div>
         }
       >
@@ -277,7 +280,6 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
               addTarefa={addTarefa}
             />
 
-            {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
           </>
         )}
       </Modal>

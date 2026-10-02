@@ -10,7 +10,6 @@ import ConfirmarExclusaoClienteModal from '@/components/geral/ConfirmarExclusaoC
 import { descreverImpactoExclusao } from '@/lib/exclusao-cliente'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 
 interface Props {
   cliente: ClienteComFiscal
@@ -40,7 +39,6 @@ export default function ClienteAcoes({ cliente, responsaveis, catalogo }: Props)
       <div className="flex flex-wrap items-center gap-2">
         <Button icone={<Pencil size={16} aria-hidden="true" />} onClick={() => setModalOpen(true)}>Editar</Button>
         <Button variante="perigo" icone={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmandoExclusao(true)}>Excluir</Button>
-        {cliente.ativo === false && <Badge tom="neu">Desabilitado</Badge>}
       </div>
 
       {modalOpen && (

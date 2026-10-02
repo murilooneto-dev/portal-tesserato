@@ -105,3 +105,11 @@ test('abas do celular: papéis ARIA e todos os painéis presentes no HTML', () =
   assert.equal((html.match(/lg:block/g) ?? []).length, 6)
   assert.match(html, /lg:hidden/)
 })
+
+test('aba Histórico sem histórico mostra estado vazio no celular', () => {
+  const html = renderToStaticMarkup(h(AbasFichaCelular, {
+    principal: [],
+    lateral: [{ chave: 'historico', aba: 'historico', conteudo: null }],
+  }))
+  assert.match(html, /Sem troca de responsável registrada\./)
+})

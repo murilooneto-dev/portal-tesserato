@@ -25,8 +25,9 @@ export default function SeletorAtividades({ valores, opcoes, onChange, readOnly 
   return (
     <div role="group" aria-label="Atividades" className="flex flex-wrap gap-2">
       {todas.map(nome => (
-        <Chip key={nome} ativo={valores.includes(nome)} onClick={() => toggle(nome)} disabled={readOnly}>
-          {nome}{extras.includes(nome) ? ' (atual)' : ''}
+        <Chip key={nome} ativo={valores.includes(nome)} onClick={() => toggle(nome)} disabled={readOnly}
+          className="h-auto min-h-[30px] max-w-full flex-initial whitespace-normal py-1 text-left">
+          <span className="min-w-0 break-words">{nome}{extras.includes(nome) ? ' (atual)' : ''}</span>
         </Chip>
       ))}
     </div>

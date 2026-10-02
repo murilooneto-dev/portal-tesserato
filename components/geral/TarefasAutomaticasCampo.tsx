@@ -65,7 +65,7 @@ export default function TarefasAutomaticasCampo({
                 <button type="button" onClick={() => excluir(t)}
                   aria-label={`Excluir ${t} só para este cliente`}
                   title="Excluir só para este cliente"
-                  className="-mr-1.5 inline-grid h-6 w-6 place-items-center rounded-full text-fg-3 transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                  className="-mr-1.5 inline-grid h-6 w-6 max-sm:h-11 max-sm:w-11 place-items-center rounded-full text-fg-3 transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
                   <X size={13} aria-hidden="true" />
                 </button>
               )}

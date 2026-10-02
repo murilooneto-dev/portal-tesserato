@@ -150,7 +150,7 @@ export default function EventoAvulsoModal({ clienteId, setor, onClose }: Props) 
               <Paperclip size={12} aria-hidden="true" className="flex-none" />
               {arq.name}
               <button type="button" aria-label={`Tirar ${arq.name}`} onClick={() => handleRemoverArquivoSelecionado(idx)}
-                className="grid h-6 w-6 place-items-center rounded text-fg-3 hover:text-danger">
+                className="grid h-6 w-6 max-sm:h-11 max-sm:w-11 place-items-center rounded text-fg-3 hover:text-danger">
                 <X size={14} aria-hidden="true" />
               </button>
             </span>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useId, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
 
 export type AbaFicha = 'tarefas' | 'eventos' | 'historico' | 'arquivos'
 
@@ -17,11 +17,21 @@ export interface PainelFicha {
   conteudo: ReactNode
 }
 
+// Só o celular tem abas: no desktop (lg+) os painéis são blocos soltos, sem papel de tabpanel.
+const CONSULTA_DESKTOP = '(min-width: 1024px)'
+function assinarDesktop(aviso: () => void) {
+  const mq = window.matchMedia(CONSULTA_DESKTOP)
+  mq.addEventListener('change', aviso)
+  return () => mq.removeEventListener('change', aviso)
+}
+const ehDesktop = () => window.matchMedia(CONSULTA_DESKTOP).matches
+
 // Da ficha do cliente. Os painéis chegam prontos (renderizados no servidor).
 // A partir de 1024 px tudo aparece em duas colunas; abaixo disso só o painel
 // da aba escolhida fica visível. Nada é buscado de novo ao trocar de aba.
 export default function AbasFichaCelular({ principal, lateral }: { principal: PainelFicha[]; lateral: PainelFicha[] }) {
   const base = useId()
+  const desktop = useSyncExternalStore(assinarDesktop, ehDesktop, () => false)
   const [ativa, setAtiva] = useState<AbaFicha>('tarefas')
   const idAba = (a: AbaFicha) => `${base}-aba-${a}`
   const idPainel = (a: AbaFicha) => `${base}-painel-${a}`
@@ -45,12 +55,17 @@ export default function AbasFichaCelular({ principal, lateral }: { principal: Pa
   const renderPaineis = (lista: PainelFicha[]) => lista.map(p => (
     <div
       key={p.chave}
-      role="tabpanel"
+      role={desktop ? undefined : 'tabpanel'}
       id={`${idPainel(p.aba)}-${p.chave}`}
-      aria-labelledby={idAba(p.aba)}
-      className={`${ativa === p.aba ? 'block' : 'hidden'} min-w-0 empty:hidden lg:block`}
+      aria-labelledby={desktop ? undefined : idAba(p.aba)}
+      className={`${ativa === p.aba ? 'block' : 'hidden'} min-w-0 empty:hidden lg:block lg:has-[>[data-vazio]:only-child]:hidden`}
     >
       {p.conteudo}
+      {p.aba === 'historico' && (
+        <p data-vazio="" className="hidden rounded-[10px] border border-line-soft px-4 py-6 text-center text-sm text-fg-3 only:block lg:hidden">
+          Sem troca de responsável registrada.
+        </p>
+      )}
     </div>
   ))
 

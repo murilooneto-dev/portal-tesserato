@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Layers, Pencil, Plus, Trash2 } from 'lucide-react'
 import {
   listarGruposCliente,
@@ -26,6 +26,8 @@ interface Props {
 
 export default function GruposTarefasModal({ clienteId, setor, tarefasDisponiveis, onClose }: Props) {
   const confirmar = useConfirmar()
+  const nomeRef = useRef<HTMLDivElement>(null)
+  const focarNome = () => requestAnimationFrame(() => nomeRef.current?.querySelector('input')?.focus())
   const [grupos, setGrupos] = useState<TarefaGrupo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erroLista, setErroLista] = useState<string | null>(null)
@@ -62,6 +64,7 @@ export default function GruposTarefasModal({ clienteId, setor, tarefasDisponivei
     setNome('')
     setSelecionadas(new Set())
     setErroForm(null)
+    focarNome()
   }
 
   function abrirEdicao(grupo: TarefaGrupo) {
@@ -69,6 +72,7 @@ export default function GruposTarefasModal({ clienteId, setor, tarefasDisponivei
     setNome(grupo.nome)
     setSelecionadas(new Set(grupo.tarefas))
     setErroForm(null)
+    focarNome()
   }
 
   function toggleTarefa(tipo: string) {
@@ -175,9 +179,11 @@ export default function GruposTarefasModal({ clienteId, setor, tarefasDisponivei
 
       {emForm && (
         <>
+          <div ref={nomeRef}>
           <Field rotulo="Nome do grupo">
             {c => <Input id={c.id} data-autofocus value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex.: Movimento mensal" />}
           </Field>
+          </div>
 
           <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className="mb-1.5 text-[13px] font-medium text-fg-2">
