@@ -155,7 +155,7 @@ Mensagem sugerida para colar:
 |---|---|---|---|
 | 1 Base visual | feat/redesign-fase1-base-visual | #192 | mergeada em dev |
 | 2 Casca | feat/redesign-fase2-casca | #193 | pronta, PR contra dev aguardando teste do usuário |
-| 3 Geral | feat/redesign-fase3-geral | (a abrir) | pronta, PR contra dev (empilhada na #193) aguardando teste do usuário |
+| 3 Geral | feat/redesign-fase3-geral | #194 | pronta, PR contra dev (empilhada na #193) aguardando teste do usuário |
 | 4 Fiscal | — | — | não iniciada |
 | 5 Contábil e Pessoal | — | — | não iniciada |
 | 6 Societário e Financeiro | — | — | não iniciada |
