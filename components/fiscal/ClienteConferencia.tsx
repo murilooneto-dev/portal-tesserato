@@ -1,8 +1,13 @@
-﻿'use client'
+'use client'
 
 import { useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
+import { CheckCircle2, Download, Loader2, Printer, ScanSearch, Upload } from 'lucide-react'
 import { escapeHtml } from '@/lib/escape-html'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Aviso } from '@/components/ui/Aviso'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 
 const UF_MAP: Record<string, string> = {
   '11':'RO','12':'AC','13':'AM','14':'RR','15':'PA','16':'AP','17':'TO',
@@ -251,118 +256,108 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
 
   if (!arquivosDTE.length) return null
 
+  const numeros = resultado ? [
+    { rotulo: 'Chaves no DTE', valor: resultado.dte, cor: 'text-fg' },
+    { rotulo: 'Chaves no sistema', valor: resultado.sistema, cor: 'text-fg' },
+    { rotulo: 'Divergências', valor: resultado.divergencias.length, cor: resultado.divergencias.length > 0 ? 'text-warn' : 'text-ok' },
+  ] : []
+
   return (
-    <div className="mt-6 pt-5 border-t border-[var(--fg)]/8">
-      <h3 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-4">
-        Conferência de DTEs
-      </h3>
+    <Card
+      titulo="Conferência de DTEs"
+      meta={<span className="text-[13px] text-fg-3">{arquivosDTE.length} planilha(s) DTE anexada(s)</span>}
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="inline-flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-line bg-raised px-3.5 text-sm font-medium text-fg transition-colors hover:border-fg-3 focus-within:ring-2 focus-within:ring-acc">
+            <Upload size={16} aria-hidden="true" className="flex-none" />
+            <span className="max-w-[220px] truncate">{sistemFile ? sistemFile.name : 'Planilha do sistema (.xls/.xlsx)'}</span>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".xls,.xlsx"
+              className="sr-only"
+              onChange={e => { setSistemFile(e.target.files?.[0] ?? null); setResultado(null) }}
+            />
+          </label>
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <label className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all text-sm ${
-          sistemFile
-            ? 'bg-[var(--accent)]/10 border-[var(--accent)]/40 text-[var(--accent)]'
-            : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/50 hover:border-[var(--fg)]/20 hover:text-[var(--fg)]/80'
-        }`}>
-          <span>📂</span>
-          <span className="max-w-[200px] truncate">{sistemFile ? sistemFile.name : 'Planilha do sistema (.xls/.xlsx)'}</span>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".xls,.xlsx"
-            className="hidden"
-            onChange={e => { setSistemFile(e.target.files?.[0] ?? null); setResultado(null) }}
-          />
-        </label>
+          <Button
+            variante="secundario"
+            onClick={comparar}
+            disabled={comparando || !sistemFile}
+            icone={comparando ? <Loader2 size={16} aria-hidden="true" className="animate-spin" /> : <ScanSearch size={16} aria-hidden="true" />}
+          >
+            {comparando ? 'Comparando...' : 'Comparar'}
+          </Button>
 
-        <button
-          onClick={comparar}
-          disabled={comparando || !sistemFile}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-40"
-        >
-          {comparando ? '⏳ Comparando...' : '🔍 Comparar'}
-        </button>
+          {resultado && (
+            <>
+              <Button icone={<Download size={16} aria-hidden="true" />} onClick={exportarXLSX}>Exportar Excel</Button>
+              <Button icone={<Printer size={16} aria-hidden="true" />} onClick={exportarPDF}>Exportar PDF</Button>
+            </>
+          )}
+        </div>
+
+        {erro && <Aviso tom="dng"><span role="alert">{erro}</span></Aviso>}
 
         {resultado && (
           <>
-            <button
-              onClick={exportarXLSX}
-              className="px-4 py-2 rounded-xl border border-[var(--fg)]/15 text-[var(--fg)]/50 text-sm hover:border-green-400/50 hover:text-green-400 transition-all"
-            >
-              ⬇ Exportar XLSX
-            </button>
-            <button
-              onClick={exportarPDF}
-              className="px-4 py-2 rounded-xl border border-[var(--fg)]/15 text-[var(--fg)]/50 text-sm hover:border-red-400/50 hover:text-red-400 transition-all"
-            >
-              ⬇ Exportar PDF
-            </button>
+            <div className="grid grid-cols-3 gap-3">
+              {numeros.map(n => (
+                <div key={n.rotulo} className="rounded-[10px] border border-line-soft bg-raised p-3 text-center">
+                  <p className={`text-xl font-bold tabular-nums ${n.cor}`}>{n.valor}</p>
+                  <p className="mt-0.5 text-xs text-fg-3">{n.rotulo}</p>
+                </div>
+              ))}
+            </div>
+
+            {resultado.divergencias.length === 0 ? (
+              <Aviso tom="ok" icone={<CheckCircle2 size={18} />}>
+                <b>Nenhuma divergência encontrada.</b> Todas as chaves do DTE estão presentes no sistema.
+              </Aviso>
+            ) : (
+              <Card
+                titulo="Chaves do DTE que não estão no sistema"
+                semPadding
+              >
+                <div className="max-h-80 overflow-auto">
+                  <Tabela className="min-w-[900px]">
+                    <thead className="sticky top-0 bg-surface">
+                      <tr>
+                        <Th largura={50}>#</Th>
+                        <Th largura={60}>UF</Th>
+                        <Th largura={110}>Nº NF</Th>
+                        <Th largura={120}>Data</Th>
+                        <Th>Fornecedor</Th>
+                        <Th largura={130} alinhar="dir">Valor</Th>
+                        <Th largura={380}>Chave</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resultado.divergencias.slice(0, 300).map((e, i) => (
+                        <tr key={e.chave}>
+                          <Td className="tabular-nums text-fg-3">{i + 1}</Td>
+                          <Td className="font-semibold text-acc-text">{e.uf}</Td>
+                          <Td className="tabular-nums">{e.numero || '—'}</Td>
+                          <Td className="tabular-nums text-fg-2">{e.data || '—'}</Td>
+                          <Td className="truncate" title={e.fornecedor}>{e.fornecedor || '—'}</Td>
+                          <Td alinhar="dir" className="whitespace-nowrap tabular-nums">{e.valor || '—'}</Td>
+                          <Td className="truncate font-mono text-xs text-fg-3" title={e.chave}>{e.chave}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Tabela>
+                </div>
+                {resultado.divergencias.length > 300 && (
+                  <p className="border-t border-line-soft px-[18px] py-3 text-[13px] text-fg-3">
+                    Mostrando as 300 primeiras de {resultado.divergencias.length}. A exportação traz todas.
+                  </p>
+                )}
+              </Card>
+            )}
           </>
         )}
-
-        <span className="text-[var(--fg)]/25 text-xs">{arquivosDTE.length} planilha(s) DTE armazenada(s)</span>
       </div>
-
-      {erro && (
-        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm mb-4">{erro}</div>
-      )}
-
-      {resultado && (
-        <div>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            {[
-              { label: 'Chaves DTE',    val: resultado.dte,                  cor: 'var(--accent)' },
-              { label: 'Chaves SISTEMA', val: resultado.sistema,              cor: '#10b981' },
-              { label: 'Divergências',   val: resultado.divergencias.length,  cor: resultado.divergencias.length > 0 ? '#ef4444' : '#10b981' },
-            ].map(s => (
-              <div key={s.label} className="p-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 text-center">
-                <p className="text-xl font-bold" style={{ color: s.cor }}>{s.val}</p>
-                <p className="text-[var(--fg)]/40 text-xs mt-0.5">{s.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {resultado.divergencias.length === 0 ? (
-            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
-              <p className="text-green-400 font-semibold text-sm">✓ Nenhuma divergência encontrada</p>
-              <p className="text-green-400/50 text-xs mt-1">Todas as chaves DTE estão presentes no SISTEMA</p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-[var(--fg)]/8 overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-[var(--fg)]/8 bg-[var(--fg)]/3">
-                <p className="text-xs font-semibold text-[var(--fg)]">Chaves DTE não encontradas no SISTEMA</p>
-              </div>
-              <div className="overflow-x-auto max-h-80 overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-[var(--fg)]/8 sticky top-0 bg-[var(--bg-surface)]">
-                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">#</th>
-                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">UF</th>
-                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Nº NF</th>
-                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Data</th>
-                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Fornecedor</th>
-                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Valor</th>
-                      <th className="text-left text-[var(--fg)]/30 uppercase px-3 py-2">Chave</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {resultado.divergencias.slice(0, 300).map((e, i) => (
-                      <tr key={e.chave} className="border-b border-[var(--fg)]/5 hover:bg-[var(--fg)]/3 transition-colors">
-                        <td className="px-3 py-1.5 text-[var(--fg)]/30">{i + 1}</td>
-                        <td className="px-3 py-1.5 text-[var(--accent)] font-bold">{e.uf}</td>
-                        <td className="px-3 py-1.5 text-[var(--fg)]/70">{e.numero || '—'}</td>
-                        <td className="px-3 py-1.5 text-[var(--fg)]/60">{e.data || '—'}</td>
-                        <td className="px-3 py-1.5 text-[var(--fg)]/70 max-w-[180px] truncate">{e.fornecedor || '—'}</td>
-                        <td className="px-3 py-1.5 text-[var(--fg)]/70 whitespace-nowrap">{e.valor || '—'}</td>
-                        <td className="px-3 py-1.5 text-[var(--fg)]/30 font-mono">{e.chave}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+    </Card>
   )
 }

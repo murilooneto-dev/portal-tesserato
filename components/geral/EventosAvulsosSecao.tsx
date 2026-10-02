@@ -2,6 +2,11 @@
 
 import { useState, useTransition } from 'react'
 import { toggleTarefaAvulsa, excluirTarefaAvulsa, uploadArquivoEvento, excluirArquivoEvento, type TarefaAvulsaComCriador } from '@/lib/tarefas-avulsas'
+import { Paperclip, Plus, X, CalendarDays } from 'lucide-react'
+import { Card } from '@/components/ui/Card'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Checkbox } from '@/components/ui/Input'
+import { EmptyState } from '@/components/ui/EmptyState'
 import EventoAvulsoModal from './EventoAvulsoModal'
 import type { UserSetor } from '@/lib/types'
 
@@ -62,93 +67,111 @@ export default function EventosAvulsosSecao({ clienteId, setor, eventos, podeEdi
     startTransition(() => { excluirArquivoEvento(arquivoId, clienteId, setor) })
   }
 
-  return (
-    <div className={compacto ? '' : 'mt-8 pt-6 border-t border-[var(--fg)]/8'}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">Eventos do mês</h3>
-        {podeEditar && (
-          <button onClick={() => setModalAberto(true)}
-            className="text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/30 px-3 py-1.5 rounded-lg transition-all font-semibold">
-            + Evento
-          </button>
-        )}
-      </div>
+  const novoEvento = podeEditar ? (
+    <Button variante="secundario" tamanho="p" icone={<Plus size={14} aria-hidden="true" />} onClick={() => setModalAberto(true)}>
+      Novo evento
+    </Button>
+  ) : undefined
 
-      {eventos.length === 0 ? (
-        <p className="text-[var(--fg)]/25 text-xs py-2">Nenhum evento avulso neste mês.</p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {eventos.map(ev => (
-            <div key={ev.id} className={`flex flex-col gap-2 px-3 py-2.5 rounded-xl border transition-all ${
-              ev.concluida ? 'bg-[var(--accent)]/8 border-[var(--accent)]/25' : 'bg-[var(--fg)]/3 border-[var(--fg)]/8'
-            }`}>
-              <div className="flex items-start gap-3">
-                <button onClick={() => handleToggle(ev.id, !ev.concluida)} disabled={!podeEditar || isPending}
-                  className={`w-4 h-4 mt-0.5 rounded-full border shrink-0 transition-colors disabled:opacity-40 ${
-                    ev.concluida ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--fg)]/25'
-                  }`} />
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${ev.concluida ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]'}`}>{ev.titulo}</p>
-                  {ev.descricao && <p className="text-xs text-[var(--fg)]/40 mt-0.5">{ev.descricao}</p>}
-                  <p className="text-[10px] text-[var(--fg)]/25 mt-1">
-                    {formatarData(ev.data)} · criado por {ev.criado_por_nome ?? 'desconhecido'}
-                  </p>
-                </div>
-                {podeEditar && (
-                  excluindoId === ev.id ? (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button onClick={() => handleExcluir(ev.id)}
-                        className="text-[10px] bg-red-500/20 border border-red-500/40 text-red-400 px-2 py-1 rounded-md">Confirmar</button>
-                      <button onClick={() => setExcluindoId(null)}
-                        className="text-[10px] text-[var(--fg)]/40 px-1">Cancelar</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setExcluindoId(ev.id)}
-                      className="text-[var(--fg)]/25 hover:text-red-400 text-xs shrink-0 transition-colors">×</button>
-                  )
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5 flex-wrap ml-7">
-                {podeEditar && (
-                  <label className={`text-[10px] px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
-                    uploadingId === ev.id
-                      ? 'opacity-50 pointer-events-none'
-                      : 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/25'
-                  }`}>
-                    {uploadingId === ev.id ? 'Enviando...' : '+ Anexo'}
-                    <input
-                      type="file"
-                      accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
-                      multiple
-                      className="hidden"
-                      onChange={e => handleUploadArquivo(ev.id, e.target.files)}
-                      disabled={isPending}
-                    />
-                  </label>
-                )}
-                {ev.arquivos.map(arq => (
-                  <span key={arq.id} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
-                    <a href={`/api/arquivos/evento/${arq.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      📎 {arq.name}
-                    </a>
-                    · {formatBytes(arq.size)}
-                    {podeEditar && (
-                      <button type="button" onClick={() => handleExcluirArquivo(arq.id)}
-                        className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
-                    )}
-                  </span>
-                ))}
-              </div>
-              {erroUpload[ev.id] && <p className="text-red-400 text-[10px] ml-7">{erroUpload[ev.id]}</p>}
+  const lista = eventos.length === 0 ? (
+    compacto
+      ? <p className="py-2 text-[13px] text-fg-3">Nenhum evento avulso neste mês.</p>
+      : <EmptyState
+          icone={<CalendarDays size={22} />}
+          titulo="Nenhum evento avulso neste mês"
+          descricao="Registre aqui compromissos pontuais deste cliente, com data e anexos."
+        />
+  ) : (
+    <ul className="flex flex-col gap-2">
+      {eventos.map(ev => (
+        <li key={ev.id} className={`flex flex-col gap-2 rounded-[10px] border px-3.5 py-3 ${
+          ev.concluida ? 'border-acc/30 bg-acc-soft' : 'border-line-soft bg-raised'
+        }`}>
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <Checkbox
+                checked={ev.concluida}
+                onChange={() => handleToggle(ev.id, !ev.concluida)}
+                disabled={!podeEditar || isPending}
+                rotulo={<span className={ev.concluida ? 'text-fg-3 line-through' : 'font-medium text-fg'}>{ev.titulo}</span>}
+              />
+              {ev.descricao && <p className="mt-1 pl-7 text-[13px] text-fg-2">{ev.descricao}</p>}
+              <p className="mt-1 pl-7 text-xs text-fg-3">
+                {formatarData(ev.data)} · criado por {ev.criado_por_nome ?? 'desconhecido'}
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+            {podeEditar && (
+              excluindoId === ev.id ? (
+                <div className="flex flex-none items-center gap-1.5">
+                  <Button variante="perigo-solido" tamanho="p" onClick={() => handleExcluir(ev.id)}>Confirmar</Button>
+                  <Button variante="fantasma" tamanho="p" onClick={() => setExcluindoId(null)}>Cancelar</Button>
+                </div>
+              ) : (
+                <IconButton rotulo={`Excluir evento ${ev.titulo}`} icone={<X size={16} aria-hidden="true" />} onClick={() => setExcluindoId(ev.id)} />
+              )
+            )}
+          </div>
 
-      {modalAberto && (
-        <EventoAvulsoModal clienteId={clienteId} setor={setor} onClose={() => setModalAberto(false)} />
-      )}
-    </div>
+          <div className="flex flex-wrap items-center gap-2 pl-7">
+            {podeEditar && (
+              <label className={`inline-flex h-[30px] cursor-pointer items-center gap-1.5 rounded-[7px] border border-line bg-raised px-2.5 text-[13px] font-medium text-fg transition-colors hover:border-fg-3 focus-within:ring-2 focus-within:ring-acc ${
+                uploadingId === ev.id ? 'pointer-events-none opacity-45' : ''
+              }`}>
+                <Paperclip size={14} aria-hidden="true" />
+                {uploadingId === ev.id ? 'Enviando...' : 'Anexo'}
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
+                  multiple
+                  className="sr-only"
+                  onChange={e => handleUploadArquivo(ev.id, e.target.files)}
+                  disabled={isPending}
+                />
+              </label>
+            )}
+            {ev.arquivos.map(arq => (
+              <span key={arq.id} className="inline-flex min-h-[30px] items-center gap-1.5 rounded-[7px] border border-line-soft bg-surface px-2 text-xs text-fg-2">
+                <Paperclip size={12} aria-hidden="true" className="flex-none" />
+                <a href={`/api/arquivos/evento/${arq.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  {arq.name}
+                </a>
+                · {formatBytes(arq.size)}
+                {podeEditar && (
+                  <button type="button" aria-label={`Remover anexo ${arq.name}`} onClick={() => handleExcluirArquivo(arq.id)}
+                    className="grid h-6 w-6 max-sm:h-11 max-sm:w-11 place-items-center rounded text-fg-3 hover:text-danger">
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+          {erroUpload[ev.id] && <p role="alert" className="pl-7 text-xs text-danger">{erroUpload[ev.id]}</p>}
+        </li>
+      ))}
+    </ul>
+  )
+
+  const modal = modalAberto && (
+    <EventoAvulsoModal clienteId={clienteId} setor={setor} onClose={() => setModalAberto(false)} />
+  )
+
+  if (compacto) {
+    return (
+      <div>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-fg-2">Eventos do mês</h3>
+          {novoEvento}
+        </div>
+        {lista}
+        {modal}
+      </div>
+    )
+  }
+
+  return (
+    <Card titulo="Eventos do mês" acoes={novoEvento} semPadding={eventos.length === 0}>
+      {lista}
+      {modal}
+    </Card>
   )
 }

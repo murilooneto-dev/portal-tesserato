@@ -8,7 +8,7 @@ export interface PaginaSetor {
 // Fonte única da lista de páginas navegáveis por setor — usada tanto
 // pelo menu (lib/navegacao.ts) quanto pelo controle de
 // acesso por página (proxy.ts, app/fiscal/parametros). Páginas fora da
-// navegação normal (agenda, bots, tarefas) e exclusivas de admin
+// navegação normal (agenda, tarefas) e exclusivas de admin
 // (parametros, admin, vinculos) não entram aqui.
 export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
   fiscal: [
