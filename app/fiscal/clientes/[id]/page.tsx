@@ -1,4 +1,4 @@
-﻿import { notFound, redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
@@ -17,6 +17,7 @@ import { atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquiv
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
 import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
+import AbasFichaCelular from '@/components/fiscal/AbasFichaCelular'
 import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
@@ -206,43 +207,67 @@ export default async function ClienteDetalhePage({ params }: Props) {
         </Aviso>
       )}
 
-      {/* Checklist */}
-      <TarefaChecklist
-        clienteId={id}
-        grupo={bucketDoRegime(cliente.regime)}
-        tarefasPersonalizadas={tarefasPersonalizadasVisiveis}
-        tarefas={tarefas ?? []}
-        grupos={(gruposRaw ?? []) as TarefaGrupo[]}
-        vinculos={vinculos}
-        mes={mes}
-        ano={ano}
-        usuarioId={user.id}
-        mitInicial={cliente.mit ?? ''}
-        onToggle={toggleTarefa}
-        podeEditar={podeEditar}
-        podeEditarPorTipo={podeEditarPorTipo}
-        tarefaTipos={tarefaTipos}
-        etapas={(etapasCatalogo ?? []) as TarefaEtapa[]}
-        arquivos={(arquivosCatalogo ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}
-        onAtualizarEtapa={onAtualizarEtapa}
-        onSalvarTexto={onSalvarTexto}
-        onUploadArquivo={onUploadArquivo}
-        onExcluirArquivo={onExcluirArquivo}
-        prazosPorTipo={prazosPorTipo}
+      <AbasFichaCelular
+        principal={[
+          {
+            chave: 'tarefas',
+            aba: 'tarefas',
+            conteudo: (
+              <TarefaChecklist
+                clienteId={id}
+                grupo={bucketDoRegime(cliente.regime)}
+                tarefasPersonalizadas={tarefasPersonalizadasVisiveis}
+                tarefas={tarefas ?? []}
+                grupos={(gruposRaw ?? []) as TarefaGrupo[]}
+                vinculos={vinculos}
+                mes={mes}
+                ano={ano}
+                usuarioId={user.id}
+                mitInicial={cliente.mit ?? ''}
+                onToggle={toggleTarefa}
+                podeEditar={podeEditar}
+                podeEditarPorTipo={podeEditarPorTipo}
+                tarefaTipos={tarefaTipos}
+                etapas={(etapasCatalogo ?? []) as TarefaEtapa[]}
+                arquivos={(arquivosCatalogo ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}
+                onAtualizarEtapa={onAtualizarEtapa}
+                onSalvarTexto={onSalvarTexto}
+                onUploadArquivo={onUploadArquivo}
+                onExcluirArquivo={onExcluirArquivo}
+                prazosPorTipo={prazosPorTipo}
+              />
+            ),
+          },
+          {
+            chave: 'eventos',
+            aba: 'eventos',
+            conteudo: <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} />,
+          },
+          {
+            chave: 'conferencia',
+            aba: 'arquivos',
+            conteudo: (
+              <ClienteConferencia
+                clienteNome={cliente.nome}
+                arquivosDTE={(arquivos ?? []).filter(a => /\.xlsx?$/i.test(a.name)).map(a => ({ id: a.id, name: a.name, content_base64: a.content_base64 ?? '' }))}
+              />
+            ),
+          },
+        ]}
+        lateral={[
+          {
+            chave: 'observacao',
+            aba: 'tarefas',
+            conteudo: <ClienteObs clienteId={id} obsInicial={observacao?.texto ?? ''} mes={mes} ano={ano} podeEditar={podeEditar} />,
+          },
+          { chave: 'historico', aba: 'historico', conteudo: <HistoricoResponsavel clienteId={id} setor="fiscal" /> },
+          {
+            chave: 'arquivos',
+            aba: 'arquivos',
+            conteudo: <ClienteArquivos clienteId={id} arquivosIniciais={arquivos ?? []} podeEditar={podeEditar} />,
+          },
+        ]}
       />
-
-      <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} />
-
-      <ClienteObs clienteId={id} obsInicial={observacao?.texto ?? ''} mes={mes} ano={ano} podeEditar={podeEditar} />
-
-      <ClienteArquivos clienteId={id} arquivosIniciais={arquivos ?? []} podeEditar={podeEditar} />
-
-      <ClienteConferencia
-        clienteNome={cliente.nome}
-        arquivosDTE={(arquivos ?? []).filter(a => /\.xlsx?$/i.test(a.name)).map(a => ({ id: a.id, name: a.name, content_base64: a.content_base64 ?? '' }))}
-      />
-
-      <HistoricoResponsavel clienteId={id} setor="fiscal" />
     </Pagina>
   )
 }

@@ -1,7 +1,11 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useRef } from 'react'
+import { FileSpreadsheet, Paperclip, X } from 'lucide-react'
 import { uploadArquivo, excluirArquivo } from '@/app/fiscal/clientes/actions'
+import { Card } from '@/components/ui/Card'
+import { IconButton } from '@/components/ui/Button'
+import { useConfirmar } from '@/components/ui/ConfirmDialog'
 
 interface Arquivo {
   id: string
@@ -27,6 +31,7 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
   const [isPending, startTransition] = useTransition()
   const [erro, setErro] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const confirmar = useConfirmar()
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -60,7 +65,8 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
   }
 
   async function handleExcluir(id: string) {
-    if (!confirm('Remover este arquivo?')) return
+    const ok = await confirmar({ titulo: 'Remover este arquivo?', descricao: 'A planilha deixa de estar anexada ao cliente.', textoConfirmar: 'Remover', perigo: true })
+    if (!ok) return
     startTransition(async () => {
       const result = await excluirArquivo(id)
       if (result?.error) {
@@ -72,62 +78,54 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
   }
 
   return (
-    <div className="mt-8 pt-6 border-t border-[var(--fg)]/8">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest">
-          Planilhas Anexadas
-        </h3>
-        {podeEditar && (
-          <label className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
-            isPending
-              ? 'opacity-50 pointer-events-none'
-              : 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/25'
-          }`}>
-            {isPending ? 'Enviando...' : '+ Anexar'}
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".xls,.xlsx,.csv"
-              multiple
-              className="hidden"
-              onChange={handleUpload}
-              disabled={isPending}
-            />
-          </label>
-        )}
-      </div>
-
-      {erro && <p className="text-red-400 text-xs mb-3">{erro}</p>}
+    <Card
+      titulo="Planilhas anexadas"
+      acoes={podeEditar ? (
+        <label className={`inline-flex h-[30px] cursor-pointer items-center gap-2 rounded-[7px] border border-line bg-raised px-2.5 text-[13px] font-medium text-fg transition-colors hover:border-fg-3 focus-within:ring-2 focus-within:ring-acc ${isPending ? 'pointer-events-none opacity-45' : ''}`}>
+          <Paperclip size={14} aria-hidden="true" />
+          {isPending ? 'Enviando...' : 'Anexar'}
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".xls,.xlsx,.csv"
+            multiple
+            className="sr-only"
+            onChange={handleUpload}
+            disabled={isPending}
+          />
+        </label>
+      ) : undefined}
+    >
+      {erro && <p role="alert" className="mb-3 whitespace-pre-line text-[13px] text-danger">{erro}</p>}
 
       {arquivos.length === 0 ? (
-        <p className="text-[var(--fg)]/20 text-sm">Nenhuma planilha anexada.</p>
+        <p className="text-[13px] text-fg-3">Nenhuma planilha anexada. Anexe a planilha de DTE (.xls, .xlsx ou .csv) para liberar a conferência de chaves.</p>
       ) : (
-        <div className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-2">
           {arquivos.map(arq => (
-            <div key={arq.id} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 group">
-              <span className="text-green-400 text-lg flex-shrink-0">📊</span>
-              <div className="flex-1 min-w-0">
+            <li key={arq.id} className="flex items-center gap-3 rounded-[10px] border border-line-soft p-3">
+              <span className="flex-none text-ok" aria-hidden="true"><FileSpreadsheet size={20} /></span>
+              <div className="min-w-0 flex-1">
                 <a href={`/api/arquivos/client/${arq.id}`} target="_blank" rel="noopener noreferrer"
-                  className="text-[var(--fg)] text-sm truncate block hover:underline">
+                  className="block truncate text-sm text-fg hover:underline">
                   {arq.name}
                 </a>
-                <p className="text-[var(--fg)]/30 text-xs">
+                <p className="text-xs text-fg-3">
                   {formatBytes(arq.size)} · {new Date(arq.uploaded_at).toLocaleDateString('pt-BR')}
                 </p>
               </div>
               {podeEditar && (
-                <button
+                <IconButton
+                  rotulo={`Remover ${arq.name}`}
+                  icone={<X size={16} aria-hidden="true" />}
                   onClick={() => handleExcluir(arq.id)}
                   disabled={isPending}
-                  className="text-[var(--fg)]/20 hover:text-red-400 text-sm px-2 py-1 rounded-lg border border-[var(--fg)]/10 hover:border-red-400/30 transition-all opacity-0 group-hover:opacity-100"
-                >
-                  ✕
-                </button>
+                />
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+    </Card>
   )
 }

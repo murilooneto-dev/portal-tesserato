@@ -185,11 +185,11 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
         prazosPorTipo={prazosPorTipo}
       />
 
-      <EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} />
+      <div className="mt-6"><EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} /></div>
 
       <ClienteNotas clienteId={id} setor="contabil" notas={notas} podeEditar={podeEditar} adicionarNota={adicionarNotaCliente} editarNota={editarNotaCliente} excluirNota={excluirNotaCliente} />
 
-      <HistoricoResponsavel clienteId={id} setor="contabil" />
+      <div className="mt-6"><HistoricoResponsavel clienteId={id} setor="contabil" /></div>
     </div>
   )
 }
