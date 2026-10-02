@@ -5,13 +5,14 @@ import type { UserSetor } from '@/lib/types'
 interface Props {
   clienteId: string
   setor: UserSetor
+  className?: string
 }
 
 function formatData(s: string) {
   return new Date(s).toLocaleDateString('pt-BR')
 }
 
-export default async function HistoricoResponsavel({ clienteId, setor }: Props) {
+export default async function HistoricoResponsavel({ clienteId, setor, className }: Props) {
   const supabase = await createClient()
   const { data: periodos } = await supabase
     .from('cliente_responsavel_historico')
@@ -23,7 +24,7 @@ export default async function HistoricoResponsavel({ clienteId, setor }: Props) 
   if (!periodos || periodos.length === 0) return null
 
   return (
-    <Card titulo="Histórico de responsável">
+    <Card titulo="Histórico de responsável" className={className}>
       <ul className="flex flex-col gap-3">
         {[...periodos].reverse().map((p, i) => (
           <li key={i} className="flex items-start gap-3">

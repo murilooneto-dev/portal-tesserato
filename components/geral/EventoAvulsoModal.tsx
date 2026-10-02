@@ -43,38 +43,53 @@ export default function EventoAvulsoModal({ clienteId, setor, onClose }: Props) 
     setSaving(true)
     setErro(null)
 
+    // Uma exceção (ex.: anexo acima de 4 MB, limite das Server Actions) não pode
+    // deixar a janela travada em "Salvando...": o finally sempre libera.
     let eventoId = eventoCriadoId
-    if (!eventoId) {
-      const resultado = await criarTarefaAvulsa({ clienteId, setor, titulo: titulo.trim(), descricao: descricao.trim() || null, data })
-      if ('error' in resultado) {
-        setSaving(false)
-        setErro(resultado.error)
+    let criouAgora = false
+    try {
+      if (!eventoId) {
+        const resultado = await criarTarefaAvulsa({ clienteId, setor, titulo: titulo.trim(), descricao: descricao.trim() || null, data })
+        if ('error' in resultado) {
+          setErro(resultado.error)
+          return
+        }
+        eventoId = resultado.id
+        criouAgora = true
+        setEventoCriadoId(eventoId)
+      }
+
+      const falharam: File[] = []
+      const erros: string[] = []
+      for (const arquivo of arquivos) {
+        try {
+          const formData = new FormData()
+          formData.append('arquivo', arquivo)
+          const uploadResult = await uploadArquivoEvento(eventoId, clienteId, setor, formData)
+          if (uploadResult.error) {
+            falharam.push(arquivo)
+            erros.push(`${arquivo.name}: ${uploadResult.error}`)
+          }
+        } catch {
+          falharam.push(arquivo)
+          erros.push(`Não foi possível enviar ${arquivo.name}. Arquivos acima de 4 MB não são aceitos.`)
+        }
+      }
+
+      router.refresh()
+      if (falharam.length > 0) {
+        setArquivos(falharam)
+        setErro(`O evento foi criado, mas ${falharam.length === 1 ? 'um anexo não foi enviado' : `${falharam.length} anexos não foram enviados`}. ${erros.join(' · ')}`)
         return
       }
-      eventoId = resultado.id
-      setEventoCriadoId(eventoId)
+      onClose()
+    } catch (e) {
+      // Falha inesperada na criação ou no refresh: se o evento já existe, atualiza a tela.
+      if (criouAgora) router.refresh()
+      setErro(e instanceof Error && e.message ? e.message : 'Não foi possível salvar o evento. Tente de novo.')
+    } finally {
+      setSaving(false)
     }
-
-    const falharam: File[] = []
-    const erros: string[] = []
-    for (const arquivo of arquivos) {
-      const formData = new FormData()
-      formData.append('arquivo', arquivo)
-      const uploadResult = await uploadArquivoEvento(eventoId, clienteId, setor, formData)
-      if (uploadResult.error) {
-        falharam.push(arquivo)
-        erros.push(`${arquivo.name}: ${uploadResult.error}`)
-      }
-    }
-
-    setSaving(false)
-    router.refresh()
-    if (falharam.length > 0) {
-      setArquivos(falharam)
-      setErro(`O evento foi criado, mas ${falharam.length === 1 ? 'um anexo não foi enviado' : `${falharam.length} anexos não foram enviados`}. ${erros.join(' · ')}`)
-      return
-    }
-    onClose()
   }
 
   const evento = eventoCriadoId !== null

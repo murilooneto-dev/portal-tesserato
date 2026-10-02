@@ -189,7 +189,7 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
 
       <ClienteNotas clienteId={id} setor="contabil" notas={notas} podeEditar={podeEditar} adicionarNota={adicionarNotaCliente} editarNota={editarNotaCliente} excluirNota={excluirNotaCliente} />
 
-      <div className="mt-6"><HistoricoResponsavel clienteId={id} setor="contabil" /></div>
+      <HistoricoResponsavel clienteId={id} setor="contabil" className="mt-6" />
     </div>
   )
 }

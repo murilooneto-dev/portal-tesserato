@@ -43,7 +43,8 @@ test('ClienteAcoes usa Button e mantém o fluxo de exclusão', () => {
 
 test('Editar empresa: UF em lista, senha do ISS oculta, rótulo Contato, prioridade mantida', () => {
   const empresa = ler('components/fiscal/EmpresaModal.tsx')
-  assert.equal((empresa.match(/'[A-Z]{2}'/g) ?? []).filter((_, i) => i < 27).length, 27)
+  const ufs = (empresa.match(/'[A-Z]{2}'/g) ?? []).slice(0, 27).map(s => s.slice(1, 3)).join(' ')
+  assert.equal(ufs, 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO')
   assert.match(empresa, /<Select id=\{c\.id\} disabled=\{readOnly\} value=\{form\.uf\}/)
   assert.match(empresa, /rotulo="Contato"/)
   assert.doesNotMatch(empresa, /Contato Chat/)

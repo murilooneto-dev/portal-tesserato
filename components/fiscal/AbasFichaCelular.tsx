@@ -25,6 +25,10 @@ export default function AbasFichaCelular({ principal, lateral }: { principal: Pa
   const [ativa, setAtiva] = useState<AbaFicha>('tarefas')
   const idAba = (a: AbaFicha) => `${base}-aba-${a}`
   const idPainel = (a: AbaFicha) => `${base}-painel-${a}`
+  const idPrimeiroPainel = (a: AbaFicha) => {
+    const p = principal.find(x => x.aba === a) ?? lateral.find(x => x.aba === a)
+    return p ? `${idPainel(a)}-${p.chave}` : undefined
+  }
 
   function aoTeclar(e: KeyboardEvent<HTMLButtonElement>, indice: number) {
     let novo = indice
@@ -63,6 +67,7 @@ export default function AbasFichaCelular({ principal, lateral }: { principal: Pa
             type="button"
             role="tab"
             id={idAba(a.id)}
+            aria-controls={idPrimeiroPainel(a.id)}
             aria-selected={ativa === a.id}
             tabIndex={ativa === a.id ? 0 : -1}
             onClick={() => setAtiva(a.id)}

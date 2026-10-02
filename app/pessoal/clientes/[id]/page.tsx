@@ -189,7 +189,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
 
       <ClienteNotas clienteId={id} setor="pessoal" notas={notas} podeEditar={podeEditar} adicionarNota={adicionarNotaCliente} editarNota={editarNotaCliente} excluirNota={excluirNotaCliente} />
 
-      <div className="mt-6"><HistoricoResponsavel clienteId={id} setor="pessoal" /></div>
+      <HistoricoResponsavel clienteId={id} setor="pessoal" className="mt-6" />
     </div>
   )
 }
