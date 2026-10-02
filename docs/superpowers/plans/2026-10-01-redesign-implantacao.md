@@ -154,7 +154,7 @@ Mensagem sugerida para colar:
 | Fase | Branch | PR | Situação |
 |---|---|---|---|
 | 1 Base visual | feat/redesign-fase1-base-visual | #192 | mergeada em dev |
-| 2 Casca | feat/redesign-fase2-casca | (a abrir) | pronta, PR contra dev aguardando teste do usuário |
+| 2 Casca | feat/redesign-fase2-casca | #193 | pronta, PR contra dev aguardando teste do usuário |
 | 3 Geral | — | — | não iniciada |
 | 4 Fiscal | — | — | não iniciada |
 | 5 Contábil e Pessoal | — | — | não iniciada |
