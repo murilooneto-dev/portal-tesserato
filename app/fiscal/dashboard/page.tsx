@@ -34,9 +34,9 @@ function tomDoPrazo(dias: number): BadgeTom {
   return 'neu'
 }
 
-function Barra({ pct, cor = 'var(--acc)' }: { pct: number; cor?: string }) {
+function Barra({ pct, cor = 'var(--acc)', rotulo }: { pct: number; cor?: string; rotulo: string }) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-inset" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+    <div className="h-2 w-full overflow-hidden rounded-full bg-inset" role="progressbar" aria-label={rotulo} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
       <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: cor }} />
     </div>
   )
@@ -136,7 +136,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <section className={KPI}>
           <p className={KPI_ROTULO}>{meu ? 'Meu progresso' : 'Progresso geral'}</p>
           <p className={KPI_VALOR}>{pct}%</p>
-          <div className="mb-2 mt-3"><Barra pct={pct} /></div>
+          <div className="mb-2 mt-3"><Barra pct={pct} rotulo={meu ? 'Meu progresso' : 'Progresso geral'} /></div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
             <span className="text-fg-2">{concluidasTarefas} de {totalTarefas} tarefas concluídas</span>
             {!meu && (
@@ -240,7 +240,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <b className="truncate font-semibold text-fg">{nome}</b>
                         <span className="ml-auto font-semibold tabular-nums text-fg">{opPct}%</span>
                       </div>
-                      <div className="mb-1.5 mt-2"><Barra pct={opPct} cor={cor} /></div>
+                      <div className="mb-1.5 mt-2"><Barra pct={opPct} cor={cor} rotulo={`Progresso de ${nome}`} /></div>
                       <p className="text-[13px] text-fg-3">{opConcluidas} de {opTotal} tarefas · {opClientes.length} cliente{opClientes.length === 1 ? '' : 's'}</p>
                     </div>
                   </li>

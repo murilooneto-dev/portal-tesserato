@@ -2,6 +2,8 @@
 // calculou (tipos do progresso, tarefas do mês, donos dos tipos). Nenhuma
 // consulta nova e nenhum número do setor muda.
 
+import { normalizarNome } from './tarefa-tipo-visibilidade'
+
 export type VisaoDashboard = 'setor' | 'meu'
 
 // `?visao=meu` liga o modo Meu; qualquer outra coisa (ou nada) é o setor.
@@ -9,16 +11,12 @@ export function visaoDaUrl(valor: string | string[] | undefined): VisaoDashboard
   return valor === 'meu' ? 'meu' : 'setor'
 }
 
-// Mesma regra que o resto do Fiscal usa para comparar responsavel com
-// profiles.nome (tarefa-tipo-visibilidade): sem maiúscula, acento ou espaço
-// sobrando; vazio nunca é igual a nada.
-function normalizar(nome: string | null | undefined): string {
-  return (nome ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ')
-}
-
+// Mesma comparação do resto do Fiscal (tarefa-tipo-visibilidade): trim e
+// minúsculas, sem tirar acento; vazio nunca é igual a nada. Assim "Meu" e a %
+// do cliente concordam.
 export function mesmoResponsavel(a: string | null | undefined, b: string | null | undefined): boolean {
-  const na = normalizar(a)
-  return na !== '' && na === normalizar(b)
+  const na = normalizarNome(a)
+  return na !== '' && na === normalizarNome(b)
 }
 
 interface ClienteMin { id: string; responsavel: string | null }

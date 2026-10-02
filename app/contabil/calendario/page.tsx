@@ -1,5 +1,6 @@
 // app/contabil/calendario/page.tsx
 import { createClient } from '@/lib/supabase/server'
+import { chaveHojeNoBrasil } from '@/lib/agenda'
 import CalendarioSetor from '@/components/calendario/CalendarioSetor'
 import type { CalendarioEvento } from '@/lib/types'
 
@@ -17,5 +18,5 @@ export default async function CalendarioContabilPage() {
   const eventos = (eventosRaw ?? []) as CalendarioEvento[]
   const isAdmin = profile?.role === 'admin'
 
-  return <CalendarioSetor setor="contabil" eventos={eventos} isAdmin={isAdmin} />
+  return <CalendarioSetor setor="contabil" eventos={eventos} isAdmin={isAdmin} hojeInicial={chaveHojeNoBrasil()} />
 }

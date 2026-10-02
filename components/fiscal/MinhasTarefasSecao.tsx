@@ -198,10 +198,11 @@ export default function MinhasTarefasSecao({
     )
   }
 
-  function checkSemMovimento(clienteId: string) {
+  function checkSemMovimento(clienteId: string, nomeCliente: string) {
     return (
       <Checkbox
         rotulo="Sem movimento"
+        aria-label={`Sem movimento: ${nomeCliente}`}
         checked={getSemMovimento(clienteId)}
         onChange={() => handleToggleSemMovimento(clienteId)}
         disabled={somenteLeitura}
@@ -262,7 +263,7 @@ export default function MinhasTarefasSecao({
                             {campoData(cliente.id, etapaNome, cliente.nome, 'w-[128px]')}
                           </Td>
                         ))}
-                        <Td alinhar="centro">{checkSemMovimento(cliente.id)}</Td>
+                        <Td alinhar="centro">{checkSemMovimento(cliente.id, cliente.nome)}</Td>
                       </tr>
                       {!etapasDefinidas && unlockingCliente === cliente.id && (
                         <tr>
@@ -285,7 +286,7 @@ export default function MinhasTarefasSecao({
                     <Link href={`/fiscal/clientes/${cliente.id}`} className="min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
                       <NomeCliente nome={cliente.nome} />
                     </Link>
-                    {checkSemMovimento(cliente.id)}
+                    {checkSemMovimento(cliente.id, cliente.nome)}
                   </div>
                   {semMovimentoAtivo ? (
                     <Badge tom="neu" className="self-start">Sem movimento</Badge>

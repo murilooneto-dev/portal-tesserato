@@ -1,7 +1,7 @@
 // components/calendario/CalendarioEventoModal.tsx
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/Modal'
@@ -42,6 +42,8 @@ export default function CalendarioEventoModal({ setor, evento, onClose }: Props)
   const temOficial = tipoData === 'recorrente' ? oficialDiaMes !== '' : !!oficialData
   const erroTitulo = tentou && !titulo.trim() ? 'Informe o título.' : null
   const erroDatas = tentou && !temInterna && !temOficial ? 'Preencha ao menos uma das duas datas.' : null
+  const idErroDatas = useId()
+  const descDatas = (d?: string) => [erroDatas ? idErroDatas : undefined, d].filter(Boolean).join(' ') || undefined
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()
@@ -104,23 +106,24 @@ export default function CalendarioEventoModal({ setor, evento, onClose }: Props)
           <Segmentado rotulo="Repetição" opcoes={REPETICAO} valor={tipoData} onMudar={setTipoData} />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field rotulo={`Prazo interno ${unidade}`} ajuda="Prazo do escritório" erro={erroDatas}>
+          <Field rotulo={`Prazo interno ${unidade}`} ajuda="Prazo do escritório">
             {c => recorrente ? (
-              <Input id={c.id} aria-describedby={c.describedBy} invalido={c.invalido} type="number" min={1} max={31} placeholder="1 a 31"
+              <Input id={c.id} aria-describedby={descDatas(c.describedBy)} invalido={Boolean(erroDatas)} type="number" min={1} max={31} placeholder="1 a 31"
                 value={internaDiaMes} onChange={e => setInternaDiaMes(e.target.value === '' ? '' : Number(e.target.value))} />
             ) : (
-              <Input id={c.id} aria-describedby={c.describedBy} invalido={c.invalido} type="date" value={internaData} onChange={e => setInternaData(e.target.value)} />
+              <Input id={c.id} aria-describedby={descDatas(c.describedBy)} invalido={Boolean(erroDatas)} type="date" value={internaData} onChange={e => setInternaData(e.target.value)} />
             )}
           </Field>
           <Field rotulo={`Vencimento oficial ${unidade}`} ajuda="Prazo do órgão">
             {c => recorrente ? (
-              <Input id={c.id} aria-describedby={c.describedBy} invalido={Boolean(erroDatas)} type="number" min={1} max={31} placeholder="1 a 31"
+              <Input id={c.id} aria-describedby={descDatas(c.describedBy)} invalido={Boolean(erroDatas)} type="number" min={1} max={31} placeholder="1 a 31"
                 value={oficialDiaMes} onChange={e => setOficialDiaMes(e.target.value === '' ? '' : Number(e.target.value))} />
             ) : (
-              <Input id={c.id} aria-describedby={c.describedBy} invalido={Boolean(erroDatas)} type="date" value={oficialData} onChange={e => setOficialData(e.target.value)} />
+              <Input id={c.id} aria-describedby={descDatas(c.describedBy)} invalido={Boolean(erroDatas)} type="date" value={oficialData} onChange={e => setOficialData(e.target.value)} />
             )}
           </Field>
         </div>
+        {erroDatas && <p id={idErroDatas} role="alert" className="text-xs text-danger">{erroDatas}</p>}
         <p className="text-[13px] text-fg-3">Preencha pelo menos uma das duas datas. Deixe a outra em branco se não se aplicar.</p>
         {erro && <p role="alert" className="text-sm text-danger">{erro}</p>}
       </form>

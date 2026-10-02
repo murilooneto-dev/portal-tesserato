@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { proximoPrazo, diasRestantes, alertaLabel, labelDatas } from '@/lib/calendario'
-import { DIAS_SEMANA, celulasDoMes, chaveDia, chaveDeHoje } from '@/lib/agenda'
+import { DIAS_SEMANA, celulasDoMes, chaveDia, chaveDeHoje, dataDaChave } from '@/lib/agenda'
 import { prazosDoDia, prazosDoMes, tomDoAlerta, ROTULO_PRAZO, type VariantePrazo } from '@/lib/calendario-grade'
 import { mesVizinho, rotuloMes } from '@/lib/mes-navegacao'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
@@ -22,12 +22,14 @@ interface Props {
   setor: UserSetor
   eventos: CalendarioEvento[]
   isAdmin: boolean
+  /** Dia de hoje (aaaa-mm-dd, fuso de São Paulo) calculado no servidor. */
+  hojeInicial?: string
 }
 
 const PONTO: Record<VariantePrazo, string> = { interna: 'bg-acc', oficial: 'bg-warn' }
 const ETIQUETA: Record<VariantePrazo, string> = { interna: 'bg-acc-soft text-acc-text', oficial: 'bg-warn-soft text-warn' }
 
-export default function CalendarioSetor({ setor, eventos, isAdmin }: Props) {
+export default function CalendarioSetor({ setor, eventos, isAdmin, hojeInicial }: Props) {
   const router = useRouter()
   const sb = createClient()
   const confirmar = useConfirmar()
@@ -36,7 +38,8 @@ export default function CalendarioSetor({ setor, eventos, isAdmin }: Props) {
   const [editando, setEditando] = useState<CalendarioEvento | null>(null)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [hoje] = useState(() => new Date())
+  const [hoje] = useState(() => (hojeInicial ? dataDaChave(hojeInicial) : new Date()))
+  const [diaAberto, setDiaAberto] = useState<string | null>(null)
   const [visto, setVisto] = useState({ mes: hoje.getMonth() + 1, ano: hoje.getFullYear() })
 
   const cards = eventos
@@ -101,24 +104,36 @@ export default function CalendarioSetor({ setor, eventos, isAdmin }: Props) {
                 return <div key={i} aria-hidden="true" className={cn(borda, 'h-12 bg-[color-mix(in_srgb,var(--page)_60%,transparent)] sm:h-[104px]')} />
               }
               const doDia = prazosDoDia(prazos, dia)
-              const ehHoje = chaveDia(visto.ano, visto.mes, dia) === chaveHoje
+              const chaveCel = chaveDia(visto.ano, visto.mes, dia)
+              const ehHoje = chaveCel === chaveHoje
+              const aberto = diaAberto === chaveCel
+              const visiveis = aberto ? doDia : doDia.slice(0, 2)
               return (
                 <div
                   key={i}
                   aria-current={ehHoje ? 'date' : undefined}
-                  className={cn(borda, 'flex h-12 min-w-0 flex-col items-center gap-0.5 overflow-hidden px-1 py-1.5 sm:h-[104px] sm:items-stretch sm:px-2.5 sm:py-2', ehHoje && 'bg-acc-soft')}
+                  className={cn(borda, 'flex h-12 min-w-0 flex-col items-center gap-0.5 overflow-hidden px-1 py-1.5 sm:h-[104px] sm:items-stretch sm:px-2.5 sm:py-2', aberto && 'sm:h-auto sm:min-h-[104px] sm:overflow-visible', ehHoje && 'bg-acc-soft')}
                 >
-                  <span className={cn('text-[13px]', ehHoje ? 'grid h-6 w-6 place-items-center rounded-full bg-acc font-bold text-acc-ink' : 'font-medium text-fg-2')}>{dia}</span>
+                  <span aria-label={doDia.length > 0 ? `${dia}, ${doDia.length} ${doDia.length === 1 ? 'prazo' : 'prazos'}` : undefined} className={cn('text-[13px]', ehHoje ? 'grid h-6 w-6 place-items-center rounded-full bg-acc font-bold text-acc-ink' : 'font-medium text-fg-2')}>{dia}</span>
                   <span aria-hidden="true" className="flex gap-0.5 sm:hidden">
                     {doDia.slice(0, 3).map(p => <i key={`${p.evento.id}-${p.variante}`} className={cn('h-[5px] w-[5px] rounded-full', PONTO[p.variante])} />)}
                   </span>
                   <span className="hidden min-w-0 flex-col sm:flex">
-                    {doDia.slice(0, 2).map(p => (
+                    {visiveis.map(p => (
                       <span key={`${p.evento.id}-${p.variante}`} title={`${ROTULO_PRAZO[p.variante]}: ${p.evento.titulo}`} className={cn('mt-1 flex h-[22px] min-w-0 items-center rounded-md px-[7px] text-xs', ETIQUETA[p.variante])}>
                         <span className="truncate">{p.evento.titulo}</span>
                       </span>
                     ))}
-                    {doDia.length > 2 && <span className="mt-[3px] text-xs text-fg-3">{`+ ${doDia.length - 2} mais`}</span>}
+                    {doDia.length > 2 && (
+                      <button
+                        type="button"
+                        aria-expanded={aberto}
+                        onClick={() => setDiaAberto(aberto ? null : chaveCel)}
+                        className="mt-[3px] self-start rounded text-left text-xs text-fg-3 hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-acc"
+                      >
+                        {aberto ? 'Mostrar menos' : `+ ${doDia.length - 2} mais`}
+                      </button>
+                    )}
                   </span>
                 </div>
               )

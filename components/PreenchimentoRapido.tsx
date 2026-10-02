@@ -202,7 +202,7 @@ export default function PreenchimentoRapido({
       </Card>
 
       <Card
-        titulo={<><span className="mr-2.5 inline-grid h-7 w-7 place-items-center rounded-full bg-acc align-middle text-sm font-semibold text-acc-ink">3</span>Marque o que já foi feito</>}
+        titulo={<><span className="mr-2.5 inline-grid h-7 w-7 place-items-center rounded-full bg-acc align-middle text-sm font-semibold text-acc-ink"><span aria-hidden="true">3</span></span><span className="sr-only">Passo 3: </span>Marque o que já foi feito</>}
         meta={colunas.length > 0 && linhas.length > 0 ? <Badge tom="neu">{linhas.length} {linhas.length === 1 ? 'cliente' : 'clientes'}</Badge> : undefined}
         acoes={filtroPendentes && colunas.length > 0 ? (
           <Switch ligado={apenasPendentes} onMudar={setApenasPendentes} rotulo="Só pendentes" />
@@ -268,10 +268,10 @@ export default function PreenchimentoRapido({
 function Passo({ numero, titulo, dica, children }: { numero: number; titulo: string; dica?: string; children: ReactNode }) {
   return (
     <div className="flex gap-3.5">
-      <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-acc text-sm font-semibold text-acc-ink">{numero}</span>
+      <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-acc text-sm font-semibold text-acc-ink"><span aria-hidden="true">{numero}</span></span>
       <div className="min-w-0 flex-1">
         <p className="mb-2.5 text-sm font-semibold text-fg">
-          {titulo}
+          <span className="sr-only">{`Passo ${numero}: `}</span>{titulo}
           {dica && <span className="ml-2 font-normal text-fg-3">{dica}</span>}
         </p>
         {children}

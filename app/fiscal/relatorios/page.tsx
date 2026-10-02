@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowDown, ArrowUp, ChevronRight, ClipboardList, Printer } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronRight, ClipboardList, Printer } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { escapeHtml } from '@/lib/escape-html'
 import type { Tarefa } from '@/lib/types'
@@ -210,7 +210,7 @@ export default function RelatoriosPage() {
   ]
 
   function pendencias(r: (typeof filtrados)[number]) {
-    if (r.pct === 100) return <Badge tom="ok" icone={<ClipboardList size={14} aria-hidden="true" />}>Concluído</Badge>
+    if (r.pct === 100) return <Badge tom="ok" icone={<Check size={14} aria-hidden="true" />}>Concluído</Badge>
     return (
       <div className="flex flex-wrap gap-1.5">
         {r.pendentes.slice(0, 3).map(p => <Badge key={p} tom="warn" className="max-w-full"><span className="truncate" title={p}>{p}</span></Badge>)}

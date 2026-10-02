@@ -1,14 +1,16 @@
 // tests/dashboard-meu.test.ts — modo "Meu" do Dashboard do Fiscal.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { filtrarTiposDoProgresso } from '../lib/tarefa-tipo-visibilidade'
 import { mesmoResponsavel, calcularMeu, visaoDaUrl } from '../lib/dashboard-meu'
 
 const cli = (id: string, responsavel: string | null) => ({ id, nome: `Cliente ${id}`, responsavel })
 const tar = (cliente_id: string, tipo: string, concluida = false) => ({ cliente_id, tipo, concluida })
 const tipos = (o: Record<string, string[]>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, new Set(v)]))
 
-test('responsável compara sem maiúscula, acento e espaço sobrando', () => {
-  assert.equal(mesmoResponsavel('  Maurício  Silva ', 'MAURICIO silva'), true)
+test('responsável compara sem maiúscula e espaço nas pontas (mesma regra do resto do Fiscal)', () => {
+  assert.equal(mesmoResponsavel('  Maurício Silva ', 'MAURÍCIO silva'), true)
+  assert.equal(mesmoResponsavel('Maurício', 'Mauricio'), false)
   assert.equal(mesmoResponsavel('Fiscal', 'Fiscal Dois'), false)
   assert.equal(mesmoResponsavel(null, 'Fiscal'), false)
   assert.equal(mesmoResponsavel('', ''), false)
@@ -87,4 +89,17 @@ test('sem nome de usuário não sobra nada', () => {
   })
   assert.equal(r.clientes.length, 0)
   assert.equal(r.encaminhadas.length, 0)
+})
+
+test('tipo do próprio usuário em cliente próprio não some do Meu', () => {
+  const donoNomePorTipo = { ENTRADA: ' Fiscal ' }
+  const tiposBrutos = tipos({ '1': ['ENTRADA', 'DAS'] })
+  const tiposDoProgresso = { '1': new Set(filtrarTiposDoProgresso(tiposBrutos['1'], 'FISCAL', donoNomePorTipo)) }
+  const r = calcularMeu({
+    clientes: [cli('1', 'FISCAL')], nomeUsuario: 'fiscal', tarefas: [],
+    tiposDoProgresso, tiposBrutos, donoNomePorTipo,
+  })
+  assert.equal(r.total, 2)
+  assert.deepEqual(r.pendencias.map(p => p.tipos), [['DAS', 'ENTRADA']])
+  assert.deepEqual(r.encaminhadas, [])
 })
