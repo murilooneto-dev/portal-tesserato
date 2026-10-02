@@ -1,6 +1,6 @@
 import { Megaphone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import LinksRapidos from '@/components/fiscal/LinksRapidos'
+import LinksUteis from '@/components/geral/LinksUteis'
 import Agenda from '@/components/geral/agenda/Agenda'
 import { Pagina } from '@/components/ui/Pagina'
 import { Aviso } from '@/components/ui/Aviso'
@@ -31,7 +31,7 @@ export default async function IntranetPage() {
   return (
     <Pagina>
       <Agenda titulo="Início" subtitulo="Sua agenda, os avisos da equipe e os links do escritório" topo={avisoComunicado} />
-      <LinksRapidos links={links ?? []} isAdmin={isAdmin} />
+      <LinksUteis links={links ?? []} isAdmin={isAdmin} />
     </Pagina>
   )
 }
