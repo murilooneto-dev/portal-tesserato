@@ -11,7 +11,7 @@ const ARQUIVOS = [
   'components/geral/agenda/Agenda.tsx', 'components/geral/agenda/CalendarioMes.tsx', 'components/geral/agenda/DiaModal.tsx',
   'components/geral/agenda/CompromissoModal.tsx', 'components/geral/LinksUteis.tsx', 'app/(comum)/clientes/page.tsx',
   'components/geral/ClientesGeralLista.tsx', 'components/geral/ClienteGeralModal.tsx', 'components/geral/ConfirmarExclusaoClienteModal.tsx',
-  'components/geral/DesabilitarClienteModal.tsx', 'components/geral/NovoTipoTarefaModal.tsx', 'components/geral/SectorSection.tsx',
+  'components/geral/DesabilitarClienteModal.tsx', 'components/geral/NovoTipoTarefaModal.tsx',
   'app/(comum)/ferramentas/FerramentasClient.tsx', 'app/(comum)/vinculos/VinculosClient.tsx', 'app/(comum)/vinculos/page.tsx',
 ]
 

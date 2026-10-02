@@ -7,7 +7,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import ConfirmarExclusaoClienteModal from '../components/geral/ConfirmarExclusaoClienteModal'
 import DesabilitarClienteModal from '../components/geral/DesabilitarClienteModal'
-import SectorSection from '../components/geral/SectorSection'
 import NovoTipoTarefaModal from '../components/geral/NovoTipoTarefaModal'
 import { descreverImpactoExclusao } from '../lib/exclusao-cliente'
 
@@ -42,15 +41,8 @@ test('desabilitar: nome e senha de login, senha oculta, botão desabilitado', ()
   assert.match(botao, /disabled=""/)
 })
 
-test('seção recolhível: fechada por padrão, com aria-expanded', () => {
-  const html = renderToStaticMarkup(h(SectorSection, { title: 'Dados do Fiscal', note: 'somente leitura', children: h('p', null, 'CONTEUDO') }))
-  assert.match(html, /aria-expanded="false"/)
-  assert.doesNotMatch(html, /CONTEUDO/)
-})
-
-test('NovoTipoTarefaModal: "Criar tipo" habilitado no formato padrão (data) com nome preenchido', () => {
-  const html = renderToStaticMarkup(h(NovoTipoTarefaModal, { nome: 'X', setor: 'fiscal', onCancel: nada, onCriado: nada }))
-  const botao = html.match(/<button[^>]*>(?:(?!<\/button>).)*Criar tipo/)?.[0] ?? ''
-  assert.ok(botao, 'botão Criar tipo existe')
-  assert.doesNotMatch(botao, /disabled=""/)
+test('janela do cliente não tem mais a seção Dados do Fiscal', () => {
+  const fonte = readFileSync(join(ROOT, 'components', 'geral', 'ClienteGeralModal.tsx'), 'utf8')
+  assert.doesNotMatch(fonte, /Dados do Fiscal/)
+  assert.doesNotMatch(fonte, /<CamposFiscais/)
 })

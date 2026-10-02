@@ -5,17 +5,13 @@ import { ArrowRight, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
-import CamposFiscais, { type CamposFiscaisData } from '@/components/fiscal/CamposFiscais'
-import SectorSection from '@/components/geral/SectorSection'
+import type { CamposFiscaisData } from '@/components/fiscal/CamposFiscais'
 import { flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import { SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
-import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
-import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import { excluirClienteGeral, salvarClienteGeral, desabilitarClienteGeral, reabilitarClienteGeral } from '@/app/(comum)/clientes/actions'
 import ConfirmarExclusaoClienteModal from '@/components/geral/ConfirmarExclusaoClienteModal'
 import { descreverImpactoExclusao } from '@/lib/exclusao-cliente'
 import DesabilitarClienteModal from '@/components/geral/DesabilitarClienteModal'
-import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import { SETORES_DE_CLIENTE } from '@/lib/clientes-geral'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -38,9 +34,7 @@ interface FormData extends CamposFiscaisData {
 
 interface Props {
   clienteId: string | null
-  responsaveis: string[]
   vinculosCatalogo: TarefaVinculo[]
-  catalogoFiscal: CatalogoCliente
   onClose: () => void
   readOnly?: boolean
   podeDesabilitar?: boolean
@@ -58,14 +52,13 @@ const emptyForm = (): FormData => ({
 })
 
 
-export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCatalogo, catalogoFiscal, onClose, readOnly = false, podeDesabilitar = false, desabilitada = false, temSetorDesabilitavel = false }: Props) {
+export default function ClienteGeralModal({ clienteId, vinculosCatalogo, onClose, readOnly = false, podeDesabilitar = false, desabilitada = false, temSetorDesabilitavel = false }: Props) {
   const router = useRouter()
   const confirmar = useConfirmar()
   const sb = createClient()
   const isEdit = !!clienteId
 
   const [form, setForm] = useState<FormData>(emptyForm())
-  const [novaTarefa, setNovaTarefa] = useState('')
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [falhaAoCarregar, setFalhaAoCarregar] = useState(false)
@@ -78,8 +71,6 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
   const [desabilitarModalOpen, setDesabilitarModalOpen] = useState(false)
   const [reabilitando, setReabilitando] = useState(false)
   const [mostrarVinculos, setMostrarVinculos] = useState(false)
-  const [catalogoNomes, setCatalogoNomes] = useState<string[]>([])
-  const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
   const identificacaoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -129,12 +120,6 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId])
 
-  useEffect(() => {
-    sb.from('tarefa_tipos').select('nome').eq('setor', 'fiscal').then(({ data }) => {
-      setCatalogoNomes((data ?? []).map(t => t.nome as string))
-    })
-  }, [])
-
   async function fetchCnpj(raw: string) {
     setLoadingCnpj(true)
     const resultado = await buscarCnpj(raw)
@@ -158,24 +143,6 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
       ...p,
       setores: p.setores.includes(setor) ? p.setores.filter(s => s !== setor) : [...p.setores, setor],
     }))
-  }
-
-  function addTarefa() {
-    const t = novaTarefa.trim()
-    if (!t) return
-    if (tarefaExisteNoCatalogo(catalogoNomes, t)) {
-      set('tarefas_personalizadas', [...form.tarefas_personalizadas, t])
-      setNovaTarefa('')
-    } else {
-      setNomeParaCriar(t)
-    }
-  }
-
-  function handleTipoCriado(nome: string) {
-    setCatalogoNomes(prev => [...prev, nome])
-    set('tarefas_personalizadas', [...form.tarefas_personalizadas, nome])
-    setNovaTarefa('')
-    setNomeParaCriar(null)
   }
 
   async function handleSave() {
@@ -266,7 +233,6 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
     return { error: null }
   }
 
-  const mostraFiscal = form.setores.includes('fiscal')
   const titulo = readOnly ? 'Ver cliente' : isEdit ? 'Editar cliente' : 'Novo cliente'
   const vinculosAplicaveis = vinculosCatalogo.filter(v => form.setores.includes(v.setor_origem) && form.setores.includes(v.setor_destino))
 
@@ -377,41 +343,6 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
               ))}
             </Secao>
 
-            {mostraFiscal && isEdit && (
-              <SectorSection title="Dados do Fiscal" note="somente leitura, edite em Fiscal › Clientes">
-                <CamposFiscais
-                  form={form}
-                  set={set as <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void}
-                  responsaveis={responsaveis}
-                  catalogo={catalogoFiscal}
-                  isEdit={isEdit}
-                  clienteId={clienteId}
-                  readOnly={true}
-                  novaTarefa={novaTarefa}
-                  setNovaTarefa={setNovaTarefa}
-                  addTarefa={addTarefa}
-                />
-              </SectorSection>
-            )}
-            {mostraFiscal && !isEdit && (
-              <Secao titulo="Dados do Fiscal">
-                <div className="flex flex-col gap-5">
-                  <CamposFiscais
-                    form={form}
-                    set={set as <K extends keyof CamposFiscaisData>(k: K, v: CamposFiscaisData[K]) => void}
-                    responsaveis={responsaveis}
-                    catalogo={catalogoFiscal}
-                    isEdit={isEdit}
-                    clienteId={clienteId}
-                    readOnly={readOnly}
-                    novaTarefa={novaTarefa}
-                    setNovaTarefa={setNovaTarefa}
-                    addTarefa={addTarefa}
-                  />
-                </div>
-              </Secao>
-            )}
-
             {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
           </>
         )}
@@ -430,14 +361,6 @@ export default function ClienteGeralModal({ clienteId, responsaveis, vinculosCat
           onClose={() => setDesabilitarModalOpen(false)}
           onConfirm={senha => desabilitarClienteGeral(clienteId, senha)}
           onConfirmado={() => { router.refresh(); onClose() }}
-        />
-      )}
-      {nomeParaCriar && (
-        <NovoTipoTarefaModal
-          nome={nomeParaCriar}
-          setor="fiscal"
-          onCancel={() => setNomeParaCriar(null)}
-          onCriado={handleTipoCriado}
         />
       )}
     </>

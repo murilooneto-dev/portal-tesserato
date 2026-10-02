@@ -33,12 +33,11 @@ interface Props {
   isAdmin: boolean
   podeCriar: boolean
   podeDesabilitar: boolean
-  responsaveis: string[]
   vinculosCatalogo: TarefaVinculo[]
   catalogoFiscal: CatalogoCliente
 }
 
-export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeDesabilitar, responsaveis, vinculosCatalogo, catalogoFiscal }: Props) {
+export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeDesabilitar, vinculosCatalogo, catalogoFiscal }: Props) {
   const [busca, setBusca] = useState('')
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
   const [clienteAbertoId, setClienteAbertoId] = useState<string | null>(null)
@@ -185,9 +184,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
       {modalNovoOpen && (
         <ClienteGeralModal
           clienteId={null}
-          responsaveis={responsaveis}
           vinculosCatalogo={vinculosCatalogo}
-          catalogoFiscal={catalogoFiscal}
           onClose={() => setModalNovoOpen(false)}
         />
       )}
@@ -195,9 +192,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
       {clienteAbertoId && (
         <ClienteGeralModal
           clienteId={clienteAbertoId}
-          responsaveis={responsaveis}
           vinculosCatalogo={vinculosCatalogo}
-          catalogoFiscal={catalogoFiscal}
           readOnly={!isAdmin}
           podeDesabilitar={podeDesabilitar}
           desabilitada={empresaDesabilitada([clienteAberto?.clientes_fiscal, clienteAberto?.clientes_contabil, clienteAberto?.clientes_pessoal])}

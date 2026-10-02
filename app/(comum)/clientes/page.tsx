@@ -12,10 +12,9 @@ export default async function ClientesGeralPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: clientes }, { data: usuariosFiscal }, { data: vinculosCatalogo }] = await Promise.all([
+  const [{ data: profile }, { data: clientes }, { data: vinculosCatalogo }] = await Promise.all([
     supabase.from('profiles').select('role, setores').eq('id', user.id).single(),
     supabase.from('clientes').select('*, clientes_fiscal(regime, atividade, ativo), clientes_contabil(ativo), clientes_pessoal(ativo)').order('nome'),
-    supabase.from('profiles').select('nome').contains('setores', ['fiscal']),
     supabase.from('tarefa_vinculos').select('*').order('created_at'),
   ])
 
@@ -26,10 +25,6 @@ export default async function ClientesGeralPage() {
   // Mesma regra de quem cria: só Societário e Admin desabilitam a empresa.
   const podeDesabilitar = podeCriar
 
-  const responsaveis = Array.from(new Set(
-    (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
-  )).sort()
-
   const catalogoFiscal = await buscarCatalogoCliente(supabase, 'fiscal')
 
   return (
@@ -38,7 +33,6 @@ export default async function ClientesGeralPage() {
       isAdmin={isAdmin}
       podeCriar={podeCriar}
       podeDesabilitar={podeDesabilitar}
-      responsaveis={responsaveis}
       vinculosCatalogo={(vinculosCatalogo ?? []) as TarefaVinculo[]}
       catalogoFiscal={catalogoFiscal}
     />
