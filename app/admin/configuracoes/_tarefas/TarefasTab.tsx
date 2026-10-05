@@ -1,7 +1,8 @@
-// app/admin/configuracoes/TarefasTab.tsx
+// app/admin/configuracoes/_tarefas/TarefasTab.tsx
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { ListChecks, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { UserSetor } from '@/lib/types'
 import {
   listarTarefaTiposDoSetor,
@@ -11,6 +12,17 @@ import {
   type TarefaTipoResumo,
   type UsuarioDoSetor,
 } from '@/lib/tarefa-tipo-vinculos-actions'
+import { Card } from '@/components/ui/Card'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
+import { Badge } from '@/components/ui/Badge'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Select } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { useConfirmar } from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
+import { cn } from '@/components/ui/cn'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import EditarTipoTarefaModal from '@/components/geral/EditarTipoTarefaModal'
 
@@ -18,9 +30,17 @@ interface Props {
   setor: UserSetor
 }
 
-const inputCls = "px-3 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50"
+// Mesma regra de formatoInicial() em EditarTipoTarefaModal: tipo "data" com
+// etapas é o formato "Opções".
+function rotuloFormato(item: TarefaTipoResumo): string {
+  if (item.tipoResposta === 'checklist') return 'Checkbox com opções'
+  if (item.etapas && item.etapas.length > 0) return 'Opções'
+  return item.tipoResposta === 'texto' ? 'Texto e anexo' : 'Data'
+}
 
 export default function TarefasTab({ setor }: Props) {
+  const confirmar = useConfirmar()
+  const avisar = useToast()
   const [itens, setItens] = useState<TarefaTipoResumo[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioDoSetor[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -31,7 +51,6 @@ export default function TarefasTab({ setor }: Props) {
   const [editando, setEditando] = useState<TarefaTipoResumo | null>(null)
 
   const recarregar = useCallback(async () => {
-    setCarregando(true)
     const [{ data, error }, { data: usuariosData }] = await Promise.all([
       listarTarefaTiposDoSetor(setor),
       listarUsuariosDoSetor(setor),
@@ -42,7 +61,10 @@ export default function TarefasTab({ setor }: Props) {
     setCarregando(false)
   }, [setor])
 
-  useEffect(() => { recarregar() }, [recarregar])
+  useEffect(() => {
+    async function iniciar() { await recarregar() }
+    iniciar()
+  }, [recarregar])
 
   async function handleResponsavelChange(item: TarefaTipoResumo, responsavelId: string) {
     setSalvandoResponsavel(item.id)
@@ -52,79 +74,109 @@ export default function TarefasTab({ setor }: Props) {
     else {
       setErro(null)
       setItens(prev => prev.map(i => i.id === item.id ? { ...i, responsavelId: valor } : i))
+      avisar('Salvo', 'ok')
     }
     setSalvandoResponsavel(null)
   }
 
   async function handleExcluir(item: TarefaTipoResumo) {
-    if (!confirm(`Excluir a tarefa "${item.nome}"? Essa ação não pode ser desfeita e remove também os vínculos dela com regimes/grupos/atividades.`)) return
+    const ok = await confirmar({
+      titulo: `Excluir a tarefa "${item.nome}"?`,
+      descricao: 'Essa ação não pode ser desfeita e remove também os vínculos dela com regimes/grupos/atividades.',
+      textoConfirmar: 'Excluir',
+      perigo: true,
+    })
+    if (!ok) return
     const { error } = await excluirTarefaTipo(item.id)
     if (error) { setErro(error); return }
     setErro(null)
+    avisar('Tarefa excluída.', 'ok')
     await recarregar()
   }
 
+  function abrirCriacao() {
+    if (novoNome.trim()) setMostrarModal(true)
+  }
+
   return (
-    <div>
-      <div className="flex gap-2 mb-6">
-        <input
-          value={novoNome}
-          onChange={e => setNovoNome(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && novoNome.trim() && setMostrarModal(true)}
-          placeholder="Nova tarefa..."
-          className={inputCls + ' flex-1'}
-        />
-        <button
-          onClick={() => novoNome.trim() && setMostrarModal(true)}
-          disabled={!novoNome.trim()}
-          className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50"
-        >
-          + Criar
-        </button>
+    <div className="flex min-w-0 flex-col gap-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field rotulo="Nome" className="min-w-[14rem] flex-1">
+          {c => (
+            <Input
+              id={c.id}
+              value={novoNome}
+              onChange={e => setNovoNome(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') abrirCriacao() }}
+              placeholder="Nome da nova tarefa"
+            />
+          )}
+        </Field>
+        <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={abrirCriacao} disabled={!novoNome.trim()}>
+          Criar tarefa
+        </Button>
       </div>
 
-      {erro && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-          ⚠ {erro}
-        </div>
-      )}
+      {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
 
-      {carregando ? (
-        <p className="text-[var(--fg)]/40 text-sm">Carregando...</p>
-      ) : itens.length === 0 ? (
-        <p className="text-[var(--fg)]/40 text-sm">Nenhuma tarefa cadastrada nesse setor ainda.</p>
-      ) : (
-        <ul className="space-y-2">
-          {itens.map(item => (
-            <li key={item.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8">
-              <span className={`flex-1 text-sm ${item.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
-                {item.nome}
-              </span>
-
-              <select
-                value={item.responsavelId ?? ''}
-                onChange={e => handleResponsavelChange(item, e.target.value)}
-                disabled={salvandoResponsavel === item.id}
-                className={inputCls + ' text-xs py-1.5 disabled:opacity-50'}
-                title="Responsável exclusivo por esse tipo de tarefa, em todos os clientes"
-              >
-                <option value="">— Ninguém (regra normal) —</option>
-                {usuarios.map(u => (
-                  <option key={u.id} value={u.id}>{u.nome}</option>
+      <Card semPadding className="overflow-hidden">
+        {carregando && itens.length === 0 ? (
+          <p className="px-[18px] py-6 text-sm text-fg-3">Carregando…</p>
+        ) : itens.length === 0 ? (
+          <EmptyState icone={<ListChecks size={24} />} titulo="Nenhuma tarefa cadastrada nesse setor ainda" descricao="Crie pelo campo acima." />
+        ) : (
+          <div className="relative overflow-x-auto xl:overflow-visible">
+            <Tabela className="min-w-[860px]">
+              <thead>
+                <tr>
+                  <Th>Tarefa</Th>
+                  <Th largura={170}>Formato</Th>
+                  <Th largura={300}>Responsável exclusivo</Th>
+                  <Th largura={120}><span className="sr-only">Editar</span></Th>
+                  <Th largura={56}><span className="sr-only">Excluir</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {itens.map(item => (
+                  <tr key={item.id}>
+                    <Td>
+                      <span className={cn('block truncate font-semibold', item.ativo ? 'text-fg' : 'text-fg-3 line-through')} title={item.nome}>
+                        {item.nome}
+                      </span>
+                    </Td>
+                    <Td><Badge tom="neu">{rotuloFormato(item)}</Badge></Td>
+                    <Td>
+                      <Select
+                        aria-label={`Responsável exclusivo de ${item.nome}`}
+                        value={item.responsavelId ?? ''}
+                        onChange={e => handleResponsavelChange(item, e.target.value)}
+                        disabled={salvandoResponsavel === item.id}
+                        className="h-[34px]"
+                        title="Responsável exclusivo por esse tipo de tarefa, em todos os clientes"
+                      >
+                        <option value="">Ninguém (regra normal)</option>
+                        {usuarios.map(u => (
+                          <option key={u.id} value={u.id}>{u.nome}</option>
+                        ))}
+                      </Select>
+                    </Td>
+                    <Td alinhar="dir">
+                      <Button tamanho="p" icone={<Pencil size={15} aria-hidden="true" />} onClick={() => setEditando(item)}>Editar</Button>
+                    </Td>
+                    <Td alinhar="dir">
+                      <IconButton rotulo={`Excluir ${item.nome}`} icone={<Trash2 size={16} aria-hidden="true" />} onClick={() => handleExcluir(item)} />
+                    </Td>
+                  </tr>
                 ))}
-              </select>
+              </tbody>
+            </Tabela>
+          </div>
+        )}
+      </Card>
 
-              <button onClick={() => setEditando(item)} className="text-xs text-[var(--fg)]/50 hover:text-[var(--fg)]">
-                Editar
-              </button>
-
-              <button onClick={() => handleExcluir(item)} className="text-xs text-red-400/70 hover:text-red-400">
-                Excluir
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <p className="text-[13px] text-fg-3">
+        &quot;Responsável exclusivo&quot; leva a tarefa para Minhas tarefas daquela pessoa em todos os clientes. A troca salva na hora e mostra &quot;Salvo&quot;.
+      </p>
 
       {mostrarModal && (
         <NovoTipoTarefaModal
