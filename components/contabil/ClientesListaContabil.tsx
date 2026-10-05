@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Check, Clock, Plus, Search, SlidersHorizontal, StickyNote, Users } from 'lucide-react'
+import { Check, Clock, Plus, Search, SlidersHorizontal, StickyNote, Users, X } from 'lucide-react'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComContabil } from '@/lib/clientes-contabil'
 import type { PendenciaVinculo } from '@/lib/vinculos'
@@ -80,6 +80,28 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
   // No celular os filtros ficam recolhidos; o botão fica destacado quando
   // algum deles está em uso, para ninguém achar que a lista está incompleta.
   const filtrosAtivos = [filtroResponsavel !== 'TODOS', filtroRegime !== 'TODOS', filtroPrioridade !== 'TODOS', mostrarDesabilitados].filter(Boolean).length
+  const temFiltro = busca.trim() !== '' || filtrosAtivos > 0
+
+  function limparFiltros() {
+    setBusca('')
+    setFiltroResponsavel('TODOS')
+    setFiltroRegime('TODOS')
+    setFiltroPrioridade('TODOS')
+    setMostrarDesabilitados(false)
+  }
+
+  const vazio = clientes.length === 0 ? (
+    <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente cadastrado" descricao="Os clientes do Contábil aparecem aqui assim que forem cadastrados." />
+  ) : temFiltro ? (
+    <EmptyState
+      icone={<Users size={24} />}
+      titulo="Nenhum cliente com esses filtros"
+      descricao={`Há ${clientes.length} ${clientes.length === 1 ? 'cliente' : 'clientes'} no Contábil, mas nenhum com a busca e os filtros escolhidos.`}
+      acao={<Button icone={<X size={16} aria-hidden="true" />} onClick={limparFiltros}>Limpar filtros</Button>}
+    />
+  ) : (
+    <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente ativo" descricao="Todos os clientes do Contábil estão desabilitados. Ligue “Mostrar desabilitados” nos filtros para vê-los." />
+  )
 
   const subtitulo = (
     <>
@@ -153,7 +175,7 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
       )}
 
       {filtrados.length === 0 ? (
-        <Card><EmptyState icone={<Users size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou os filtros." /></Card>
+        <Card>{vazio}</Card>
       ) : (
         <Card semPadding className="overflow-hidden">
           {filtrados.map(cliente => {
