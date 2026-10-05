@@ -130,7 +130,7 @@ export default function LinksUteis({ links, isAdmin }: { links: LinkRapido[]; is
   )
 
   return (
-    <Card titulo="Links úteis" meta={<Badge>{ativos.length}</Badge>} acoes={acoes} semPadding>
+    <Card titulo={editando ? 'Editando os links úteis' : 'Links úteis'} meta={<Badge>{ativos.length}</Badge>} acoes={acoes} semPadding>
       {editando ? (
         <div className="flex flex-col gap-3 p-4">
           {pendentes.length > 0 && (
