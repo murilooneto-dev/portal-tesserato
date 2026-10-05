@@ -232,7 +232,7 @@ export default function MinhasTarefasSecao({
         <p className="px-[18px] py-4 text-sm text-fg-3">Nenhum cliente encontrado com esse filtro.</p>
       ) : (
         <>
-          <div className="hidden sm:block"><div className="relative overflow-x-auto">
+          <div className="hidden sm:block"><div className="relative overflow-x-auto overflow-y-hidden">
             <Tabela className="min-w-[640px]">
               <thead>
                 <tr>

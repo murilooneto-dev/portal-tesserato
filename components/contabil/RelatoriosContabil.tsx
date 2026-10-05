@@ -265,7 +265,7 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
 
           {/* Tela larga: tabela */}
           <Card semPadding className="hidden overflow-hidden sm:block">
-            <div className="relative overflow-x-auto">
+            <div className="relative overflow-x-auto overflow-y-hidden">
               <Tabela className="min-w-[1000px]">
                 <thead>
                   <tr>

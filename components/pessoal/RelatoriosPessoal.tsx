@@ -256,7 +256,7 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
 
           {/* Tela larga: tabela */}
           <Card semPadding className="hidden overflow-hidden sm:block">
-            <div className="relative overflow-x-auto">
+            <div className="relative overflow-x-auto overflow-y-hidden">
               <Tabela className="min-w-[1000px]">
                 <thead>
                   <tr>
