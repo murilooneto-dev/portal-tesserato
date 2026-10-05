@@ -112,3 +112,49 @@ test('seletor com busca: lupa, seta, linhas de 44px e escolhido em destaque', ()
   for (const t of ['<Search', '<ChevronDown', 'min-h-11', 'bg-acc-soft', 'role="combobox"', 'role="listbox"', 'Nenhum resultado',
     "onChange('')", "e.key === 'Escape'", 'bottom-full']) assert.ok(src.includes(t), t)
 })
+
+const REL_PAGINA = 'app/financeiro/relatorios/page.tsx'
+const REL_CLIENTE = 'app/financeiro/relatorios/RelatoriosFinanceiroClient.tsx'
+
+for (const arq of [REL_PAGINA, REL_CLIENTE]) {
+  test(`${arq}: sem fontes pequenas, sem [var(--fg)], sem emoji, sem confirm/alert`, () => {
+    const src = ler(arq)
+    assert.doesNotMatch(src, /text-\[(9|10|11)px\]/)
+    assert.ok(!src.includes('[var(--fg)]'))
+    assert.doesNotMatch(src, /[\u{1F300}-\u{1FAFF}]|[✓⚠×]/u)
+    assert.doesNotMatch(src, /(^|[^.\w])(confirm|alert)\(/)
+  })
+}
+
+test('relatório: busca em blocos com os mesmos filtros, sem o corte em 1000', () => {
+  const src = ler(REL_PAGINA)
+  for (const t of ['buscarEmBlocos', '.range(inicio, fim)', ".order('data', { ascending: false })", ".eq('natureza', natureza)",
+    ".eq('tipo_id', tipoId)", ".eq('centro_custo_id', centroCustoId)", ".gte('data', de)", ".lte('data', ate)",
+    'tiposEntrada={tiposEntrada ?? []}', 'tiposSaida={tiposSaida ?? []}', 'centrosCusto={centrosCusto ?? []}']) assert.ok(src.includes(t), t)
+  assert.ok(!src.includes('.limit('))
+  // Só leitura.
+  assert.doesNotMatch(src, /\.(insert|update|delete|upsert)\(/)
+})
+
+test('relatório: desenho fn-02', () => {
+  const src = ler(REL_CLIENTE)
+  for (const t of ['titulo="Relatórios"', 'subtitulo="Entradas e saídas no período escolhido"', '<Printer', 'Imprimir ou salvar PDF',
+    'window.print()', 'hidden print:block', 'rotulo="Natureza"', 'rotulo="Tipo"', 'rotulo="Centro de custo"', 'rotulo="De"', 'rotulo="Até"',
+    'sm:w-[130px]', 'sm:w-[160px]', 'sm:w-[150px]', '<Filter', 'Aplicar filtros', '>Limpar<',
+    "label: 'Entradas'", "label: 'Saídas'", "label: 'Saldo'", 'saldo < 0 ? COR_SAIDA : COR_ENTRADA', 'formatarValorComSinal(saldo)',
+    'sm:grid-cols-3', 'text-ok print:text-emerald-700', 'text-danger print:text-red-700',
+    '<Badge tom="ok" icone={<ArrowDownLeft', '<Badge tom="dng" icone={<ArrowUpRight',
+    'w-[130px]', 'w-[200px]', 'w-[180px]', 'w-[190px]', 'relative overflow-x-auto xl:overflow-visible',
+    'formatarValorComSinal(-m.valor)', '<EmptyState', 'Nenhum registro', 'sm:hidden print:hidden']) assert.ok(src.includes(t), t)
+  assert.match(src, /<Card semPadding className="[^"]*overflow-hidden[^"]*">/)
+  // Sem a coluna "#".
+  assert.ok(!src.includes('>#<'))
+})
+
+test('relatório: filtros continuam na URL e o Tipo depende da natureza', () => {
+  const src = ler(REL_CLIENTE)
+  for (const t of ["params.set('natureza', form.natureza)", "params.set('tipoId', form.tipoId)", "params.set('centroCustoId', form.centroCustoId)",
+    "params.set('de', form.de)", "params.set('ate', form.ate)", 'router.push(`/financeiro/relatorios?${params.toString()}`)',
+    "router.push('/financeiro/relatorios')", "natureza: e.target.value, tipoId: ''",
+    "form.natureza === 'saida' ? tiposSaida : form.natureza === 'entrada' ? tiposEntrada : [...tiposEntrada, ...tiposSaida]"]) assert.ok(src.includes(t), t)
+})

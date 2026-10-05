@@ -2,6 +2,17 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowDownLeft, ArrowUpRight, ClipboardList, Filter, Printer } from 'lucide-react'
+import { formatarDdMm } from '@/lib/formatar-data'
+import { formatarValor, formatarValorComSinal } from '@/lib/financeiro-movimentos'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Input, Select } from '@/components/ui/Input'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 
 export interface MovimentoRelatorio {
   id: string
@@ -33,20 +44,25 @@ interface Props {
 
 const NATUREZA_LABEL: Record<string, string> = { entrada: 'Entrada', saida: 'Saída' }
 
-function formatarData(iso: string): string {
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
+// Verde para o que entra, vermelho para o que sai; no papel a cor continua.
+const COR_ENTRADA = 'text-ok print:text-emerald-700'
+const COR_SAIDA = 'text-danger print:text-red-700'
+
+function SeloNatureza({ natureza }: { natureza: 'entrada' | 'saida' }) {
+  return natureza === 'entrada'
+    ? <Badge tom="ok" icone={<ArrowDownLeft size={14} aria-hidden="true" />}>Entrada</Badge>
+    : <Badge tom="dng" icone={<ArrowUpRight size={14} aria-hidden="true" />}>Saída</Badge>
 }
 
-function formatarValor(v: number): string {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+// Saída sai com o sinal na frente: "- R$ 1.750,00".
+function valorDoMovimento(m: MovimentoRelatorio): string {
+  return m.natureza === 'entrada' ? formatarValor(m.valor) : formatarValorComSinal(-m.valor)
 }
-
-const inputCls = "px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
 
 export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, tiposSaida, centrosCusto, filtros }: Props) {
   const router = useRouter()
   const [form, setForm] = useState(filtros)
+  const [geradoEm] = useState(() => new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }))
 
   const opcoesTipo = form.natureza === 'saida' ? tiposSaida : form.natureza === 'entrada' ? tiposEntrada : [...tiposEntrada, ...tiposSaida]
 
@@ -54,8 +70,8 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
     form.natureza && `Natureza: ${NATUREZA_LABEL[form.natureza] ?? form.natureza}`,
     form.tipoId && `Tipo: ${opcoesTipo.find(t => t.id === form.tipoId)?.nome ?? form.tipoId}`,
     form.centroCustoId && `Centro de custo: ${centrosCusto.find(c => c.id === form.centroCustoId)?.nome ?? form.centroCustoId}`,
-    form.de && `De: ${formatarData(form.de)}`,
-    form.ate && `Até: ${formatarData(form.ate)}`,
+    form.de && `De: ${formatarDdMm(form.de)}`,
+    form.ate && `Até: ${formatarDdMm(form.ate)}`,
   ].filter(Boolean).join(' — ')
 
   function aplicar() {
@@ -76,111 +92,149 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
   const totalEntradas = movimentos.filter(m => m.natureza === 'entrada').reduce((acc, m) => acc + m.valor, 0)
   const totalSaidas = movimentos.filter(m => m.natureza === 'saida').reduce((acc, m) => acc + m.valor, 0)
   const saldo = totalEntradas - totalSaidas
-  const corSaldo = saldo >= 0 ? 'text-emerald-400 print:text-emerald-700' : 'text-red-400 print:text-red-700'
+
+  const kpis = [
+    { label: 'Entradas', val: formatarValor(totalEntradas), cor: COR_ENTRADA },
+    { label: 'Saídas', val: formatarValor(totalSaidas), cor: COR_SAIDA },
+    { label: 'Saldo', val: formatarValorComSinal(saldo), cor: saldo < 0 ? COR_SAIDA : COR_ENTRADA },
+  ]
 
   return (
-    <div className="p-8 max-w-6xl mx-auto print:p-0 print:max-w-none">
-      <div className="print:hidden flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[var(--fg)]">Relatórios — Financeiro</h1>
-        <button onClick={() => window.print()}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors">
-          Gerar relatório
-        </button>
-      </div>
+    <Pagina className="print:p-0">
+      <CabecalhoPagina
+        className="print:hidden"
+        titulo="Relatórios"
+        subtitulo="Entradas e saídas no período escolhido"
+        acoes={
+          <Button variante="primario" icone={<Printer size={16} aria-hidden="true" />} onClick={() => window.print()}>
+            Imprimir ou salvar PDF
+          </Button>
+        }
+      />
 
-      <div className="print:hidden bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-5 mb-6 flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1">Natureza</label>
-          <select className={inputCls} value={form.natureza} onChange={e => setForm(p => ({ ...p, natureza: e.target.value, tipoId: '' }))}>
-            <option value="" className="bg-[var(--bg-surface)]">Todas</option>
-            <option value="entrada" className="bg-[var(--bg-surface)]">Entrada</option>
-            <option value="saida" className="bg-[var(--bg-surface)]">Saída</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1">Tipo</label>
-          <select className={inputCls} value={form.tipoId} onChange={e => setForm(p => ({ ...p, tipoId: e.target.value }))}>
-            <option value="" className="bg-[var(--bg-surface)]">Todos</option>
-            {opcoesTipo.map(t => (
-              <option key={t.id} value={t.id} className="bg-[var(--bg-surface)]">{t.nome}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1">Centro de custo</label>
-          <select className={inputCls} value={form.centroCustoId} onChange={e => setForm(p => ({ ...p, centroCustoId: e.target.value }))}>
-            <option value="" className="bg-[var(--bg-surface)]">Todos</option>
-            {centrosCusto.map(c => (
-              <option key={c.id} value={c.id} className="bg-[var(--bg-surface)]">{c.nome}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1">De</label>
-          <input type="date" className={inputCls} value={form.de} onChange={e => setForm(p => ({ ...p, de: e.target.value }))} />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1">Até</label>
-          <input type="date" className={inputCls} value={form.ate} onChange={e => setForm(p => ({ ...p, ate: e.target.value }))} />
-        </div>
-        <button onClick={aplicar} className="px-4 py-2 rounded-lg bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] text-sm font-semibold hover:bg-[var(--accent)]/30 transition-colors">
-          Filtrar
-        </button>
-        <button onClick={limpar} className="px-4 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/40 text-sm hover:bg-[var(--fg)]/10 transition-colors">
-          Limpar
-        </button>
-      </div>
-
-      <div className="hidden print:block mb-4">
-        <h1 className="text-lg font-bold text-black">Relatório Financeiro</h1>
-        {filtrosAplicados && <p className="text-xs text-black/70 mt-1">Filtros: {filtrosAplicados}</p>}
-        <p className="text-xs text-black/50 mt-1">Gerado em {new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-      </div>
-
-      <div className="flex flex-wrap gap-4 mb-6 px-5 py-4 rounded-2xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 print:border-black/20 print:bg-transparent">
-        <div>
-          <p className="text-[10px] font-bold text-[var(--fg)]/40 print:text-black/60 uppercase tracking-widest mb-1">Entradas</p>
-          <p className="text-base font-semibold text-[var(--fg)] print:text-black">{formatarValor(totalEntradas)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-bold text-[var(--fg)]/40 print:text-black/60 uppercase tracking-widest mb-1">Saídas</p>
-          <p className="text-base font-semibold text-[var(--fg)] print:text-black">{formatarValor(totalSaidas)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-bold text-[var(--fg)]/40 print:text-black/60 uppercase tracking-widest mb-1">Saldo</p>
-          <p className={`text-base font-semibold ${corSaldo}`}>{formatarValor(saldo)}</p>
-        </div>
-      </div>
-
-      <div className="overflow-auto rounded-2xl border border-[var(--fg)]/8 print:overflow-visible print:border-black/20 print:rounded-none">
-        <table className="w-full text-xs border-collapse print:table-fixed">
-          <thead>
-            <tr className="border-b border-[var(--fg)]/8 print:border-black/20 bg-[var(--fg)]/3 print:bg-transparent">
-              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[10%]">Data</th>
-              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[9%]">Natureza</th>
-              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[18%]">Tipo</th>
-              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[17%]">Centro de custo</th>
-              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[31%]">Observação</th>
-              <th className="text-left px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/40 print:text-black font-semibold whitespace-nowrap print:w-[15%]">Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {movimentos.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-6 text-center text-[var(--fg)]/20">Nenhum registro</td></tr>
+      <Card className="print:hidden">
+        <form
+          className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap"
+          onSubmit={e => { e.preventDefault(); aplicar() }}
+        >
+          <Field rotulo="Natureza" className="col-span-2 sm:w-[130px]">
+            {c => (
+              <Select id={c.id} value={form.natureza} onChange={e => setForm(p => ({ ...p, natureza: e.target.value, tipoId: '' }))}>
+                <option value="">Todas</option>
+                <option value="entrada">Entrada</option>
+                <option value="saida">Saída</option>
+              </Select>
             )}
-            {movimentos.map(m => (
-              <tr key={m.id} className="border-b border-[var(--fg)]/5 print:border-black/10 hover:bg-[var(--fg)]/2 align-top">
-                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/50 print:text-black whitespace-nowrap">{formatarData(m.data)}</td>
-                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/70 print:text-black whitespace-nowrap">{NATUREZA_LABEL[m.natureza]}</td>
-                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/70 print:text-black break-words max-w-[180px]">{m.tipo_nome}</td>
-                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/70 print:text-black break-words max-w-[160px]">{m.centro_custo_nome ?? '—'}</td>
-                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)]/50 print:text-black break-words max-w-[260px]">{m.observacao ?? '—'}</td>
-                <td className="px-3 py-2.5 print:px-1.5 print:py-1 text-[var(--fg)] print:text-black font-medium whitespace-nowrap">{formatarValor(m.valor)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          </Field>
+          <Field rotulo="Tipo" className="col-span-2 sm:w-[160px]">
+            {c => (
+              <Select id={c.id} value={form.tipoId} onChange={e => setForm(p => ({ ...p, tipoId: e.target.value }))}>
+                <option value="">Todos</option>
+                {opcoesTipo.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+              </Select>
+            )}
+          </Field>
+          <Field rotulo="Centro de custo" className="col-span-2 sm:w-[160px]">
+            {c => (
+              <Select id={c.id} value={form.centroCustoId} onChange={e => setForm(p => ({ ...p, centroCustoId: e.target.value }))}>
+                <option value="">Todos</option>
+                {centrosCusto.map(cc => <option key={cc.id} value={cc.id}>{cc.nome}</option>)}
+              </Select>
+            )}
+          </Field>
+          <Field rotulo="De" className="sm:w-[150px]">
+            {c => <Input id={c.id} type="date" value={form.de} onChange={e => setForm(p => ({ ...p, de: e.target.value }))} />}
+          </Field>
+          <Field rotulo="Até" className="sm:w-[150px]">
+            {c => <Input id={c.id} type="date" value={form.ate} onChange={e => setForm(p => ({ ...p, ate: e.target.value }))} />}
+          </Field>
+          <div className="col-span-2 flex items-center gap-2.5">
+            <Button type="submit" variante="secundario" icone={<Filter size={16} aria-hidden="true" />}>Aplicar filtros</Button>
+            <Button variante="fantasma" onClick={limpar}>Limpar</Button>
+          </div>
+        </form>
+      </Card>
+
+      <div className="hidden print:block">
+        <h1 className="text-lg font-bold text-black">Relatório Financeiro</h1>
+        {filtrosAplicados && <p className="mt-1 text-xs text-black/70">Filtros: {filtrosAplicados}</p>}
+        <p className="mt-1 text-xs text-black/50" suppressHydrationWarning>Gerado em {geradoEm}</p>
       </div>
-    </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 print:grid-cols-3">
+        {kpis.map(k => (
+          <div key={k.label} className="min-w-0 rounded-xl border border-line-soft bg-surface px-5 py-[18px] print:border-black/20 print:px-3 print:py-2">
+            <p className="text-[13px] font-medium text-fg-3 print:text-black/60">{k.label}</p>
+            <p className={`mt-1.5 truncate text-2xl font-semibold leading-tight tabular-nums xl:text-[30px] print:text-base ${k.cor}`} title={k.val}>{k.val}</p>
+          </div>
+        ))}
+      </div>
+
+      {movimentos.length === 0 ? (
+        <Card><EmptyState icone={<ClipboardList size={24} />} titulo="Nenhum registro" descricao="Mude os filtros." /></Card>
+      ) : (
+        <>
+          {/* Celular: um cartão por lançamento */}
+          <div className="flex flex-col gap-3 sm:hidden print:hidden">
+            {movimentos.map(m => (
+              <div key={m.id} className="flex min-w-0 flex-col gap-2 rounded-xl border border-line-soft bg-surface p-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <p className="min-w-0 flex-1 truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</p>
+                  <b className={`flex-none font-mono text-sm font-semibold tabular-nums ${m.natureza === 'entrada' ? COR_ENTRADA : COR_SAIDA}`}>{valorDoMovimento(m)}</b>
+                </div>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
+                  <SeloNatureza natureza={m.natureza} />
+                  <span className="font-mono tabular-nums text-fg-2">{formatarDdMm(m.data)}</span>
+                  {m.centro_custo_nome && <span className="min-w-0 truncate text-fg-3" title={m.centro_custo_nome}>{m.centro_custo_nome}</span>}
+                </div>
+                {m.observacao && <p className="break-words text-[13px] text-fg-2">{m.observacao}</p>}
+              </div>
+            ))}
+          </div>
+
+          {/* Tela larga e impressão: tabela */}
+          <Card semPadding className="hidden overflow-hidden sm:block print:block print:overflow-visible print:rounded-none print:border-black/20">
+            <div className="relative overflow-x-auto xl:overflow-visible print:overflow-visible">
+              <Tabela className="min-w-[980px] print:min-w-0 print:text-xs">
+                <thead>
+                  <tr>
+                    <Th className="w-[130px] print:w-[11%]">Data</Th>
+                    <Th className="w-[130px] print:w-[11%]">Natureza</Th>
+                    <Th className="w-[200px] print:w-[18%]">Tipo</Th>
+                    <Th className="w-[180px] print:w-[16%]">Centro de custo</Th>
+                    <Th>Observação</Th>
+                    <Th alinhar="dir" className="w-[190px] print:w-[18%]">Valor</Th>
+                  </tr>
+                </thead>
+                <tbody className="[&>tr:last-child>td]:border-b-0 print:[&_td]:px-1.5 print:[&_td]:py-1">
+                  {movimentos.map(m => (
+                    <tr key={m.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
+                      <Td className="whitespace-nowrap font-mono text-[13px] tabular-nums text-fg-2 print:text-xs">{formatarDdMm(m.data)}</Td>
+                      <Td><SeloNatureza natureza={m.natureza} /></Td>
+                      <Td>
+                        <span className="block truncate font-semibold text-fg print:whitespace-normal print:break-words" title={m.tipo_nome}>{m.tipo_nome}</span>
+                      </Td>
+                      <Td>
+                        {m.centro_custo_nome
+                          ? <span className="block truncate text-fg-2 print:whitespace-normal print:break-words" title={m.centro_custo_nome}>{m.centro_custo_nome}</span>
+                          : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td>
+                        {m.observacao
+                          ? <span className="block truncate text-fg-2 print:whitespace-normal print:break-words" title={m.observacao}>{m.observacao}</span>
+                          : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td alinhar="dir" className={`whitespace-nowrap font-mono font-semibold tabular-nums ${m.natureza === 'entrada' ? COR_ENTRADA : COR_SAIDA}`}>
+                        {valorDoMovimento(m)}
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Tabela>
+            </div>
+          </Card>
+        </>
+      )}
+    </Pagina>
   )
 }
