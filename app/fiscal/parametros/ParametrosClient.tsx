@@ -7,9 +7,6 @@ import type { Profile } from '@/lib/types'
 import { SETORES, SETOR_LABEL, type UserSetor } from '@/lib/types'
 import { PAGINAS_POR_SETOR } from '@/lib/paginas-setor'
 import { salvarComunicado, atualizarPerfil, criarUsuario, deletarUsuario, salvarConfiguracoes } from './actions'
-import { analisarParcelamentosDuplicados, limparParcelamentosDuplicados } from './actions'
-import type { GrupoParcelamentoDuplicado } from './actions'
-import DevLock from '@/components/fiscal/DevLock'
 
 interface TaskLog {
   id: string
@@ -99,35 +96,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
 
   // Logs modais
   const [logModal, setLogModal] = useState<'tarefas' | null>(null)
-
-  // Parcelamentos duplicados
-  const [analisandoParcelamentos, setAnalisandoParcelamentos] = useState(false)
-  const [analiseParcelamentos, setAnaliseParcelamentos] = useState<{ grupos: GrupoParcelamentoDuplicado[] } | null>(null)
-  const [aplicandoParcelamentos, setAplicandoParcelamentos] = useState(false)
-  const [parcelamentosMsg, setParcelamentosMsg] = useState('')
-
-  async function handleAnalisarParcelamentosDuplicados() {
-    setAnalisandoParcelamentos(true)
-    setParcelamentosMsg('')
-    setAnaliseParcelamentos(null)
-    const result = await analisarParcelamentosDuplicados()
-    setAnalisandoParcelamentos(false)
-    if (result.error) { setParcelamentosMsg(`Erro: ${result.error}`); return }
-    if (result.grupos.length === 0) { setParcelamentosMsg('Nenhuma duplicata encontrada.'); return }
-    setAnaliseParcelamentos(result)
-  }
-
-  async function handleAplicarLimpezaParcelamentos() {
-    setAplicandoParcelamentos(true)
-    const result = await limparParcelamentosDuplicados()
-    setAplicandoParcelamentos(false)
-    setAnaliseParcelamentos(null)
-    if (result.error) {
-      setParcelamentosMsg(`Erro: ${result.error}`)
-    } else {
-      setParcelamentosMsg(`Concluído — ${result.gruposMesclados} grupo(s) mesclados, ${result.linhasRemovidas} linha(s) removida(s)`)
-    }
-  }
 
   async function handleSaveComunicado() {
     setSavingAnn(true)
@@ -574,81 +542,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
           </div>
         </div>
 
-        <DevLock>
-        {/* Manutenção de Dados */}
-        <div className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-6">
-          {sectionHeader('Manutenção de Dados')}
-          <p className="text-[var(--fg)]/30 text-xs mb-5">
-            Ferramentas administrativas para corrigir inconsistências nos dados dos clientes.
-          </p>
-
-          {/* Remover parcelamentos duplicados */}
-          <p className="text-[var(--fg)]/60 text-sm font-medium mb-1">Remover parcelamentos duplicados</p>
-          <p className="text-[var(--fg)]/30 text-xs mb-4">
-            Analisa a tabela de Parcelamentos e identifica linhas repetidas (mesma empresa, CNPJ e seção). Mescla os campos preenchidos de cada duplicata numa única linha e remove as sobras.
-          </p>
-
-          {!analiseParcelamentos ? (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleAnalisarParcelamentosDuplicados}
-                disabled={analisandoParcelamentos}
-                className="px-4 py-2 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-50">
-                {analisandoParcelamentos ? 'Analisando...' : 'Analisar duplicatas'}
-              </button>
-              {parcelamentosMsg && (
-                <p className={`text-xs ${parcelamentosMsg.startsWith('Erro') ? 'text-red-400' : parcelamentosMsg.startsWith('Nenhuma') ? 'text-[var(--fg)]/40' : 'text-green-400'}`}>
-                  {parcelamentosMsg}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <p className="text-[var(--fg)]/50 text-xs">
-                {analiseParcelamentos.grupos.length} grupo(s) de duplicata encontrado(s) — {analiseParcelamentos.grupos.reduce((s, g) => s + g.quantidade, 0)} linhas ao todo, viram {analiseParcelamentos.grupos.length} após mesclar.
-              </p>
-
-              <div className="rounded-xl border border-[var(--fg)]/8 overflow-hidden max-h-64 overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-[var(--fg)]/8 bg-[var(--fg)]/3">
-                      <th className="text-left px-4 py-2.5 text-[var(--fg)]/40 font-semibold">Empresa</th>
-                      <th className="text-left px-4 py-2.5 text-[var(--fg)]/40 font-semibold">CNPJ</th>
-                      <th className="text-left px-4 py-2.5 text-[var(--fg)]/40 font-semibold">Seção</th>
-                      <th className="text-right px-4 py-2.5 text-[var(--fg)]/40 font-semibold">Cópias</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {analiseParcelamentos.grupos.map(g => (
-                      <tr key={g.chave} className="border-b border-[var(--fg)]/5 last:border-0">
-                        <td className="px-4 py-3 text-[var(--fg)]/70">{g.empresa}</td>
-                        <td className="px-4 py-3 text-[var(--fg)]/40">{g.cnpj ?? '—'}</td>
-                        <td className="px-4 py-3 text-[var(--fg)]/40">{g.secao}</td>
-                        <td className="px-4 py-3 text-right text-orange-300 font-semibold">{g.quantidade}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleAplicarLimpezaParcelamentos}
-                  disabled={aplicandoParcelamentos}
-                  className="px-4 py-2 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-50">
-                  {aplicandoParcelamentos ? 'Aplicando...' : 'Mesclar e remover duplicatas'}
-                </button>
-                <button
-                  onClick={() => { setAnaliseParcelamentos(null); setParcelamentosMsg('') }}
-                  className="px-4 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/40 text-xs hover:bg-[var(--fg)]/10 transition-colors">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-
-        </div>
-        </DevLock>
       </div>
 
       {/* Log modal */}
