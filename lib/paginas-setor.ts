@@ -19,7 +19,6 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'parcelamentos', label: 'Parcelamentos' },
     { slug: 'preenchimento-rapido', label: 'Preenchimento Rápido' },
     { slug: 'minhas-tarefas', label: 'Minhas Tarefas' },
-    { slug: 'tabelas', label: 'Tabelas' },
   ],
   contabil: [
     { slug: 'dashboard', label: 'Dashboard' },
@@ -27,7 +26,6 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'relatorios', label: 'Relatórios' },
     { slug: 'calendario', label: 'Calendário' },
     { slug: 'preenchimento-rapido', label: 'Preenchimento Rápido' },
-    { slug: 'tabelas', label: 'Tabelas' },
   ],
   pessoal: [
     { slug: 'dashboard', label: 'Dashboard' },
@@ -35,19 +33,16 @@ export const PAGINAS_POR_SETOR: Record<UserSetor, PaginaSetor[]> = {
     { slug: 'relatorios', label: 'Relatórios' },
     { slug: 'calendario', label: 'Calendário' },
     { slug: 'preenchimento-rapido', label: 'Preenchimento Rápido' },
-    { slug: 'tabelas', label: 'Tabelas' },
   ],
   societario: [
     { slug: 'procedimentos', label: 'Procedimentos' },
     { slug: 'clientes', label: 'Clientes' },
-    { slug: 'tabelas', label: 'Tabelas' },
   ],
   financeiro: [
     { slug: 'recebimentos', label: 'Recebimentos' },
     { slug: 'pagamentos', label: 'Pagamentos' },
     { slug: 'clientes', label: 'Clientes' },
     { slug: 'relatorios', label: 'Relatórios' },
-    { slug: 'tabelas', label: 'Tabelas' },
   ],
   configuracoes: [
     { slug: 'fiscal', label: 'Fiscal' },
