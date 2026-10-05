@@ -258,5 +258,6 @@ export interface FinanceiroMovimento {
   data: string
   observacao: string | null
   criado_por: string | null
+  recorrencia_id: string | null
   created_at: string
 }

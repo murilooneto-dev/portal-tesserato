@@ -7,12 +7,14 @@ import {
   criarFinanceiroTipo, criarFinanceiroCentroCusto,
 } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
+import { datasRecorrentes } from '@/lib/financeiro-movimentos'
+import { formatarDdMm } from '@/lib/formatar-data'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from '@/lib/types'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Aviso } from '@/components/ui/Aviso'
 import { Field } from '@/components/ui/Field'
-import { Input, Textarea } from '@/components/ui/Input'
+import { Checkbox, Input, Textarea } from '@/components/ui/Input'
 import SeletorComBusca from './SeletorComBusca'
 
 export interface MovimentoParaEditar {
@@ -57,10 +59,12 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
   const [data, setData] = useState(movimento?.data ?? '')
   const [centroCustoId, setCentroCustoId] = useState(movimento?.centroCustoId ?? '')
   const [observacao, setObservacao] = useState(movimento?.observacao ?? '')
+  const [recorrente, setRecorrente] = useState(false)
 
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState(false)
+  const [quantidadeSalva, setQuantidadeSalva] = useState(1)
 
   const [criandoTipo, setCriandoTipo] = useState(false)
   const [novoTipoNome, setNovoTipoNome] = useState('')
@@ -149,7 +153,19 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     setValor('')
     setCentroCustoId('')
     setObservacao('')
+    setRecorrente(false)
   }
+
+  // Recorrente só existe em pagamento novo: a edição mexe em um mês só.
+  const podeSerRecorrente = natureza === 'saida' && !movimento
+  const datasDaSerie = podeSerRecorrente && recorrente ? datasRecorrentes(data) : []
+  const ajudaRecorrente = !recorrente
+    ? 'Repete este pagamento no mesmo dia de cada mês, até dezembro.'
+    : !data
+      ? 'Escolha a data para ver os meses que serão lançados.'
+      : datasDaSerie.length <= 1
+        ? 'Não há outros meses neste ano: será lançado só este pagamento.'
+        : `Serão ${datasDaSerie.length} lançamentos, um por mês até dezembro: de ${formatarDdMm(datasDaSerie[0])} a ${formatarDdMm(datasDaSerie[datasDaSerie.length - 1])}.`
 
   async function handleSave() {
     const valorNumerico = Number(valor.replace(',', '.'))
@@ -178,6 +194,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           valor: valorNumerico,
           data,
           observacao: observacao.trim() || null,
+          recorrente: podeSerRecorrente && recorrente,
         })
 
     if ('error' in resultado && resultado.error) {
@@ -199,6 +216,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     // Criando: a janela fica aberta pra lançar o próximo em sequência, só
     // limpa os campos (mantém a data — normalmente vários lançamentos do
     // mesmo dia). Fechar ou o X do canto encerram.
+    setQuantidadeSalva('quantidade' in resultado ? resultado.quantidade : 1)
     limparParaProximo()
     setSucesso(true)
   }
@@ -241,7 +259,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     >
       {sucesso && !erro && (
         <Aviso tom="ok">
-          <b>Lançamento salvo.</b> Os campos foram limpos para o próximo; a data foi mantida.
+          {quantidadeSalva > 1 ? <b>{quantidadeSalva} lançamentos salvos.</b> : <b>Lançamento salvo.</b>} Os campos foram limpos para o próximo; a data foi mantida.
         </Aviso>
       )}
 
@@ -351,6 +369,13 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           <Textarea id={c.id} rows={2} value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Opcional" className="min-h-[56px]" />
         )}
       </Field>
+
+      {podeSerRecorrente && (
+        <div>
+          <Checkbox rotulo="Pagamento recorrente" checked={recorrente} onChange={e => setRecorrente(e.target.checked)} disabled={saving} />
+          <p className="mt-1 pl-7 text-[13px] text-fg-3">{ajudaRecorrente}</p>
+        </div>
+      )}
 
       {erro && <Aviso tom="dng">{erro}</Aviso>}
     </Modal>

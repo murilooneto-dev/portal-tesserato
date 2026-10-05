@@ -32,3 +32,24 @@ export function formatarValor(v: number): string {
 export function formatarValorComSinal(v: number): string {
   return v < 0 ? `- ${formatarValor(Math.abs(v))}` : formatarValor(v)
 }
+
+/**
+ * Datas de um pagamento recorrente: a data informada e o mesmo dia de cada
+ * mês seguinte, até dezembro do mesmo ano. Dia que não existe no mês (29, 30,
+ * 31) vira o último dia dele. Contas em ano/mês/dia inteiros, sem `Date`
+ * local, pra não escorregar um dia por causa do fuso (ver lib/formatar-data.ts).
+ */
+export function datasRecorrentes(dataISO: string): string[] {
+  const m = dataISO.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return []
+  const ano = Number(m[1]), mesInicial = Number(m[2]), dia = Number(m[3])
+  const ultimoDia = (mes: number) => new Date(Date.UTC(ano, mes, 0)).getUTCDate()
+  if (mesInicial < 1 || mesInicial > 12 || dia < 1 || dia > ultimoDia(mesInicial)) return []
+
+  const datas: string[] = []
+  for (let mes = mesInicial; mes <= 12; mes++) {
+    const d = Math.min(dia, ultimoDia(mes))
+    datas.push(`${m[1]}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`)
+  }
+  return datas
+}
