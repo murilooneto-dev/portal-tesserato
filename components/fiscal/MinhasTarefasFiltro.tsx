@@ -6,8 +6,9 @@ import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { filtrarClientes } from '@/lib/minhas-tarefas-filtro'
 import type { SecaoRelatorio } from '@/lib/relatorio-minhas-tarefas-pdf'
 import MinhasTarefasSecao from './MinhasTarefasSecao'
-import { FileText, Search } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { FileText, Search, SlidersHorizontal } from 'lucide-react'
+import { Button, IconButton } from '@/components/ui/Button'
+import { cn } from '@/components/ui/cn'
 import { Chip } from '@/components/ui/Chip'
 import { Field } from '@/components/ui/Field'
 import { Input, Select } from '@/components/ui/Input'
@@ -59,6 +60,10 @@ export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas
   const [tarefaFiltro, setTarefaFiltro] = useFiltroPersistente('minhas-tarefas:tarefa', 'TODAS')
   const [atividadeFiltro, setAtividadeFiltro] = useFiltroPersistente<string[]>('minhas-tarefas:atividade', [])
   const [gerandoPdf, setGerandoPdf] = useState(false)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
+  // No celular (mob-10) só a busca fica à mostra; o botão "Filtros" fica
+  // destacado quando algum filtro está em uso.
+  const filtrosAtivos = [tarefaFiltro !== 'TODAS', statusFiltro !== 'TODOS', atividadeFiltro.length > 0].filter(Boolean).length
 
   const secoesFiltradas = useMemo(
     () => secoes.filter(s => tarefaFiltro === 'TODAS' || s.tipo === tarefaFiltro),
@@ -126,9 +131,21 @@ export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <div className="flex flex-wrap items-end gap-3">
-        <Field rotulo="Buscar" className="w-full sm:w-[300px]">
-          {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Nome do cliente" value={busca} onChange={e => setBusca(e.target.value)} />}
-        </Field>
+        <div className="flex w-full min-w-0 items-end gap-2 sm:w-[300px]">
+          <Field rotulo="Buscar" className="min-w-0 flex-1">
+            {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Nome do cliente" value={busca} onChange={e => setBusca(e.target.value)} />}
+          </Field>
+          <IconButton
+            borda
+            rotulo={filtrosAbertos ? 'Esconder filtros' : 'Mostrar filtros'}
+            aria-expanded={filtrosAbertos}
+            aria-controls="filtros-minhas-tarefas"
+            icone={<SlidersHorizontal size={18} aria-hidden="true" />}
+            onClick={() => setFiltrosAbertos(a => !a)}
+            className={cn('h-11 w-11 sm:hidden', filtrosAtivos > 0 && 'border-acc text-acc-text')}
+          />
+        </div>
+        <div id="filtros-minhas-tarefas" className={cn('w-full flex-col gap-3 sm:contents', filtrosAbertos ? 'flex' : 'hidden')}>
         <Field rotulo="Tarefa" className="w-full sm:w-[210px]">
           {c => (
             <Select id={c.id} value={tarefaFiltro} onChange={e => setTarefaFiltro(e.target.value)}>
@@ -146,6 +163,7 @@ export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas
             </Select>
           )}
         </Field>
+        </div>
         <Button
           icone={<FileText size={16} aria-hidden="true" />}
           onClick={handleGerarPdf}
@@ -157,7 +175,7 @@ export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas
       </div>
 
       {atividadesCatalogo.length > 0 && (
-        <div className="flex min-w-0 flex-col gap-1.5">
+        <div className={cn('min-w-0 flex-col gap-1.5 sm:flex', filtrosAbertos ? 'flex' : 'hidden')}>
           <span id="rotulo-minhas-tarefas-atividade" className="text-[13px] font-medium text-fg-2">Atividade</span>
           <div role="group" aria-labelledby="rotulo-minhas-tarefas-atividade" className="flex flex-wrap gap-2">
             {atividadesCatalogo.map(nome => (

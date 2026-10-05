@@ -87,7 +87,7 @@ export default async function TarefasPage() {
 
       <Card semPadding className="overflow-hidden">
         {linhas.length === 0 ? (
-          <EmptyState icone={<ClipboardList size={24} />} titulo="Nenhum cliente encontrado" />
+          <EmptyState icone={<ClipboardList size={24} />} titulo="Nenhum cliente ativo no Fiscal" descricao="As tarefas do mês aparecem aqui assim que houver clientes ativos no setor." />
         ) : (
           <div className="relative overflow-x-auto xl:overflow-visible">
             <Tabela className="min-w-[560px]">

@@ -112,7 +112,7 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
       <Pagina>
         <CabecalhoPagina
           titulo="Minhas tarefas"
-          subtitulo="Tipos de tarefa atribuídos exclusivamente a você, em todos os clientes."
+          subtitulo={somenteLeitura ? `Tipos de tarefa atribuídos a ${nomeAlvo}, em todos os clientes` : 'Tipos de tarefa atribuídos a você, em todos os clientes'}
         />
         {isAdmin && <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />}
         <Card semPadding>
@@ -218,9 +218,7 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
     <Pagina>
       <CabecalhoPagina
         titulo="Minhas tarefas"
-        subtitulo={isAdmin && somenteLeitura
-          ? `Visualizando as tarefas de ${nomeAlvo}.`
-          : 'Tipos de tarefa atribuídos exclusivamente a você, em todos os clientes.'}
+        subtitulo={somenteLeitura ? `Tipos de tarefa atribuídos a ${nomeAlvo}, em todos os clientes` : 'Tipos de tarefa atribuídos a você, em todos os clientes'}
       />
 
       {isAdmin && <MinhasTarefasSeletorUsuario usuarios={usuariosElegiveis} selecionado={usuarioParam} />}
@@ -257,6 +255,7 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
             clientes={clientesTodos}
             eventos={eventosConsolidados}
             podeEditar={!somenteLeitura}
+            mes={mes}
           />
         }
         dossieContent={

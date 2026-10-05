@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Badge, type BadgeTom } from '@/components/ui/Badge'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/components/ui/cn'
 import { STATUS_ROTULO, contarCompromissos, horaCurta, tomDoCompromisso, type Compromisso, type TomCompromisso } from '@/lib/agenda'
 import { PONTO_DO_TOM } from './CalendarioMes'
@@ -47,7 +48,7 @@ export function DiaModal({ aberto, titulo, ehHoje, itens, hoje, onNovo, onEditar
       }
     >
       {itens.length === 0 ? (
-        <p className="py-6 text-center text-sm text-fg-3">Nenhum compromisso neste dia.</p>
+        <EmptyState compacto icone={<CalendarDays size={20} />} titulo="Nenhum compromisso neste dia" descricao="Use “Novo compromisso” para marcar algo nesta data." />
       ) : (
         <ul className="flex flex-col gap-2.5">
           {itens.map(item => {
