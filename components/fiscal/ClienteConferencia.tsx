@@ -269,7 +269,7 @@ export default function ClienteConferencia({ clienteNome, arquivosDTE }: Props) 
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex h-9 min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-lg border border-line bg-raised px-3.5 text-sm font-medium text-fg transition-colors hover:border-fg-3 focus-within:ring-2 focus-within:ring-acc max-sm:h-11">
+          <label className="relative inline-flex h-9 min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-lg border border-line bg-raised px-3.5 text-sm font-medium text-fg transition-colors hover:border-fg-3 focus-within:ring-2 focus-within:ring-acc max-sm:h-11">
             <Upload size={16} aria-hidden="true" className="flex-none" />
             <span className="max-w-[220px] truncate">{sistemFile ? sistemFile.name : 'Planilha do sistema (.xls/.xlsx)'}</span>
             <input

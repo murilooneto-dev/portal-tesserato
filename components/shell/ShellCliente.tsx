@@ -85,7 +85,7 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
         <aside className="hidden w-[72px] shrink-0 border-r border-line-soft bg-nav print:hidden md:flex md:flex-col lg:hidden">
           <TrilhoIcones grupos={grupos} pathname={pathname} />
         </aside>
-        <main id="conteudo" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto pb-16 focus:outline-none print:h-auto print:overflow-visible print:pb-0 md:pb-0">
+        <main id="conteudo" tabIndex={-1} className="relative min-w-0 flex-1 overflow-y-auto pb-16 focus:outline-none print:h-auto print:overflow-visible print:pb-0 md:pb-0">
           <TituloCascaProvider titulo={titulo}>{children}</TituloCascaProvider>
         </main>
       </div>
