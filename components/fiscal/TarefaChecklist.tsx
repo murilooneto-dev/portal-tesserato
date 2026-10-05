@@ -14,7 +14,9 @@ import { Card } from '@/components/ui/Card'
 import { Checkbox, Input, Textarea } from '@/components/ui/Input'
 import { Field } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
+import { ErroSalvamento, IndicadorSalvamento, useSalvamento } from '@/components/geral/TarefasSetorChecklist'
 
+const CHAVE_MIT = '__mit__'
 const MESES_EXTENSO = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
 
 interface TipoInfo {
@@ -98,6 +100,8 @@ export default function TarefaChecklist({
   const [localResposta, setLocalResposta] = useState<Record<string, string>>({})
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null)
   const [erroUpload, setErroUpload] = useState<Record<string, string>>({})
+  // "Salvando… / Salvo / Erro" por tarefa (chave = tipo) e do MIT (CHAVE_MIT).
+  const { estados: salvamento, iniciar, acompanhar } = useSalvamento()
 
   const tipos = tarefasPersonalizadas
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
@@ -128,7 +132,8 @@ export default function TarefaChecklist({
     const novo = !getSemMovimento(tipo)
     setOptimisticSemMovimento(prev => ({ ...prev, [tipo]: novo }))
     setOptimisticDates(prev => ({ ...prev, [tipo]: novo ? new Date().toISOString().slice(0, 10) : null }))
-    startTransition(() => { marcarSemMovimento(clienteId, tipo, mes, ano, novo) })
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, marcarSemMovimento(clienteId, tipo, mes, ano, novo)) })
   }
 
   const concluidas = tipos.filter(t => getSavedIso(t) !== '').length
@@ -142,7 +147,8 @@ export default function TarefaChecklist({
     if (iso) {
       setOptimisticDates(prev => ({ ...prev, [tipo]: iso }))
       setLocalText(prev => { const n = { ...prev }; delete n[tipo]; return n })
-      startTransition(() => onToggle(tipo, true, iso))
+      iniciar(tipo)
+      startTransition(() => acompanhar(tipo, onToggle(tipo, true, iso)))
     }
   }
 
@@ -179,7 +185,8 @@ export default function TarefaChecklist({
   }
 
   async function handleMITBlur() {
-    await salvarMIT(clienteId, mit)
+    iniciar(CHAVE_MIT)
+    await acompanhar(CHAVE_MIT, salvarMIT(clienteId, mit))
   }
 
   function etapasDaTarefa(tipo: string): TarefaEtapa[] {
@@ -213,7 +220,8 @@ export default function TarefaChecklist({
     const iso = displayParaIso(formatted)
     if (iso) {
       setLocalEtapaText(prev => { const n = { ...prev }; delete n[key]; return n })
-      startTransition(() => { onAtualizarEtapa?.(tipo, etapaNome, true, iso) })
+      iniciar(tipo)
+      startTransition(() => { acompanhar(tipo, onAtualizarEtapa?.(tipo, etapaNome, true, iso)) })
     }
   }
 
@@ -222,7 +230,8 @@ export default function TarefaChecklist({
     const val = localEtapaText[key]
     if (val === undefined) return
     if (val === '') {
-      startTransition(() => { onAtualizarEtapa?.(tipo, etapaNome, false) })
+      iniciar(tipo)
+      startTransition(() => { acompanhar(tipo, onAtualizarEtapa?.(tipo, etapaNome, false)) })
     }
     setLocalEtapaText(prev => { const n = { ...prev }; delete n[key]; return n })
   }
@@ -239,7 +248,8 @@ export default function TarefaChecklist({
   function handleRespostaTextoBlur(tipo: string) {
     const valor = localResposta[tipo]
     if (valor === undefined) return
-    startTransition(() => { onSalvarTexto?.(tipo, valor) })
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, onSalvarTexto?.(tipo, valor)) })
     setLocalResposta(prev => { const n = { ...prev }; delete n[tipo]; return n })
   }
 
@@ -259,8 +269,9 @@ export default function TarefaChecklist({
     }
   }
 
-  function handleExcluirArquivo(arquivoId: string) {
-    startTransition(() => { onExcluirArquivo?.(arquivoId) })
+  function handleExcluirArquivo(tipo: string, arquivoId: string) {
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, onExcluirArquivo?.(arquivoId)) })
   }
 
 
@@ -354,7 +365,11 @@ export default function TarefaChecklist({
               Desbloquear
             </Button>
           )}
+
+          <IndicadorSalvamento estado={salvamento[tipo]} className="ml-auto" />
         </div>
+
+        <ErroSalvamento estado={salvamento[tipo]} className="mt-2.5 px-[18px] pl-[38px]" />
 
         {etapasDefinidas && !semMovimentoAtivo && (
           <div className="mb-3 ml-[38px] mr-[18px] grid grid-cols-1 gap-x-[18px] gap-y-2.5 rounded-[10px] border border-line-soft p-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -422,7 +437,7 @@ export default function TarefaChecklist({
                     <IconButton
                       rotulo={`Excluir ${arq.name}`}
                       icone={<X size={14} aria-hidden="true" />}
-                      onClick={() => handleExcluirArquivo(arq.id)}
+                      onClick={() => handleExcluirArquivo(tipo, arq.id)}
                       className="h-7 w-7 max-sm:h-11 max-sm:w-11"
                     />
                   )}
@@ -514,17 +529,22 @@ export default function TarefaChecklist({
         <div className="border-t border-line-soft px-[18px] py-4">
           <Field rotulo="MIT">
             {({ id }) => (
-              <Input
-                id={id}
-                type="text"
-                value={mit}
-                onChange={e => setMit(e.target.value)}
-                onBlur={handleMITBlur}
-                disabled={!podeEditar}
-                placeholder="Anotação MIT..."
-              />
+              <div className="flex items-center gap-3">
+                <Input
+                  id={id}
+                  type="text"
+                  value={mit}
+                  onChange={e => setMit(e.target.value)}
+                  onBlur={handleMITBlur}
+                  disabled={!podeEditar}
+                  placeholder="Anotação MIT..."
+                  className="min-w-0 flex-1"
+                />
+                <IndicadorSalvamento estado={salvamento[CHAVE_MIT]} />
+              </div>
             )}
           </Field>
+          <ErroSalvamento estado={salvamento[CHAVE_MIT]} className="mb-0 mt-2" />
         </div>
       )}
 
