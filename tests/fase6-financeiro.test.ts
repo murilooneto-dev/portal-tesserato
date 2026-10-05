@@ -55,12 +55,12 @@ test('páginas buscam tudo em blocos, sem o corte em 200', () => {
 
 test('lista: desenho fn-01 / fn-03', () => {
   const src = ler(LISTA)
-  for (const t of ['<Pagina>', '<CabecalhoPagina', "'Recebimentos' : 'Pagamentos'", "'Novo recebimento' : 'Novo pagamento'",
+  for (const t of ['<Pagina className="pb-24 sm:pb-24 lg:pb-7">', '<CabecalhoPagina', "'Recebimentos' : 'Pagamentos'", "'Novo recebimento' : 'Novo pagamento'",
     'placeholder="Tipo, centro de custo ou observação"', 'sm:w-[360px]', 'sm:w-[230px]', 'rotulo="Ordenar por"',
     'Mais recente lançado', 'Data (mais recente)', 'Data (mais antiga)', 'Maior valor', 'Menor valor',
     "useState<Ordenacao>('lancamento')", 'largura={140}', 'largura={220}', 'largura={ehEntrada ? 150 : 170}', 'largura={56}',
     'Centro de custo', 'Observação', 'rotulo="Editar ou excluir"', "rotulo: 'Editar'", "rotulo: 'Excluir'", 'perigo: true',
-    'relative overflow-x-auto xl:overflow-visible', 'Nenhum lançamento ainda.', 'Nenhum lançamento encontrado com esse filtro.',
+    'relative overflow-x-auto xl:overflow-visible', 'Nenhum lançamento ainda', 'Nenhum lançamento com essa busca',
     '<EmptyState', 'POR_PAGINA = 50', 'Mostrando ${inicio + 1}–${inicio + visiveis.length} de ${n} lançamentos',
     'fixed right-4 bottom-[84px]', 'h-[52px] rounded-[26px]', 'shadow-lg lg:hidden']) assert.ok(src.includes(t), t)
   assert.match(src, /<Card semPadding className="[^"]*overflow-hidden[^"]*">/)

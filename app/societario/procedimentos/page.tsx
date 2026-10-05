@@ -27,6 +27,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoCartao, EsqueletoLinhas } from '@/components/ui/Esqueleto'
+import { cn } from '@/components/ui/cn'
 import { Field } from '@/components/ui/Field'
 import { Input, Select } from '@/components/ui/Input'
 import { Tabela, Th, Td } from '@/components/ui/Tabela'
@@ -268,10 +270,17 @@ export default function ProcedimentosSocietarioPage() {
 
   const vazio = items.length === 0
     ? <EmptyState icone={<Building2 size={24} />} titulo="Nenhum procedimento ainda" descricao="Clique em Novo procedimento para abrir o primeiro." />
-    : <EmptyState icone={<Building2 size={24} />} titulo="Nenhum procedimento encontrado" descricao="Mude a busca ou a situação." />
+    : (
+      <EmptyState
+        icone={<Building2 size={24} />}
+        titulo="Nenhum procedimento com esses filtros"
+        descricao="Mude a busca ou a situação."
+        acao={<Button icone={<X size={16} aria-hidden="true" />} onClick={() => { setSearch(''); setStatusFiltro('TODOS') }}>Limpar filtros</Button>}
+      />
+    )
 
   return (
-    <Pagina className="pb-[150px] sm:pb-[150px] lg:pb-7">
+    <Pagina className="pb-[150px] sm:pb-[150px] md:pb-24 lg:pb-7">
       <CabecalhoPagina
         titulo="Procedimentos"
         subtitulo={subtitulo}
@@ -304,7 +313,7 @@ export default function ProcedimentosSocietarioPage() {
             <Input type="search" aria-label="Buscar" className="h-11" iconeEsquerda={<Search size={18} />} placeholder="Nome da empresa" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <Button
-            className="h-11 w-11 flex-none px-0"
+            className={cn('h-11 w-11 flex-none px-0', statusFiltro !== 'TODOS' && 'border-acc text-acc-text')}
             aria-label="Filtros"
             title="Filtros"
             aria-expanded={filtrosCelular}
@@ -323,7 +332,10 @@ export default function ProcedimentosSocietarioPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-fg-3">Carregando…</p>
+        <>
+          <Card className="hidden lg:block"><EsqueletoLinhas linhas={5} /></Card>
+          <div className="flex flex-col gap-2.5 lg:hidden"><EsqueletoCartao /><EsqueletoCartao /></div>
+        </>
       ) : (
         <>
           {/* Tabela na tela larga */}
@@ -418,7 +430,7 @@ export default function ProcedimentosSocietarioPage() {
 
       <Button
         variante="primario"
-        className="fixed bottom-[84px] right-4 z-30 h-[52px] rounded-[26px] px-5 text-[15px] shadow-lg lg:hidden"
+        className="fixed bottom-[84px] right-4 z-30 md:bottom-6 h-[52px] rounded-[26px] px-5 text-[15px] shadow-lg lg:hidden"
         icone={<Plus size={20} aria-hidden="true" />}
         onClick={openCreate}
       >

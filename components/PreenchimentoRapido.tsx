@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition, type ReactNode } from 'react'
-import { Check } from 'lucide-react'
+import { Check, ListChecks } from 'lucide-react'
 import {
   type CampoFiltro,
   type ClienteFiltro,
@@ -210,17 +210,22 @@ export default function PreenchimentoRapido({
         semPadding
       >
         {colunas.length === 0 ? (
-          <p className="px-[18px] py-6 text-sm text-fg-3">
-            {passoPronto
+          <EmptyState
+            compacto
+            icone={<ListChecks size={20} />}
+            titulo="A grade aparece aqui"
+            descricao={passoPronto
               ? 'Escolha ao menos uma tarefa no passo 2 para ver a grade.'
               : 'Escolha os clientes e as tarefas nos passos acima para ver a grade.'}
-          </p>
+          />
         ) : linhas.length === 0 ? (
           <EmptyState
-            icone={<Check size={22} aria-hidden="true" />}
+            compacto
+            icone={<Check size={20} aria-hidden="true" />}
             titulo={apenasPendentes
-              ? 'Nenhum cliente com essa(s) tarefa(s) pendente(s).'
-              : 'Nenhum cliente tem essa(s) tarefa(s) aplicável(is).'}
+              ? 'Nenhum cliente com essa(s) tarefa(s) pendente(s)'
+              : 'Nenhum cliente tem essa(s) tarefa(s) aplicável(is)'}
+            descricao={apenasPendentes ? 'Desligue “Só pendentes” para ver também os já concluídos.' : 'Escolha outras tarefas no passo 2.'}
           />
         ) : (
           <div className="relative overflow-x-auto">
