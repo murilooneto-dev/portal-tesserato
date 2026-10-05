@@ -3,6 +3,7 @@
 import { Plus, Printer, Search } from 'lucide-react'
 import { CabecalhoPagina } from '@/components/ui/Pagina'
 import { Button } from '@/components/ui/Button'
+import { Chip } from '@/components/ui/Chip'
 import { Field } from '@/components/ui/Field'
 import { Input, Select } from '@/components/ui/Input'
 import { TODOS, type SecaoParcelamento } from '@/lib/parcelamentos-tela'
@@ -53,7 +54,14 @@ export default function ParcelamentosCabecalho({
             />
           )}
         </Field>
-        <Field rotulo="Seção" className="w-full sm:w-[240px]">
+        {/* Celular (mob-08): seções em chips, com o mesmo filtro do Select. */}
+        <div role="group" aria-label="Seção" className="flex w-full gap-2 overflow-x-auto pb-0.5 sm:hidden">
+          <Chip ativo={secaoFiltro === TODOS} onClick={() => onSecao(TODOS)} className="h-9">Todas as seções</Chip>
+          {secoes.map(s => (
+            <Chip key={s.id} ativo={secaoFiltro === s.nome} onClick={() => onSecao(s.nome)} className="h-9">{s.nome}</Chip>
+          ))}
+        </div>
+        <Field rotulo="Seção" className="hidden w-full sm:flex sm:w-[240px]">
           {c => (
             <Select id={c.id} value={secaoFiltro} onChange={e => onSecao(e.target.value)}>
               <option value={TODOS}>Todas as seções</option>
