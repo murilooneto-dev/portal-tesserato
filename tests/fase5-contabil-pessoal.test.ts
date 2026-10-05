@@ -68,8 +68,39 @@ test('Ficha do Contábil: seletor de mês no título das tarefas', () => {
 
 test('Ficha do Contábil: mês sai da barra do topo só nessa tela', () => {
   const shell = ler('components/shell/ShellCliente.tsx')
-  assert.ok(shell.includes('/^\\/contabil\\/clientes\\/[^/]+$/'), 'regra da rota da ficha')
+  assert.ok(shell.includes('/^\\/(contabil|pessoal)\\/clientes\\/[^/]+$/'), 'regra da rota da ficha (Contábil e Pessoal)')
   assert.ok(shell.includes('fichaContabil ? null : <SeletorMes'), 'SeletorMes oculto na ficha')
+})
+
+test('Ficha do Pessoal: seletor de mês reaproveitado do Contábil, com ?mes&ano', () => {
+  const pagina = ler('app/pessoal/clientes/[id]/page.tsx')
+  assert.ok(pagina.includes("import SeletorMesFicha from '@/components/contabil/SeletorMesFicha'"), 'mesmo seletor')
+  assert.ok(pagina.includes('searchParams: Promise<{ mes?: string; ano?: string }>'), 'aceita ?mes&ano')
+  assert.ok(pagina.includes('const { mes, ano } = override ?? await getMesAno()'), 'mês da ficha vem do parâmetro')
+  assert.ok(pagina.includes('progressoFicha'), '% por mês calculado na página')
+  assert.ok(pagina.includes('seletorMes={<SeletorMesFicha'), 'seletor ligado no checklist')
+  assert.ok(pagina.includes('basePath={`/pessoal/clientes/${id}`}'), 'troca de mês volta para a ficha do Pessoal')
+
+  const checklist = ler('components/pessoal/TarefaChecklistPessoal.tsx')
+  assert.ok(checklist.includes('seletorMes'), 'checklist aceita o seletor no cabeçalho')
+})
+
+test('Dashboards do Contábil e do Pessoal: Setor | Meu com DashboardVisao e calcularMeu', () => {
+  const visao = ler('components/fiscal/DashboardVisao.tsx')
+  assert.ok(visao.includes("base = '/fiscal/dashboard'"), 'Fiscal continua como padrão')
+  assert.ok(visao.includes('`${base}?visao=meu`'), 'Meu usa a rota do setor')
+
+  for (const [arq, base] of [
+    ['app/contabil/dashboard/page.tsx', '/contabil/dashboard'],
+    ['app/pessoal/dashboard/page.tsx', '/pessoal/dashboard'],
+  ] as const) {
+    const src = ler(arq)
+    assert.ok(src.includes(`base="${base}"`), `${arq} passa a própria rota`)
+    assert.ok(src.includes("from '@/lib/dashboard-meu'"), `${arq} usa o modo Meu compartilhado`)
+    assert.ok(src.includes('calcularMeu({'), `${arq} calcula o modo Meu`)
+    assert.ok(src.includes('Próximos prazos'), `${arq} com o cartão de prazos`)
+    assert.doesNotMatch(src, /text-\[(8|9|10|11)px\]/, arq)
+  }
 })
 
 test('Relatórios do Contábil e do Pessoal: sem coluna "#"', () => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition, useState } from 'react'
+import { useTransition, useState, type ReactNode } from 'react'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, TarefaGrupo } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
@@ -17,6 +17,7 @@ interface TipoInfo {
 
 interface Props {
   tarefasPersonalizadas: string[]
+  seletorMes?: ReactNode
   grupos?: TarefaGrupo[]
   tarefaTipos: Record<string, TipoInfo>
   tarefas: Tarefa[]
@@ -69,6 +70,7 @@ function formatBytes(bytes: number) {
 
 export default function TarefaChecklistPessoal({
   tarefasPersonalizadas,
+  seletorMes,
   grupos = [],
   tarefaTipos,
   tarefas,
@@ -400,9 +402,11 @@ export default function TarefaChecklistPessoal({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">
-          Tarefas — {MESES[mes - 1]}/{ano}
-        </h3>
+        {seletorMes ?? (
+          <h3 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">
+            Tarefas — {MESES[mes - 1]}/{ano}
+          </h3>
+        )}
         <span className="text-xs text-[var(--fg)]/40">{concluidas}/{total}</span>
       </div>
 
