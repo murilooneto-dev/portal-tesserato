@@ -159,7 +159,7 @@ test('h1 do cabeçalho igual ao título da barra só some da tela no celular; no
   assert.equal(repeteTituloDaCasca('Relatório', 'Relatórios'), false)
   assert.equal(repeteTituloDaCasca(h('span', null, 'Clientes'), 'Clientes'), false)
   const igual = renderToStaticMarkup(h(TituloCascaProvider, { titulo: 'Clientes', children: h(CabecalhoPagina, { titulo: 'Clientes', subtitulo: 'sub' }) }))
-  assert.match(igual, /<h1 class="[^"]*max-sm:sr-only/)
+  assert.match(igual, /<h1 class="[^"]*max-lg:sr-only/)
   assert.match(igual, />sub</)
   const diferente = renderToStaticMarkup(h(TituloCascaProvider, { titulo: 'Clientes', children: h(CabecalhoPagina, { titulo: 'EMPRESA X' }) }))
   assert.doesNotMatch(diferente, /sr-only/)

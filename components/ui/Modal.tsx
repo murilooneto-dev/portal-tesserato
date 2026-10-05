@@ -93,6 +93,10 @@ const RODAPE =
   'flex items-center gap-2.5 border-t border-line-soft px-[22px] py-3.5 ' +
   'max-sm:flex-wrap max-sm:px-4 max-sm:pb-[max(14px,env(safe-area-inset-bottom))] max-sm:[&>*]:flex-1 max-sm:[&_button]:min-h-12 max-sm:[&_button]:flex-1'
 
+// Gaveta: rodapé sem esticar botões (a gaveta do menu tem avatar + ícones no rodapé).
+const RODAPE_GAVETA =
+  'flex items-center gap-2.5 border-t border-line-soft px-[22px] py-3.5 max-sm:px-4 max-sm:pb-[max(14px,env(safe-area-inset-bottom))]'
+
 // Alça do bottom sheet (só no celular).
 function Alca() {
   return <span aria-hidden="true" className="mx-auto mt-2.5 block h-1 w-9 flex-none rounded-sm bg-line sm:hidden" />
@@ -167,7 +171,7 @@ export function Drawer({
       >
         <Cabecalho idTitulo={idTitulo} idSub={idSub} titulo={titulo} subtitulo={subtitulo} icone={icone} onFechar={() => tentarFechar('botao')} bloqueado={bloqueado} fecharGrande={fecharGrande} />
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 py-5 sm:px-[22px]">{children}</div>
-        {rodape && <div className={RODAPE}>{rodape}</div>}
+        {rodape && <div className={RODAPE_GAVETA}>{rodape}</div>}
       </div>
     </div>
   )

@@ -22,7 +22,7 @@ export function repeteTituloDaCasca(titulo: ReactNode, tituloCasca: string | nul
 export function TituloPagina({ children }: { children: ReactNode }) {
   const tituloCasca = useContext(TituloCascaContext)
   return (
-    <h1 className={cn('text-2xl font-semibold leading-tight tracking-[-.01em] text-fg', repeteTituloDaCasca(children, tituloCasca) && 'max-sm:sr-only')}>
+    <h1 className={cn('text-2xl font-semibold leading-tight tracking-[-.01em] text-fg', repeteTituloDaCasca(children, tituloCasca) && 'max-lg:sr-only')}>
       {children}
     </h1>
   )
