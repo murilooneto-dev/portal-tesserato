@@ -1,13 +1,14 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import { Pencil, Plus, Receipt, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { Pencil, Plus, Receipt, Repeat, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { excluirMovimento } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
 import { formatarDdMm } from '@/lib/formatar-data'
 import { formatarValor } from '@/lib/financeiro-movimentos'
 import type { FinanceiroNatureza } from '@/lib/types'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { cn } from '@/components/ui/cn'
 import { Card } from '@/components/ui/Card'
@@ -28,6 +29,8 @@ export interface MovimentoLinha {
   tipo_nome: string
   centro_custo_nome: string | null
   created_at: string
+  /** Preenchido nos pagamentos lançados como recorrentes (mesma série = mesmo id). */
+  recorrencia_id?: string | null
 }
 
 interface Props {
@@ -81,10 +84,10 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
     setExcluindoId(null)
   }
 
-  function handleExcluir(id: string) {
+  function handleExcluir(id: string, escopo: 'este' | 'este_e_proximos' = 'este') {
     setErroExcluir(null)
     startTransition(async () => {
-      const { error } = await excluirMovimento(id, natureza)
+      const { error } = await excluirMovimento(id, natureza, escopo)
       if (error) { setErroExcluir(error); return }
       setExcluindoId(null)
     })
@@ -145,20 +148,34 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
     return (
       <span className="min-w-0 text-sm text-fg-2 [&_b]:font-semibold [&_b]:text-fg">
         Excluir o {nomeItem} <b>{m.tipo_nome}</b> de {formatarDdMm(m.data)}, no valor de <b className="tabular-nums">{formatarValor(m.valor)}</b>?
+        {m.recorrencia_id && <> É um pagamento recorrente: dá para excluir só este ou também os dos meses seguintes.</>}
       </span>
     )
   }
 
   function botoesConfirmacao(m: MovimentoLinha) {
     return (
-      <div className="ml-auto flex flex-none items-center gap-2">
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <Button variante="fantasma" tamanho="p" onClick={cancelarExclusao} disabled={isPending}>Cancelar</Button>
-        <Button variante="perigo-solido" tamanho="p" onClick={() => handleExcluir(m.id)} carregando={isPending}>
-          Excluir {nomeItem}
-        </Button>
+        {m.recorrencia_id ? (
+          <>
+            <Button variante="perigo" tamanho="p" onClick={() => handleExcluir(m.id, 'este_e_proximos')} disabled={isPending}>
+              Este e os próximos
+            </Button>
+            <Button variante="perigo-solido" tamanho="p" onClick={() => handleExcluir(m.id)} carregando={isPending}>
+              Só este
+            </Button>
+          </>
+        ) : (
+          <Button variante="perigo-solido" tamanho="p" onClick={() => handleExcluir(m.id)} carregando={isPending}>
+            Excluir {nomeItem}
+          </Button>
+        )}
       </div>
     )
   }
+
+  const seloRecorrente = <Badge tom="info" icone={<Repeat size={12} aria-hidden="true" />} className="flex-none">Recorrente</Badge>
 
   const erroExclusao = erroExcluir && (
     <p role="alert" className="mt-2 text-[13px] text-danger">Não foi possível excluir: {erroExcluir}</p>
@@ -248,7 +265,10 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
             ) : (
               <div key={m.id} className="flex min-w-0 items-start gap-3 rounded-xl border border-line-soft bg-surface px-4 py-3.5">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</p>
+                  <p className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
+                    {m.recorrencia_id && seloRecorrente}
+                  </p>
                   <p className="truncate text-[13px] text-fg-3">
                     {formatarDdMm(m.data)}{m.observacao ? ` · ${m.observacao}` : ''}
                   </p>
@@ -298,7 +318,12 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
                   ) : (
                     <tr key={m.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
                       <Td className="whitespace-nowrap font-mono text-[13px] tabular-nums text-fg-2">{formatarDdMm(m.data)}</Td>
-                      <Td><span className="block truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span></Td>
+                      <Td>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="block truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
+                          {m.recorrencia_id && seloRecorrente}
+                        </div>
+                      </Td>
                       <Td>
                         {m.centro_custo_nome
                           ? <span className="block truncate text-fg-2" title={m.centro_custo_nome}>{m.centro_custo_nome}</span>

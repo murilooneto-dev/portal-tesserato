@@ -5,7 +5,7 @@ import MovimentoListClient, { type MovimentoLinha } from '@/components/financeir
 export const metadata = { title: 'Pagamentos — Tesserato Financeiro' }
 
 interface LinhaBanco {
-  id: string; tipo_id: string; centro_custo_id: string | null; valor: number; data: string; observacao: string | null; created_at: string
+  id: string; tipo_id: string; centro_custo_id: string | null; valor: number; data: string; observacao: string | null; created_at: string; recorrencia_id: string | null
   financeiro_tipos: { nome: string } | null
   financeiro_centros_custo: { nome: string } | null
 }
@@ -17,7 +17,7 @@ export default async function PagamentosPage() {
   // da tela valem para tudo (antes parava em 200 sem aviso).
   const linhas = await buscarEmBlocos<LinhaBanco>((inicio, fim) => supabase
     .from('financeiro_movimentos')
-    .select('id, tipo_id, centro_custo_id, valor, data, observacao, created_at, financeiro_tipos(nome), financeiro_centros_custo(nome)')
+    .select('id, tipo_id, centro_custo_id, valor, data, observacao, created_at, recorrencia_id, financeiro_tipos(nome), financeiro_centros_custo(nome)')
     .eq('natureza', 'saida')
     .order('created_at', { ascending: false })
     .order('id', { ascending: true })
@@ -32,6 +32,7 @@ export default async function PagamentosPage() {
     data: r.data,
     observacao: r.observacao,
     created_at: r.created_at,
+    recorrencia_id: r.recorrencia_id,
     tipo_nome: r.financeiro_tipos?.nome ?? '—',
     centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
   }))

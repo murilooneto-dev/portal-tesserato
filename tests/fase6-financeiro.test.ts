@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buscarEmBlocos, formatarValorComSinal, TAMANHO_BLOCO } from '../lib/financeiro-movimentos'
+import { buscarEmBlocos, datasRecorrentes, formatarValorComSinal, TAMANHO_BLOCO } from '../lib/financeiro-movimentos'
 
 const ler = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8')
 
@@ -41,6 +41,24 @@ test('formatarValorComSinal põe o sinal na frente do R$', () => {
   assert.match(formatarValorComSinal(250), /^R\$\s250,00$/)
 })
 
+test('datasRecorrentes: mesmo dia em cada mês até dezembro', () => {
+  assert.deepEqual(datasRecorrentes('2026-10-05'), ['2026-10-05', '2026-11-05', '2026-12-05'])
+  assert.equal(datasRecorrentes('2026-01-15').length, 12)
+  assert.deepEqual(datasRecorrentes('2026-12-10'), ['2026-12-10'])
+})
+
+test('datasRecorrentes: dia que não existe no mês vira o último dia', () => {
+  assert.deepEqual(datasRecorrentes('2026-01-31').slice(0, 4), ['2026-01-31', '2026-02-28', '2026-03-31', '2026-04-30'])
+  assert.deepEqual(datasRecorrentes('2028-01-30').slice(0, 3), ['2028-01-30', '2028-02-29', '2028-03-30'])
+  assert.deepEqual(datasRecorrentes('2100-01-29').slice(0, 2), ['2100-01-29', '2100-02-28'])
+})
+
+test('datasRecorrentes: data inválida não gera nada', () => {
+  assert.deepEqual(datasRecorrentes(''), [])
+  assert.deepEqual(datasRecorrentes('05/10/2026'), [])
+  assert.deepEqual(datasRecorrentes('2026-02-30'), [])
+})
+
 test('páginas buscam tudo em blocos, sem o corte em 200', () => {
   for (const [arq, natureza] of [[PAGINAS[0], 'entrada'], [PAGINAS[1], 'saida']] as const) {
     const src = ler(arq)
@@ -72,8 +90,21 @@ test('lista: desenho fn-01 / fn-03', () => {
 
 test('lista: excluir confirma na linha e mostra o erro da action', () => {
   const src = ler(LISTA)
-  for (const t of ['excluirMovimento(id, natureza)', 'if (error) { setErroExcluir(error); return }', 'colSpan={6} className="bg-danger-soft"',
+  for (const t of ['excluirMovimento(id, natureza, escopo)', 'if (error) { setErroExcluir(error); return }', 'colSpan={6} className="bg-danger-soft"',
     'variante="perigo-solido"', 'Excluir {nomeItem}', 'no valor de', 'role="alert"']) assert.ok(src.includes(t), t)
+})
+
+test('pagamento recorrente: caixa só em pagamento novo, selo e exclusão em série', () => {
+  const janela = ler(JANELA)
+  for (const t of ["const podeSerRecorrente = natureza === 'saida' && !movimento", 'rotulo="Pagamento recorrente"',
+    'recorrente: podeSerRecorrente && recorrente', 'setRecorrente(false)', 'datasRecorrentes(data)', 'lançamentos salvos.']) assert.ok(janela.includes(t), t)
+  const lista = ler(LISTA)
+  for (const t of ['<Repeat', '>Recorrente</Badge>', "handleExcluir(m.id, 'este_e_proximos')", 'Este e os próximos', 'Só este']) assert.ok(lista.includes(t), t)
+  assert.ok(ler(PAGINAS[1]).includes('recorrencia_id'))
+  assert.ok(!ler(PAGINAS[0]).includes('recorrencia_id'))
+  const actions = ler('lib/financeiro-actions.ts')
+  for (const t of ["input.recorrente && input.natureza === 'saida'", "escopo: 'este' | 'este_e_proximos' = 'este'",
+    ".eq('recorrencia_id', serie.recorrencia_id).gte('data', serie.data)"]) assert.ok(actions.includes(t), t)
 })
 
 test('lista: abre a janela com os mesmos dados de antes', () => {

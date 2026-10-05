@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, createClient } from './supabase/server'
 import { validarNomeEntidade, normalizarNome } from './config-entidades'
+import { datasRecorrentes } from './financeiro-movimentos'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from './types'
 
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
@@ -274,7 +275,9 @@ export async function criarMovimento(input: {
   valor: number
   data: string
   observacao: string | null
-}): Promise<{ id: string } | { error: string }> {
+  /** Só pagamentos: repete o lançamento no mesmo dia de cada mês até dezembro. */
+  recorrente?: boolean
+}): Promise<{ id: string; quantidade: number } | { error: string }> {
   if (!input.tipoId) return { error: 'Selecione o tipo.' }
   if (!input.data) return { error: 'Selecione a data.' }
   if (!Number.isFinite(input.valor) || input.valor <= 0) return { error: 'Informe um valor válido.' }
@@ -283,21 +286,33 @@ export async function criarMovimento(input: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  const { data: novo, error } = await supabase.from('financeiro_movimentos').insert({
+  // Recorrente: um lançamento por mês, todos com o mesmo recorrencia_id, num
+  // único insert (ou entram todos, ou nenhum). Lançado em dezembro não há mês
+  // seguinte, então vira um lançamento comum, sem série.
+  let datas = [input.data]
+  if (input.recorrente && input.natureza === 'saida') {
+    datas = datasRecorrentes(input.data)
+    if (datas.length === 0) return { error: 'Selecione a data.' }
+  }
+  const recorrenciaId = datas.length > 1 ? crypto.randomUUID() : null
+
+  const { data: novos, error } = await supabase.from('financeiro_movimentos').insert(datas.map(data => ({
     natureza: input.natureza,
     tipo_id: input.tipoId,
     centro_custo_id: input.centroCustoId,
     valor: input.valor,
-    data: input.data,
+    data,
     observacao: input.observacao,
     criado_por: user.id,
-  }).select('id').single()
+    recorrencia_id: recorrenciaId,
+  }))).select('id, data')
 
+  const novo = novos?.find(n => n.data === input.data) ?? novos?.[0]
   if (error || !novo) return { error: error?.message ?? 'Falha ao criar movimento.' }
 
   revalidatePath(input.natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')
   revalidatePath('/financeiro/relatorios')
-  return { id: novo.id }
+  return { id: novo.id, quantidade: novos?.length ?? 1 }
 }
 
 export async function atualizarMovimento(input: {
@@ -332,12 +347,28 @@ export async function atualizarMovimento(input: {
   return { error: null }
 }
 
-export async function excluirMovimento(id: string, natureza: FinanceiroNatureza): Promise<{ error: string | null }> {
+export async function excluirMovimento(
+  id: string,
+  natureza: FinanceiroNatureza,
+  escopo: 'este' | 'este_e_proximos' = 'este',
+): Promise<{ error: string | null }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  const { error } = await supabase.from('financeiro_movimentos').delete().eq('id', id)
+  // "Este e os próximos" de um pagamento recorrente: apaga os lançamentos da
+  // mesma série com data igual ou posterior à deste. Os anteriores ficam.
+  let serie: { recorrencia_id: string; data: string } | null = null
+  if (escopo === 'este_e_proximos') {
+    const { data: alvo, error: erroAlvo } = await supabase
+      .from('financeiro_movimentos').select('recorrencia_id, data').eq('id', id).maybeSingle()
+    if (erroAlvo) return { error: erroAlvo.message }
+    if (alvo?.recorrencia_id) serie = { recorrencia_id: alvo.recorrencia_id, data: alvo.data }
+  }
+
+  const { error } = serie
+    ? await supabase.from('financeiro_movimentos').delete().eq('recorrencia_id', serie.recorrencia_id).gte('data', serie.data)
+    : await supabase.from('financeiro_movimentos').delete().eq('id', id)
   if (error) return { error: error.message }
 
   revalidatePath(natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')
