@@ -7,6 +7,7 @@ import { buscarVinculosDoCliente } from '@/lib/vinculos'
 import { buscarLabelsParcelamentoAtivo } from '@/lib/parcelamentos-aviso'
 import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import TarefaChecklistContabil from '@/components/contabil/TarefaChecklistContabil'
+import SeletorMesFicha from '@/components/contabil/SeletorMesFicha'
 import ClienteContabilAcoes from '@/components/contabil/ClienteContabilAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import ClienteNotas from '@/components/geral/ClienteNotas'
@@ -95,6 +96,16 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
     ? await supabase.from('tarefa_arquivos').select('id, tarefa_id, name, size, uploaded_at').in('tarefa_id', tarefaIds)
     : { data: [] as Omit<TarefaArquivo, 'content_base64'>[] }
 
+  // % por mês do cliente no ano: mesma regra da lista de clientes (tarefas esperadas concluídas / esperadas).
+  const tarefasEsperadas = calcularTarefasEsperadas(cliente, mapaVinculos)
+  const { data: tarefasDoAno } = await supabase.from('tarefas').select('mes, concluida, tipo').eq('cliente_id', id).eq('ano', ano).eq('setor', 'contabil')
+  const tiposEsperados = new Set(tarefasEsperadas)
+  const progressoFicha: Record<number, number | null> = {}
+  for (let m = 1; m <= 12; m++) {
+    const concluidas = (tarefasDoAno ?? []).filter(t => t.mes === m && t.concluida && tiposEsperados.has(t.tipo)).length
+    progressoFicha[m] = tarefasEsperadas.length > 0 ? Math.round((concluidas / tarefasEsperadas.length) * 100) : null
+  }
+
   async function onToggleSimples(tipo: string, concluida: boolean, data?: string) {
     'use server'
     await toggleTarefaContabil(id, tipo, mes, ano, concluida, data)
@@ -166,7 +177,8 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
       </div>
 
       <TarefaChecklistContabil
-        tarefasPersonalizadas={calcularTarefasEsperadas(cliente, mapaVinculos)}
+        tarefasPersonalizadas={tarefasEsperadas}
+        seletorMes={<SeletorMesFicha mes={mes} ano={ano} basePath={`/contabil/clientes/${id}`} progresso={progressoFicha} />}
         grupos={(gruposRaw ?? []) as TarefaGrupo[]}
         tarefaTipos={tarefaTipos}
         tarefas={(tarefas ?? []) as Tarefa[]}

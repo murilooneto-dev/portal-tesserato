@@ -8,7 +8,11 @@ import type { PendenciaVinculo } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import EmpresaContabilModal from './EmpresaContabilModal'
-import { REGIMES, labelRegime } from '@/lib/atividades-regimes'
+import { labelRegime } from '@/lib/atividades-regimes'
+import { Badge } from '@/components/ui/Badge'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { COR, tomDoPercentual, normalizarPercentual } from '@/components/ui/MonthPill'
+import { cn } from '@/components/ui/cn'
 
 const CORES_RESP: string[] = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316','#ef4444','#84cc16']
 const _respColorCache: Record<string, string> = {}
@@ -18,13 +22,6 @@ function corResponsavel(nome: string): string {
   }
   return _respColorCache[nome]
 }
-
-const CORES_REGIME: Record<string, string> = {
-  normal:  '#3b82f6',
-  simples: '#10b981',
-  mei:     '#f59e0b',
-}
-
 
 interface Props {
   clientes: ClienteComContabil[]
@@ -37,12 +34,6 @@ interface Props {
 }
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-
-function corPct(pct: number): { bg: string; fg: string } {
-  if (pct === 100) return { bg: '#10b98120', fg: '#10b981' }
-  if (pct > 0) return { bg: '#f59e0b20', fg: '#f59e0b' }
-  return { bg: '#ef444415', fg: '#ef4444' }
-}
 
 export default function ClientesListaContabil({ clientes, progressoAnualMap, mes, ano, tarefasPadrao, catalogo, pendenciasVinculo }: Props) {
   const [busca, setBusca] = useFiltroPersistente('clientes-contabil:busca', '')
@@ -122,110 +113,96 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
       )}
 
       <p className="text-[var(--fg)]/30 text-xs mb-3">
-        {filtrados.length} clientes · {ano}
+        {filtrados.length} clientes · {ano} · clique em um mês para abrir a ficha naquele mês
       </p>
 
       {filtrados.length === 0 ? (
         <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-[var(--fg)]/8">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-[var(--fg)]/5 text-[var(--fg)]/40 text-xs uppercase tracking-wide">
-                <th className="px-3 py-2.5 text-left font-semibold sticky left-0 bg-[var(--bg)] z-10">Cliente</th>
-                <th className="px-2 py-2.5 text-left font-semibold whitespace-nowrap">Regime</th>
-                <th className="px-2 py-2.5 text-left font-semibold whitespace-nowrap">Responsável</th>
-                {MESES.map((m, i) => (
-                  <th key={m} className={`px-1 py-2.5 text-center font-semibold whitespace-nowrap ${i + 1 === mes ? 'text-[var(--accent)]' : ''}`}>
-                    {m}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.map(cliente => {
-                const prog = progressoAnualMap[cliente.id]
-                const total = prog?.total ?? 0
-                const temObs = !!(cliente.obs?.trim())
+        <div className="overflow-hidden rounded-xl border border-[var(--fg)]/8">
+          {filtrados.map(cliente => {
+            const prog = progressoAnualMap[cliente.id]
+            const total = prog?.total ?? 0
+            const temObs = !!(cliente.obs?.trim())
+            const vinculos = pendenciasVinculo[cliente.id] ?? []
+            const temP1 = !!cliente.prioridade && cliente.prioridade > 0
 
-                return (
-                  <tr key={cliente.id} className="border-t border-[var(--fg)]/6 hover:bg-[var(--fg)]/3 transition-colors group">
-                    <td className="px-3 py-2.5 sticky left-0 bg-[var(--bg)] group-hover:bg-[var(--fg)]/3">
-                      <Link href={`/contabil/clientes/${cliente.id}`} className="flex items-start gap-2 min-w-[170px] max-w-[260px]">
-                        {cliente.prioridade && cliente.prioridade > 0 ? (
-                          <span className="shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400">P{cliente.prioridade}</span>
-                        ) : null}
-                        <span className="min-w-0">
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-[var(--fg)] font-semibold truncate hover:underline">{cliente.nome}</span>
-                            {temObs && <span className="shrink-0 text-amber-400 font-bold">!</span>}
-                            {cliente.ativo === false && (
-                              <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
-                                Desabilitado
-                              </span>
-                            )}
-                          </span>
-                          <span className="block text-[var(--fg)]/25 text-xs">{cliente.cnpj ?? '—'}</span>
-                          {(pendenciasVinculo[cliente.id] ?? []).length > 0 && (
-                            <span className="flex flex-wrap gap-1 mt-1">
-                              {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
-                                const badge = formatarBadgeVinculo(p)
-                                return (
-                                  <span key={i} className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
-                                    {badge.texto}
-                                  </span>
-                                )
-                              })}
-                            </span>
-                          )}
-                        </span>
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      {cliente.regime && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                          style={{ backgroundColor: (CORES_REGIME[cliente.regime] ?? '#6b7280') + '25', color: CORES_REGIME[cliente.regime] ?? '#6b7280', border: `1px solid ${CORES_REGIME[cliente.regime] ?? '#6b7280'}50` }}>
-                          {labelRegime(cliente.regime)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      {cliente.responsavel && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                          style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
-                          {cliente.responsavel}
-                        </span>
-                      )}
-                    </td>
-                    {MESES.map((_, i) => {
-                      const mesNum = i + 1
-                      const concluidas = prog?.concluidasPorMes[mesNum] ?? 0
-                      const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
-                      const cor = corPct(pct)
-                      const destacado = mesNum === mes
-
+            return (
+              <div key={cliente.id} className="border-t border-[var(--fg)]/6 first:border-t-0 px-3 py-3 hover:bg-[var(--fg)]/3 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <Link href={`/contabil/clientes/${cliente.id}`} className="min-w-0 flex-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                    <NomeCliente
+                      nome={cliente.nome}
+                      cnpj={cliente.cnpj ?? null}
+                      depoisDoNome={
+                        <>
+                          {temP1 && <Badge tom="dng">P{cliente.prioridade}</Badge>}
+                          {temObs && <Badge tom="warn">Observação</Badge>}
+                          {cliente.ativo === false && <Badge>Desabilitado</Badge>}
+                        </>
+                      }
+                    />
+                  </Link>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                    {vinculos.map((p, i) => {
+                      const badge = formatarBadgeVinculo(p)
                       return (
-                        <td key={mesNum} className={`px-0.5 py-1.5 text-center ${destacado ? 'bg-[var(--accent)]/5' : ''}`}>
-                          {total > 0 ? (
-                            <Link
-                              href={`/contabil/clientes/${cliente.id}?mes=${mesNum}&ano=${ano}`}
-                              className="inline-flex flex-col items-center justify-center min-w-[38px] px-1 py-1 rounded-lg font-bold text-[11px] transition-transform hover:scale-105"
-                              style={{ backgroundColor: cor.bg, color: cor.fg }}
-                              title={`${concluidas}/${total} concluídas`}
-                            >
-                              {pct}%
-                            </Link>
-                          ) : (
-                            <span className="inline-block min-w-[38px] px-1 py-1 text-[var(--fg)]/15 text-[11px]">—</span>
-                          )}
-                        </td>
+                        <Badge key={i} tom={p.liberada ? 'ok' : 'warn'}>
+                          {badge.texto.replace(/^(✓|⏳)\s*/, '')}
+                        </Badge>
                       )
                     })}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                    {cliente.regime && <Badge tom="acc">{labelRegime(cliente.regime)}</Badge>}
+                    {cliente.responsavel && (
+                      <span className="inline-flex h-[22px] items-center whitespace-nowrap rounded-md px-2 text-xs font-semibold leading-none"
+                        style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
+                        {cliente.responsavel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-2.5 overflow-x-auto">
+                  <div className="grid min-w-[620px] grid-cols-12 gap-1">
+                    {MESES.map((nomeMes, i) => {
+                      const mesNum = i + 1
+                      const concluidas = prog?.concluidasPorMes[mesNum] ?? 0
+                      const pct = total > 0 ? normalizarPercentual((concluidas / total) * 100) : null
+                      const atual = mesNum === mes
+                      const conteudo = (
+                        <>
+                          <span className="text-xs font-semibold leading-none">{nomeMes}</span>
+                          <span className="mt-1 text-sm font-bold tabular-nums leading-none">{pct === null ? '—' : `${pct}%`}</span>
+                        </>
+                      )
+                      const classe = cn(
+                        'flex flex-col items-center justify-center rounded-lg py-1.5',
+                        COR[tomDoPercentual(pct)],
+                      )
+                      const estilo = atual ? { boxShadow: 'inset 0 0 0 2px var(--acc)' } : undefined
+
+                      return total > 0 ? (
+                        <Link
+                          key={mesNum}
+                          href={`/contabil/clientes/${cliente.id}?mes=${mesNum}&ano=${ano}`}
+                          aria-current={atual ? 'date' : undefined}
+                          title={`${nomeMes}: ${concluidas}/${total} concluídas`}
+                          className={cn(classe, 'transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc')}
+                          style={estilo}
+                        >
+                          {conteudo}
+                        </Link>
+                      ) : (
+                        <span key={mesNum} aria-current={atual ? 'date' : undefined} className={cn(classe)} style={estilo}>
+                          {conteudo}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

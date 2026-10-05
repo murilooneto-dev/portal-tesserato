@@ -24,6 +24,8 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
   children: ReactNode
 }) {
   const pathname = usePathname() ?? '/'
+  // Na ficha do Contábil o mês sai da barra do topo: quem escolhe é o seletor da própria ficha.
+  const fichaContabil = /^\/contabil\/clientes\/[^/]+$/.test(pathname)
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
   const [menuAberto, setMenuAberto] = useState(false)
@@ -56,7 +58,7 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
         setores={setores}
         setorAtivo={setorAtivo}
         tema={theme}
-        seletorMes={<SeletorMes mes={mes} ano={ano} />}
+        seletorMes={fichaContabil ? null : <SeletorMes mes={mes} ano={ano} />}
         onTrocarSetor={trocarSetor}
         onAlternarTema={toggleTheme}
         onSair={sair}

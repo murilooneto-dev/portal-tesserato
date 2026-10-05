@@ -240,12 +240,12 @@ export default function TarefaChecklistPessoal({
           <span className={`text-sm flex-1 transition-colors ${feito ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]'}`}>
             {tipo}
             {vinculos[tipo] && (
-              <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${formatarBadgeVinculo(vinculos[tipo]).classe}`}>
+              <span className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${formatarBadgeVinculo(vinculos[tipo]).classe}`}>
                 {formatarBadgeVinculo(vinculos[tipo]).texto}
               </span>
             )}
             {diasPrazo !== null && (
-              <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap bg-[var(--fg)]/5 ${alertaLabel(diasPrazo).cls}`}>
+              <span className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap bg-[var(--fg)]/5 ${alertaLabel(diasPrazo).cls}`}>
                 ⏱ {alertaLabel(diasPrazo).text}
               </span>
             )}
@@ -265,13 +265,13 @@ export default function TarefaChecklistPessoal({
           )}
 
           {semMovimentoAtivo && (
-            <span className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
+            <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
               SEM MOVIMENTO
             </span>
           )}
 
           {mostrarCheckboxSemMovimento && (
-            <label className="flex items-center gap-1 text-[10px] text-[var(--fg)]/40 whitespace-nowrap cursor-pointer select-none">
+            <label className="flex items-center gap-1 text-xs text-[var(--fg)]/40 whitespace-nowrap cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={semMovimentoAtivo}
@@ -321,7 +321,7 @@ export default function TarefaChecklistPessoal({
             />
             <div className="flex items-center gap-2 flex-wrap">
               {podeEditar && (
-                <label className={`text-[10px] px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
+                <label className={`text-xs px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
                   uploadingTipo === tipo
                     ? 'opacity-50 pointer-events-none'
                     : 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/25'
@@ -338,7 +338,7 @@ export default function TarefaChecklistPessoal({
                 </label>
               )}
               {arquivosDaTarefa(tipo).map(arq => (
-                <span key={arq.id} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
+                <span key={arq.id} className="flex items-center gap-1.5 text-xs bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
                   <a href={`/api/arquivos/tarefa/${arq.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
                     📎 {arq.name}
                   </a>
@@ -350,7 +350,7 @@ export default function TarefaChecklistPessoal({
                 </span>
               ))}
             </div>
-            {erroUpload[tipo] && <p className="text-red-400 text-[10px]">{erroUpload[tipo]}</p>}
+            {erroUpload[tipo] && <p className="text-red-400 text-xs">{erroUpload[tipo]}</p>}
           </div>
         )}
       </div>
@@ -383,7 +383,7 @@ export default function TarefaChecklistPessoal({
             onClick={() => toggleGrupo(grupoDaTarefa.id)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/3 hover:bg-[var(--fg)]/5 transition-all text-left"
           >
-            <span className={`text-[10px] text-[var(--fg)]/40 transition-transform ${expandido ? 'rotate-90' : ''}`}>▶</span>
+            <span className={`text-xs text-[var(--fg)]/40 transition-transform ${expandido ? 'rotate-90' : ''}`}>▶</span>
             <span className="text-sm flex-1 text-[var(--fg)] font-medium">{grupoDaTarefa.nome}</span>
             <span className="text-xs text-[var(--fg)]/40">{concluidasDoGrupo}/{tarefasDoGrupo.length}</span>
           </button>

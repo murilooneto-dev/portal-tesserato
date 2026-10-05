@@ -43,7 +43,7 @@ const emptyForm = (tarefasPadrao: string[]): FormData => ({
 
 const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
 const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
+const labelCls = "block text-xs font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
 export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false }: Props) {
   const router = useRouter()
@@ -251,7 +251,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
                 <label className={labelCls}>Tarefas ({form.tarefas_personalizadas.length})</label>
                 {isEdit && clienteId && !readOnly && (
                   <button type="button" onClick={() => setGruposAberto(true)}
-                    className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] hover:border-[var(--fg)]/25 transition-colors">
+                    className="text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] hover:border-[var(--fg)]/25 transition-colors">
                     Agrupar tarefas
                   </button>
                 )}
