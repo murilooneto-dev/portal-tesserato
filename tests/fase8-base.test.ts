@@ -269,8 +269,7 @@ test('globals.css: sem apelidos antigos nem .no-print/.print-only; reduzir movim
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*animation-duration: 0\.01ms !important;[\s\S]*transition-duration: 0\.01ms !important;/)
 })
 
-test('globals.css: remendo do tema claro fica enquanto app/contabil/page.tsx usar [var(--fg)]', () => {
-  const usa = ler('app/contabil/page.tsx').includes('[var(--fg)]')
-  const temRemendo = ler('app/globals.css').includes(':root.light .text-\\[var\\(--fg\\)\\]')
-  if (usa) assert.ok(temRemendo, 'a página ainda usa a classe; o remendo precisa ficar')
+test('globals.css: sem o remendo do tema claro para text-[var(--fg)]/NN (nenhuma tela usa mais)', () => {
+  assert.ok(!ler('app/contabil/page.tsx').includes('[var(--fg)]'))
+  assert.ok(!ler('app/globals.css').includes(String.raw`\[var\(--fg\)\]`))
 })

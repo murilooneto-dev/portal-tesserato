@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { SearchX } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { buttonClassName } from '@/components/ui/Button'
 
 export default function NaoEncontrada() {
   return (
@@ -9,7 +10,7 @@ export default function NaoEncontrada() {
         icone={<SearchX size={24} />}
         titulo="Página não encontrada"
         descricao="O endereço pode ter mudado ou a página foi removida."
-        acao={<Link href="/intranet" className="inline-flex h-9 items-center rounded-lg bg-acc px-3.5 text-sm font-semibold text-acc-ink">Ir para o Início</Link>}
+        acao={<Link href="/intranet" className={buttonClassName({ variante: 'primario' })}>Ir para o Início</Link>}
       />
     </main>
   )
