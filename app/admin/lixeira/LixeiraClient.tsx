@@ -37,6 +37,8 @@ const ICONE_POR_TABELA: Record<string, LucideIcon> = {
 }
 
 // Fuso fixo para servidor e navegador renderizarem igual (evita erro de hidratação).
+const SEM_NOME = '__sem_nome__'
+
 function formatarData(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })
 }
@@ -62,11 +64,13 @@ export default function LixeiraClient({ exclusoesIniciais, erroInicial }: Props)
     [exclusoesIniciais],
   )
 
+  const temSemNome = exclusoesIniciais.some(e => !e.excluidoPorNome)
+
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase()
     return exclusoesIniciais.filter(e =>
       (termo === '' || e.titulo.toLowerCase().includes(termo) || e.resumo.toLowerCase().includes(termo)) &&
-      (autor === '' || e.excluidoPorNome === autor),
+      (autor === '' || (autor === SEM_NOME ? !e.excluidoPorNome : e.excluidoPorNome === autor)),
     )
   }, [exclusoesIniciais, busca, autor])
 
@@ -153,6 +157,7 @@ export default function LixeiraClient({ exclusoesIniciais, erroInicial }: Props)
               <Select id={c.id} value={autor} onChange={e => setAutor(e.target.value)}>
                 <option value="">Todos</option>
                 {autores.map(n => <option key={n} value={n}>{n}</option>)}
+                {temSemNome && <option value={SEM_NOME}>Sem nome (sistema ou sessão)</option>}
               </Select>
             )}
           </Field>
@@ -200,7 +205,7 @@ export default function LixeiraClient({ exclusoesIniciais, erroInicial }: Props)
                 <div className="min-w-0">
                   <p className="break-words font-semibold text-fg">{e.titulo}</p>
                   <p className="text-[13px] text-fg-2">{e.resumo}</p>
-                  <p className="text-[13px] text-fg-3">Apagado{textoAutor(e)}</p>
+                  <p className="text-[13px] text-fg-3">{!e.excluidoPorNome && e.origemAutor === 'desconhecido' ? 'Autor desconhecido' : `Apagado${textoAutor(e)}`}</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2.5">
                   {selo(e)}

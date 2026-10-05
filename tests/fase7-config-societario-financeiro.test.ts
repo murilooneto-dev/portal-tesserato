@@ -53,8 +53,8 @@ test('cascas: caminho, título, subtítulo e abas', () => {
     'titulo="Configurações do Financeiro"', 'subtitulo="Tipos, centros de custo e tarefas do Financeiro"', '<Abas',
     `rotulo: 'Tipos de entrada', conteudo: <FinanceiroCatalogoTab tipo="tipos" natureza="entrada" label="tipo de entrada" />`,
     `rotulo: 'Tipos de saída', conteudo: <FinanceiroCatalogoTab tipo="tipos" natureza="saida" label="tipo de saída" />`,
-    `rotulo: 'Centros de custo · recebimento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="entrada" label="centro de custo de recebimento" />`,
-    `rotulo: 'Centros de custo · pagamento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="saida" label="centro de custo de pagamento" />`,
+    `rotulo: 'Centros de custo · recebimento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="entrada" label="centro de custo de recebimento" mostrada={trocas} />`,
+    `rotulo: 'Centros de custo · pagamento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="saida" label="centro de custo de pagamento" mostrada={trocas} />`,
     "rotulo: 'Tarefas', conteudo: <TarefasFinanceiroTab />"])
   // As cinco abas aparecem nessa ordem.
   const ordem = ["'Tipos de entrada'", "'Tipos de saída'", "'Centros de custo · recebimento'", "'Centros de custo · pagamento'", "'Tarefas'"].map(t => fin.indexOf(t))
@@ -102,7 +102,7 @@ test('documentações: desenho a-14 e mesmas actions', () => {
     'href={`/api/arquivos/documentacao/${item.id}`}', 'target="_blank"', 'rel="noopener noreferrer"',
     'rotulo={`Excluir modelo ${item.nome}`}', 'Nenhum modelo de documentação cadastrado ainda.',
     'listarDocumentacaoModelos()', "formData.append('arquivo', arquivo)", 'criarDocumentacaoModelo(novoNome, formData)',
-    'excluirDocumentacaoModelo(item.id)', 'if (!novoNome.trim() || !arquivo) return',
+    'excluirDocumentacaoModelo(item.id)', 'if (!novoNome.trim() || !arquivo || salvando) return',
     'Excluir o modelo de documentação "${item.nome}"?'])
   assert.match(src, /<Card semPadding className="[^"]*overflow-hidden[^"]*">/)
 })

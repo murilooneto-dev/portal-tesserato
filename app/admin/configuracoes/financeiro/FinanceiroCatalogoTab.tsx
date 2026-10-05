@@ -28,9 +28,11 @@ interface Props {
   natureza: FinanceiroNatureza
   // Em minúsculas: "tipo de entrada", "centro de custo de pagamento"…
   label: string
+  /** Conta quantas vezes a aba foi aberta: ao mudar, a lista é relida. */
+  mostrada?: number
 }
 
-export default function FinanceiroCatalogoTab({ tipo, natureza, label }: Props) {
+export default function FinanceiroCatalogoTab({ tipo, natureza, label, mostrada = 0 }: Props) {
   const confirmar = useConfirmar()
   const avisar = useToast()
   const [itens, setItens] = useState<Item[]>([])
@@ -55,10 +57,12 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label }: Props) 
     setCarregando(false)
   }, [tipo, natureza])
 
+  // Relê também quando a aba volta a ser mostrada: um centro de custo antigo
+  // "sem categoria" aparece nas duas abas de centro e pode ter mudado na outra.
   useEffect(() => {
     async function iniciar() { await recarregar() }
     iniciar()
-  }, [recarregar])
+  }, [recarregar, mostrada])
 
   async function handleCriar() {
     if (!novoNome.trim() || salvandoNovo) return

@@ -55,7 +55,7 @@ export default function DocumentacoesTab() {
   }, [aplicar])
 
   async function handleCriar() {
-    if (!novoNome.trim() || !arquivo) return
+    if (!novoNome.trim() || !arquivo || salvando) return
     setSalvando(true)
     const formData = new FormData()
     formData.append('arquivo', arquivo)

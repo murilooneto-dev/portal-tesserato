@@ -95,15 +95,22 @@ export default function UsuarioDrawer({ perfil, currentUserId, onFechar, onSalvo
         return
       }
       setSalvando(true)
-      const result = await criarUsuario({
-        nome: nome.trim(),
-        login: login.trim(),
-        senha,
-        role,
-        cor,
-        paginasAcesso: paginas,
-        setores,
-      })
+      let result: Awaited<ReturnType<typeof criarUsuario>>
+      try {
+        result = await criarUsuario({
+          nome: nome.trim(),
+          login: login.trim(),
+          senha,
+          role,
+          cor,
+          paginasAcesso: paginas,
+          setores,
+        })
+      } catch {
+        setSalvando(false)
+        setErro('Não foi possível criar o usuário.')
+        return
+      }
       setSalvando(false)
       if (result.error) { setErro(result.error); return }
       onSalvo('Usuário criado')

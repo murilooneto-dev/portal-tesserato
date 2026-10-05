@@ -56,6 +56,8 @@ export default function AbaUsuarios({ profiles, currentUserId }: { profiles: Pro
   }
 
   function aoSalvar(mensagem: string) {
+    // Depois de criar, limpa os filtros para o usuário novo aparecer na lista.
+    if (gaveta === 'novo') { setBusca(''); setPerfil(''); setSetor('') }
     setGaveta(null)
     toast(mensagem)
     router.refresh()

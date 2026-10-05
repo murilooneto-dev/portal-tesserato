@@ -165,14 +165,14 @@ test('gaveta: actions com os mesmos argumentos', () => {
   const src = ler(GAVETA)
   assert.ok(src.includes([
     'await criarUsuario({',
-    '        nome: nome.trim(),',
-    '        login: login.trim(),',
-    '        senha,',
-    '        role,',
-    '        cor,',
-    '        paginasAcesso: paginas,',
-    '        setores,',
-    '      })',
+    '          nome: nome.trim(),',
+    '          login: login.trim(),',
+    '          senha,',
+    '          role,',
+    '          cor,',
+    '          paginasAcesso: paginas,',
+    '          setores,',
+    '        })',
   ].join('\n')))
   tem(src, ["fd.set('nome', nome)", "fd.set('role', role)", "fd.set('cor', cor)", "for (const s of setores) fd.append('setores', s)",
     "for (const c of paginas) fd.append('paginas_acesso', c)", 'await atualizarPerfil(perfil.id, fd)'])
