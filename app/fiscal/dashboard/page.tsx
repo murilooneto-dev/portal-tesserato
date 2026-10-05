@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { ChevronRight, StickyNote } from 'lucide-react'
+import { CalendarClock, CheckCircle2, ChevronRight, StickyNote } from 'lucide-react'
 import { Pagina, CabecalhoPagina, Card, Badge, EmptyState, type BadgeTom } from '@/components/ui'
+import { buttonClassName } from '@/components/ui/Button'
 import DashboardVisao from '@/components/fiscal/DashboardVisao'
 import { Profile, Tarefa, CalendarioEvento } from '@/lib/types'
 import { getMesAno } from '@/lib/mes-atual-server'
@@ -147,7 +148,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         </section>
 
-        <section className={KPI}>
+        {/* Celular (mob-09): Clientes e Com observação lado a lado. */}
+        <div className="grid grid-cols-2 gap-4 md:hidden">
+          <section className={KPI}>
+            <p className={KPI_ROTULO}>{meu ? 'Meus clientes' : 'Clientes'}</p>
+            <p className={KPI_VALOR}>{clientesVisao.length}</p>
+          </section>
+          <section className={KPI}>
+            <p className={KPI_ROTULO}>Com observação</p>
+            <p className={KPI_VALOR}>{clientesObs.length}</p>
+          </section>
+        </div>
+
+        <section className={`${KPI} hidden md:block`}>
           <p className={KPI_ROTULO}>{meu ? 'Meus clientes' : 'Clientes ativos'}</p>
           <p className={KPI_VALOR}>{clientesVisao.length}</p>
           <div className="mb-2.5 mt-3 flex h-2 gap-0.5 overflow-hidden rounded-full bg-inset">
@@ -169,7 +182,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <section className={KPI}>
           <p className={KPI_ROTULO}>Próximos prazos</p>
           {alertas.length === 0 ? (
-            <p className="mt-3 text-sm text-fg-3">{ehMesAtual ? 'Nenhum prazo nos próximos 10 dias.' : 'Os prazos aparecem só no mês atual.'}</p>
+            <EmptyState
+              compacto
+              icone={<CalendarClock size={20} />}
+              titulo={ehMesAtual ? 'Nenhum prazo nos próximos 10 dias' : 'Os prazos aparecem só no mês atual'}
+              acao={
+                <Link href="/fiscal/calendario" className={buttonClassName({ variante: 'fantasma', tamanho: 'p' })}>
+                  Ver calendário <ChevronRight size={14} aria-hidden="true" />
+                </Link>
+              }
+            />
           ) : (
             <ul className="mt-2">
               {alertas.map((a, i) => (
@@ -203,7 +225,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             }
           >
             {meu.pendencias.length === 0 ? (
-              <EmptyState icone={<StickyNote size={22} />} titulo="Nada pendente" descricao="Todas as suas tarefas do mês estão concluídas." />
+              <EmptyState compacto icone={<CheckCircle2 size={20} />} titulo="Nada pendente" descricao="Todas as suas tarefas do mês estão concluídas." />
             ) : (
               <ul>
                 {meu.pendencias.map((p, i) => (
@@ -256,7 +278,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           meta={!meu ? <Badge>{clientesObs.length}</Badge> : undefined}
         >
           {clientesObs.length === 0 ? (
-            <p className="px-[18px] py-6 text-sm text-fg-3">Nenhum cliente com observação.</p>
+            <EmptyState compacto icone={<StickyNote size={20} />} titulo="Nenhum cliente com observação" descricao="As observações anotadas na ficha dos clientes aparecem aqui." />
           ) : (
             <ul>
               {clientesObs.map((c, i) => (
