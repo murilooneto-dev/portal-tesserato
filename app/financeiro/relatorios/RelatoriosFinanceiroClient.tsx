@@ -222,7 +222,7 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
                       <Td>
                         {m.observacao
                           ? <span className="block truncate text-fg-2 print:whitespace-normal print:break-words" title={m.observacao}>{m.observacao}</span>
-                          : <span className="text-fg-3">—</span>}
+                          : <span className="text-fg-2">—</span>}
                       </Td>
                       <Td alinhar="dir" className={`whitespace-nowrap font-mono font-semibold tabular-nums ${m.natureza === 'entrada' ? COR_ENTRADA : COR_SAIDA}`}>
                         {valorDoMovimento(m)}

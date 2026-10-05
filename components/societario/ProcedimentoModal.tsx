@@ -14,6 +14,8 @@ import { Segmentado, type OpcaoSegmentada } from '@/components/ui/Segmentado'
 import { Aviso } from '@/components/ui/Aviso'
 import { useToast } from '@/components/ui/Toast'
 
+const OUTRO_RESPONSAVEL = '__outro__'
+
 export type SubetapaValor = string | boolean | null
 
 export interface ProcessoTipo {
@@ -151,7 +153,10 @@ export default function ProcedimentoModal({
 
   // Responsável: os perfis, e o valor atual como opção extra se não bater com nenhum.
   // A comparação é exata: o valor do campo precisa ser o de uma das opções.
-  const responsavelForaDaLista = form.responsavel !== '' && !responsaveis.includes(form.responsavel)
+  // "Outro nome…" mantém o texto livre de antes: quem não é admin só enxerga o
+  // próprio perfil, então a lista sozinha não cobre todos os nomes.
+  const [responsavelLivre, setResponsavelLivre] = useState(false)
+  const responsavelForaDaLista = !responsavelLivre && form.responsavel !== '' && !responsaveis.includes(form.responsavel)
 
   function selecionarCliente(clienteId: string) {
     const cliente = clientes.find(c => c.id === clienteId)
@@ -321,11 +326,30 @@ export default function ProcedimentoModal({
         </Field>
         <Field rotulo="Responsável">
           {c => (
-            <Select id={c.id} value={form.responsavel} onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))}>
-              <option value="">Sem responsável</option>
-              {responsavelForaDaLista && <option value={form.responsavel}>{`${form.responsavel} (atual)`}</option>}
-              {responsaveis.map(r => <option key={r} value={r}>{r}</option>)}
-            </Select>
+            <div className="flex flex-col gap-2">
+              <Select
+                id={c.id}
+                value={responsavelLivre ? OUTRO_RESPONSAVEL : form.responsavel}
+                onChange={e => {
+                  const outro = e.target.value === OUTRO_RESPONSAVEL
+                  setResponsavelLivre(outro)
+                  setForm(p => ({ ...p, responsavel: outro ? '' : e.target.value }))
+                }}
+              >
+                <option value="">Sem responsável</option>
+                {responsavelForaDaLista && <option value={form.responsavel}>{`${form.responsavel} (atual)`}</option>}
+                {responsaveis.map(r => <option key={r} value={r}>{r}</option>)}
+                <option value={OUTRO_RESPONSAVEL}>Outro nome…</option>
+              </Select>
+              {responsavelLivre && (
+                <Input
+                  aria-label="Nome do responsável"
+                  placeholder="Nome do responsável"
+                  value={form.responsavel}
+                  onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))}
+                />
+              )}
+            </div>
           )}
         </Field>
       </div>

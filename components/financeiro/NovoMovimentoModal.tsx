@@ -140,7 +140,11 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     setSalvandoCentro(false)
   }
 
+  // Remonta os seletores ao limpar: texto digitado sem escolher opção não fica para trás.
+  const [rodada, setRodada] = useState(0)
+
   function limparParaProximo() {
+    setRodada(r => r + 1)
     setTipoId('')
     setValor('')
     setCentroCustoId('')
@@ -287,6 +291,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
             </div>
           ) : (
             <SeletorComBusca
+              key={`tipo-${rodada}`}
               id={c.id}
               describedBy={c.describedBy}
               invalido={c.invalido}
@@ -323,6 +328,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
             </div>
           ) : (
             <SeletorComBusca
+              key={`centro-${rodada}`}
               id={c.id}
               describedBy={c.describedBy}
               invalido={c.invalido}

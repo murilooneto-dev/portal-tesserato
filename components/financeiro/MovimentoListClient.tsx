@@ -130,9 +130,9 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
 
   const paginacao = totalPaginas > 1 && (
     <nav aria-label="Paginação" className="flex items-center gap-1.5">
-      <Button variante="fantasma" tamanho="p" disabled={paginaAtual <= 1} onClick={() => setPagina(paginaAtual - 1)}>Anterior</Button>
+      <Button variante="fantasma" tamanho="p" disabled={paginaAtual <= 1} onClick={() => { setPagina(paginaAtual - 1); setExcluindoId(null) }}>Anterior</Button>
       <span className="text-[13px] tabular-nums text-fg-3">Página {paginaAtual} de {totalPaginas}</span>
-      <Button variante="fantasma" tamanho="p" disabled={paginaAtual >= totalPaginas} onClick={() => setPagina(paginaAtual + 1)}>Próxima</Button>
+      <Button variante="fantasma" tamanho="p" disabled={paginaAtual >= totalPaginas} onClick={() => { setPagina(paginaAtual + 1); setExcluindoId(null) }}>Próxima</Button>
     </nav>
   )
 
@@ -185,7 +185,7 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
               id={c.id}
               type="search"
               value={busca}
-              onChange={e => { setBusca(e.target.value); setPagina(1) }}
+              onChange={e => { setBusca(e.target.value); setPagina(1); setExcluindoId(null) }}
               placeholder="Tipo, centro de custo ou observação"
               iconeEsquerda={<Search size={16} />}
             />
@@ -193,7 +193,7 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
         </Field>
         <Field rotulo="Ordenar por" className="w-full sm:w-[230px]">
           {c => (
-            <Select id={c.id} value={ordenacao} onChange={e => { setOrdenacao(e.target.value as Ordenacao); setPagina(1) }}>
+            <Select id={c.id} value={ordenacao} onChange={e => { setOrdenacao(e.target.value as Ordenacao); setPagina(1); setExcluindoId(null) }}>
               {OPCOES_ORDENACAO.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </Select>
           )}
@@ -286,7 +286,7 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
                       <Td>
                         {m.observacao
                           ? <span className="block truncate text-fg-2" title={m.observacao}>{m.observacao}</span>
-                          : <span className="text-fg-3">—</span>}
+                          : <span className="text-fg-2">—</span>}
                       </Td>
                       <Td alinhar="dir" className="whitespace-nowrap font-mono font-semibold tabular-nums text-fg">{formatarValor(m.valor)}</Td>
                       <Td alinhar="dir" className="py-2">

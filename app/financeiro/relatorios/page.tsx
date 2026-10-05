@@ -14,8 +14,17 @@ interface LinhaBanco {
   financeiro_centros_custo: { nome: string } | null
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/
+
 export default async function RelatoriosFinanceiroPage({ searchParams }: Props) {
-  const { natureza, tipoId, centroCustoId, de, ate } = await searchParams
+  // Filtro malformado na URL (editada à mão) é ignorado em vez de virar erro do banco.
+  const bruto = await searchParams
+  const natureza = bruto.natureza === 'entrada' || bruto.natureza === 'saida' ? bruto.natureza : undefined
+  const tipoId = bruto.tipoId && UUID.test(bruto.tipoId) ? bruto.tipoId : undefined
+  const centroCustoId = bruto.centroCustoId && UUID.test(bruto.centroCustoId) ? bruto.centroCustoId : undefined
+  const de = bruto.de && DATA_ISO.test(bruto.de) ? bruto.de : undefined
+  const ate = bruto.ate && DATA_ISO.test(bruto.ate) ? bruto.ate : undefined
   const supabase = await createClient()
 
   // Todos os lançamentos do filtro, em blocos de 1000: os totais de entradas,

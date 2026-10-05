@@ -45,7 +45,9 @@ export default function ClientesListaSocietario({ clientes, tiposPorCliente, con
   const filtrados = useMemo(() => clientes.filter(c => {
     if (busca) {
       const q = busca.toLowerCase()
-      const digitos = busca.replace(/\D/g, '')
+      // Só compara dígitos do CNPJ quando a busca é só número/pontuação;
+      // senão "Posto 2" listaria todo CNPJ que tem "2".
+      const digitos = /^[\d.\/\-\s]+$/.test(busca) ? busca.replace(/\D/g, '') : ''
       const cnpj = c.cnpj ?? ''
       const bateCnpj = cnpj.includes(q) || (digitos.length > 0 && cnpj.replace(/\D/g, '').includes(digitos))
       if (!c.nome.toLowerCase().includes(q) && !bateCnpj) return false
