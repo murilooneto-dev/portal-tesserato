@@ -2,20 +2,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Search } from 'lucide-react'
 import {
   listarClientesParaVinculo,
   listarClienteIdsVinculados,
   alternarVinculoCliente,
   type ClienteResumo,
 } from '@/lib/tarefa-tipo-vinculos-societario-actions'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Input, Checkbox } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
+import { cn } from '@/components/ui/cn'
 
 interface Props {
   tarefaTipoId: string
   tarefaTipoNome: string
   onClose: () => void
 }
-
-const inputCls = "w-full px-3 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50"
 
 export default function VincularClientesModal({ tarefaTipoId, tarefaTipoNome, onClose }: Props) {
   const [clientes, setClientes] = useState<ClienteResumo[]>([])
@@ -47,7 +51,8 @@ export default function VincularClientesModal({ tarefaTipoId, tarefaTipoNome, on
     const jaVinculado = vinculados.has(clienteId)
     setVinculados(prev => {
       const novo = new Set(prev)
-      jaVinculado ? novo.delete(clienteId) : novo.add(clienteId)
+      if (jaVinculado) novo.delete(clienteId)
+      else novo.add(clienteId)
       return novo
     })
 
@@ -56,7 +61,8 @@ export default function VincularClientesModal({ tarefaTipoId, tarefaTipoNome, on
       setErro(error)
       setVinculados(prev => {
         const novo = new Set(prev)
-        jaVinculado ? novo.add(clienteId) : novo.delete(clienteId)
+        if (jaVinculado) novo.add(clienteId)
+        else novo.delete(clienteId)
         return novo
       })
     }
@@ -65,60 +71,48 @@ export default function VincularClientesModal({ tarefaTipoId, tarefaTipoNome, on
   const clientesFiltrados = clientes.filter(c => c.nome.toLowerCase().includes(busca.trim().toLowerCase()))
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">Clientes de &quot;{tarefaTipoNome}&quot;</h2>
-          <button onClick={onClose} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl px-1">×</button>
-        </div>
+    <Modal
+      aberto
+      onFechar={onClose}
+      titulo={`Clientes de "${tarefaTipoNome}"`}
+      largura="p"
+      rodape={<Button variante="fantasma" onClick={onClose} className="ml-auto">Fechar</Button>}
+    >
+      <Input
+        aria-label="Buscar cliente"
+        placeholder="Buscar cliente"
+        value={busca}
+        onChange={e => setBusca(e.target.value)}
+        iconeEsquerda={<Search size={16} />}
+      />
 
-        <div className="px-6 pt-4 shrink-0">
-          <p className="text-[var(--fg)]/40 text-xs mb-3">
-            Vincular agora não cria pendências de meses/períodos passados — só a partir do período atual.
-          </p>
-          <input
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar cliente..."
-            className={inputCls}
-          />
-        </div>
+      {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
 
-        <div className="overflow-y-auto flex-1 px-6 py-4">
-          {erro && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-              ⚠ {erro}
-            </div>
-          )}
+      {carregando ? (
+        <p className="text-sm text-fg-3">Carregando…</p>
+      ) : clientesFiltrados.length === 0 ? (
+        <p className="text-sm text-fg-3">Nenhum cliente encontrado.</p>
+      ) : (
+        <ul className="max-h-[50vh] overflow-y-auto rounded-[10px] border border-line-soft">
+          {clientesFiltrados.map((c, i) => {
+            const marcado = vinculados.has(c.id)
+            return (
+              <li key={c.id} className={cn('flex min-h-11 items-center px-3.5', i > 0 && 'border-t border-line-soft')}>
+                <Checkbox
+                  rotulo={<span className="text-sm text-fg">{c.nome}</span>}
+                  checked={marcado}
+                  onChange={() => toggle(c.id)}
+                  className="w-full py-2"
+                />
+              </li>
+            )
+          })}
+        </ul>
+      )}
 
-          {carregando ? (
-            <p className="text-[var(--fg)]/40 text-sm">Carregando...</p>
-          ) : clientesFiltrados.length === 0 ? (
-            <p className="text-[var(--fg)]/40 text-sm">Nenhum cliente encontrado.</p>
-          ) : (
-            <div className="space-y-1">
-              {clientesFiltrados.map(c => (
-                <label key={c.id} className="flex items-center gap-3 cursor-pointer px-3 py-2 rounded-xl hover:bg-[var(--fg)]/5">
-                  <input
-                    type="checkbox"
-                    checked={vinculados.has(c.id)}
-                    onChange={() => toggle(c.id)}
-                    className="accent-[var(--accent)]"
-                  />
-                  <span className="text-sm text-[var(--fg)]">{c.nome}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex justify-end px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm">
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
+      <p className="text-[13px] text-fg-3">
+        Vincular agora não cria pendências de meses/períodos passados — só a partir do período atual.
+      </p>
+    </Modal>
   )
 }
