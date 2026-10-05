@@ -5,6 +5,7 @@ import { FileSpreadsheet, Paperclip, X } from 'lucide-react'
 import { uploadArquivo, excluirArquivo } from '@/app/fiscal/clientes/actions'
 import { Card } from '@/components/ui/Card'
 import { IconButton } from '@/components/ui/Button'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 
 interface Arquivo {
@@ -99,7 +100,12 @@ export default function ClienteArquivos({ clienteId, arquivosIniciais, podeEdita
       {erro && <p role="alert" className="mb-3 whitespace-pre-line text-[13px] text-danger">{erro}</p>}
 
       {arquivos.length === 0 ? (
-        <p className="text-[13px] text-fg-3">Nenhuma planilha anexada. Anexe a planilha de DTE (.xls, .xlsx ou .csv) para liberar a conferência de chaves.</p>
+        <EmptyState
+          compacto
+          icone={<FileSpreadsheet size={20} />}
+          titulo="Nenhuma planilha anexada"
+          descricao="Anexe a planilha de DTE (.xls, .xlsx ou .csv) para liberar a conferência de chaves."
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {arquivos.map(arq => (

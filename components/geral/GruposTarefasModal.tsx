@@ -14,6 +14,8 @@ import { Button, IconButton } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
 import { Input, Checkbox } from '@/components/ui/Input'
 import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/components/ui/cn'
 
@@ -152,9 +154,14 @@ export default function GruposTarefasModal({ clienteId, setor, tarefasDisponivei
       {!emForm && (
         <>
           {erroLista && <div role="alert"><Aviso tom="dng">{erroLista}</Aviso></div>}
-          {carregando && <p role="status" className="text-sm text-fg-3">Carregando…</p>}
+          {carregando && <EsqueletoLinhas linhas={3} />}
           {!carregando && grupos.length === 0 && (
-            <p className="text-sm text-fg-3">Nenhum grupo criado ainda.</p>
+            <EmptyState
+              compacto
+              icone={<Layers size={20} />}
+              titulo="Nenhum grupo criado ainda"
+              descricao="Grupos juntam tarefas parecidas na ficha do cliente, com o andamento do grupo."
+            />
           )}
           {grupos.length > 0 && (
             <ul className="overflow-hidden rounded-[10px] border border-line-soft">
