@@ -8,7 +8,7 @@ const ITEM = 'flex min-h-11 flex-col items-center justify-center gap-[3px] text-
 
 export function BarraInferior({ atalhos, pathname, onMais, menuAberto }: { atalhos: ItemMenu[]; pathname: string; onMais: () => void; menuAberto: boolean }) {
   return (
-    <nav aria-label="Atalhos" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-4 border-t border-line-soft bg-top print:hidden lg:hidden">
+    <nav aria-label="Atalhos" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-4 border-t border-line-soft bg-top print:hidden md:hidden">
       {atalhos.map(item => {
         const ativo = estaAtivo(pathname, item.href)
         const Icone = ICONE[item.icone]

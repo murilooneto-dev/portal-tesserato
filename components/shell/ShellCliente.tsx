@@ -12,6 +12,7 @@ import { BarraTopo } from './BarraTopo'
 import { MenuLateral } from './MenuLateral'
 import { GavetaMenu } from './GavetaMenu'
 import { BarraInferior } from './BarraInferior'
+import { TrilhoIcones } from './TrilhoIcones'
 import SeletorMes from './SeletorMes'
 
 export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, atalhos, children }: {
@@ -81,7 +82,10 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
         <aside className="hidden w-[248px] shrink-0 border-r border-line-soft bg-nav print:hidden lg:flex lg:flex-col">
           <MenuLateral grupos={grupos} pathname={pathname} />
         </aside>
-        <main id="conteudo" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto pb-16 focus:outline-none print:h-auto print:overflow-visible print:pb-0 lg:pb-0">
+        <aside className="hidden w-[72px] shrink-0 border-r border-line-soft bg-nav print:hidden md:flex md:flex-col lg:hidden">
+          <TrilhoIcones grupos={grupos} pathname={pathname} />
+        </aside>
+        <main id="conteudo" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto pb-16 focus:outline-none print:h-auto print:overflow-visible print:pb-0 md:pb-0">
           <TituloCascaProvider titulo={titulo}>{children}</TituloCascaProvider>
         </main>
       </div>
