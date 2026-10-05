@@ -33,7 +33,7 @@ test('contêiner que rola a tabela é relative (sr-only dos cabeçalhos não ala
     'app/(comum)/vinculos/VinculosClient.tsx', 'app/(comum)/ferramentas/FerramentasClient.tsx',
   ]) {
     const fonte = ler(arq)
-    assert.match(fonte, /className="relative overflow-x-auto"/, arq)
+    assert.match(fonte, /className="relative overflow-x-auto[ "]/, arq)
     assert.doesNotMatch(fonte, /className="overflow-x-auto"/, arq)
   }
 })
