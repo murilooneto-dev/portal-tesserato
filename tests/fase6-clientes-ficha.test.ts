@@ -31,7 +31,7 @@ for (const arq of LISTAS) {
     const src = ler(arq)
     for (const t of ['<Pagina>', 'titulo="Clientes"', 'MESES[mes - 1]', 'placeholder="Nome ou CNPJ"', 'sm:w-[300px]', 'sm:w-[220px]',
       'Todas as tarefas', 'rotulo="Só pendentes"', '<NomeCliente', '<BarraProgresso', 'largura={220}', 'largura={300}', 'largura={56}',
-      'Município / UF', 'Progresso do mês', 'ChevronRight', '<Card semPadding className="overflow-hidden">',
+      'Município / UF', 'Progresso do mês', 'ChevronRight', '<Card semPadding className="hidden overflow-hidden sm:block">',
       'relative overflow-x-auto xl:overflow-visible', "p.liberada ? 'ok' : 'warn'"]) assert.ok(src.includes(t), t)
     // Sem botão no cabeçalho.
     assert.ok(!src.includes('acoes='))
