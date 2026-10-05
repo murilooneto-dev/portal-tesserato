@@ -3,7 +3,7 @@
 -- cobrir igualmente o que é gravado pelo servidor e pelo navegador.
 --
 -- Fora de propósito (é preenchimento, não criação): tarefas, tarefa_etapas,
--- tarefa_arquivos, observacoes_clientes, planilha_linhas/colunas,
+-- tarefa_arquivos, observacoes_clientes,
 -- processo_subetapas. Clientes (clientes, clientes_<setor>) e tarefa_grupos
 -- continuam registrados pelo código (já têm setor/estrutura de tarefas).
 --
@@ -108,9 +108,6 @@ begin
         v_descr := (select pt.nome from processo_tipos pt where pt.id = (r->>'processo_tipo_id')::uuid);
         v_cli_nome := r->>'empresa';
         v_setor := 'societario';
-      when 'planilhas' then
-        v_entidade := 'Tabela';
-        v_descr := r->>'nome';
       when 'documentacao_modelos' then
         v_entidade := 'Modelo de documentação';
         v_descr := coalesce(r->>'nome', r->>'name');
@@ -201,7 +198,7 @@ begin
     'evento_arquivos', 'client_files', 'procedimento_arquivos', 'cliente_notas',
     'parcelamentos', 'parcelamento_secoes', 'calendario_eventos', 'tarefas_avulsas',
     'tarefa_tipos', 'tarefa_tipo_vinculos', 'tarefa_vinculos', 'processo_tipos',
-    'procedimentos_societario', 'planilhas', 'documentacao_modelos', 'atividades',
+    'procedimentos_societario', 'documentacao_modelos', 'atividades',
     'regimes', 'financeiro_movimentos', 'financeiro_tipos', 'financeiro_centros_custo',
     'links_rapidos', 'agenda'
   ] loop

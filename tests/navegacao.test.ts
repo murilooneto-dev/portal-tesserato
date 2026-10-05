@@ -19,7 +19,7 @@ test('admin vê todas as páginas do setor e o grupo Administração', () => {
   const g = montarMenu(admin, 'fiscal')
   assert.deepEqual(g.map(x => x.id), ['geral', 'setor', 'admin'])
   assert.equal(g[1].titulo, 'Fiscal')
-  assert.deepEqual(rotulos(g, 'setor'), ['Dashboard', 'Clientes', 'Calendário', 'Relatórios', 'Parcelamentos', 'Preenchimento rápido', 'Minhas tarefas', 'Tabelas'])
+  assert.deepEqual(rotulos(g, 'setor'), ['Dashboard', 'Clientes', 'Calendário', 'Relatórios', 'Parcelamentos', 'Preenchimento rápido', 'Minhas tarefas'])
   assert.deepEqual(rotulos(g, 'admin'), ['Configurações', 'Vínculos de tarefas', 'Parâmetros', 'Lixeira'])
   assert.equal(g[1].itens[0].href, '/fiscal/dashboard')
 })
@@ -48,8 +48,8 @@ test('setor Configurações aparece para quem tem o setor, com Configurações e
 })
 
 test('página atual: igual ou subpágina, nunca prefixo parecido', () => {
-  assert.equal(estaAtivo('/fiscal/tabelas/123', '/fiscal/tabelas'), true)
-  assert.equal(estaAtivo('/fiscal/tabelas', '/fiscal/tabelas'), true)
+  assert.equal(estaAtivo('/fiscal/clientes/123', '/fiscal/clientes'), true)
+  assert.equal(estaAtivo('/fiscal/clientes', '/fiscal/clientes'), true)
   assert.equal(estaAtivo('/clientes-antigos', '/clientes'), false)
   assert.equal(estaAtivo('/fiscal/clientes', '/clientes'), false)
 })
