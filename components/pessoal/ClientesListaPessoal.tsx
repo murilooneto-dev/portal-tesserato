@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { ChevronRight, Check, Clock, Plus, Search, StickyNote, Users } from 'lucide-react'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComPessoal } from '@/lib/clientes-pessoal'
 import type { PendenciaVinculo } from '@/lib/vinculos'
@@ -9,24 +10,20 @@ import { formatarBadgeVinculo } from '@/lib/vinculos'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import EmpresaPessoalModal from './EmpresaPessoalModal'
 import { labelRegime } from '@/lib/atividades-regimes'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Input, Select, Switch } from '@/components/ui/Input'
+import { MonthPill } from '@/components/ui/MonthPill'
 import { NomeCliente } from '@/components/ui/NomeCliente'
-import { COR, tomDoPercentual } from '@/components/ui/MonthPill'
-import { cn } from '@/components/ui/cn'
-import type { ProgressoMesPessoal } from '@/lib/pessoal-progresso'
-
-const CORES_RESP: string[] = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316','#ef4444','#84cc16']
-const _respColorCache: Record<string, string> = {}
-function corResponsavel(nome: string): string {
-  if (!_respColorCache[nome]) {
-    _respColorCache[nome] = CORES_RESP[Object.keys(_respColorCache).length % CORES_RESP.length]
-  }
-  return _respColorCache[nome]
-}
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 
 interface Props {
   clientes: ClienteComPessoal[]
-  progressoMap: Record<string, Record<number, ProgressoMesPessoal>>
+  progressoMap: Record<string, { total: number; concluidas: number }>
   mes: number
   ano: number
   tarefasPadrao: string[]
@@ -64,43 +61,47 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
     return true
   }), [clientes, busca, filtroResponsavel, filtroRegime, filtroPrioridade, mostrarDesabilitados])
 
-  const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
+  const subtitulo = `${filtrados.length} ${filtrados.length === 1 ? 'cliente ativo' : 'clientes'} no Pessoal · ${MESES[mes - 1]}/${ano}`
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <input
-          type="text"
-          placeholder="Buscar cliente ou CNPJ..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-        />
-        <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} className={selectClass}>
-          {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
-        </select>
-        <select value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os regimes</option>
-          {catalogo.regimes.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
-        </select>
-        <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as prioridades</option>
-          {prioridades.map(p => <option key={p} value={p} className="bg-[var(--bg-surface)]">{`P${p}`}</option>)}
-        </select>
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
-          <input
-            type="checkbox"
-            checked={mostrarDesabilitados}
-            onChange={e => setMostrarDesabilitados(e.target.checked)}
-            className="w-4 h-4 accent-[var(--accent)]"
-          />
-          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Mostrar desabilitados</span>
-        </label>
-        <button
-          onClick={() => setModalNovoOpen(true)}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
-          + Novo Cliente
-        </button>
+    <Pagina>
+      <CabecalhoPagina
+        titulo="Clientes"
+        subtitulo={subtitulo}
+        acoes={<Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalNovoOpen(true)}>Novo cliente</Button>}
+      />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <Field rotulo="Buscar" className="w-full sm:w-[300px]">
+          {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Cliente ou CNPJ" value={busca} onChange={e => setBusca(e.target.value)} />}
+        </Field>
+        <Field rotulo="Responsável" className="w-full sm:w-[190px]">
+          {c => (
+            <Select id={c.id} value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
+              {responsaveis.map(r => <option key={r} value={r}>{r === 'TODOS' ? 'Todos' : r}</option>)}
+            </Select>
+          )}
+        </Field>
+        <Field rotulo="Regime" className="w-full sm:w-[190px]">
+          {c => (
+            <Select id={c.id} value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)}>
+              <option value="TODOS">Todos</option>
+              {catalogo.regimes.map(r => <option key={r} value={r}>{labelRegime(r)}</option>)}
+            </Select>
+          )}
+        </Field>
+        <Field rotulo="Prioridade" className="w-full sm:w-[160px]">
+          {c => (
+            <Select id={c.id} value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)}>
+              <option value="TODOS">Todas</option>
+              {prioridades.map(p => <option key={p} value={p}>{`P${p}`}</option>)}
+            </Select>
+          )}
+        </Field>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <Switch ligado={mostrarDesabilitados} onMudar={setMostrarDesabilitados} rotulo="Mostrar desabilitados" />
       </div>
 
       {modalNovoOpen && (
@@ -113,86 +114,81 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
         />
       )}
 
-      <p className="text-[var(--fg)]/30 text-xs mb-3">
-        {filtrados.length} clientes · {ano}
-      </p>
-
-      {filtrados.length === 0 ? (
-        <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-[var(--fg)]/8">
-
-          {filtrados.map(cliente => {
-            const porMes = progressoMap[cliente.id]
-            const temObs = !!(cliente.obs?.trim())
-            const vinculos = pendenciasVinculo[cliente.id] ?? []
-            const temP1 = !!cliente.prioridade && cliente.prioridade > 0
-
-            return (
-              <div key={cliente.id} className="border-t border-[var(--fg)]/6 first:border-t-0 px-3 py-3 hover:bg-[var(--fg)]/3 transition-colors">
-                <div className="flex items-start justify-between gap-3">
-                  <Link href={`/pessoal/clientes/${cliente.id}`} className="min-w-0 flex-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
-                    <NomeCliente
-                      nome={cliente.nome}
-                      cnpj={cliente.cnpj ?? null}
-                      depoisDoNome={
-                        <>
-                          {temP1 && <Badge tom="dng">P{cliente.prioridade}</Badge>}
-                          {temObs && <Badge tom="warn">Observação</Badge>}
-                          {cliente.ativo === false && <Badge>Desabilitado</Badge>}
-                        </>
-                      }
-                    />
-                  </Link>
-                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                    {vinculos.map((p, i) => {
-                      const badge = formatarBadgeVinculo(p)
-                      return (
-                        <Badge key={i} tom={p.liberada ? 'ok' : 'warn'}>
-                          {badge.texto.replace(/^(✓|⏳)\s*/, '')}
-                        </Badge>
-                      )
-                    })}
-                    {cliente.regime && <Badge tom="acc">{labelRegime(cliente.regime)}</Badge>}
-                    {cliente.responsavel && (
-                      <span className="inline-flex h-[22px] items-center whitespace-nowrap rounded-md px-2 text-xs font-semibold leading-none"
-                        style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
-                        {cliente.responsavel}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-2.5 overflow-x-auto">
-                  <div className="grid min-w-[620px] grid-cols-12 gap-1">
-                    {MESES.map((nomeMes, i) => {
-                      const mesNum = i + 1
-                      const p = porMes?.[mesNum]
-                      const pct = p?.pct ?? null
-                      const atual = mesNum === mes
-                      return (
-                        <span
-                          key={mesNum}
-                          aria-current={atual ? 'date' : undefined}
-                          title={p && p.total > 0 ? `${nomeMes}: ${p.concluidas}/${p.total} concluídas` : `${nomeMes}: sem tarefas no mês`}
-                          className={cn(
-                            'flex flex-col items-center justify-center rounded-lg py-1.5',
-                            COR[tomDoPercentual(pct)],
-                          )}
-                          style={atual ? { boxShadow: 'inset 0 0 0 2px var(--acc)' } : undefined}
-                        >
-                          <span className="text-xs font-semibold leading-none">{nomeMes}</span>
-                          <span className="mt-1 text-sm font-bold tabular-nums leading-none">{pct === null ? '—' : `${pct}%`}</span>
-                        </span>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
+      <Card semPadding className="overflow-hidden">
+        {filtrados.length === 0 ? (
+          <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou os filtros." />
+        ) : (
+          <div className="relative overflow-x-auto">
+            <Tabela className="min-w-[640px]">
+              <thead>
+                <tr>
+                  <Th>Cliente</Th>
+                  <Th largura={190}>Responsável</Th>
+                  <Th largura={170}>Progresso do mês</Th>
+                  <Th largura={56}><span className="sr-only">Abrir</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map(cliente => {
+                  const prog = progressoMap[cliente.id]
+                  const total = prog?.total ?? 0
+                  const concluidas = prog?.concluidas ?? 0
+                  const pct = total > 0 ? Math.round((concluidas / total) * 100) : null
+                  const temObs = !!(cliente.obs?.trim())
+                  const vinculos = pendenciasVinculo[cliente.id] ?? []
+                  const href = `/pessoal/clientes/${cliente.id}`
+                  return (
+                    <tr key={cliente.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
+                      <Td>
+                        <Link href={href} className="block w-full min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <NomeCliente
+                            nome={cliente.nome}
+                            cnpj={cliente.cnpj}
+                            depoisDoNome={
+                              <>
+                                {cliente.prioridade && cliente.prioridade > 0 && <Badge tom="dng">P{cliente.prioridade}</Badge>}
+                                {temObs && <Badge tom="warn" icone={<StickyNote size={14} aria-hidden="true" />}>Observação</Badge>}
+                                {cliente.ativo === false && <Badge>Desabilitado</Badge>}
+                              </>
+                            }
+                            abaixo={vinculos.length > 0 ? (
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                {vinculos.map((p, i) => (
+                                  <Badge
+                                    key={i}
+                                    tom={p.liberada ? 'ok' : 'warn'}
+                                    icone={p.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+                                  >
+                                    {formatarBadgeVinculo(p).texto.replace(/^(✓|⏳)\s*/, '')}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : undefined}
+                          />
+                        </Link>
+                      </Td>
+                      <Td className="text-fg-2">{cliente.responsavel ? <span className="block truncate" title={cliente.responsavel}>{cliente.responsavel}</span> : <span className="text-fg-3">—</span>}</Td>
+                      <Td>
+                        {total > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <MonthPill percentual={pct} />
+                            <span className="text-[13px] text-fg-3">{concluidas}/{total}</span>
+                          </div>
+                        ) : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td alinhar="dir">
+                        <Link href={href} aria-label={`Abrir ${cliente.nome}`} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-3 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <ChevronRight size={18} aria-hidden="true" />
+                        </Link>
+                      </Td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </Tabela>
+          </div>
+        )}
+      </Card>
+    </Pagina>
   )
 }
