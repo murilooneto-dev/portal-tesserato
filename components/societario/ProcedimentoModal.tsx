@@ -12,6 +12,7 @@ import { Field } from '@/components/ui/Field'
 import { Input, Select, Switch, Checkbox } from '@/components/ui/Input'
 import { Segmentado, type OpcaoSegmentada } from '@/components/ui/Segmentado'
 import { Aviso } from '@/components/ui/Aviso'
+import { useToast } from '@/components/ui/Toast'
 
 export type SubetapaValor = string | boolean | null
 
@@ -112,7 +113,7 @@ function formInicial(editItem: Procedimento | null, tiposResumoPorId: Map<string
     clienteCadastrado: !!editItem.cliente_id,
     cliente_id: editItem.cliente_id ?? '',
     empresa: editItem.empresa,
-    responsavel: editItem.responsavel ?? '',
+    responsavel: editItem.responsavel?.trim() ?? '',
     status: editItem.status,
     campos: { ...editItem.campos },
     subetapasValores,
@@ -138,6 +139,7 @@ export default function ProcedimentoModal({
   onSalvo: () => Promise<void>
 }) {
   const [sb] = useState(createClient)
+  const toast = useToast()
   const [form, setForm] = useState<FormState>(() => formInicial(editItem, tiposResumoPorId))
   const [arquivosNovos, setArquivosNovos] = useState<File[]>([])
   const [arquivosExistentes, setArquivosExistentes] = useState<ProcedimentoArquivoResumo[]>(editItem?.procedimento_arquivos ?? [])
@@ -148,8 +150,8 @@ export default function ProcedimentoModal({
   const idEmpresa = useId()
 
   // Responsável: os perfis, e o valor atual como opção extra se não bater com nenhum.
-  const responsavelAtual = form.responsavel.trim()
-  const responsavelForaDaLista = responsavelAtual !== '' && !responsaveis.some(r => r.toUpperCase() === responsavelAtual.toUpperCase())
+  // A comparação é exata: o valor do campo precisa ser o de uma das opções.
+  const responsavelForaDaLista = form.responsavel !== '' && !responsaveis.includes(form.responsavel)
 
   function selecionarCliente(clienteId: string) {
     const cliente = clientes.find(c => c.id === clienteId)
@@ -175,6 +177,8 @@ export default function ProcedimentoModal({
     const { error } = await excluirArquivoProcedimento(arquivoId)
     if (error) { setErro(error); return }
     setArquivosExistentes(prev => prev.filter(a => a.id !== arquivoId))
+    // O anexo já foi apagado: atualiza a lista mesmo que a janela seja cancelada.
+    void onSalvo()
   }
 
   function selecionarTipo(tipoId: string) {
@@ -231,7 +235,8 @@ export default function ProcedimentoModal({
       const formData = new FormData()
       formData.append('arquivo', arquivo)
       const uploadResult = await uploadArquivoProcedimento(salvo.id, formData)
-      if (uploadResult.error) setErro(prev => prev ? `${prev} · ${uploadResult.error}` : uploadResult.error)
+      // O procedimento já foi salvo e a janela fecha: o erro do anexo vai em aviso.
+      if (uploadResult.error) toast(`Anexo "${arquivo.name}" não enviado: ${uploadResult.error}`, 'dng')
     }
 
     setSaving(false)
