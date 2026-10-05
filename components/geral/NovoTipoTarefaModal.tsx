@@ -28,13 +28,13 @@ interface Props {
 }
 
 const FORMATOS_BASE: { value: Formato; label: string; desc: string }[] = [
-  { value: 'data', label: 'Data', desc: 'Checkbox simples com data de conclusão' },
-  { value: 'texto', label: 'Texto + anexo', desc: 'Campo de texto livre e/ou upload de arquivos' },
-  { value: 'opcoes', label: 'Opções', desc: 'Lista de etapas nomeadas, cada uma com seu checkbox' },
+  { value: 'data', label: 'Data', desc: 'Marca como feita com a data de conclusão' },
+  { value: 'texto', label: 'Texto e anexo', desc: 'Campo de texto livre e envio de arquivos' },
+  { value: 'opcoes', label: 'Opções', desc: 'Lista de etapas com nome, cada uma com sua data' },
 ]
 
 const FORMATO_CHECKLIST: { value: Formato; label: string; desc: string } =
-  { value: 'checklist', label: 'Checkbox com Opções', desc: 'Lista de opções; marcando todas, conclui a tarefa automaticamente' }
+  { value: 'checklist', label: 'Checkbox com opções', desc: 'Marcando todas as opções, a tarefa é concluída sozinha (só no Contábil)' }
 
 const PERIODICIDADES: { value: Periodicidade; label: string }[] = [
   { value: 'mensal', label: 'Mensal' },
@@ -106,7 +106,7 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
         </Field>
       )}
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1.5 text-[13px] font-medium text-fg-2">Formato de resposta</legend>
+        <legend className="mb-1.5 text-[13px] font-medium text-fg-2">Formato da resposta</legend>
         {FORMATOS.map(f => {
           const ativo = formato === f.value
           return (
@@ -122,7 +122,7 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
       </fieldset>
       {temEtapas && (
         <div className="flex flex-col gap-2.5 rounded-[10px] border border-line-soft p-3.5">
-          <span className="text-[13px] font-medium text-fg-2">{formato === 'checklist' ? 'Opções' : 'Etapas'} ({etapas.length})</span>
+          <span className="text-[13px] font-medium text-fg-2">Opções ({etapas.length})</span>
           {etapas.length > 0 && (
             <ul className="flex flex-wrap gap-1.5">
               {etapas.map((e, i) => (
@@ -134,10 +134,11 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
             </ul>
           )}
           <div className="flex gap-2">
-            <Input aria-label={formato === 'checklist' ? 'Nova opção' : 'Nova etapa'} value={novaEtapa} onChange={e => setNovaEtapa(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEtapa() } }} placeholder="Digite e tecle Enter" />
+            <Input aria-label="Nova opção" value={novaEtapa} onChange={e => setNovaEtapa(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEtapa() } }} placeholder="Nome da opção (Enter para adicionar)" />
             <Button icone={<Plus size={16} aria-hidden="true" />} onClick={addEtapa}>Adicionar</Button>
           </div>
+          {etapas.length === 0 && <p className="text-xs text-fg-3">Adicione pelo menos uma opção para criar.</p>}
         </div>
       )}
       {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
