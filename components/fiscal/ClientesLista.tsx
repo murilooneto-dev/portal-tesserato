@@ -140,7 +140,7 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
         {filtrados.length === 0 ? (
           <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou os filtros." />
         ) : (
-          <div className="relative overflow-x-auto overflow-y-hidden">
+          <div className="relative overflow-x-auto xl:overflow-visible">
             <Tabela className="min-w-[820px]">
               <thead>
                 <tr>

@@ -223,7 +223,7 @@ export default function PreenchimentoRapido({
               : 'Nenhum cliente tem essa(s) tarefa(s) aplicável(is).'}
           />
         ) : (
-          <div className="relative overflow-x-auto overflow-y-hidden">
+          <div className="relative overflow-x-auto">
             <Tabela className="min-w-max">
               <thead>
                 <tr>

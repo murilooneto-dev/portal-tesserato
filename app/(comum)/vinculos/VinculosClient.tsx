@@ -90,7 +90,7 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
         {vinculosIniciais.length === 0 ? (
           <EmptyState icone={<Link2 size={24} />} titulo="Nenhum vínculo cadastrado" descricao="Crie o primeiro no quadro abaixo." />
         ) : (
-          <div className="relative overflow-x-auto overflow-y-hidden">
+          <div className="relative overflow-x-auto">
             <Tabela className="min-w-[640px]">
               <thead>
                 <tr>

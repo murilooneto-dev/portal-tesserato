@@ -197,7 +197,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
               </Button>
             </div>
           </div>
-          <div className="relative overflow-x-auto overflow-y-hidden">
+          <div className="relative overflow-x-auto">
             <Tabela className={aberto === 'ISS' ? 'min-w-[900px]' : 'min-w-[560px]'}>
               <thead>
                 <tr>
