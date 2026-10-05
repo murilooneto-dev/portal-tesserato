@@ -9,6 +9,8 @@ import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { normalizarTitulo, prazoOperacional, diasRestantes } from '@/lib/calendario'
 import TarefaChecklistPessoal from '@/components/pessoal/TarefaChecklistPessoal'
+import SeletorMesFicha from '@/components/contabil/SeletorMesFicha'
+import { filtrarTarefasVisiveis } from '@/lib/tarefa-tipos'
 import ClientePessoalAcoes from '@/components/pessoal/ClientePessoalAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import ClienteNotas from '@/components/geral/ClienteNotas'
@@ -22,10 +24,14 @@ import HistoricoResponsavel from '@/components/HistoricoResponsavel'
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ mes?: string; ano?: string }>
 }
 
-export default async function ClientePessoalDetalhePage({ params }: Props) {
+const MESES_LABEL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+export default async function ClientePessoalDetalhePage({ params, searchParams }: Props) {
   const { id } = await params
+  const sp = await searchParams
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -39,7 +45,13 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
 
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
 
-  const { mes, ano } = await getMesAno()
+  // ?mes&ano troca só o mês que a ficha mostra (seletor da própria ficha); sem eles vale o mês de trabalho.
+  const mesParam = Number(sp.mes)
+  const anoParam = Number(sp.ano)
+  const override = mesParam >= 1 && mesParam <= 12 && anoParam > 2000 && anoParam < 3000
+    ? { mes: mesParam, ano: anoParam }
+    : null
+  const { mes, ano } = override ?? await getMesAno()
   await sincronizarTarefasParcelamento(supabase, 'pessoal', mes, ano)
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
@@ -102,6 +114,31 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
     ? await supabase.from('tarefa_arquivos').select('id, tarefa_id, name, size, uploaded_at').in('tarefa_id', tarefaIds)
     : { data: [] as Omit<TarefaArquivo, 'content_base64'>[] }
 
+  // % por mês do cliente no ano para o seletor: mesma conta da lista de clientes do Pessoal
+  // (tarefas visíveis no mês por meses_visiveis + parcelamentos ativos naquele mês).
+  const mesesVisiveisPorTipo: Record<string, number[] | null> = {}
+  for (const t of tiposRaw ?? []) mesesVisiveisPorTipo[t.nome as string] = t.meses_visiveis as number[] | null
+  const { data: tarefasDoAno } = await supabase
+    .from('tarefas').select('mes, concluida, tipo, parcelamento_id')
+    .eq('cliente_id', id).eq('ano', ano).eq('setor', 'pessoal')
+  const parcelamentoIdsDoAno = Array.from(new Set(
+    (tarefasDoAno ?? []).filter(t => t.parcelamento_id).map(t => t.parcelamento_id as string)
+  ))
+  const parcelamentosAtivosDoAno = await idsDeParcelamentosAtivos(supabase, parcelamentoIdsDoAno)
+  const progressoFicha: Record<number, number | null> = {}
+  for (let m = 1; m <= 12; m++) {
+    const doMes = (tarefasDoAno ?? []).filter(t => t.mes === m)
+    const tiposParcelamento = doMes
+      .filter(t => t.parcelamento_id && parcelamentosAtivosDoAno.has(t.parcelamento_id))
+      .map(t => t.tipo)
+    const esperados = new Set([
+      ...filtrarTarefasVisiveis(calcularTarefasEsperadas(cliente, mapaVinculos), mesesVisiveisPorTipo, m),
+      ...tiposParcelamento,
+    ])
+    const concluidas = doMes.filter(t => t.concluida && esperados.has(t.tipo)).length
+    progressoFicha[m] = esperados.size > 0 ? Math.round((concluidas / esperados.size) * 100) : null
+  }
+
   async function onToggleSimples(tipo: string, concluida: boolean, data?: string) {
     'use server'
     await toggleTarefaPessoal(id, tipo, mes, ano, concluida, data)
@@ -151,6 +188,13 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
                   {cliente.municipio && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
                   {cliente.ativo === false && <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-semibold">Desabilitado</span>}
                 </div>
+                {override && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1 rounded-full">
+                      Visualizando {MESES_LABEL[override.mes - 1]}/{override.ano}
+                    </span>
+                  </div>
+                )}
                 {labelsParcelamento.length > 0 && (
                   <div className="mt-2">
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 bg-red-500/15 px-3 py-1 rounded-full">
@@ -167,6 +211,7 @@ export default async function ClientePessoalDetalhePage({ params }: Props) {
 
       <TarefaChecklistPessoal
         tarefasPersonalizadas={tarefasPersonalizadasEfetivas}
+        seletorMes={<SeletorMesFicha mes={mes} ano={ano} basePath={`/pessoal/clientes/${id}`} progresso={progressoFicha} />}
         grupos={(gruposRaw ?? []) as TarefaGrupo[]}
         tarefaTipos={tarefaTipos}
         tarefas={(tarefas ?? []) as Tarefa[]}
