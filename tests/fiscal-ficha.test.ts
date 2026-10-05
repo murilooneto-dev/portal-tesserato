@@ -32,7 +32,7 @@ test('TarefaChecklist usa o Modal no desbloqueio e mantém as chamadas de dados'
 test('página da ficha usa Pagina, Aviso do parcelamento e ClienteAcoes', () => {
   const fonte = ler('app/fiscal/clientes/[id]/page.tsx')
   assert.match(fonte, /<Pagina>/)
-  assert.match(fonte, /<Aviso tom="warn">/)
+  assert.match(fonte, /<Aviso tom="warn"[\s>]/)
   assert.match(fonte, /<ClienteAcoes /)
 })
 

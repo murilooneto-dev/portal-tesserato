@@ -51,7 +51,7 @@ export default function SeletorMesFicha({ mes, ano, basePath, progresso }: {
       </Link>
 
       {aberto && (
-        <div className="absolute left-0 top-full z-20 mt-2 w-[min(520px,calc(100vw-32px))] rounded-xl border border-line bg-raised p-3.5 shadow-lg">
+        <div role="group" aria-label={`Andamento de ${ano}`} className="absolute left-0 top-full z-20 mt-2 w-[min(520px,calc(100vw-32px))] rounded-xl border border-line bg-raised p-3.5 shadow-lg">
           <p className="mb-2.5 text-center text-sm font-bold text-fg">{ano}</p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {MESES.map((nome, i) => {
