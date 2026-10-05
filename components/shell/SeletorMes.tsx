@@ -2,7 +2,7 @@
 
 import { useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { IconButton } from '@/components/ui/Button'
 import { definirMesAno } from '@/lib/mes-atual-actions'
 import { MESES, mesVizinho } from '@/lib/mes-navegacao'
@@ -34,7 +34,24 @@ export default function SeletorMes({ mes, ano }: { mes: number; ano: number }) {
   const proximo = mesVizinho(mes, ano, 1)
 
   return (
-    <div role="group" aria-label="Mês de trabalho" aria-busy={pendente || undefined} className="flex h-9 items-center rounded-[10px] border border-line bg-surface">
+    <>
+    {/* Celular (nav-03): só o mês abreviado; o toque abre a lista nativa de meses. */}
+    <div className="relative inline-flex h-11 flex-none items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-fg has-[select:focus-visible]:ring-2 has-[select:focus-visible]:ring-acc sm:hidden" aria-busy={pendente || undefined}>
+      <Calendar size={18} aria-hidden="true" className="text-fg-2" />
+      <span aria-hidden="true">{MESES[mes - 1].slice(0, 3)}</span>
+      <select
+        aria-label={`Mês de trabalho: ${MESES[mes - 1]} ${ano}`}
+        value={mes}
+        disabled={pendente}
+        onChange={e => ir(Number(e.target.value), ano)}
+        className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-[10px] opacity-0 focus:outline-none disabled:cursor-not-allowed"
+      >
+        {MESES.map((nome, i) => (
+          <option key={nome} value={i + 1} className="bg-surface text-fg">{nome} {ano}</option>
+        ))}
+      </select>
+    </div>
+    <div role="group" aria-label="Mês de trabalho" aria-busy={pendente || undefined} className="hidden h-9 items-center rounded-[10px] border border-line bg-surface sm:flex">
       <IconButton rotulo="Mês anterior" icone={<ChevronLeft size={16} aria-hidden="true" />} onClick={() => ir(anterior.mes, anterior.ano)} disabled={pendente} className={SETA} />
       <select
         aria-label="Escolher mês"
@@ -49,5 +66,6 @@ export default function SeletorMes({ mes, ano }: { mes: number; ano: number }) {
       </select>
       <IconButton rotulo="Próximo mês" icone={<ChevronRight size={16} aria-hidden="true" />} onClick={() => ir(proximo.mes, proximo.ano)} disabled={pendente} className={SETA} />
     </div>
+    </>
   )
 }

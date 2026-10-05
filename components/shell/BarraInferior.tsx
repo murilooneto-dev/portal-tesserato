@@ -19,7 +19,7 @@ export function BarraInferior({ atalhos, pathname, onMais, menuAberto }: { atalh
           </Link>
         )
       })}
-      <button type="button" onClick={onMais} aria-haspopup="dialog" aria-expanded={menuAberto} className={cn(ITEM, 'col-start-4 text-fg-3')}>
+      <button type="button" onClick={onMais} aria-haspopup="dialog" aria-expanded={menuAberto} className={cn(ITEM, 'col-start-4', menuAberto ? 'text-acc-text' : 'text-fg-3')}>
         <Menu size={22} aria-hidden="true" />
         Mais
       </button>

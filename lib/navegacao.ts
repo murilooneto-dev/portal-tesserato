@@ -102,3 +102,48 @@ export function atalhosCelular(grupos: GrupoMenu[]): ItemMenu[] {
     .map(x => x.item)
   return [ITENS_GERAIS.find(i => i.href === '/intranet')!, ...escolhidos]
 }
+
+// Item do menu que corresponde à página atual (o de href mais longo, para
+// /fiscal/clientes/123 cair em "Clientes" e não em algo mais genérico).
+export function itemAtivo(grupos: GrupoMenu[], pathname: string): { item: ItemMenu; grupo: GrupoMenu } | null {
+  let melhor: { item: ItemMenu; grupo: GrupoMenu } | null = null
+  for (const grupo of grupos) {
+    for (const item of grupo.itens) {
+      if (estaAtivo(pathname, item.href) && (!melhor || item.href.length > melhor.item.href.length)) melhor = { item, grupo }
+    }
+  }
+  return melhor
+}
+
+// Título da página na barra do topo do celular: o rótulo do item ativo.
+export function tituloDaPagina(grupos: GrupoMenu[], pathname: string): string | null {
+  return itemAtivo(grupos, pathname)?.item.rotulo ?? null
+}
+
+// Ficha de cliente de um setor (/fiscal/clientes/123): o "Voltar" do topo leva à lista do setor.
+const FICHA = /^\/(fiscal|contabil|pessoal|societario|financeiro)\/clientes\/[^/]+\/?$/
+
+export function voltarDaFicha(pathname: string): string | null {
+  const m = pathname.match(FICHA)
+  return m ? `/${m[1]}/clientes` : null
+}
+
+// Rótulos curtos para a barra inferior e o trilho do tablet, onde o espaço é pouco.
+const ROTULO_CURTO: Record<string, string> = {
+  'Cadastro de clientes': 'Cadastro',
+  'Ferramentas': 'Ferram.',
+  'Preenchimento rápido': 'Preench.',
+  'Minhas tarefas': 'Tarefas',
+  'Parcelamentos': 'Parcel.',
+  'Procedimentos': 'Procedim.',
+  'Recebimentos': 'Receber',
+  'Pagamentos': 'Pagar',
+  'Configurações': 'Config.',
+  'Vínculos de tarefas': 'Vínculos',
+  'Parâmetros': 'Parâm.',
+  'Em construção': 'Em breve',
+}
+
+export function rotuloCurto(item: ItemMenu): string {
+  return ROTULO_CURTO[item.rotulo] ?? item.rotulo
+}

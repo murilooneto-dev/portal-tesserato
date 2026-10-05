@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/lib/theme'
 import { SETOR_HOME, type Profile, type UserSetor } from '@/lib/types'
 import { SETOR_ATIVO_COOKIE } from '@/lib/setor-ativo'
-import type { GrupoMenu, ItemMenu } from '@/lib/navegacao'
+import { itemAtivo, voltarDaFicha, type GrupoMenu, type ItemMenu } from '@/lib/navegacao'
+import { TituloCascaProvider } from '@/components/ui/TituloCasca'
 import { BarraTopo } from './BarraTopo'
 import { MenuLateral } from './MenuLateral'
 import { GavetaMenu } from './GavetaMenu'
@@ -26,6 +27,8 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
   const pathname = usePathname() ?? '/'
   // Na ficha do Contábil e do Pessoal o mês sai da barra do topo: quem escolhe é o seletor da própria ficha.
   const fichaContabil = /^\/(contabil|pessoal)\/clientes\/[^/]+$/.test(pathname)
+  const ativo = itemAtivo(grupos, pathname)
+  const titulo = ativo?.item.rotulo ?? null
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
   const [menuAberto, setMenuAberto] = useState(false)
@@ -53,6 +56,12 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-page print:h-auto print:overflow-visible">
+      <a
+        href="#conteudo"
+        className="sr-only rounded-lg bg-acc px-4 py-2.5 text-sm font-semibold text-acc-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-2 focus:z-[90] focus:outline-none focus:ring-2 focus:ring-acc focus:ring-offset-2 focus:ring-offset-page print:hidden"
+      >
+        Pular para o conteúdo
+      </a>
       <BarraTopo
         profile={profile}
         setores={setores}
@@ -64,13 +73,16 @@ export function ShellCliente({ profile, mes, ano, setorAtivo, grupos, setores, a
         onSair={sair}
         onAbrirMenu={() => setMenuAberto(true)}
         menuAberto={menuAberto}
+        titulo={titulo}
+        tituloGrupo={ativo?.grupo.id === 'setor' ? ativo.grupo.titulo : null}
+        voltarHref={voltarDaFicha(pathname)}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden print:overflow-visible">
         <aside className="hidden w-[248px] shrink-0 border-r border-line-soft bg-nav print:hidden lg:flex lg:flex-col">
           <MenuLateral grupos={grupos} pathname={pathname} />
         </aside>
-        <main id="conteudo" className="min-w-0 flex-1 overflow-y-auto pb-16 print:h-auto print:overflow-visible print:pb-0 lg:pb-0">
-          {children}
+        <main id="conteudo" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto pb-16 focus:outline-none print:h-auto print:overflow-visible print:pb-0 lg:pb-0">
+          <TituloCascaProvider titulo={titulo}>{children}</TituloCascaProvider>
         </main>
       </div>
       <GavetaMenu
