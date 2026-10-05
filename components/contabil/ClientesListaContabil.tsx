@@ -223,7 +223,7 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
                   </div>
                 </div>
 
-                <div className="mt-2.5 overflow-x-auto">
+                <div className="mt-1.5 overflow-x-auto overflow-y-hidden py-1 md:overflow-visible">
                   <div className="grid min-w-[620px] grid-cols-12 gap-1">
                     {MESES.map((nomeMes, i) => {
                       const mesNum = i + 1
