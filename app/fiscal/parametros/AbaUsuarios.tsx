@@ -104,7 +104,7 @@ export default function AbaUsuarios({ profiles, currentUserId }: { profiles: Pro
       </div>
 
       {/* A partir de 1280 px a tabela cabe inteira e o cartão deixa o menu ⋯ das últimas linhas aparecer por cima da borda. */}
-      <Card semPadding className="overflow-hidden xl:overflow-visible xl:[&_th:first-child]:rounded-tl-xl xl:[&_th:last-child]:rounded-tr-xl">
+      <Card semPadding className="overflow-hidden">
         {visiveis.length === 0 ? (
           <EmptyState
             icone={<Users size={24} />}

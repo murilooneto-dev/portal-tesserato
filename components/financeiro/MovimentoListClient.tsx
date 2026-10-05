@@ -47,10 +47,6 @@ const OPCOES_ORDENACAO: { value: Ordenacao; label: string }[] = [
 // A lista inteira vem do servidor (em blocos de 1000); a tela mostra 50 por vez.
 const POR_PAGINA = 50
 
-// Menu ⋯ dentro da tabela abre ao lado do botão, centrado na linha: assim cabe
-// na primeira e na última linha sem ser cortado pelo cartão (overflow-hidden).
-const MENU_AO_LADO =
-  '[&_[role=menu]]:right-full [&_[role=menu]]:top-1/2 [&_[role=menu]]:mr-2 [&_[role=menu]]:mt-0 [&_[role=menu]]:-translate-y-1/2'
 // No cartão do celular o botão ⋯ fica com 36 px (mob-06).
 const MENU_36 = '[&_[aria-haspopup]]:h-9 [&_[aria-haspopup]]:w-9'
 
@@ -290,7 +286,7 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
                       </Td>
                       <Td alinhar="dir" className="whitespace-nowrap font-mono font-semibold tabular-nums text-fg">{formatarValor(m.valor)}</Td>
                       <Td alinhar="dir" className="py-2">
-                        <div className={`flex justify-end ${MENU_AO_LADO}`}>
+                        <div className="flex justify-end">
                           <MenuMaisAcoes rotulo="Editar ou excluir" itens={itensMenu(m)} />
                         </div>
                       </Td>
