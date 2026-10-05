@@ -1,330 +1,168 @@
 'use client'
 
-// Provisório: bloco antigo de usuários movido como estava; a tabela com
-// gaveta entra no commit seguinte.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Pencil, Plus, Search, Trash2, Users } from 'lucide-react'
 import type { Profile } from '@/lib/types'
-import { SETORES, SETOR_LABEL, type UserSetor } from '@/lib/types'
-import { PAGINAS_POR_SETOR } from '@/lib/paginas-setor'
-import { atualizarPerfil, criarUsuario, deletarUsuario } from './actions'
+import { SETORES, SETOR_LABEL } from '@/lib/types'
+import {
+  Avatar, Badge, Button, Card, EmptyState, Field, Input, Select, Tabela, Td, Th, useConfirmar, useToast,
+} from '@/components/ui'
+import MenuMaisAcoes from '@/components/geral/MenuMaisAcoes'
+import { deletarUsuario } from './actions'
+import UsuarioDrawer, { PERFIL_LABEL } from './UsuarioDrawer'
 
-const inputCls = "w-full px-4 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/8 text-[var(--fg)] text-sm placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-const labelCls = "block text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-1.5"
-
+const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 export default function AbaUsuarios({ profiles, currentUserId }: { profiles: Profile[]; currentUserId: string }) {
   const router = useRouter()
+  const confirmar = useConfirmar()
+  const toast = useToast()
 
-  // Usuários
-  const [editingProfile, setEditingProfile] = useState<string | null>(null)
-  const [profileEdits, setProfileEdits] = useState<Record<string, Partial<Profile>>>({})
-  const [savingProfile, setSavingProfile] = useState<string | null>(null)
-  const [deletingProfile, setDeletingProfile] = useState<string | null>(null)
+  // Filtros só na tela (não vão ao servidor).
+  const [busca, setBusca] = useState('')
+  const [perfil, setPerfil] = useState('')
+  const [setor, setSetor] = useState('')
 
-  // Novo usuário
-  const [novoNome, setNovoNome] = useState('')
-  const [novoLogin, setNovoLogin] = useState('')
-  const [novoSenha, setNovoSenha] = useState('')
-  const [novoPerfil, setNovoPerfil] = useState('operador')
-  const [novoCor, setNovoCor] = useState('#6366f1')
-  const [novoPaginas, setNovoPaginas] = useState<string[]>(
-    PAGINAS_POR_SETOR.fiscal.filter(p => p.slug !== 'dashboard').map(p => `fiscal:${p.slug}`)
-  )
-  const [novoSetores, setNovoSetores] = useState<string[]>(['fiscal'])
-  const [criandoUser, setCriandoUser] = useState(false)
-  const [novoUserErr, setNovoUserErr] = useState('')
-  const [novoUserOk, setNovoUserOk] = useState(false)
+  // Gaveta: 'novo', o id do usuário em edição ou fechada (null).
+  const [gaveta, setGaveta] = useState<string | null>(null)
+  const emEdicao = gaveta && gaveta !== 'novo' ? profiles.find(p => p.id === gaveta) ?? null : null
 
-  async function handleSaveProfile(id: string) {
-    const edits = profileEdits[id]
-    if (!edits) return
-    const profile = profiles.find(p => p.id === id)!
-    setSavingProfile(id)
-    const fd = new FormData()
-    fd.set('nome', edits.nome ?? profile.nome)
-    fd.set('role', edits.role ?? profile.role)
-    fd.set('cor',  edits.cor  ?? profile.cor)
-    const setores = edits.setores ?? profile.setores
-    for (const s of setores) fd.append('setores', s)
-    const paginasAcesso = edits.paginas_acesso ?? profile.paginas_acesso ?? []
-    for (const c of paginasAcesso) fd.append('paginas_acesso', c)
-    await atualizarPerfil(id, fd)
-    setSavingProfile(null)
-    setEditingProfile(null)
+  const visiveis = useMemo(() => {
+    const termo = semAcento(busca.trim())
+    return profiles.filter(p =>
+      (!termo || semAcento(p.nome).includes(termo)) &&
+      (!perfil || p.role === perfil) &&
+      (!setor || p.setores.some(s => s === setor)),
+    )
+  }, [profiles, busca, perfil, setor])
+
+  async function excluir(p: Profile) {
+    const ok = await confirmar({
+      titulo: `Excluir o usuário "${p.nome}"?`,
+      descricao: 'Essa ação não pode ser desfeita.',
+      textoConfirmar: 'Excluir',
+      perigo: true,
+    })
+    if (!ok) return
+    const result = await deletarUsuario(p.id)
+    if (result.error) {
+      toast(result.error, 'dng')
+      return
+    }
+    setGaveta(null)
+    toast('Usuário excluído')
     router.refresh()
   }
 
-  async function handleDeletarUsuario(id: string, nome: string) {
-    if (!confirm(`Excluir o usuário "${nome}"? Essa ação não pode ser desfeita.`)) return
-    setDeletingProfile(id)
-    const result = await deletarUsuario(id)
-    setDeletingProfile(null)
-    if (result.error) {
-      alert(result.error)
-      return
-    }
+  function aoSalvar(mensagem: string) {
+    setGaveta(null)
+    toast(mensagem)
     router.refresh()
   }
-
-  async function handleCriarUsuario() {
-    if (!novoNome.trim() || !novoLogin.trim() || !novoSenha.trim()) {
-      setNovoUserErr('Preencha nome, login e senha.')
-      return
-    }
-    setCriandoUser(true)
-    setNovoUserErr('')
-    const result = await criarUsuario({
-      nome: novoNome.trim(),
-      login: novoLogin.trim(),
-      senha: novoSenha,
-      role: novoPerfil,
-      cor: novoCor,
-      paginasAcesso: novoPaginas,
-      setores: novoSetores,
-    })
-    setCriandoUser(false)
-    if (result.error) {
-      setNovoUserErr(result.error)
-    } else {
-      setNovoUserOk(true)
-      setNovoNome('')
-      setNovoLogin('')
-      setNovoSenha('')
-      setNovoPerfil('operador')
-      setNovoCor('#6366f1')
-      setNovoPaginas(PAGINAS_POR_SETOR.fiscal.filter(p => p.slug !== 'dashboard').map(p => `fiscal:${p.slug}`))
-      setNovoSetores(['fiscal'])
-      router.refresh()
-      setTimeout(() => setNovoUserOk(false), 3000)
-    }
-  }
-
-  function togglePagina(chave: string) {
-    setNovoPaginas(prev => prev.includes(chave) ? prev.filter(c => c !== chave) : [...prev, chave])
-  }
-
-  function toggleSetor(setor: string) {
-    setNovoSetores(prev => {
-      const removendo = prev.includes(setor)
-      if (removendo) {
-        setNovoPaginas(p => p.filter(chave => !chave.startsWith(`${setor}:`)))
-      }
-      return removendo ? prev.filter(s => s !== setor) : [...prev, setor]
-    })
-  }
-
-  const sectionHeader = (title: string) => (
-    <p className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-4">{title}</p>
-  )
 
   return (
-    <>
-        {/* Dois painéis: Novo usuário + Usuários cadastrados */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Novo usuário */}
-          <div className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-6">
-            {sectionHeader('Novo Usuário')}
-            <div className="space-y-4">
-              <div>
-                <label className={labelCls}>Nome</label>
-                <input value={novoNome} onChange={e => setNovoNome(e.target.value)} placeholder="Nome completo" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Login (e-mail)</label>
-                <input type="email" value={novoLogin} onChange={e => setNovoLogin(e.target.value)} placeholder="usuario@email.com" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Senha</label>
-                <input type="password" value={novoSenha} onChange={e => setNovoSenha(e.target.value)} placeholder="••••••••" className={inputCls} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Perfil</label>
-                  <select value={novoPerfil} onChange={e => setNovoPerfil(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-page)] border border-[var(--fg)]/8 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors">
-                    <option value="operador">Operador</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Cor de identificação</label>
-                  <div className="flex items-center gap-3">
-                    <input type="color" value={novoCor} onChange={e => setNovoCor(e.target.value)}
-                      className="w-10 h-10 rounded-xl cursor-pointer bg-transparent border-0 p-0" />
-                    <span className="text-[var(--fg)]/40 text-sm font-mono">{novoCor}</span>
-                  </div>
-                </div>
-              </div>
+    <div className="flex min-w-0 flex-col gap-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field rotulo="Buscar" className="w-full sm:w-[280px]">
+          {c => (
+            <Input
+              id={c.id}
+              type="search"
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder="Nome"
+              iconeEsquerda={<Search size={16} />}
+            />
+          )}
+        </Field>
+        <Field rotulo="Perfil" className="w-full sm:w-[150px]">
+          {c => (
+            <Select id={c.id} value={perfil} onChange={e => setPerfil(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="admin">Administrador</option>
+              <option value="operador">Operador</option>
+            </Select>
+          )}
+        </Field>
+        <Field rotulo="Setor" className="w-full sm:w-[170px]">
+          {c => (
+            <Select id={c.id} value={setor} onChange={e => setSetor(e.target.value)}>
+              <option value="">Todos</option>
+              {SETORES.map(s => <option key={s} value={s}>{SETOR_LABEL[s]}</option>)}
+            </Select>
+          )}
+        </Field>
+        <Button
+          variante="primario"
+          icone={<Plus size={16} aria-hidden="true" />}
+          onClick={() => setGaveta('novo')}
+          className="max-sm:h-11 max-sm:w-full sm:ml-auto"
+        >
+          Novo usuário
+        </Button>
+      </div>
 
-              <div>
-                <label className={labelCls}>Setores</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {SETORES.map(setor => (
-                    <label key={setor} className="flex items-center gap-2 cursor-pointer select-none">
-                      <input type="checkbox" checked={novoSetores.includes(setor)} onChange={() => toggleSetor(setor)}
-                        className="w-3.5 h-3.5 accent-[var(--accent)]" />
-                      <span className="text-[var(--fg)]/60 text-xs">{SETOR_LABEL[setor]}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {novoSetores.filter(s => PAGINAS_POR_SETOR[s as UserSetor].length > 0).map(setor => (
-                <div key={setor}>
-                  <label className={labelCls}>Páginas — {SETOR_LABEL[setor as UserSetor]}</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {PAGINAS_POR_SETOR[setor as UserSetor].filter(p => p.slug !== 'dashboard').map(p => {
-                      const chave = `${setor}:${p.slug}`
-                      return (
-                        <label key={chave} className="flex items-center gap-2 cursor-pointer select-none">
-                          <input type="checkbox" checked={novoPaginas.includes(chave)} onChange={() => togglePagina(chave)}
-                            className="w-3.5 h-3.5 accent-[var(--accent)]" />
-                          <span className="text-[var(--fg)]/60 text-xs">{p.label}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              {novoUserErr && <p className="text-red-400 text-sm">{novoUserErr}</p>}
-              {novoUserOk && <p className="text-green-400 text-sm">Usuário criado com sucesso!</p>}
-
-              <button onClick={handleCriarUsuario} disabled={criandoUser}
-                className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-                {criandoUser ? 'Criando...' : 'Criar usuário'}
-              </button>
-            </div>
+      {/* A partir de 1280 px a tabela cabe inteira e o cartão deixa o menu ⋯ das últimas linhas aparecer por cima da borda. */}
+      <Card semPadding className="overflow-hidden xl:overflow-visible xl:[&_th:first-child]:rounded-tl-xl xl:[&_th:last-child]:rounded-tr-xl">
+        {visiveis.length === 0 ? (
+          <EmptyState
+            icone={<Users size={24} />}
+            titulo="Nenhum usuário encontrado."
+            descricao={profiles.length > 0 ? 'Mude a busca ou os filtros para ver outros usuários.' : undefined}
+          />
+        ) : (
+          <div className="relative overflow-x-auto xl:overflow-visible">
+            <Tabela className="min-w-[760px]">
+              <thead>
+                <tr>
+                  <Th largura={280}>Usuário</Th>
+                  <Th>Setores</Th>
+                  <Th largura={160}>Perfil</Th>
+                  <Th largura={56}><span className="sr-only">Ações</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {visiveis.map(p => (
+                  <tr key={p.id}>
+                    <Td>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Avatar nome={p.nome} cor={p.cor} />
+                        <span className="truncate text-fg-2" title={p.nome}>{p.nome}</span>
+                      </span>
+                    </Td>
+                    <Td className="break-words text-fg-2">{p.setores.map(s => SETOR_LABEL[s]).join(', ')}</Td>
+                    <Td><Badge tom={p.role === 'admin' ? 'acc' : 'neu'}>{PERFIL_LABEL[p.role] ?? p.role}</Badge></Td>
+                    <Td alinhar="dir" className="px-2">
+                      <MenuMaisAcoes
+                        rotulo={p.id === currentUserId ? `Editar ${p.nome}` : `Editar ou excluir ${p.nome}`}
+                        itens={[
+                          { rotulo: 'Editar', icone: <Pencil size={16} aria-hidden="true" />, onSelecionar: () => setGaveta(p.id) },
+                          // Ninguém exclui o próprio usuário.
+                          ...(p.id !== currentUserId
+                            ? [{ rotulo: 'Excluir', icone: <Trash2 size={16} aria-hidden="true" />, perigo: true, onSelecionar: () => { void excluir(p) } }]
+                            : []),
+                        ]}
+                      />
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Tabela>
           </div>
+        )}
+      </Card>
 
-          {/* Usuários cadastrados */}
-          <div className="bg-[var(--fg)]/3 border border-[var(--fg)]/8 rounded-2xl p-6">
-            {sectionHeader('Usuários Cadastrados')}
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-              {profiles.length === 0 && (
-                <p className="text-[var(--fg)]/20 text-sm text-center py-8">Nenhum usuário encontrado.</p>
-              )}
-              {profiles.map(p => {
-                const isEditing = editingProfile === p.id
-                const edits = profileEdits[p.id] ?? {}
-                return (
-                  <div key={p.id} className="p-4 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/6">
-                    {isEditing ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-[var(--fg)] font-bold text-sm"
-                            style={{ backgroundColor: edits.cor ?? p.cor }}>
-                            {(edits.nome ?? p.nome).charAt(0).toUpperCase()}
-                          </div>
-                          <input
-                            value={edits.nome ?? p.nome}
-                            onChange={e => setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], nome: e.target.value } }))}
-                            className="flex-1 px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <select
-                            value={edits.role ?? p.role}
-                            onChange={e => setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], role: e.target.value as Profile['role'] } }))}
-                            className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-page)] border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none"
-                          >
-                            <option value="admin">Admin</option>
-                            <option value="operador">Operador</option>
-                          </select>
-                          <input
-                            type="color"
-                            value={edits.cor ?? p.cor}
-                            onChange={e => setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], cor: e.target.value } }))}
-                            className="w-9 h-9 rounded-lg cursor-pointer bg-transparent border-0"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {SETORES.map(setor => (
-                            <label key={setor} className="flex items-center gap-2 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                checked={(edits.setores ?? p.setores).includes(setor)}
-                                onChange={() => {
-                                  const atual = edits.setores ?? p.setores
-                                  const removendo = atual.includes(setor)
-                                  const novo = removendo ? atual.filter(s => s !== setor) : [...atual, setor]
-                                  const paginasAtual = edits.paginas_acesso ?? p.paginas_acesso ?? []
-                                  const paginasNovo = removendo
-                                    ? paginasAtual.filter(c => !c.startsWith(`${setor}:`))
-                                    : paginasAtual
-                                  setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], setores: novo, paginas_acesso: paginasNovo } }))
-                                }}
-                                className="w-3.5 h-3.5 accent-[var(--accent)]"
-                              />
-                              <span className="text-[var(--fg)]/60 text-xs">{SETOR_LABEL[setor]}</span>
-                            </label>
-                          ))}
-                        </div>
-                        {(edits.setores ?? p.setores).filter(s => PAGINAS_POR_SETOR[s].length > 0).map(setor => (
-                          <div key={setor}>
-                            <p className="text-[var(--fg)]/40 text-[10px] uppercase tracking-widest mb-1">Páginas — {SETOR_LABEL[setor]}</p>
-                            <div className="grid grid-cols-2 gap-2">
-                              {PAGINAS_POR_SETOR[setor].filter(pg => pg.slug !== 'dashboard').map(pg => {
-                                const chave = `${setor}:${pg.slug}`
-                                const atual = edits.paginas_acesso ?? p.paginas_acesso ?? []
-                                return (
-                                  <label key={chave} className="flex items-center gap-2 cursor-pointer select-none">
-                                    <input
-                                      type="checkbox"
-                                      checked={atual.includes(chave)}
-                                      onChange={() => {
-                                        const novo = atual.includes(chave) ? atual.filter(c => c !== chave) : [...atual, chave]
-                                        setProfileEdits(prev => ({ ...prev, [p.id]: { ...prev[p.id], paginas_acesso: novo } }))
-                                      }}
-                                      className="w-3.5 h-3.5 accent-[var(--accent)]"
-                                    />
-                                    <span className="text-[var(--fg)]/60 text-xs">{pg.label}</span>
-                                  </label>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                        <div className="flex gap-2">
-                          <button onClick={() => handleSaveProfile(p.id)} disabled={savingProfile === p.id}
-                            className="flex-1 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--accent-ink)] text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-                            {savingProfile === p.id ? 'Salvando...' : 'Salvar'}
-                          </button>
-                          <button onClick={() => { setEditingProfile(null); setProfileEdits(prev => { const n = { ...prev }; delete n[p.id]; return n }) }}
-                            className="flex-1 py-1.5 rounded-lg bg-[var(--fg)]/5 text-[var(--fg)]/50 text-xs hover:bg-[var(--fg)]/10 transition-colors">
-                            Cancelar
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-[var(--fg)] font-bold text-sm"
-                          style={{ backgroundColor: p.cor }}>
-                          {p.nome.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[var(--fg)] font-semibold text-sm truncate">{p.nome}</p>
-                          <p className="text-[var(--fg)]/35 text-xs mt-0.5">{p.setores.map(s => SETOR_LABEL[s]).join(', ')} · {p.role}</p>
-                        </div>
-                        <button onClick={() => setEditingProfile(p.id)}
-                          className="px-3 py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/8 text-[var(--fg)]/50 hover:text-[var(--fg)] hover:bg-[var(--fg)]/10 text-xs transition-colors">
-                          Editar
-                        </button>
-                        {p.id !== currentUserId && (
-                          <button onClick={() => handleDeletarUsuario(p.id, p.nome)} disabled={deletingProfile === p.id}
-                            className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400/70 hover:text-red-400 hover:bg-red-500/15 text-xs transition-colors disabled:opacity-50">
-                            {deletingProfile === p.id ? 'Excluindo...' : 'Excluir'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-    </>
+      {(gaveta === 'novo' || emEdicao) && (
+        <UsuarioDrawer
+          key={gaveta}
+          perfil={emEdicao}
+          currentUserId={currentUserId}
+          onFechar={() => setGaveta(null)}
+          onSalvo={aoSalvar}
+          onExcluir={p => { void excluir(p) }}
+        />
+      )}
+    </div>
   )
 }
