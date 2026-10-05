@@ -304,7 +304,7 @@ export default function TarefaChecklist({
                 icone={vinculo.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
                 className="no-underline"
               >
-                {badgeVinculo.texto.replace(/^(✓|⏳)\s*/, '')}
+                {badgeVinculo.texto}
               </Badge>
             )}
             {diasPrazo !== null && (

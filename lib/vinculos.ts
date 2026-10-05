@@ -34,15 +34,15 @@ export function formatarBadgeVinculo(
     return {
       classe,
       texto: status.liberada
-        ? `✓ Liberada por ${status.setorOrigemLabel}`
-        : `⏳ Aguardando ${status.setorOrigemLabel}`,
+        ? `Liberada por ${status.setorOrigemLabel}`
+        : `Aguardando ${status.setorOrigemLabel}`,
     }
   }
   return {
     classe,
     texto: status.liberada
-      ? `✓ Liberada (${status.concluidos}/${status.total})`
-      : `⏳ Aguardando (${status.concluidos}/${status.total} concluídas)`,
+      ? `Liberada (${status.concluidos}/${status.total})`
+      : `Aguardando (${status.concluidos}/${status.total} concluídas)`,
   }
 }
 

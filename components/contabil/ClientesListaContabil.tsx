@@ -188,7 +188,7 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
                           tom={p.liberada ? 'ok' : 'warn'}
                           icone={p.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
                         >
-                          {badge.texto.replace(/^(✓|⏳)\s*/, '')}
+                          {badge.texto}
                         </Badge>
                       )
                     })}

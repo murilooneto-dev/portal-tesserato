@@ -124,7 +124,7 @@ export default function ClientesListaSocietario({ clientes, tiposPorCliente, con
                                     tom={p.liberada ? 'ok' : 'warn'}
                                     icone={p.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
                                   >
-                                    {formatarBadgeVinculo(p).texto.replace(/^(✓|⏳)\s*/, '')}
+                                    {formatarBadgeVinculo(p).texto}
                                   </Badge>
                                 ))}
                               </div>

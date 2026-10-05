@@ -44,24 +44,24 @@ test('agregarStatusVinculo: setorOrigemLabel guarda o label da primeira origem d
 
 test('formatarBadgeVinculo: total=1 liberada mantém o texto atual com o setor', () => {
   const badge = formatarBadgeVinculo({ liberada: true, concluidos: 1, total: 1, setorOrigemLabel: 'Fiscal' })
-  assert.equal(badge.texto, '✓ Liberada por Fiscal')
+  assert.equal(badge.texto, 'Liberada por Fiscal')
   assert.equal(badge.classe, 'bg-green-500/15 text-green-400')
 })
 
 test('formatarBadgeVinculo: total=1 aguardando mantém o texto atual com o setor', () => {
   const badge = formatarBadgeVinculo({ liberada: false, concluidos: 0, total: 1, setorOrigemLabel: 'Fiscal' })
-  assert.equal(badge.texto, '⏳ Aguardando Fiscal')
+  assert.equal(badge.texto, 'Aguardando Fiscal')
   assert.equal(badge.classe, 'bg-orange-500/15 text-orange-400')
 })
 
 test('formatarBadgeVinculo: total>1 liberada usa contagem, sem nomear setor', () => {
   const badge = formatarBadgeVinculo({ liberada: true, concluidos: 3, total: 3, setorOrigemLabel: 'Fiscal' })
-  assert.equal(badge.texto, '✓ Liberada (3/3)')
+  assert.equal(badge.texto, 'Liberada (3/3)')
 })
 
 test('formatarBadgeVinculo: total>1 aguardando usa contagem parcial', () => {
   const badge = formatarBadgeVinculo({ liberada: false, concluidos: 2, total: 3, setorOrigemLabel: 'Fiscal' })
-  assert.equal(badge.texto, '⏳ Aguardando (2/3 concluídas)')
+  assert.equal(badge.texto, 'Aguardando (2/3 concluídas)')
 })
 
 const catalogoExistente: TarefaVinculo[] = [
