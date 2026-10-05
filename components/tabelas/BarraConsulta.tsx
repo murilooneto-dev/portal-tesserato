@@ -3,6 +3,10 @@
 
 import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { Download, Search, SlidersHorizontal } from 'lucide-react'
+import { Button, buttonClassName } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { Input, Select } from '@/components/ui/Input'
 import { parseConsulta, serializeConsulta, type Consulta } from '@/lib/tabelas/consulta'
 import type { OpcaoColuna, TipoColuna } from '@/lib/tabelas/tipos'
 
@@ -16,8 +20,6 @@ interface Props {
 }
 
 type Campos = { v?: string; min?: string; max?: string; de?: string; ate?: string }
-
-const inputCls = 'px-2 py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50'
 
 function camposIniciais(consulta: Consulta): Record<string, Campos> {
   const r: Record<string, Campos> = {}
@@ -67,74 +69,78 @@ export default function BarraConsulta({ base, consulta, colunas, exportarHref }:
     ir({ q: '', filtros: {}, ordem: consulta.ordem, desc: consulta.desc, semCliente: consulta.semCliente })
   }
 
+  const TIPO_ROTULO: Record<TipoColuna, string> = {
+    texto: 'Texto', numero: 'Número', data: 'Data', opcoes: 'Lista', cliente: 'Cliente',
+  }
   const rotulo = (c: ColunaFiltro) => (
-    <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1">{c.nome}</label>
+    <span className="mb-1.5 flex items-center justify-between gap-2 text-[13px] font-medium text-fg-2">
+      <span className="min-w-0 truncate" title={c.nome}>{c.nome}</span>
+      <span className="flex-none text-xs font-normal text-fg-3">{TIPO_ROTULO[c.tipo]}</span>
+    </span>
   )
+  const painelId = 'painel-filtros-tabela'
 
   return (
-    <form onSubmit={aplicar} className="mb-4 space-y-3">
+    <form onSubmit={aplicar} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar em todas as colunas…"
-          aria-label="Buscar em todas as colunas" maxLength={200} className={`${inputCls} flex-1 min-w-[14rem]`} />
-        <button type="submit"
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)]">
-          Buscar
-        </button>
-        <button type="button" onClick={() => setAberto(a => !a)}
-          className="px-3 py-2 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-sm">
-          Filtros{ativos > 0 ? ` (${ativos})` : ''}
-        </button>
-        <a href={exportarHref}
-          className="px-3 py-2 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-sm">
-          Exportar Excel
+        <div className="min-w-[14rem] flex-1">
+          <Input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar em todas as colunas…"
+            aria-label="Buscar em todas as colunas" maxLength={200} iconeEsquerda={<Search size={16} />} />
+        </div>
+        <Button type="submit" variante="primario">Buscar</Button>
+        <Button aria-expanded={aberto} aria-controls={aberto ? painelId : undefined} icone={<SlidersHorizontal size={16} aria-hidden="true" />}
+          onClick={() => setAberto(a => !a)}>
+          Filtros
+          {ativos > 0 && <Badge tom="acc" className="ml-0.5">{ativos}</Badge>}
+        </Button>
+        <a href={exportarHref} className={buttonClassName({ variante: 'secundario', tamanho: 'm' })}>
+          <Download size={16} aria-hidden="true" />Exportar Excel
         </a>
       </div>
 
       {aberto && (
-        <div className="rounded-xl border border-[var(--fg)]/12 p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div id={painelId} className="rounded-xl border border-line-soft bg-surface p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-[15px] font-semibold text-fg">Filtros por coluna</h2>
+            <span className="text-[13px] text-fg-3">{ativos === 0 ? 'Nenhum filtro ativo' : `${ativos} ${ativos === 1 ? 'filtro ativo' : 'filtros ativos'}`}</span>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {colunas.map(c => (
-              <div key={c.id}>
+              <div key={c.id} className="min-w-0">
                 {rotulo(c)}
                 {(c.tipo === 'texto' || c.tipo === 'cliente') && (
-                  <input className={`${inputCls} w-full`} placeholder="contém…" value={campos[c.id]?.v ?? ''}
+                  <Input placeholder="contém…" value={campos[c.id]?.v ?? ''}
                     onChange={e => definir(c.id, 'v', e.target.value)} aria-label={`Filtrar ${c.nome}`} />
                 )}
                 {c.tipo === 'opcoes' && (
-                  <select className={`${inputCls} w-full`} value={campos[c.id]?.v ?? ''}
+                  <Select value={campos[c.id]?.v ?? ''}
                     onChange={e => definir(c.id, 'v', e.target.value)} aria-label={`Filtrar ${c.nome}`}>
                     <option value="">Todas</option>
                     {(c.opcoes ?? []).map(o => <option key={o.valor} value={o.valor}>{o.valor}</option>)}
-                  </select>
+                  </Select>
                 )}
                 {c.tipo === 'numero' && (
                   <div className="flex gap-2">
-                    <input className={`${inputCls} w-full`} placeholder="mín." inputMode="decimal" value={campos[c.id]?.min ?? ''}
+                    <Input placeholder="mín." inputMode="decimal" value={campos[c.id]?.min ?? ''}
                       onChange={e => definir(c.id, 'min', e.target.value)} aria-label={`${c.nome} mínimo`} />
-                    <input className={`${inputCls} w-full`} placeholder="máx." inputMode="decimal" value={campos[c.id]?.max ?? ''}
+                    <Input placeholder="máx." inputMode="decimal" value={campos[c.id]?.max ?? ''}
                       onChange={e => definir(c.id, 'max', e.target.value)} aria-label={`${c.nome} máximo`} />
                   </div>
                 )}
                 {c.tipo === 'data' && (
                   <div className="flex gap-2">
-                    <input type="date" className={`${inputCls} w-full`} value={campos[c.id]?.de ?? ''}
+                    <Input type="date" value={campos[c.id]?.de ?? ''}
                       onChange={e => definir(c.id, 'de', e.target.value)} aria-label={`${c.nome} a partir de`} />
-                    <input type="date" className={`${inputCls} w-full`} value={campos[c.id]?.ate ?? ''}
+                    <Input type="date" value={campos[c.id]?.ate ?? ''}
                       onChange={e => definir(c.id, 'ate', e.target.value)} aria-label={`${c.nome} até`} />
                   </div>
                 )}
               </div>
             ))}
           </div>
-          <div className="flex gap-2 mt-4">
-            <button type="submit"
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)]">
-              Aplicar filtros
-            </button>
-            <button type="button" onClick={limpar}
-              className="px-4 py-2 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/60 hover:text-[var(--fg)] text-sm">
-              Limpar
-            </button>
+          <div className="mt-4 flex gap-2">
+            <Button type="submit" variante="primario">Aplicar filtros</Button>
+            <Button onClick={limpar}>Limpar</Button>
           </div>
         </div>
       )}

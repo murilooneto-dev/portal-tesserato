@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Check, ChevronLeft, ChevronRight, Plus, Upload } from 'lucide-react'
 import { lerPlanilha, type PlanilhaLida } from '@/lib/tabelas/parse-planilha'
 import {
   detectarTipoColuna, opcoesDosValores, TIPOS_COLUNA,
@@ -10,6 +11,15 @@ import {
 import { agruparValoresCliente, type ClienteMatch } from '@/lib/tabelas/cliente-match'
 import { montarLinhas, LIMITE_LINHAS, MAX_COLUNAS, LIMITE_BYTES_PAYLOAD, type ColunaConfig, type SetorTabela } from '@/lib/tabelas/montar-payload'
 import { criarPlanilha } from '@/lib/tabelas-actions'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Select } from '@/components/ui/Input'
+import { Badge } from '@/components/ui/Badge'
+import { Aviso } from '@/components/ui/Aviso'
+import { Card } from '@/components/ui/Card'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
+import { cn } from '@/components/ui/cn'
 
 interface ColunaEdit { id: string; nome: string; tipo: TipoColuna; opcoes: OpcaoColuna[] | null; indiceOrigem: number }
 
@@ -17,7 +27,7 @@ const ROTULO_TIPO: Record<TipoColuna, string> = {
   texto: 'Texto', numero: 'Número', data: 'Data', opcoes: 'Lista de opções', cliente: 'Cliente',
 }
 
-const inputCls = 'px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50'
+const PASSOS = ['Arquivo', 'Colunas', 'Clientes'] as const
 
 function colunasDetectadas(p: PlanilhaLida): ColunaEdit[] {
   return p.cabecalhos.map((nome, i) => {
@@ -26,9 +36,32 @@ function colunasDetectadas(p: PlanilhaLida): ColunaEdit[] {
   })
 }
 
+function Passos({ atual }: { atual: number }) {
+  return (
+    <ol aria-label="Progresso da criação" className="flex flex-wrap items-center gap-2">
+      {PASSOS.map((p, i) => (
+        <li key={p} aria-current={i === atual ? 'step' : undefined} className="inline-flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className={cn(
+              'inline-flex h-6 w-6 flex-none items-center justify-center rounded-full text-xs font-bold',
+              i < atual ? 'bg-ok text-acc-ink' : i === atual ? 'bg-acc text-acc-ink' : 'border border-line text-fg-3',
+            )}
+          >
+            {i < atual ? <Check size={13} strokeWidth={3} /> : i + 1}
+          </span>
+          <span className={cn('text-sm', i === atual ? 'font-semibold text-fg' : 'text-fg-3')}>{p}</span>
+          {i < PASSOS.length - 1 && <span aria-hidden="true" className="h-px w-10 bg-line" />}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabela; clientes: ClienteMatch[] }) {
   const router = useRouter()
   const [aberto, setAberto] = useState(false)
+  const [passo, setPasso] = useState(0)
   const [buffer, setBuffer] = useState<ArrayBuffer | null>(null)
   const [planilha, setPlanilha] = useState<PlanilhaLida | null>(null)
   const [nome, setNome] = useState('')
@@ -160,148 +193,210 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
   }
 
   function fechar() {
-    setAberto(false); setBuffer(null); setPlanilha(null); setErro(null); setErroLeitura(null)
+    setAberto(false); setPasso(0); setBuffer(null); setPlanilha(null); setErro(null); setErroLeitura(null)
   }
+
+  const podeContinuarDoArquivo = planilha !== null && nome.trim() !== '' && erroLeitura === null
+  const podeContinuarDasColunas = nomeDuplicado === null
+  const colunaSemNome = colunas.some(c => c.nome.trim() === '')
+  const podeCriar = planilha !== null && nome.trim() !== '' && !criando && erroLeitura === null && nomeDuplicado === null && !colunaSemNome
 
   if (!aberto) {
     return (
-      <button onClick={() => setAberto(true)}
-        className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors">
+      <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setAberto(true)}>
         Nova tabela
-      </button>
+      </Button>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && !criando && fechar()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">Nova tabela a partir de planilha</h2>
-          <button onClick={fechar} disabled={criando} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl px-1">×</button>
+    <Modal
+      aberto
+      onFechar={fechar}
+      bloqueado={criando}
+      largura="g"
+      titulo="Nova tabela a partir de planilha"
+      subtitulo={planilha ? `${nome || planilha.aba} · ${planilha.linhas.length.toLocaleString('pt-BR')} linhas` : undefined}
+      rodape={
+        <div className="flex w-full items-center gap-2.5">
+          {passo > 0 && (
+            <Button variante="fantasma" icone={<ChevronLeft size={16} aria-hidden="true" />} disabled={criando}
+              onClick={() => setPasso(p => p - 1)}>
+              Voltar
+            </Button>
+          )}
+          <div className="ml-auto flex gap-2.5">
+            <Button variante="fantasma" onClick={fechar} disabled={criando}>Cancelar</Button>
+            {passo < 2 ? (
+              <Button variante="primario" icone={<ChevronRight size={16} aria-hidden="true" />}
+                disabled={passo === 0 ? !podeContinuarDoArquivo : !podeContinuarDasColunas}
+                onClick={() => setPasso(p => p + 1)}>
+                Continuar
+              </Button>
+            ) : (
+              <Button variante="primario" onClick={criar} carregando={criando} disabled={!podeCriar}>
+                {criando ? 'Criando…' : 'Criar tabela'}
+              </Button>
+            )}
+          </div>
         </div>
+      }
+    >
+      <Passos atual={passo} />
 
-        <div className="overflow-y-auto px-6 py-5 space-y-5">
-          <div>
-            <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">Arquivo (.xlsx ou .csv)</label>
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={e => aoEscolherArquivo(e.target.files?.[0])}
-              className="text-sm text-[var(--fg)]/70" />
+      {erroLeitura && <Aviso tom="dng">{erroLeitura}</Aviso>}
+      {erro && <Aviso tom="dng">{erro}</Aviso>}
+
+      {passo === 0 && (
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-fg-2">Arquivo (.xlsx ou .csv)</span>
+            <div>
+              <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-line bg-raised px-3.5 text-sm font-medium text-fg transition-colors hover:border-fg-3 focus-within:outline-none focus-within:ring-2 focus-within:ring-acc">
+                <Upload size={15} aria-hidden="true" />
+                Escolher arquivo
+                <input type="file" accept=".xlsx,.xls,.csv" className="sr-only"
+                  onChange={e => { aoEscolherArquivo(e.target.files?.[0]); e.target.value = '' }} />
+              </label>
+              {buffer && !erroLeitura && (
+                <span className="ml-2.5 text-sm text-fg-2">{nome || 'arquivo selecionado'}</span>
+              )}
+            </div>
           </div>
 
-          {erroLeitura && <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">⚠ {erroLeitura}</div>}
-          {erro && <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">⚠ {erro}</div>}
-
-          {planilha && buffer && (<>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2">
-                <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">Nome da tabela</label>
-                <input className={`${inputCls} w-full`} value={nome} onChange={e => setNome(e.target.value)} maxLength={120} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">Linha do cabeçalho (contando só linhas com dados)</label>
-                <input type="number" min={1} className={`${inputCls} w-full`} value={linhaCabecalhoInput}
-                  onChange={e => {
-                    const txt = e.target.value
-                    setLinhaCabecalhoInput(txt)
-                    const n = Number(txt)
-                    if (Number.isInteger(n) && n >= 1) carregar(buffer, { aba: planilha.aba, linhaCabecalho: n })
-                  }} />
-              </div>
+          {planilha && buffer && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field rotulo="Nome da tabela" obrigatorio className="sm:col-span-2">
+                {c => <Input id={c.id} aria-describedby={c.describedBy} value={nome} onChange={e => setNome(e.target.value)} maxLength={120} />}
+              </Field>
+              <Field rotulo="Linha do cabeçalho" ajuda="Contando só linhas com dados">
+                {c => (
+                  <Input id={c.id} aria-describedby={c.describedBy} type="number" min={1} value={linhaCabecalhoInput}
+                    onChange={e => {
+                      const txt = e.target.value
+                      setLinhaCabecalhoInput(txt)
+                      const n = Number(txt)
+                      if (Number.isInteger(n) && n >= 1) carregar(buffer, { aba: planilha.aba, linhaCabecalho: n })
+                    }} />
+                )}
+              </Field>
               {planilha.abas.length > 1 && (
-                <div className="sm:col-span-3">
-                  <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5">Aba</label>
-                  <select className={`${inputCls} w-full`} value={planilha.aba}
-                    onChange={e => carregar(buffer, { aba: e.target.value })}>
-                    {planilha.abas.map(a => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                </div>
+                <Field rotulo="Aba da planilha" className="sm:col-span-3">
+                  {c => (
+                    <Select id={c.id} aria-describedby={c.describedBy} value={planilha.aba} onChange={e => carregar(buffer, { aba: e.target.value })}>
+                      {planilha.abas.map(a => <option key={a} value={a}>{a}</option>)}
+                    </Select>
+                  )}
+                </Field>
               )}
             </div>
+          )}
+        </div>
+      )}
 
-            <div>
-              <p className="text-xs text-[var(--fg)]/50 mb-2">
-                {planilha.linhas.length.toLocaleString('pt-BR')} linhas · confira o nome e o tipo de cada coluna. A coluna-chave será usada depois para atualizar a tabela com uma nova planilha (opcional).
-              </p>
-              <div className="rounded-xl border border-[var(--fg)]/12 divide-y divide-[var(--fg)]/8">
-                {colunas.map(c => (
-                  <div key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-                    <input className={`${inputCls} flex-1 min-w-[10rem]`} value={c.nome} maxLength={120}
-                      onChange={e => setColunas(cs => cs.map(x => x.id === c.id ? { ...x, nome: e.target.value } : x))} />
-                    <select className={inputCls} value={c.tipo} onChange={e => mudarTipo(c.id, e.target.value as TipoColuna)}>
-                      {TIPOS_COLUNA.map(t => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
-                    </select>
-                    <label className="flex items-center gap-1.5 text-xs text-[var(--fg)]/60">
-                      <input type="radio" name="chave" checked={colunaChaveId === c.id}
-                        onChange={() => setColunaChaveId(c.id)} className="accent-[var(--accent)]" />
-                      chave
-                    </label>
-                    {c.tipo === 'opcoes' && c.opcoes && (
-                      <div className="w-full flex flex-wrap gap-1">
-                        {c.opcoes.map(o => (
-                          <span key={o.valor} className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                            style={{ backgroundColor: o.cor + '25', color: o.cor, border: `1px solid ${o.cor}50` }}>{o.valor}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {colunaChaveId && (
-                <button onClick={() => setColunaChaveId(null)} className="mt-2 text-xs text-[var(--fg)]/40 hover:text-[var(--fg)]">Limpar coluna-chave</button>
-              )}
+      {passo === 1 && planilha && (
+        <div className="flex flex-col gap-3">
+          <p className="text-[13px] text-fg-3">
+            {planilha.linhas.length.toLocaleString('pt-BR')} linhas · confira o nome e o tipo de cada coluna. A coluna-chave será usada depois para atualizar a tabela com uma nova planilha (opcional).
+          </p>
+
+          <Card semPadding className="overflow-hidden">
+            <div className="relative overflow-x-auto">
+              <Tabela className="min-w-[560px]">
+                <thead>
+                  <tr>
+                    <Th>Nome da coluna</Th>
+                    <Th largura={200}>Tipo</Th>
+                    <Th largura={120} alinhar="centro">Coluna-chave</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {colunas.map(c => (
+                    <tr key={c.id}>
+                      <Td>
+                        <Input value={c.nome} maxLength={120} aria-label={`Nome da coluna ${c.nome}`}
+                          onChange={e => setColunas(cs => cs.map(x => x.id === c.id ? { ...x, nome: e.target.value } : x))} />
+                        {c.tipo === 'opcoes' && c.opcoes && c.opcoes.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {c.opcoes.map(o => (
+                              <span key={o.valor} className="inline-flex h-[22px] items-center whitespace-nowrap rounded-md px-2 text-xs font-semibold"
+                                style={{ backgroundColor: o.cor + '25', color: o.cor, border: `1px solid ${o.cor}50` }}>
+                                {o.valor}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </Td>
+                      <Td>
+                        <Select value={c.tipo} aria-label={`Tipo da coluna ${c.nome}`} onChange={e => mudarTipo(c.id, e.target.value as TipoColuna)}>
+                          {TIPOS_COLUNA.map(t => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
+                        </Select>
+                      </Td>
+                      <Td alinhar="centro">
+                        <input type="radio" name="colunaChave" checked={colunaChaveId === c.id} onChange={() => setColunaChaveId(c.id)}
+                          aria-label={`"${c.nome}" é a coluna-chave`} className="h-4 w-4 accent-[var(--acc)]" />
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Tabela>
             </div>
+          </Card>
+          {colunaChaveId && (
+            <Button variante="fantasma" tamanho="p" className="self-start" onClick={() => setColunaChaveId(null)}>Limpar coluna-chave</Button>
+          )}
 
-            {colCliente && (
+          {nomeDuplicado !== null && (
+            <Aviso tom="warn">
+              Há duas colunas chamadas “{nomeDuplicado}” (maiúsculas e minúsculas contam como iguais). Renomeie uma delas para continuar.
+            </Aviso>
+          )}
+          {naoConvertidas > 0 && (
+            <Aviso tom="warn">
+              {naoConvertidas.toLocaleString('pt-BR')} {naoConvertidas === 1 ? 'valor não pôde' : 'valores não puderam'} ser {naoConvertidas === 1 ? 'convertido' : 'convertidos'} para o tipo da coluna e {naoConvertidas === 1 ? 'será mantido' : 'serão mantidos'} como texto.
+            </Aviso>
+          )}
+        </div>
+      )}
+
+      {passo === 2 && planilha && (
+        <div className="flex flex-col gap-3">
+          {!colCliente ? (
+            <p className="text-sm text-fg-3">Esta planilha não tem uma coluna do tipo Cliente. Pode criar a tabela direto.</p>
+          ) : (
+            <>
               <div>
-                <p className="text-sm font-semibold text-[var(--fg)] mb-1">Clientes da coluna “{colCliente.nome}”</p>
-                <p className="text-xs text-[var(--fg)]/50 mb-2">
+                <p className="text-sm font-semibold text-fg">Clientes da coluna “{colCliente.nome}”</p>
+                <p className="mt-0.5 text-[13px] text-fg-3">
                   {grupos.length - semMatch.length} de {grupos.length} valores ligados a um cliente.
                   {semMatch.length > 0 && ` ${semMatch.length} sem cliente — escolha abaixo ou deixe assim (poderão ser ligados depois).`}
                 </p>
-                <div className="rounded-xl border border-[var(--fg)]/12 divide-y divide-[var(--fg)]/8 max-h-72 overflow-y-auto">
-                  {grupos.filter(g => g.match.status !== 'exato').map(g => (
-                    <div key={g.valor} className="flex flex-wrap items-center gap-3 px-4 py-2">
-                      <span className="flex-1 min-w-[10rem] text-sm text-[var(--fg)]">
-                        {g.valor} <span className="text-[var(--fg)]/30 text-xs">({g.linhas} {g.linhas === 1 ? 'linha' : 'linhas'})</span>
+              </div>
+              {grupos.every(g => g.match.status === 'exato') ? (
+                <Aviso tom="ok">Todos os valores casaram com um cliente cadastrado.</Aviso>
+              ) : (
+                <ul className="max-h-72 overflow-y-auto overflow-x-hidden rounded-[10px] border border-line-soft">
+                  {grupos.filter(g => g.match.status !== 'exato').map((g, i) => (
+                    <li key={g.valor} className={cn('flex flex-wrap items-center gap-3 px-4 py-2.5', i > 0 && 'border-t border-line-soft')}>
+                      <span className="min-w-[10rem] flex-1 text-sm text-fg">
+                        {g.valor} <span className="text-xs text-fg-3">({g.linhas} {g.linhas === 1 ? 'linha' : 'linhas'})</span>
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${g.match.status === 'sugerido' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                      <Badge tom={g.match.status === 'sugerido' ? 'warn' : 'dng'}>
                         {g.match.status === 'sugerido' ? 'confirmar' : 'sem match'}
-                      </span>
-                      <select className={`${inputCls} max-w-xs`} value={clienteDoValor(g.valor) ?? ''}
+                      </Badge>
+                      <Select className="max-w-xs" value={clienteDoValor(g.valor) ?? ''} aria-label={`Cliente para "${g.valor}"`}
                         onChange={e => setEscolhas(es => ({ ...es, [g.valor]: e.target.value || null }))}>
                         <option value="">Sem cliente</option>
                         {clientes.map(cl => <option key={cl.id} value={cl.id}>{cl.nome}</option>)}
-                      </select>
-                    </div>
+                      </Select>
+                    </li>
                   ))}
-                  {grupos.every(g => g.match.status === 'exato') && (
-                    <p className="px-4 py-3 text-sm text-emerald-400">Todos os valores casaram com um cliente cadastrado.</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </>)}
+                </ul>
+              )}
+            </>
+          )}
         </div>
-
-        {nomeDuplicado !== null && (
-          <div className="mx-6 mb-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
-            Há duas colunas chamadas “{nomeDuplicado}” (maiúsculas e minúsculas contam como iguais). Renomeie uma delas para criar a tabela.
-          </div>
-        )}
-        {naoConvertidas > 0 && (
-          <div className="mx-6 mb-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
-            {naoConvertidas.toLocaleString('pt-BR')} {naoConvertidas === 1 ? 'valor não pôde' : 'valores não puderam'} ser {naoConvertidas === 1 ? 'convertido' : 'convertidos'} para o tipo da coluna e {naoConvertidas === 1 ? 'será mantido' : 'serão mantidos'} como texto.
-          </div>
-        )}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <button onClick={fechar} disabled={criando}
-            className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm">Cancelar</button>
-          <button onClick={criar} disabled={!planilha || !nome.trim() || criando || erroLeitura !== null || nomeDuplicado !== null}
-            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50">
-            {criando ? 'Criando...' : 'Criar tabela'}
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   )
 }
