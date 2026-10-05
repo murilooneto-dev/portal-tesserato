@@ -1,49 +1,29 @@
 'use client'
 
 import { useState } from 'react'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Caminho } from '@/components/ui/Caminho'
+import { Abas } from '@/components/ui/Abas'
 import FinanceiroCatalogoTab from './FinanceiroCatalogoTab'
 import TarefasFinanceiroTab from './TarefasFinanceiroTab'
 
-type Categoria = 'entrada' | 'saida' | 'centro_custo_recebimento' | 'centro_custo_pagamento' | 'tarefas'
-
-const CATEGORIAS: { value: Categoria; label: string }[] = [
-  { value: 'entrada', label: 'Tipos de Entrada' },
-  { value: 'saida', label: 'Tipos de Saída' },
-  { value: 'centro_custo_recebimento', label: 'Centro de Custo (Recebimento)' },
-  { value: 'centro_custo_pagamento', label: 'Centro de Custo (Pagamento)' },
-  { value: 'tarefas', label: 'Tarefas' },
-]
-
-const botaoCls = (ativo: boolean) =>
-  `px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-    ativo
-      ? 'bg-[var(--accent)] text-[var(--fg)]'
-      : 'bg-[var(--fg)]/5 text-[var(--fg)]/50 hover:text-[var(--fg)]'
-  }`
-
 export default function FinanceiroConfigClient() {
-  const [categoria, setCategoria] = useState<Categoria>('entrada')
-
+  const [trocas, setTrocas] = useState(0)
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10">
-      <h1 className="text-[var(--fg)] font-bold text-2xl mb-1">Configurações — Financeiro</h1>
-      <p className="text-[var(--fg)]/50 text-sm mb-8">
-        Tipos de Entrada, Tipos de Saída, Centro de Custo (separados por Recebimento/Pagamento) e Tarefas do setor Financeiro.
-      </p>
-
-      <div className="flex gap-2 mb-8 border-b border-[var(--fg)]/8 pb-4">
-        {CATEGORIAS.map(c => (
-          <button key={c.value} onClick={() => setCategoria(c.value)} className={botaoCls(categoria === c.value)}>
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      {categoria === 'entrada' && <FinanceiroCatalogoTab tipo="tipos" natureza="entrada" label="tipo de entrada" />}
-      {categoria === 'saida' && <FinanceiroCatalogoTab tipo="tipos" natureza="saida" label="tipo de saída" />}
-      {categoria === 'centro_custo_recebimento' && <FinanceiroCatalogoTab tipo="centro_custo" natureza="entrada" label="centro de custo de recebimento" />}
-      {categoria === 'centro_custo_pagamento' && <FinanceiroCatalogoTab tipo="centro_custo" natureza="saida" label="centro de custo de pagamento" />}
-      {categoria === 'tarefas' && <TarefasFinanceiroTab />}
-    </div>
+    <Pagina>
+      <Caminho itens={[{ rotulo: 'Configurações', href: '/admin/configuracoes' }, { rotulo: 'Financeiro' }]} />
+      <CabecalhoPagina titulo="Configurações do Financeiro" subtitulo="Tipos, centros de custo e tarefas do Financeiro" />
+      <Abas
+        rotulo="Configurações do Financeiro"
+        onTrocar={() => setTrocas(n => n + 1)}
+        abas={[
+          { id: 'entrada', rotulo: 'Tipos de entrada', conteudo: <FinanceiroCatalogoTab tipo="tipos" natureza="entrada" label="tipo de entrada" /> },
+          { id: 'saida', rotulo: 'Tipos de saída', conteudo: <FinanceiroCatalogoTab tipo="tipos" natureza="saida" label="tipo de saída" /> },
+          { id: 'centro_custo_recebimento', rotulo: 'Centros de custo · recebimento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="entrada" label="centro de custo de recebimento" mostrada={trocas} /> },
+          { id: 'centro_custo_pagamento', rotulo: 'Centros de custo · pagamento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="saida" label="centro de custo de pagamento" mostrada={trocas} /> },
+          { id: 'tarefas', rotulo: 'Tarefas', conteudo: <TarefasFinanceiroTab /> },
+        ]}
+      />
+    </Pagina>
   )
 }

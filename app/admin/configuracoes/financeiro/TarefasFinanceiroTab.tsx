@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { ListChecks, Pencil, Plus, Trash2, Users } from 'lucide-react'
 import {
   listarTarefaTiposDoSetor,
   excluirTarefaTipo,
@@ -13,9 +14,20 @@ import {
 import { periodicidadeDosMesesVisiveis } from '@/lib/tarefas-societario-periodicidade'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import EditarTipoTarefaModal from '@/components/geral/EditarTipoTarefaModal'
+import MenuMaisAcoes from '@/components/geral/MenuMaisAcoes'
+import { Card } from '@/components/ui/Card'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Select } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
+import { useConfirmar } from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
+import { cn } from '@/components/ui/cn'
 import VincularClientesModal from './VincularClientesModal'
-
-const inputCls = "px-3 py-2 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50"
 
 const LABEL_PERIODICIDADE: Record<string, string> = {
   mensal: 'Mensal',
@@ -25,7 +37,16 @@ const LABEL_PERIODICIDADE: Record<string, string> = {
   anual: 'Anual',
 }
 
+function buscar() {
+  return Promise.all([
+    listarTarefaTiposDoSetor('financeiro'),
+    listarUsuariosDoSetor('financeiro'),
+  ])
+}
+
 export default function TarefasFinanceiroTab() {
+  const confirmar = useConfirmar()
+  const avisar = useToast()
   const [itens, setItens] = useState<TarefaTipoResumo[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioDoSetor[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -36,19 +57,22 @@ export default function TarefasFinanceiroTab() {
   const [editando, setEditando] = useState<TarefaTipoResumo | null>(null)
   const [vinculando, setVinculando] = useState<TarefaTipoResumo | null>(null)
 
-  const recarregar = useCallback(async () => {
-    setCarregando(true)
-    const [{ data, error }, { data: usuariosData }] = await Promise.all([
-      listarTarefaTiposDoSetor('financeiro'),
-      listarUsuariosDoSetor('financeiro'),
-    ])
+  // O estado já começa em "carregando": só grava estado depois que a consulta
+  // volta (a tabela fica na tela enquanto atualiza).
+  const aplicar = useCallback(([{ data, error }, { data: usuariosData }]: Awaited<ReturnType<typeof buscar>>) => {
     if (error) setErro(error)
     else { setItens(data); setErro(null) }
     setUsuarios(usuariosData)
     setCarregando(false)
   }, [])
 
-  useEffect(() => { recarregar() }, [recarregar])
+  const recarregar = useCallback(async () => aplicar(await buscar()), [aplicar])
+
+  useEffect(() => {
+    let ativo = true
+    buscar().then(r => { if (ativo) aplicar(r) })
+    return () => { ativo = false }
+  }, [aplicar])
 
   async function handleResponsavelChange(item: TarefaTipoResumo, responsavelId: string) {
     setSalvandoResponsavel(item.id)
@@ -58,86 +82,119 @@ export default function TarefasFinanceiroTab() {
     else {
       setErro(null)
       setItens(prev => prev.map(i => i.id === item.id ? { ...i, responsavelId: valor } : i))
+      avisar('Salvo', 'ok')
     }
     setSalvandoResponsavel(null)
   }
 
   async function handleExcluir(item: TarefaTipoResumo) {
-    if (!confirm(`Excluir a tarefa "${item.nome}"? Essa ação não pode ser desfeita e remove também os vínculos dela com clientes.`)) return
+    const ok = await confirmar({
+      titulo: `Excluir a tarefa "${item.nome}"?`,
+      descricao: 'Essa ação não pode ser desfeita e remove também os vínculos dela com clientes.',
+      textoConfirmar: 'Excluir',
+      perigo: true,
+    })
+    if (!ok) return
     const { error } = await excluirTarefaTipo(item.id)
     if (error) { setErro(error); return }
     setErro(null)
+    avisar('Tarefa excluída.', 'ok')
     await recarregar()
   }
 
+  function abrirCriacao() {
+    if (novoNome.trim()) setMostrarModal(true)
+  }
+
   return (
-    <div>
-      <div className="flex gap-2 mb-6">
-        <input
-          value={novoNome}
-          onChange={e => setNovoNome(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && novoNome.trim() && setMostrarModal(true)}
-          placeholder="Nova tarefa..."
-          className={inputCls + ' flex-1'}
-        />
-        <button
-          onClick={() => novoNome.trim() && setMostrarModal(true)}
-          disabled={!novoNome.trim()}
-          className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50"
-        >
-          + Criar
-        </button>
+    <div className="flex min-w-0 flex-col gap-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field rotulo="Nome" className="min-w-[14rem] flex-1">
+          {c => (
+            <Input
+              id={c.id}
+              value={novoNome}
+              onChange={e => setNovoNome(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') abrirCriacao() }}
+              placeholder="Nome da nova tarefa"
+            />
+          )}
+        </Field>
+        <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={abrirCriacao} disabled={!novoNome.trim()}>
+          Criar tarefa
+        </Button>
       </div>
 
-      {erro && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-          ⚠ {erro}
-        </div>
-      )}
+      {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
 
-      {carregando ? (
-        <p className="text-[var(--fg)]/40 text-sm">Carregando...</p>
-      ) : itens.length === 0 ? (
-        <p className="text-[var(--fg)]/40 text-sm">Nenhuma tarefa cadastrada nesse setor ainda.</p>
-      ) : (
-        <ul className="space-y-2">
-          {itens.map(item => (
-            <li key={item.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8">
-              <span className={`flex-1 text-sm ${item.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
-                {item.nome}
-                <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--fg)]/8 text-[var(--fg)]/50 whitespace-nowrap">
-                  {LABEL_PERIODICIDADE[periodicidadeDosMesesVisiveis(item.mesesVisiveis)]}
-                </span>
-              </span>
-
-              <select
-                value={item.responsavelId ?? ''}
-                onChange={e => handleResponsavelChange(item, e.target.value)}
-                disabled={salvandoResponsavel === item.id}
-                className={inputCls + ' text-xs py-1.5 disabled:opacity-50'}
-                title="Responsável exclusivo por esse tipo de tarefa, em todos os clientes"
-              >
-                <option value="">— Ninguém (regra normal) —</option>
-                {usuarios.map(u => (
-                  <option key={u.id} value={u.id}>{u.nome}</option>
+      <Card semPadding className="overflow-hidden">
+        {carregando ? (
+          <EsqueletoLinhas linhas={4} className="px-[18px] py-5" />
+        ) : itens.length === 0 ? (
+          <EmptyState compacto icone={<ListChecks size={24} />} titulo="Nenhuma tarefa cadastrada nesse setor ainda" />
+        ) : (
+          <div className="relative overflow-x-auto xl:overflow-visible">
+            <Tabela className="min-w-[880px]">
+              <thead>
+                <tr>
+                  <Th>Tarefa</Th>
+                  <Th largura={150}>Periodicidade</Th>
+                  <Th largura={280}>Responsável exclusivo</Th>
+                  <Th largura={170}><span className="sr-only">Clientes</span></Th>
+                  <Th largura={56}><span className="sr-only">Ações</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {itens.map(item => (
+                  <tr key={item.id}>
+                    <Td>
+                      <span className={cn('block truncate font-semibold', item.ativo ? 'text-fg' : 'text-fg-3 line-through')} title={item.nome}>
+                        {item.nome}
+                      </span>
+                    </Td>
+                    <Td><Badge tom="neu">{LABEL_PERIODICIDADE[periodicidadeDosMesesVisiveis(item.mesesVisiveis)]}</Badge></Td>
+                    <Td>
+                      <Select
+                        aria-label={`Responsável exclusivo de ${item.nome}`}
+                        title="Responsável exclusivo por esse tipo de tarefa, em todos os clientes"
+                        value={item.responsavelId ?? ''}
+                        onChange={e => handleResponsavelChange(item, e.target.value)}
+                        disabled={salvandoResponsavel === item.id}
+                        className="h-[34px]"
+                      >
+                        <option value="">Ninguém (regra normal)</option>
+                        {usuarios.map(u => (
+                          <option key={u.id} value={u.id}>{u.nome}</option>
+                        ))}
+                      </Select>
+                    </Td>
+                    <Td alinhar="dir">
+                      <Button tamanho="p" icone={<Users size={14} aria-hidden="true" />} onClick={() => setVinculando(item)}>
+                        Vincular clientes
+                      </Button>
+                    </Td>
+                    <Td alinhar="dir" className="px-2">
+                      <div className="flex justify-end">
+                        <MenuMaisAcoes
+                          rotulo={`Editar ou excluir ${item.nome}`}
+                          itens={[
+                            { rotulo: 'Editar', icone: <Pencil size={16} aria-hidden="true" />, onSelecionar: () => setEditando(item) },
+                            { rotulo: 'Excluir', icone: <Trash2 size={16} aria-hidden="true" />, perigo: true, onSelecionar: () => handleExcluir(item) },
+                          ]}
+                        />
+                      </div>
+                    </Td>
+                  </tr>
                 ))}
-              </select>
+              </tbody>
+            </Tabela>
+          </div>
+        )}
+      </Card>
 
-              <button onClick={() => setVinculando(item)} className="text-xs text-[var(--fg)]/50 hover:text-[var(--fg)]">
-                Vincular clientes
-              </button>
-
-              <button onClick={() => setEditando(item)} className="text-xs text-[var(--fg)]/50 hover:text-[var(--fg)]">
-                Editar
-              </button>
-
-              <button onClick={() => handleExcluir(item)} className="text-xs text-red-400/70 hover:text-red-400">
-                Excluir
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <p className="text-[13px] text-fg-3">
+        &quot;Responsável exclusivo&quot; leva a tarefa para Minhas tarefas daquela pessoa em todos os clientes. A troca salva na hora e mostra &quot;Salvo&quot;.
+      </p>
 
       {mostrarModal && (
         <NovoTipoTarefaModal

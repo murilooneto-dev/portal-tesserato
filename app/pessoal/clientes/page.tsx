@@ -76,16 +76,14 @@ export default async function ClientesPessoalPage() {
   )
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <ClientesListaPessoal
-        clientes={clientes}
-        progressoMap={progressoMap}
-        mes={mes}
-        ano={ano}
-        tarefasPadrao={tarefasPadrao}
-        catalogo={catalogo}
-        pendenciasVinculo={pendenciasVinculo}
-      />
-    </div>
+    <ClientesListaPessoal
+      clientes={clientes}
+      progressoMap={progressoMap}
+      mes={mes}
+      ano={ano}
+      tarefasPadrao={tarefasPadrao}
+      catalogo={catalogo}
+      pendenciasVinculo={pendenciasVinculo}
+    />
   )
 }

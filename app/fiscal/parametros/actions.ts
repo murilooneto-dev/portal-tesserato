@@ -2,7 +2,7 @@
 
 import { getAuthenticatedAdmin, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { createClient as createClienteDescartavel } from '@supabase/supabase-js'
+import { registrarEvento } from '@/lib/logs'
 
 // SECURITY_REPORT.md ALTA-1 (histórico): `requireAdminSection()` só
 // protegia a renderização das páginas de Parâmetros/Vínculos — nenhuma das
@@ -65,7 +65,7 @@ export async function criarUsuario(payload: {
 }): Promise<{ error?: string }> {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const { data: callerProfile } = await supabase.from('profiles').select('role, nome').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -99,6 +99,15 @@ export async function criarUsuario(payload: {
     return { error: profErr.message }
   }
 
+  // Log de Eventos: usuário não tem cliente nem setor — entra como item
+  // "Usuário", no mesmo formato dos eventos gravados pelas triggers (058).
+  await registrarEvento(admin, {
+    setor: null, clienteId: null, clienteNome: null,
+    tipoEvento: 'criacao',
+    usuarioId: user.id, usuarioNome: callerProfile?.nome ?? 'Desconhecido',
+    detalhes: { entidade: 'Usuário', descricao: payload.nome || payload.login },
+  })
+
   revalidatePath('/fiscal/parametros')
   return {}
 }
@@ -106,15 +115,31 @@ export async function criarUsuario(payload: {
 export async function deletarUsuario(id: string): Promise<{ error?: string }> {
   const { user, supabase } = await getAuthenticatedAdmin()
   if (!supabase || !user) return { error: 'Não autorizado.' }
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const { data: callerProfile } = await supabase.from('profiles').select('role, nome').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
   if (id === user.id) return { error: 'Você não pode excluir seu próprio usuário.' }
 
   const admin = createAdminClient()
+  // Nome lido antes de apagar (pro Log de Eventos): o cascade abaixo leva a
+  // linha de profiles junto. Sem nome no perfil, cai pro e-mail do login.
+  const { data: alvo } = await admin.from('profiles').select('nome').eq('id', id).maybeSingle()
+  let descricaoAlvo = alvo?.nome || ''
+  if (!descricaoAlvo) {
+    const { data: alvoAuth } = await admin.auth.admin.getUserById(id)
+    descricaoAlvo = alvoAuth?.user?.email || '—'
+  }
+
   // profiles.id referencia auth.users on delete cascade — apagar o auth.user
   // já remove a linha em profiles junto.
   const { error } = await admin.auth.admin.deleteUser(id)
   if (error) return { error: error.message }
+
+  await registrarEvento(admin, {
+    setor: null, clienteId: null, clienteNome: null,
+    tipoEvento: 'exclusao',
+    usuarioId: user.id, usuarioNome: callerProfile?.nome ?? 'Desconhecido',
+    detalhes: { entidade: 'Usuário', descricao: descricaoAlvo },
+  })
 
   revalidatePath('/fiscal/parametros')
   return {}
@@ -133,147 +158,4 @@ export async function salvarConfiguracoes(settings: Record<string, unknown>): Pr
   if (error) return { error: error.message }
   revalidatePath('/fiscal/parametros')
   return {}
-}
-
-const CAMPOS_MESCLAVEIS_PARCELAMENTO = [
-  'regime', 'responsavel', 'local_tipo', 'tarefa', 'senhas',
-  'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez',
-  'jan_obs', 'fev_obs', 'mar_obs', 'abr_obs', 'mai_obs', 'jun_obs',
-  'jul_obs', 'ago_obs', 'set_obs', 'out_obs', 'nov_obs', 'dez_obs',
-] as const
-
-function chaveParcelamento(r: { empresa: string | null; cnpj: string | null; secao: string | null }): string {
-  return `${(r.empresa ?? '').trim().toUpperCase()}|${r.cnpj ?? ''}|${r.secao ?? ''}`
-}
-
-export interface GrupoParcelamentoDuplicado {
-  chave: string
-  empresa: string
-  cnpj: string | null
-  secao: string
-  quantidade: number
-}
-
-export async function analisarParcelamentosDuplicados(): Promise<{
-  error?: string
-  grupos: GrupoParcelamentoDuplicado[]
-}> {
-  const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase || !user) return { error: 'Não autorizado.', grupos: [] }
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', grupos: [] }
-
-  const { data: registros, error } = await supabase
-    .from('parcelamentos')
-    .select('id, empresa, cnpj, secao')
-  if (error) return { error: error.message, grupos: [] }
-
-  const gruposMap: Record<string, typeof registros> = {}
-  for (const r of registros ?? []) {
-    const chave = chaveParcelamento(r)
-    if (!gruposMap[chave]) gruposMap[chave] = []
-    gruposMap[chave]!.push(r)
-  }
-
-  const grupos: GrupoParcelamentoDuplicado[] = Object.entries(gruposMap)
-    .filter(([, rows]) => (rows ?? []).length > 1)
-    .map(([chave, rows]) => ({
-      chave,
-      empresa: rows![0].empresa,
-      cnpj: rows![0].cnpj,
-      secao: rows![0].secao,
-      quantidade: rows!.length,
-    }))
-    .sort((a, b) => b.quantidade - a.quantidade)
-
-  return { grupos }
-}
-
-export async function limparParcelamentosDuplicados(): Promise<{
-  error?: string
-  gruposMesclados: number
-  linhasRemovidas: number
-}> {
-  const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase || !user) return { error: 'Não autorizado.', gruposMesclados: 0, linhasRemovidas: 0 }
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.', gruposMesclados: 0, linhasRemovidas: 0 }
-
-  const { data: registros, error } = await supabase.from('parcelamentos').select('*')
-  if (error) return { error: error.message, gruposMesclados: 0, linhasRemovidas: 0 }
-
-  const gruposMap: Record<string, typeof registros> = {}
-  for (const r of registros ?? []) {
-    const chave = chaveParcelamento(r)
-    if (!gruposMap[chave]) gruposMap[chave] = []
-    gruposMap[chave]!.push(r)
-  }
-
-  let gruposMesclados = 0
-  let linhasRemovidas = 0
-
-  for (const rows of Object.values(gruposMap)) {
-    if (!rows || rows.length < 2) continue
-    const [base, ...outros] = rows
-
-    const mesclado: Record<string, unknown> = {}
-    for (const campo of CAMPOS_MESCLAVEIS_PARCELAMENTO) {
-      let valor = (base as Record<string, unknown>)[campo]
-      if (!valor) {
-        for (const o of outros) {
-          const vOutro = (o as Record<string, unknown>)[campo]
-          if (vOutro) { valor = vOutro; break }
-        }
-      }
-      mesclado[campo] = valor ?? null
-    }
-
-    // Status não entra na lista genérica "primeiro valor truthy vence": um
-    // parcelamento EM ANDAMENTO nunca pode ser mascarado por um duplicado
-    // LIQUIDADO/CANCELADO — isso controlaria o aviso na ficha do cliente.
-    const algumEmAndamento = rows.some(r => (r as { status: string }).status === 'EM ANDAMENTO')
-    mesclado.status = algumEmAndamento ? 'EM ANDAMENTO' : (base as Record<string, unknown>).status
-
-    const camposParaComparar = [...CAMPOS_MESCLAVEIS_PARCELAMENTO, 'status'] as const
-    const mudou = camposParaComparar.some(c => mesclado[c] !== (base as Record<string, unknown>)[c])
-    if (mudou) {
-      await supabase.from('parcelamentos').update(mesclado).eq('id', base.id)
-    }
-
-    const idsRemover = outros.map(o => o.id)
-    await supabase.from('parcelamentos').delete().in('id', idsRemover)
-    linhasRemovidas += idsRemover.length
-    gruposMesclados++
-  }
-
-  revalidatePath('/fiscal/parcelamentos')
-  revalidatePath('/fiscal/parametros')
-  return { gruposMesclados, linhasRemovidas }
-}
-
-export async function verificarSenhaDev(
-  login: string,
-  senha: string
-): Promise<{ ok: boolean; error?: string }> {
-  const { user, supabase } = await getAuthenticatedAdmin()
-  if (!supabase || !user) return { ok: false, error: 'Não autorizado.' }
-  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'admin') return { ok: false, error: 'Acesso negado.' }
-
-  const devEmail = process.env.DEV_MASTER_EMAIL
-  if (!devEmail) return { ok: false, error: 'DEV_MASTER_EMAIL não configurada no servidor.' }
-
-  if (login.trim().toLowerCase() !== devEmail.trim().toLowerCase()) {
-    return { ok: false, error: 'Credenciais inválidas.' }
-  }
-
-  const clienteDescartavel = createClienteDescartavel(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const { error } = await clienteDescartavel.auth.signInWithPassword({ email: login, password: senha })
-  if (error) return { ok: false, error: 'Credenciais inválidas.' }
-
-  return { ok: true }
 }

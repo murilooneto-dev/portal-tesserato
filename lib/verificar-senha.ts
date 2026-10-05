@@ -2,10 +2,10 @@
 import { createClient as createClienteDescartavel } from '@supabase/supabase-js'
 import { getAuthenticatedAdmin } from './supabase/server'
 
-// Reautentica a senha digitada contra a conta atualmente logada — mesmo
-// padrão de verificarSenhaDev (app/fiscal/parametros/actions.ts), mas usa o
-// e-mail da própria sessão em vez de um e-mail fixo. Não compara senha em
-// texto puro em nenhum momento: quem confirma é o próprio Supabase Auth.
+// Reautentica a senha digitada contra a conta atualmente logada: tenta um
+// login com o e-mail da própria sessão num cliente descartável (não mexe nos
+// cookies de quem está logado). Não compara senha em texto puro em nenhum
+// momento: quem confirma é o próprio Supabase Auth.
 export async function verificarSenhaUsuarioAtual(senha: string): Promise<{ ok: boolean; error?: string }> {
   const { user } = await getAuthenticatedAdmin()
   if (!user?.email) return { ok: false, error: 'Sessão inválida.' }

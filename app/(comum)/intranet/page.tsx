@@ -1,8 +1,12 @@
+import { Megaphone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import LinksRapidos from '@/components/fiscal/LinksRapidos'
-import AgendaPessoal from '@/components/fiscal/AgendaPessoal'
+import LinksUteis from '@/components/geral/LinksUteis'
+import Agenda from '@/components/geral/agenda/Agenda'
+import { chaveHojeNoBrasil } from '@/lib/agenda'
+import { Pagina } from '@/components/ui/Pagina'
+import { Aviso } from '@/components/ui/Aviso'
 
-export const metadata = { title: 'Intranet — Tesserato Fiscal' }
+export const metadata = { title: 'Início — Tesserato' }
 
 export default async function IntranetPage() {
   const supabase = await createClient()
@@ -18,18 +22,17 @@ export default async function IntranetPage() {
   const comunicado = settings?.dashboard_announcement?.trim() ?? ''
   const isAdmin = profile?.role === 'admin'
 
+  const avisoComunicado = comunicado ? (
+    <Aviso tom="warn" icone={<Megaphone size={18} />}>
+      <b>Comunicado da administração</b>
+      <p className="mt-0.5 whitespace-pre-wrap">{comunicado}</p>
+    </Aviso>
+  ) : null
+
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      {comunicado && (
-        <div className="mb-8 flex gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
-          <span className="text-amber-400 text-lg shrink-0">📢</span>
-          <p className="text-amber-200/90 text-sm leading-relaxed whitespace-pre-wrap">{comunicado}</p>
-        </div>
-      )}
-      <AgendaPessoal />
-      <div className="mt-10 pt-8 border-t border-[var(--fg)]/8">
-        <LinksRapidos links={links ?? []} isAdmin={isAdmin} />
-      </div>
-    </div>
+    <Pagina>
+      <Agenda hojeInicial={chaveHojeNoBrasil()} titulo="Início" subtitulo="Sua agenda, os avisos da equipe e os links do escritório" topo={avisoComunicado} />
+      <LinksUteis links={links ?? []} isAdmin={isAdmin} />
+    </Pagina>
   )
 }

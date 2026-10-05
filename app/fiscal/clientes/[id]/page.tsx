@@ -1,8 +1,11 @@
-﻿import { notFound, redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import { ChevronRight, CreditCard } from 'lucide-react'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Aviso } from '@/components/ui/Aviso'
+import { Badge } from '@/components/ui/Badge'
 import { createClient, createClienteLeituraVinculos } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
-import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import type { TarefaArquivo, TarefaEtapa, TipoResposta, TarefaGrupo } from '@/lib/types'
 import { buscarVinculosDoCliente } from '@/lib/vinculos'
@@ -14,13 +17,13 @@ import { atualizarEtapa, salvarRespostaTexto, uploadArquivoTarefa, excluirArquiv
 import ClienteObs from '@/components/fiscal/ClienteObs'
 import ClienteArquivos from '@/components/fiscal/ClienteArquivos'
 import ClienteConferencia from '@/components/fiscal/ClienteConferencia'
+import AbasFichaCelular from '@/components/fiscal/AbasFichaCelular'
 import ClienteAcoes from '@/components/fiscal/ClienteAcoes'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
-import { tipoVisivelParaUsuario, filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
-import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
+import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { bucketDoRegime } from '@/lib/regime-bucket'
 import HistoricoResponsavel from '@/components/HistoricoResponsavel'
@@ -28,9 +31,6 @@ import HistoricoResponsavel from '@/components/HistoricoResponsavel'
 interface Props {
   params: Promise<{ id: string }>
 }
-
-const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-
 
 export default async function ClienteDetalhePage({ params }: Props) {
   const { id } = await params
@@ -51,7 +51,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   const { mes, ano } = await getMesAno()
   await sincronizarTarefasParcelamento(supabase, 'fiscal', mes, ano)
-  const anoAtual = getMesAnoRealAgora().ano
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   // Tarefas do mês selecionado
@@ -93,10 +92,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   const tarefasPersonalizadasVisiveis = tarefasPersonalizadasEfetivas.filter(ehDonoOuAdmin)
 
-  // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % deste cliente.
-  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
-  const tiposDoProgresso = filtrarTiposDoProgresso(tarefasPersonalizadasVisiveis, cliente.responsavel, donoNomePorTipo)
-
   const podeEditarPorTipo: Record<string, boolean> = {}
   for (const tipo of tarefasPersonalizadasVisiveis) {
     podeEditarPorTipo[tipo] = responsavelIdPorTipo[tipo]
@@ -117,10 +112,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const vinculos = await buscarVinculosDoCliente(
     await createClienteLeituraVinculos(), id, cliente.tarefas_vinculadas_ativas ?? [], 'fiscal', mes, ano
   )
-
-  // Todas as tarefas do ano para o histórico
-  const { data: tarefasAno } = await supabase
-    .from('tarefas').select('mes,concluida,tipo').eq('cliente_id', id).eq('ano', ano).eq('setor', 'fiscal')
 
   // Arquivos do cliente (inclui content_base64 para conferência)
   const { data: arquivos } = await supabase
@@ -149,10 +140,12 @@ export default async function ClienteDetalhePage({ params }: Props) {
   }
 
   // Dados pro EmpresaModal (editar cliente)
-  const { data: usuariosFiscal } = await supabase.from('profiles').select('nome').contains('setores', ['fiscal'])
+  const { data: usuariosFiscal } = await supabase.from('profiles').select('nome, cor').contains('setores', ['fiscal'])
   const responsaveis = Array.from(new Set(
     (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
+  // Cor do avatar do responsável (a mesma do Progresso por responsável no dashboard).
+  const corResponsavel = (usuariosFiscal ?? []).find(p => p.nome?.toUpperCase() === cliente.responsavel?.toUpperCase())?.cor || 'var(--acc)'
   const catalogo = await buscarCatalogoCliente(supabase, 'fiscal')
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
@@ -180,121 +173,106 @@ export default async function ClienteDetalhePage({ params }: Props) {
     await excluirArquivoTarefa(arquivoId)
   }
 
-  // Histórico por mês — só conta os tipos visíveis pro usuário atual, senão
-  // uma tarefa de responsável exclusivo alheio continuaria influenciando a %
-  // de quem não deveria nem ver essa tarefa.
-  const historicoMeses = Array.from({ length: 12 }, (_, i) => {
-    const m = i + 1
-    const total = tiposDoProgresso.length
-    const feitas = (tarefasAno ?? []).filter(
-      t => t.mes === m && t.concluida && tiposDoProgresso.includes(t.tipo as string)
-    ).length
-    const pct = total > 0 ? Math.round((feitas / total) * 100) : 0
-    return { m, total, feitas, pct }
-  })
-
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 pb-6 border-b border-[var(--fg)]/8">
-        <div className="flex items-start gap-4">
-          <Link href="/fiscal/clientes" className="mt-1 text-[var(--fg)]/30 hover:text-[var(--fg)]/70 transition-colors text-lg">←</Link>
-          <div className="flex-1">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <h1 className="text-xl font-bold text-[var(--fg)]">{cliente.nome}</h1>
-                <p className="text-[var(--fg)]/40 text-sm mt-0.5">{cliente.cnpj ?? '—'}</p>
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {cliente.regime && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.regime}</span>}
-                  {(cliente.atividade ?? []).map(a => (
-                    <span key={a} className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{a}</span>
-                  ))}
-                  {cliente.responsavel && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.responsavel}</span>}
-                  {cliente.municipio && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
-                  {cliente.ativo === false && <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-semibold">Desabilitado</span>}
-                </div>
-                {labelsParcelamento.length > 0 && (
-                  <div className="mt-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 bg-red-500/15 px-3 py-1 rounded-full">
-                      ⚠️ Cliente possui parcelamento! {labelsParcelamento.join(' / ')}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[var(--fg)] font-medium text-sm">
-                  {MESES_ABREV[mes-1]} / {ano}
+    <Pagina>
+      <nav aria-label="Caminho" className="-mb-2 flex min-w-0 items-center gap-1.5 text-[13px] text-fg-3 print:hidden">
+        <Link href="/fiscal/clientes" className="flex-none transition-colors hover:text-fg">Clientes</Link>
+        <ChevronRight size={14} aria-hidden="true" className="flex-none" />
+        <b className="min-w-0 truncate font-medium text-fg-2" aria-current="page">{cliente.nome}</b>
+      </nav>
+
+      <CabecalhoPagina
+        titulo={<span className="block min-w-[15ch] truncate" title={cliente.nome}>{cliente.nome}</span>}
+        subtitulo={
+          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
+            <span className="font-mono text-[13px]">{cliente.cnpj?.trim() || 'CNPJ não informado'}</span>
+            {cliente.regime && <Badge tom="acc">{cliente.regime}</Badge>}
+            {(cliente.atividade ?? []).map(a => <Badge key={a}>{a}</Badge>)}
+            {cliente.responsavel && (
+              <span className="inline-flex items-center gap-1.5 text-[13px] text-fg-2">
+                <span aria-hidden="true" className="grid h-5 w-5 flex-none place-items-center rounded-full text-xs font-bold text-acc-ink" style={{ backgroundColor: corResponsavel }}>
+                  {cliente.responsavel.charAt(0).toUpperCase()}
                 </span>
-                {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} catalogo={catalogo} />}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Checklist */}
-      <TarefaChecklist
-        clienteId={id}
-        grupo={bucketDoRegime(cliente.regime)}
-        tarefasPersonalizadas={tarefasPersonalizadasVisiveis}
-        tarefas={tarefas ?? []}
-        grupos={(gruposRaw ?? []) as TarefaGrupo[]}
-        vinculos={vinculos}
-        mes={mes}
-        ano={ano}
-        usuarioId={user.id}
-        mitInicial={cliente.mit ?? ''}
-        onToggle={toggleTarefa}
-        podeEditar={podeEditar}
-        podeEditarPorTipo={podeEditarPorTipo}
-        tarefaTipos={tarefaTipos}
-        etapas={(etapasCatalogo ?? []) as TarefaEtapa[]}
-        arquivos={(arquivosCatalogo ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}
-        onAtualizarEtapa={onAtualizarEtapa}
-        onSalvarTexto={onSalvarTexto}
-        onUploadArquivo={onUploadArquivo}
-        onExcluirArquivo={onExcluirArquivo}
-        prazosPorTipo={prazosPorTipo}
+                {cliente.responsavel}
+              </span>
+            )}
+            {cliente.municipio && <Badge>{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</Badge>}
+            {cliente.ativo === false && <Badge tom="warn">Desabilitado</Badge>}
+          </span>
+        }
+        acoes={
+          podeEditar ? <ClienteAcoes cliente={cliente} responsaveis={responsaveis} catalogo={catalogo} /> : undefined
+        }
       />
 
-      <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} />
+      {labelsParcelamento.length > 0 && (
+        <Aviso tom="warn" icone={<CreditCard size={18} />}>
+          <b>Este cliente possui parcelamento:</b> {labelsParcelamento.join(' / ')}.{' '}
+          <Link href="/fiscal/parcelamentos" className="font-semibold text-acc-text underline-offset-2 hover:underline print:hidden">Ver parcelamentos</Link>
+        </Aviso>
+      )}
 
-      <ClienteObs clienteId={id} obsInicial={observacao?.texto ?? ''} mes={mes} ano={ano} podeEditar={podeEditar} />
-
-      <ClienteArquivos clienteId={id} arquivosIniciais={arquivos ?? []} podeEditar={podeEditar} />
-
-      <ClienteConferencia
-        clienteNome={cliente.nome}
-        arquivosDTE={(arquivos ?? []).filter(a => /\.xlsx?$/i.test(a.name)).map(a => ({ id: a.id, name: a.name, content_base64: a.content_base64 ?? '' }))}
+      <AbasFichaCelular
+        principal={[
+          {
+            chave: 'tarefas',
+            aba: 'tarefas',
+            conteudo: (
+              <TarefaChecklist
+                clienteId={id}
+                grupo={bucketDoRegime(cliente.regime)}
+                tarefasPersonalizadas={tarefasPersonalizadasVisiveis}
+                tarefas={tarefas ?? []}
+                grupos={(gruposRaw ?? []) as TarefaGrupo[]}
+                vinculos={vinculos}
+                mes={mes}
+                ano={ano}
+                usuarioId={user.id}
+                mitInicial={cliente.mit ?? ''}
+                onToggle={toggleTarefa}
+                podeEditar={podeEditar}
+                podeEditarPorTipo={podeEditarPorTipo}
+                tarefaTipos={tarefaTipos}
+                etapas={(etapasCatalogo ?? []) as TarefaEtapa[]}
+                arquivos={(arquivosCatalogo ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}
+                onAtualizarEtapa={onAtualizarEtapa}
+                onSalvarTexto={onSalvarTexto}
+                onUploadArquivo={onUploadArquivo}
+                onExcluirArquivo={onExcluirArquivo}
+                prazosPorTipo={prazosPorTipo}
+              />
+            ),
+          },
+          {
+            chave: 'eventos',
+            aba: 'eventos',
+            conteudo: <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} mes={mes} />,
+          },
+          {
+            chave: 'conferencia',
+            aba: 'arquivos',
+            conteudo: (
+              <ClienteConferencia
+                clienteNome={cliente.nome}
+                arquivosDTE={(arquivos ?? []).filter(a => /\.xlsx?$/i.test(a.name)).map(a => ({ id: a.id, name: a.name, content_base64: a.content_base64 ?? '' }))}
+              />
+            ),
+          },
+        ]}
+        lateral={[
+          {
+            chave: 'observacao',
+            aba: 'tarefas',
+            conteudo: <ClienteObs clienteId={id} obsInicial={observacao?.texto ?? ''} mes={mes} ano={ano} podeEditar={podeEditar} />,
+          },
+          { chave: 'historico', aba: 'historico', conteudo: <HistoricoResponsavel clienteId={id} setor="fiscal" /> },
+          {
+            chave: 'arquivos',
+            aba: 'arquivos',
+            conteudo: <ClienteArquivos clienteId={id} arquivosIniciais={arquivos ?? []} podeEditar={podeEditar} />,
+          },
+        ]}
       />
-
-      {/* Histórico anual */}
-      <div className="mt-10 pt-6 border-t border-[var(--fg)]/8">
-        <h3 className="text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-4">
-          Histórico {ano}
-        </h3>
-        <div className="grid grid-cols-4 gap-2">
-          {historicoMeses.map(({ m, total, feitas, pct }) => {
-            const isAtual = m === mes && ano === anoAtual
-            return (
-              <div
-                key={m}
-                className={`p-3 rounded-xl border text-center ${
-                  isAtual
-                    ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40'
-                    : 'bg-[var(--fg)]/3 border-[var(--fg)]/8'
-                }`}
-              >
-                <p className="text-xs text-[var(--fg)]/50 mb-1">{MESES_ABREV[m-1]}</p>
-                <p className={`text-lg font-bold ${pct === 100 ? 'text-[var(--accent)]' : pct > 0 ? 'text-[var(--fg)]' : 'text-[var(--fg)]/20'}`}>{pct}%</p>
-                <p className="text-xs text-[var(--fg)]/30">{feitas}/{total}</p>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <HistoricoResponsavel clienteId={id} setor="fiscal" />
-    </div>
+    </Pagina>
   )
 }

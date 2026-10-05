@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { History, ListChecks, Search } from 'lucide-react'
 import type { UserSetor } from '@/lib/types'
 import {
   listarTarefaTiposDoSetor,
@@ -12,6 +13,13 @@ import {
   type TarefaTipoResumo,
 } from '@/lib/tarefa-tipo-vinculos-actions'
 import { listarEntidades, type EntidadeConfig } from '@/lib/config-entidades-actions'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Input, Select, Checkbox } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
+import { cn } from '@/components/ui/cn'
 
 interface Props {
   entidadeTipo: TipoEntidadeVinculo
@@ -21,12 +29,18 @@ interface Props {
   onClose: () => void
 }
 
-const selectCls = "text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)]/70 focus:outline-none focus:border-[var(--accent)]/50 disabled:opacity-40"
+const CAIXA = 'max-h-[46vh] overflow-y-auto rounded-[10px] border border-line-soft'
+const LINHA = 'flex min-h-[52px] flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5'
+
+function NomeTarefa({ tarefa }: { tarefa: TarefaTipoResumo }) {
+  return <span className={cn('text-sm', tarefa.ativo ? 'text-fg' : 'text-fg-3 line-through')}>{tarefa.nome}</span>
+}
 
 export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidadeNome, setor, onClose }: Props) {
   const [tarefas, setTarefas] = useState<TarefaTipoResumo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const [busca, setBusca] = useState('')
 
   // grupo (vínculo normal) e regime (visão legada, só remoção)
   const [vinculadas, setVinculadas] = useState<Set<string>>(new Set())
@@ -77,7 +91,8 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
     const jaVinculada = vinculadas.has(tarefaTipoId)
     setVinculadas(prev => {
       const novo = new Set(prev)
-      jaVinculada ? novo.delete(tarefaTipoId) : novo.add(tarefaTipoId)
+      if (jaVinculada) novo.delete(tarefaTipoId)
+      else novo.add(tarefaTipoId)
       return novo
     })
 
@@ -86,7 +101,8 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
       setErro(error)
       setVinculadas(prev => {
         const novo = new Set(prev)
-        jaVinculada ? novo.add(tarefaTipoId) : novo.delete(tarefaTipoId)
+        if (jaVinculada) novo.add(tarefaTipoId)
+        else novo.delete(tarefaTipoId)
         return novo
       })
     }
@@ -105,7 +121,8 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
     const anterior = new Map(vinculosAtividade)
     setVinculosAtividade(prev => {
       const novo = new Map(prev)
-      jaVinculada ? novo.delete(tarefaTipoId) : novo.set(tarefaTipoId, null)
+      if (jaVinculada) novo.delete(tarefaTipoId)
+      else novo.set(tarefaTipoId, null)
       return novo
     })
 
@@ -122,115 +139,126 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
     if (error) { setErro(error); setVinculosAtividade(anterior) }
   }
 
+  const termo = busca.trim().toLowerCase()
+  const casaComBusca = (t: TarefaTipoResumo) => termo === '' || t.nome.toLowerCase().includes(termo)
+  const tarefasFiltradas = tarefas.filter(casaComBusca)
   const tarefasLegadoRegime = tarefas.filter(t => vinculadas.has(t.id))
+  const legadoFiltrado = tarefasLegadoRegime.filter(casaComBusca)
+
+  const campoBusca = (
+    <Input
+      type="search"
+      aria-label="Buscar tarefa"
+      placeholder="Buscar tarefa"
+      value={busca}
+      onChange={e => setBusca(e.target.value)}
+      iconeEsquerda={<Search size={16} />}
+    />
+  )
+  const semResultado = <EmptyState compacto icone={<Search size={20} />} titulo="Nenhuma tarefa encontrada com essa busca" />
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onClose()}
+    <Modal
+      aberto
+      onFechar={onClose}
+      titulo={`Tarefas de "${entidadeNome}"`}
+      subtitulo={entidadeTipo === 'atividade' ? 'Marque as tarefas que todo cliente desta atividade recebe' : undefined}
+      largura="p"
+      rodape={<Button variante="fantasma" onClick={onClose} className="ml-auto">Fechar</Button>}
     >
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">Tarefas de &quot;{entidadeNome}&quot;</h2>
-          <button onClick={onClose} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl px-1">×</button>
-        </div>
+      {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
 
-        <div className="overflow-y-auto flex-1 px-6 py-5">
-          {erro && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-              ⚠ {erro}
-            </div>
-          )}
+      {carregando ? (
+        <EsqueletoLinhas linhas={5} />
 
-          {carregando ? (
-            <p className="text-[var(--fg)]/40 text-sm">Carregando...</p>
-
-          ) : entidadeTipo === 'regime' ? (
+      ) : entidadeTipo === 'regime' ? (
+        <>
+          <Aviso tom="info">
+            Vínculo direto por regime foi descontinuado — essas tarefas ainda usam o mecanismo antigo.
+            Recrie pela aba Atividades escolhendo a atividade certa e este regime, depois remova daqui.
+          </Aviso>
+          {tarefasLegadoRegime.length === 0 ? (
+            <EmptyState compacto icone={<History size={20} />} titulo="Nenhum vínculo antigo restante" />
+          ) : (
             <>
-              <p className="text-[var(--fg)]/50 text-xs mb-4">
-                Vínculo direto por regime foi descontinuado — essas tarefas ainda usam o mecanismo antigo.
-                Recrie pela aba Atividade escolhendo a atividade certa e este regime, depois remova daqui.
-              </p>
-              {tarefasLegadoRegime.length === 0 ? (
-                <p className="text-[var(--fg)]/40 text-sm">Nenhum vínculo antigo restante.</p>
-              ) : (
-                <div className="space-y-2">
-                  {tarefasLegadoRegime.map(t => (
-                    <div key={t.id} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[var(--fg)]/3">
-                      <span className={`flex-1 text-sm ${t.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
-                        {t.nome}
-                      </span>
-                      <button onClick={() => handleRemoverLegado(t.id)} className="text-xs text-red-400/70 hover:text-red-400">
-                        Remover
-                      </button>
-                    </div>
+              {campoBusca}
+              {legadoFiltrado.length === 0 ? semResultado : (
+                <ul className={CAIXA}>
+                  {legadoFiltrado.map((t, i) => (
+                    <li key={t.id} className={cn(LINHA, i > 0 && 'border-t border-line-soft')}>
+                      <span className="min-w-0 flex-1"><NomeTarefa tarefa={t} /></span>
+                      <Button tamanho="p" variante="perigo" onClick={() => handleRemoverLegado(t.id)} aria-label={`Remover ${t.nome}`}>Remover</Button>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </>
+          )}
+        </>
 
-          ) : tarefas.length === 0 ? (
-            <p className="text-[var(--fg)]/40 text-sm">Nenhuma tarefa cadastrada no catálogo desse setor ainda.</p>
+      ) : tarefas.length === 0 ? (
+        <EmptyState compacto icone={<ListChecks size={20} />} titulo="Nenhuma tarefa cadastrada no catálogo desse setor ainda" />
 
-          ) : entidadeTipo === 'atividade' ? (
-            <div className="space-y-2">
-              {tarefas.map(t => {
+      ) : entidadeTipo === 'atividade' ? (
+        <>
+          {campoBusca}
+          {tarefasFiltradas.length === 0 ? semResultado : (
+            <ul className={CAIXA}>
+              {tarefasFiltradas.map((t, i) => {
                 const regimeId = vinculosAtividade.get(t.id)
                 const vinculada = vinculosAtividade.has(t.id)
                 return (
-                  <div key={t.id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--fg)]/5">
-                    <label className="flex items-center gap-3 cursor-pointer flex-1">
-                      <input
-                        type="checkbox"
-                        checked={vinculada}
-                        onChange={() => handleToggleAtividade(t.id)}
-                        className="accent-[var(--accent)]"
-                      />
-                      <span className={`text-sm ${t.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
-                        {t.nome}
-                      </span>
-                    </label>
-                    <select
-                      value={regimeId ?? ''}
-                      onChange={e => handleRegimeChange(t.id, e.target.value)}
-                      disabled={!vinculada}
-                      className={selectCls}
-                    >
-                      <option value="">Todos os regimes</option>
-                      {regimes.map(r => (
-                        <option key={r.id} value={r.id}>{r.nome}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <li key={t.id} className={cn(LINHA, i > 0 && 'border-t border-line-soft')}>
+                    <Checkbox
+                      rotulo={<NomeTarefa tarefa={t} />}
+                      checked={vinculada}
+                      onChange={() => handleToggleAtividade(t.id)}
+                      className="min-w-0 flex-1 max-sm:basis-full"
+                    />
+                    {vinculada && (
+                      // No celular o regime desce para a linha de baixo e não espreme o nome.
+                      <div className="w-[200px] flex-none max-sm:w-full max-sm:pl-7">
+                        <Select
+                          aria-label={`Regime de ${t.nome}`}
+                          value={regimeId ?? ''}
+                          onChange={e => handleRegimeChange(t.id, e.target.value)}
+                          className="h-8"
+                        >
+                          <option value="">Todos os regimes</option>
+                          {regimes.map(r => (
+                            <option key={r.id} value={r.id}>{r.nome}</option>
+                          ))}
+                        </Select>
+                      </div>
+                    )}
+                  </li>
                 )
               })}
-            </div>
+            </ul>
+          )}
+          <p className="text-[13px] text-fg-3">Cada marcação salva na hora. Vincular não cria pendências de meses passados.</p>
+        </>
 
-          ) : (
-            <div className="space-y-2">
-              {tarefas.map(t => (
-                <label key={t.id} className="flex items-center gap-3 cursor-pointer px-3 py-2 rounded-xl hover:bg-[var(--fg)]/5">
-                  <input
-                    type="checkbox"
+      ) : (
+        <>
+          {campoBusca}
+          {tarefasFiltradas.length === 0 ? semResultado : (
+            <ul className={CAIXA}>
+              {tarefasFiltradas.map((t, i) => (
+                <li key={t.id} className={cn(LINHA, i > 0 && 'border-t border-line-soft')}>
+                  <Checkbox
+                    rotulo={<NomeTarefa tarefa={t} />}
                     checked={vinculadas.has(t.id)}
                     onChange={() => toggleGrupo(t.id)}
-                    className="accent-[var(--accent)]"
+                    className="min-w-0 flex-1"
                   />
-                  <span className={`text-sm ${t.ativo ? 'text-[var(--fg)]' : 'text-[var(--fg)]/30 line-through'}`}>
-                    {t.nome}
-                  </span>
-                </label>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
-        </div>
-
-        <div className="flex justify-end px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm">
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
+          <p className="text-[13px] text-fg-3">Cada marcação salva na hora. Vincular não cria pendências de meses passados.</p>
+        </>
+      )}
+    </Modal>
   )
 }

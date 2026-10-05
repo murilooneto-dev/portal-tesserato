@@ -2,7 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Paperclip, Upload, X } from 'lucide-react'
 import { criarTarefaAvulsa, uploadArquivoEvento } from '@/lib/tarefas-avulsas'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Textarea } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
 import type { UserSetor } from '@/lib/types'
 
 interface Props {
@@ -10,9 +16,6 @@ interface Props {
   setor: UserSetor
   onClose: () => void
 }
-
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
 
 export default function EventoAvulsoModal({ clienteId, setor, onClose }: Props) {
   const router = useRouter()
@@ -22,6 +25,9 @@ export default function EventoAvulsoModal({ clienteId, setor, onClose }: Props) 
   const [arquivos, setArquivos] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // Preenchido quando o evento já foi criado mas algum anexo falhou: a janela
+  // fica aberta e uma nova tentativa só reenvia os anexos que faltam.
+  const [eventoCriadoId, setEventoCriadoId] = useState<string | null>(null)
 
   function handleSelecionarArquivos(files: FileList | null) {
     if (!files) return
@@ -33,98 +39,127 @@ export default function EventoAvulsoModal({ clienteId, setor, onClose }: Props) 
   }
 
   async function handleSave() {
-    if (!titulo.trim() || !data) { setErro('Título e data são obrigatórios.'); return }
+    if (!eventoCriadoId && (!titulo.trim() || !data)) { setErro('Título e data são obrigatórios.'); return }
     setSaving(true)
     setErro(null)
 
-    const resultado = await criarTarefaAvulsa({ clienteId, setor, titulo: titulo.trim(), descricao: descricao.trim() || null, data })
-    if ('error' in resultado) {
+    // Uma exceção (ex.: anexo acima de 4 MB, limite das Server Actions) não pode
+    // deixar a janela travada em "Salvando...": o finally sempre libera.
+    let eventoId = eventoCriadoId
+    let criouAgora = false
+    try {
+      if (!eventoId) {
+        const resultado = await criarTarefaAvulsa({ clienteId, setor, titulo: titulo.trim(), descricao: descricao.trim() || null, data })
+        if ('error' in resultado) {
+          setErro(resultado.error)
+          return
+        }
+        eventoId = resultado.id
+        criouAgora = true
+        setEventoCriadoId(eventoId)
+      }
+
+      const falharam: File[] = []
+      const erros: string[] = []
+      for (const arquivo of arquivos) {
+        try {
+          const formData = new FormData()
+          formData.append('arquivo', arquivo)
+          const uploadResult = await uploadArquivoEvento(eventoId, clienteId, setor, formData)
+          if (uploadResult.error) {
+            falharam.push(arquivo)
+            erros.push(`${arquivo.name}: ${uploadResult.error}`)
+          }
+        } catch {
+          falharam.push(arquivo)
+          erros.push(`Não foi possível enviar ${arquivo.name}. Arquivos acima de 4 MB não são aceitos.`)
+        }
+      }
+
+      router.refresh()
+      if (falharam.length > 0) {
+        setArquivos(falharam)
+        setErro(`O evento foi criado, mas ${falharam.length === 1 ? 'um anexo não foi enviado' : `${falharam.length} anexos não foram enviados`}. ${erros.join(' · ')}`)
+        return
+      }
+      onClose()
+    } catch (e) {
+      // Falha inesperada na criação ou no refresh: se o evento já existe, atualiza a tela.
+      if (criouAgora) router.refresh()
+      setErro(e instanceof Error && e.message ? e.message : 'Não foi possível salvar o evento. Tente de novo.')
+    } finally {
       setSaving(false)
-      setErro(resultado.error)
-      return
     }
-
-    for (const arquivo of arquivos) {
-      const formData = new FormData()
-      formData.append('arquivo', arquivo)
-      const uploadResult = await uploadArquivoEvento(resultado.id, clienteId, setor, formData)
-      if (uploadResult.error) setErro(prev => prev ? `${prev} · ${uploadResult.error}` : uploadResult.error)
-    }
-
-    setSaving(false)
-    router.refresh()
-    onClose()
   }
 
+  const evento = eventoCriadoId !== null
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
-
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">Novo evento</h2>
-          <button onClick={onClose} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
+    <Modal
+      aberto
+      onFechar={onClose}
+      titulo="Novo evento"
+      largura="p"
+      bloqueado={saving}
+      rodape={
+        <div className="ml-auto flex gap-2.5">
+          <Button variante="fantasma" onClick={onClose} disabled={saving}>{evento ? 'Fechar' : 'Cancelar'}</Button>
+          <Button variante="primario" onClick={handleSave} carregando={saving} disabled={!evento && (!titulo.trim() || !data)}>
+            {saving ? 'Salvando...' : evento ? 'Reenviar anexos' : 'Salvar evento'}
+          </Button>
         </div>
-
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          <div>
-            <label className={labelCls}>Título *</label>
-            <input className={inputCls} value={titulo} onChange={e => setTitulo(e.target.value)} />
-          </div>
-
-          <div>
-            <label className={labelCls}>Descrição</label>
-            <textarea className={inputCls} rows={2} value={descricao} onChange={e => setDescricao(e.target.value)} />
-          </div>
-
-          <div>
-            <label className={labelCls}>Data *</label>
-            <input className={inputCls} type="date" value={data} onChange={e => setData(e.target.value)} />
-          </div>
-
-          <div>
-            <label className={labelCls}>Anexos</label>
-            <label className="inline-block text-xs px-3 py-2 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/60 hover:text-[var(--fg)] cursor-pointer transition-colors">
-              + Selecionar arquivo(s)
-              <input
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
-                multiple
-                className="hidden"
-                onChange={e => handleSelecionarArquivos(e.target.files)}
-              />
-            </label>
-            {arquivos.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {arquivos.map((arq, idx) => (
-                  <span key={idx} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
-                    📎 {arq.name}
-                    <button type="button" onClick={() => handleRemoverArquivoSelecionado(idx)}
-                      className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {erro && (
-          <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            ⚠ {erro}
-          </div>
+      }
+    >
+      <Field rotulo="Título" obrigatorio>
+        {c => (
+          <Input id={c.id} aria-describedby={c.describedBy} value={titulo} onChange={e => setTitulo(e.target.value)}
+            placeholder="Ex.: Reunião de fechamento" disabled={evento} data-autofocus="" />
         )}
+      </Field>
 
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <button onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-            Cancelar
-          </button>
-          <button onClick={handleSave} disabled={saving || !titulo.trim() || !data}
-            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-            {saving ? 'Salvando...' : 'Salvar evento'}
-          </button>
+      <Field rotulo="Descrição">
+        {c => (
+          <Textarea id={c.id} aria-describedby={c.describedBy} rows={2} value={descricao} onChange={e => setDescricao(e.target.value)}
+            placeholder="Opcional" disabled={evento} />
+        )}
+      </Field>
+
+      <Field rotulo="Data" obrigatorio>
+        {c => (
+          <Input id={c.id} aria-describedby={c.describedBy} type="date" value={data} onChange={e => setData(e.target.value)}
+            disabled={evento} className="sm:w-56" />
+        )}
+      </Field>
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium text-fg-2">Anexos</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex h-[30px] cursor-pointer items-center gap-2 rounded-[7px] border border-line bg-raised px-2.5 text-[13px] font-medium text-fg transition-colors hover:border-fg-3 focus-within:ring-2 focus-within:ring-acc">
+            <Upload size={14} aria-hidden="true" />
+            Escolher arquivos
+            <input
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
+              multiple
+              className="sr-only"
+              onChange={e => { handleSelecionarArquivos(e.target.files); e.target.value = '' }}
+            />
+          </label>
+          {arquivos.map((arq, idx) => (
+            <span key={`${arq.name}-${idx}`} className="inline-flex min-h-[30px] items-center gap-1.5 rounded-[7px] border border-line-soft bg-surface px-2 text-xs text-fg-2">
+              <Paperclip size={12} aria-hidden="true" className="flex-none" />
+              {arq.name}
+              <button type="button" aria-label={`Tirar ${arq.name}`} onClick={() => handleRemoverArquivoSelecionado(idx)}
+                className="grid h-6 w-6 max-sm:h-11 max-sm:w-11 place-items-center rounded text-fg-3 hover:text-danger">
+                <X size={14} aria-hidden="true" />
+              </button>
+            </span>
+          ))}
         </div>
+        <p className="text-xs text-fg-3">PDF, imagem, Excel ou Word</p>
       </div>
-    </div>
+
+      {erro && <Aviso tom="dng"><span role="alert">{erro}</span></Aviso>}
+    </Modal>
   )
 }

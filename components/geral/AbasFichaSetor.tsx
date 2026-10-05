@@ -1,0 +1,103 @@
+'use client'
+
+import { useId, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
+
+// Mesma moldura da ficha do Fiscal (components/fiscal/AbasFichaCelular), mas com
+// a lista de abas definida por quem usa: Contábil e Pessoal não têm "Arquivos",
+// então a aba não pode aparecer vazia no celular.
+export interface AbaFichaSetor { id: string; rotulo: string }
+
+export interface PainelFichaSetor {
+  chave: string
+  aba: string
+  conteudo: ReactNode
+}
+
+const CONSULTA_DESKTOP = '(min-width: 1024px)'
+function assinarDesktop(aviso: () => void) {
+  const mq = window.matchMedia(CONSULTA_DESKTOP)
+  mq.addEventListener('change', aviso)
+  return () => mq.removeEventListener('change', aviso)
+}
+const ehDesktop = () => window.matchMedia(CONSULTA_DESKTOP).matches
+
+// A partir de 1024 px: duas colunas (principal + lateral de 340 px), sem abas.
+// Abaixo disso só o painel da aba escolhida aparece. Nada é buscado de novo ao trocar.
+export default function AbasFichaSetor({ abas, principal, lateral }: {
+  abas: AbaFichaSetor[]
+  principal: PainelFichaSetor[]
+  lateral: PainelFichaSetor[]
+}) {
+  const base = useId()
+  const desktop = useSyncExternalStore(assinarDesktop, ehDesktop, () => false)
+  const [ativa, setAtiva] = useState(abas[0]?.id ?? '')
+  const idAba = (a: string) => `${base}-aba-${a}`
+  const idPainel = (a: string) => `${base}-painel-${a}`
+  const idPrimeiroPainel = (a: string) => {
+    const p = principal.find(x => x.aba === a) ?? lateral.find(x => x.aba === a)
+    return p ? `${idPainel(a)}-${p.chave}` : undefined
+  }
+
+  function aoTeclar(e: KeyboardEvent<HTMLButtonElement>, indice: number) {
+    let novo = indice
+    if (e.key === 'ArrowRight') novo = (indice + 1) % abas.length
+    else if (e.key === 'ArrowLeft') novo = (indice - 1 + abas.length) % abas.length
+    else if (e.key === 'Home') novo = 0
+    else if (e.key === 'End') novo = abas.length - 1
+    else return
+    e.preventDefault()
+    setAtiva(abas[novo].id)
+    document.getElementById(idAba(abas[novo].id))?.focus()
+  }
+
+  const renderPaineis = (lista: PainelFichaSetor[]) => lista.map(p => (
+    <div
+      key={p.chave}
+      role={desktop ? undefined : 'tabpanel'}
+      id={`${idPainel(p.aba)}-${p.chave}`}
+      aria-labelledby={desktop ? undefined : idAba(p.aba)}
+      className={`${ativa === p.aba ? 'block' : 'hidden'} min-w-0 empty:hidden lg:block lg:has-[>[data-vazio]:only-child]:hidden`}
+    >
+      {p.conteudo}
+      {p.aba === 'historico' && (
+        <p data-vazio="" className="hidden rounded-[10px] border border-line-soft px-4 py-6 text-center text-sm text-fg-3 only:block lg:hidden">
+          Sem troca de responsável registrada.
+        </p>
+      )}
+    </div>
+  ))
+
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      <div
+        role="tablist"
+        aria-label="Seções da ficha"
+        className="-mx-4 flex border-b border-line-soft px-2 sm:mx-0 sm:px-0 lg:hidden"
+      >
+        {abas.map((a, i) => (
+          <button
+            key={a.id}
+            type="button"
+            role="tab"
+            id={idAba(a.id)}
+            aria-controls={idPrimeiroPainel(a.id)}
+            aria-selected={ativa === a.id}
+            tabIndex={ativa === a.id ? 0 : -1}
+            onClick={() => setAtiva(a.id)}
+            onKeyDown={e => aoTeclar(e, i)}
+            className={`-mb-px min-h-11 flex-1 border-b-2 px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
+              ativa === a.id ? 'border-acc text-fg' : 'border-transparent text-fg-3 hover:text-fg'
+            }`}
+          >
+            {a.rotulo}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5">
+        <div className="flex min-w-0 flex-col gap-4 empty:hidden">{renderPaineis(principal)}</div>
+        <div className="flex min-w-0 flex-col gap-4 empty:hidden">{renderPaineis(lateral)}</div>
+      </div>
+    </div>
+  )
+}

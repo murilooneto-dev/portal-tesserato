@@ -1,9 +1,14 @@
 // components/calendario/CalendarioEventoModal.tsx
 'use client'
 
-import { useState } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Textarea } from '@/components/ui/Input'
+import { Segmentado } from '@/components/ui/Segmentado'
 import type { CalendarioEvento, TipoDataEvento, UserSetor } from '@/lib/types'
 
 interface Props {
@@ -12,8 +17,10 @@ interface Props {
   onClose: () => void
 }
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
+const REPETICAO: { valor: TipoDataEvento; rotulo: string }[] = [
+  { valor: 'recorrente', rotulo: 'Todo mês' },
+  { valor: 'unica', rotulo: 'Uma data só' },
+]
 
 export default function CalendarioEventoModal({ setor, evento, onClose }: Props) {
   const router = useRouter()
@@ -28,14 +35,21 @@ export default function CalendarioEventoModal({ setor, evento, onClose }: Props)
   const [oficialDiaMes, setOficialDiaMes] = useState<number | ''>(evento?.oficial_dia_mes ?? '')
   const [oficialData, setOficialData] = useState(evento?.oficial_data ?? '')
   const [saving, setSaving] = useState(false)
+  const [tentou, setTentou] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
-  async function handleSave() {
-    if (!titulo.trim()) return
+  const temInterna = tipoData === 'recorrente' ? internaDiaMes !== '' : !!internaData
+  const temOficial = tipoData === 'recorrente' ? oficialDiaMes !== '' : !!oficialData
+  const erroTitulo = tentou && !titulo.trim() ? 'Informe o título.' : null
+  const erroDatas = tentou && !temInterna && !temOficial ? 'Preencha ao menos uma das duas datas.' : null
+  const idErroDatas = useId()
+  const descDatas = (d?: string) => [erroDatas ? idErroDatas : undefined, d].filter(Boolean).join(' ') || undefined
 
-    const temInterna = tipoData === 'recorrente' ? internaDiaMes !== '' : !!internaData
-    const temOficial = tipoData === 'recorrente' ? oficialDiaMes !== '' : !!oficialData
-    if (!temInterna && !temOficial) { setErro('Preencha ao menos uma das duas datas.'); return }
+  async function handleSave(e: FormEvent) {
+    e.preventDefault()
+    setTentou(true)
+    if (!titulo.trim()) return
+    if (!temInterna && !temOficial) return
 
     setSaving(true)
     setErro(null)
@@ -62,81 +76,57 @@ export default function CalendarioEventoModal({ setor, evento, onClose }: Props)
     onClose()
   }
 
+  const recorrente = tipoData === 'recorrente'
+  const unidade = recorrente ? '(dia do mês)' : '(data)'
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
-
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">{isEdit ? 'Editar evento' : 'Novo evento'}</h2>
-          <button onClick={onClose} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
+    <Modal
+      aberto
+      onFechar={onClose}
+      bloqueado={saving}
+      titulo={isEdit ? 'Editar evento do calendário' : 'Novo evento do calendário'}
+      subtitulo="Prazo interno ou vencimento oficial"
+      largura="p"
+      rodape={
+        <>
+          <Button variante="fantasma" onClick={onClose} disabled={saving} className="ml-auto">Cancelar</Button>
+          <Button variante="primario" type="submit" form="form-evento-calendario" carregando={saving}>{saving ? 'Salvando…' : 'Salvar evento'}</Button>
+        </>
+      }
+    >
+      <form id="form-evento-calendario" onSubmit={handleSave} noValidate className="flex flex-col gap-4">
+        <Field rotulo="Título" obrigatorio erro={erroTitulo}>
+          {c => <Input id={c.id} aria-describedby={c.describedBy} invalido={c.invalido} data-autofocus value={titulo} onChange={e => setTitulo(e.target.value)} />}
+        </Field>
+        <Field rotulo="Descrição">
+          {c => <Textarea id={c.id} rows={2} value={descricao} onChange={e => setDescricao(e.target.value)} />}
+        </Field>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-fg-2">Repetição</span>
+          <Segmentado rotulo="Repetição" opcoes={REPETICAO} valor={tipoData} onMudar={setTipoData} />
         </div>
-
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          <div>
-            <label className={labelCls}>Título *</label>
-            <input className={inputCls} value={titulo} onChange={e => setTitulo(e.target.value)} />
-          </div>
-
-          <div>
-            <label className={labelCls}>Descrição</label>
-            <textarea className={inputCls} rows={2} value={descricao} onChange={e => setDescricao(e.target.value)} />
-          </div>
-
-          <div>
-            <label className={labelCls}>Tipo de data</label>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setTipoData('recorrente')}
-                className={`flex-1 px-3 py-2.5 rounded-xl border text-sm transition-colors ${tipoData === 'recorrente' ? 'bg-[var(--accent)]/20 border-[var(--accent)]/40 text-[var(--accent)]' : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'}`}>
-                Recorrente mensal
-              </button>
-              <button type="button" onClick={() => setTipoData('unica')}
-                className={`flex-1 px-3 py-2.5 rounded-xl border text-sm transition-colors ${tipoData === 'unica' ? 'bg-[var(--accent)]/20 border-[var(--accent)]/40 text-[var(--accent)]' : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'}`}>
-                Data única
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Data interna</label>
-              {tipoData === 'recorrente' ? (
-                <input className={inputCls} type="number" min={1} max={31} placeholder="Dia (1–31)"
-                  value={internaDiaMes} onChange={e => setInternaDiaMes(e.target.value === '' ? '' : Number(e.target.value))} />
-              ) : (
-                <input className={inputCls} type="date" value={internaData} onChange={e => setInternaData(e.target.value)} />
-              )}
-            </div>
-            <div>
-              <label className={labelCls}>Data oficial</label>
-              {tipoData === 'recorrente' ? (
-                <input className={inputCls} type="number" min={1} max={31} placeholder="Dia (1–31)"
-                  value={oficialDiaMes} onChange={e => setOficialDiaMes(e.target.value === '' ? '' : Number(e.target.value))} />
-              ) : (
-                <input className={inputCls} type="date" value={oficialData} onChange={e => setOficialData(e.target.value)} />
-              )}
-            </div>
-          </div>
-          <p className="text-[var(--fg)]/30 text-xs -mt-2">Preencha pelo menos uma das duas. Deixe a outra em branco se não se aplicar.</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field rotulo={`Prazo interno ${unidade}`} ajuda="Prazo do escritório">
+            {c => recorrente ? (
+              <Input id={c.id} aria-describedby={descDatas(c.describedBy)} invalido={Boolean(erroDatas)} type="number" min={1} max={31} placeholder="1 a 31"
+                value={internaDiaMes} onChange={e => setInternaDiaMes(e.target.value === '' ? '' : Number(e.target.value))} />
+            ) : (
+              <Input id={c.id} aria-describedby={descDatas(c.describedBy)} invalido={Boolean(erroDatas)} type="date" value={internaData} onChange={e => setInternaData(e.target.value)} />
+            )}
+          </Field>
+          <Field rotulo={`Vencimento oficial ${unidade}`} ajuda="Prazo do órgão">
+            {c => recorrente ? (
+              <Input id={c.id} aria-describedby={descDatas(c.describedBy)} invalido={Boolean(erroDatas)} type="number" min={1} max={31} placeholder="1 a 31"
+                value={oficialDiaMes} onChange={e => setOficialDiaMes(e.target.value === '' ? '' : Number(e.target.value))} />
+            ) : (
+              <Input id={c.id} aria-describedby={descDatas(c.describedBy)} invalido={Boolean(erroDatas)} type="date" value={oficialData} onChange={e => setOficialData(e.target.value)} />
+            )}
+          </Field>
         </div>
-
-        {erro && (
-          <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            ⚠ {erro}
-          </div>
-        )}
-
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <button onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-            Cancelar
-          </button>
-          <button onClick={handleSave} disabled={saving || !titulo.trim()}
-            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-            {saving ? 'Salvando...' : 'Salvar evento'}
-          </button>
-        </div>
-      </div>
-    </div>
+        {erroDatas && <p id={idErroDatas} role="alert" className="text-xs text-danger">{erroDatas}</p>}
+        <p className="text-[13px] text-fg-3">Preencha pelo menos uma das duas datas. Deixe a outra em branco se não se aplicar.</p>
+        {erro && <p role="alert" className="text-sm text-danger">{erro}</p>}
+      </form>
+    </Modal>
   )
 }

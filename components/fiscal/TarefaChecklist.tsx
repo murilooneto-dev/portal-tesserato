@@ -7,8 +7,18 @@ import { formatarBadgeVinculo } from '@/lib/vinculos'
 import { desbloquearTarefa, salvarMIT, marcarSemMovimento } from '@/app/fiscal/clientes/actions'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
 import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
+import { AlertCircle, Check, ChevronRight, Clock, Layers, ListChecks, Lock, Paperclip, Unlock, X } from 'lucide-react'
+import { Badge, type BadgeTom } from '@/components/ui/Badge'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Checkbox, Input, Textarea } from '@/components/ui/Input'
+import { Field } from '@/components/ui/Field'
+import { Modal } from '@/components/ui/Modal'
+import { ErroSalvamento, IndicadorSalvamento, useSalvamento } from '@/components/geral/TarefasSetorChecklist'
 
-const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+const CHAVE_MIT = '__mit__'
+const MESES_EXTENSO = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
 
 interface TipoInfo {
   etapas: string[] | null
@@ -38,6 +48,14 @@ interface Props {
   onSalvarTexto?: (tipo: string, texto: string) => Promise<void>
   onUploadArquivo?: (tipo: string, formData: FormData) => Promise<{ error: string | null }>
   onExcluirArquivo?: (arquivoId: string) => Promise<void>
+}
+
+// Tom do selo de prazo: mesmas faixas de alertaLabel (lib/calendario), em tokens do desenho novo.
+function tomDoPrazo(dias: number): BadgeTom {
+  if (dias <= 1) return 'dng'
+  if (dias <= 5) return 'warn'
+  if (dias <= 10) return 'info'
+  return 'neu'
 }
 
 function formatBytes(bytes: number) {
@@ -83,6 +101,8 @@ export default function TarefaChecklist({
   const [localResposta, setLocalResposta] = useState<Record<string, string>>({})
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null)
   const [erroUpload, setErroUpload] = useState<Record<string, string>>({})
+  // "Salvando… / Salvo / Erro" por tarefa (chave = tipo) e do MIT (CHAVE_MIT).
+  const { estados: salvamento, iniciar, acompanhar } = useSalvamento()
 
   const tipos = tarefasPersonalizadas
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
@@ -113,7 +133,8 @@ export default function TarefaChecklist({
     const novo = !getSemMovimento(tipo)
     setOptimisticSemMovimento(prev => ({ ...prev, [tipo]: novo }))
     setOptimisticDates(prev => ({ ...prev, [tipo]: novo ? new Date().toISOString().slice(0, 10) : null }))
-    startTransition(() => { marcarSemMovimento(clienteId, tipo, mes, ano, novo) })
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, marcarSemMovimento(clienteId, tipo, mes, ano, novo)) })
   }
 
   const concluidas = tipos.filter(t => getSavedIso(t) !== '').length
@@ -127,7 +148,8 @@ export default function TarefaChecklist({
     if (iso) {
       setOptimisticDates(prev => ({ ...prev, [tipo]: iso }))
       setLocalText(prev => { const n = { ...prev }; delete n[tipo]; return n })
-      startTransition(() => onToggle(tipo, true, iso))
+      iniciar(tipo)
+      startTransition(() => acompanhar(tipo, onToggle(tipo, true, iso)))
     }
   }
 
@@ -164,7 +186,8 @@ export default function TarefaChecklist({
   }
 
   async function handleMITBlur() {
-    await salvarMIT(clienteId, mit)
+    iniciar(CHAVE_MIT)
+    await acompanhar(CHAVE_MIT, salvarMIT(clienteId, mit))
   }
 
   function etapasDaTarefa(tipo: string): TarefaEtapa[] {
@@ -198,7 +221,8 @@ export default function TarefaChecklist({
     const iso = displayParaIso(formatted)
     if (iso) {
       setLocalEtapaText(prev => { const n = { ...prev }; delete n[key]; return n })
-      startTransition(() => { onAtualizarEtapa?.(tipo, etapaNome, true, iso) })
+      iniciar(tipo)
+      startTransition(() => { acompanhar(tipo, onAtualizarEtapa?.(tipo, etapaNome, true, iso)) })
     }
   }
 
@@ -207,7 +231,8 @@ export default function TarefaChecklist({
     const val = localEtapaText[key]
     if (val === undefined) return
     if (val === '') {
-      startTransition(() => { onAtualizarEtapa?.(tipo, etapaNome, false) })
+      iniciar(tipo)
+      startTransition(() => { acompanhar(tipo, onAtualizarEtapa?.(tipo, etapaNome, false)) })
     }
     setLocalEtapaText(prev => { const n = { ...prev }; delete n[key]; return n })
   }
@@ -224,7 +249,8 @@ export default function TarefaChecklist({
   function handleRespostaTextoBlur(tipo: string) {
     const valor = localResposta[tipo]
     if (valor === undefined) return
-    startTransition(() => { onSalvarTexto?.(tipo, valor) })
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, onSalvarTexto?.(tipo, valor)) })
     setLocalResposta(prev => { const n = { ...prev }; delete n[tipo]; return n })
   }
 
@@ -244,15 +270,11 @@ export default function TarefaChecklist({
     }
   }
 
-  function handleExcluirArquivo(arquivoId: string) {
-    startTransition(() => { onExcluirArquivo?.(arquivoId) })
+  function handleExcluirArquivo(tipo: string, arquivoId: string) {
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, onExcluirArquivo?.(arquivoId)) })
   }
 
-  const inputCls = (feito: boolean) => `text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
-    feito
-      ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] focus:border-[var(--accent)]/60'
-      : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60 focus:border-[var(--fg)]/30 placeholder-[var(--fg)]/20'
-  }`
 
   function toggleGrupo(grupoId: string) {
     setGruposExpandidos(prev => {
@@ -273,113 +295,102 @@ export default function TarefaChecklist({
     const isUnlocking = unlockingTipo === tipo
     const displayVal = getDisplayValue(tipo)
     const diasPrazo = !feito ? (prazosPorTipo[normalizarTitulo(tipo)] ?? null) : null
+    const vinculo = vinculos[tipo]
+    const badgeVinculo = vinculo ? formatarBadgeVinculo(vinculo) : null
+    const semPermissao = !podeEditarTipo(tipo)
+    const campoData = tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo
 
     return (
-      <div key={tipo} className="flex flex-col gap-0">
-        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
-          feito
-            ? 'bg-[var(--accent)]/8 border-[var(--accent)]/25'
-            : 'bg-[var(--fg)]/3 border-[var(--fg)]/8'
-        }`}>
-          <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[var(--accent)]' : 'bg-[var(--fg)]/15'}`} />
+      <div key={tipo} className="flex flex-col">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-[18px] py-3 last:border-b-0">
+          <span
+            aria-hidden="true"
+            className={`h-2 w-2 flex-none rounded-full ${semMovimentoAtivo ? 'bg-fg-3' : feito ? 'bg-ok' : 'bg-warn'}`}
+          />
 
-          <span className={`text-sm flex-1 transition-colors ${feito ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]'}`}>
+          <span className={`flex min-w-0 flex-1 basis-40 flex-wrap items-center gap-x-2.5 gap-y-1 font-medium ${feito ? 'text-fg-3 line-through' : 'text-fg'}`}>
             {tipo}
-            {vinculos[tipo] && (
-              <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${formatarBadgeVinculo(vinculos[tipo]).classe}`}>
-                {formatarBadgeVinculo(vinculos[tipo]).texto}
-              </span>
+            {badgeVinculo && vinculo && (
+              <Badge
+                tom={vinculo.liberada ? 'ok' : 'warn'}
+                icone={vinculo.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+                className="no-underline"
+              >
+                {badgeVinculo.texto}
+              </Badge>
             )}
             {diasPrazo !== null && (
-              <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap bg-[var(--fg)]/5 ${alertaLabel(diasPrazo).cls}`}>
-                ⏱ {alertaLabel(diasPrazo).text}
-              </span>
+              <Badge tom={tomDoPrazo(diasPrazo)} icone={<Clock size={14} aria-hidden="true" />} className="no-underline">
+                {alertaLabel(diasPrazo).text}
+              </Badge>
             )}
           </span>
 
-          {tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo ? (
-            <input
-              type="text"
-              value={displayVal}
-              onChange={e => handleTextChange(tipo, e.target.value)}
-              onBlur={() => handleTextBlur(tipo)}
-              disabled={!podeEditarTipo(tipo) || isPending || isUnlocking}
-              placeholder="DD/MM/AAAA"
-              maxLength={10}
-              className={`text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
-                feito
-                  ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] focus:border-[var(--accent)]/60'
-                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60 focus:border-[var(--fg)]/30 placeholder-[var(--fg)]/20'
-              }`}
-            />
-          ) : null}
+          {semMovimentoAtivo && <Badge tom="neu">Sem movimento</Badge>}
 
-          {semMovimentoAtivo && (
-            <span className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
-              SEM MOVIMENTO
+          {campoData && (
+            <span className="inline-flex items-center gap-2">
+              {feito && <Lock size={15} role="img" aria-label="Data travada: desbloqueie para alterar" className="text-ok" />}
+              {semPermissao && !feito && <Lock size={15} role="img" aria-label="Você não pode editar esta tarefa" className="text-fg-3" />}
+              <Input
+                type="text"
+                value={displayVal}
+                onChange={e => handleTextChange(tipo, e.target.value)}
+                onBlur={() => handleTextBlur(tipo)}
+                disabled={semPermissao || isPending || isUnlocking}
+                placeholder="dd/mm/aaaa"
+                aria-label={`Data de conclusão de ${tipo}`}
+                maxLength={10}
+                className={`w-[150px] text-center tabular-nums ${feito ? 'border-ok-soft text-ok' : ''}`}
+              />
             </span>
           )}
 
           {mostrarCheckboxSemMovimento && (
-            <label className="flex items-center gap-1 text-[10px] text-[var(--fg)]/40 whitespace-nowrap cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={semMovimentoAtivo}
-                onChange={() => handleToggleSemMovimento(tipo)}
-                disabled={isPending}
-                className="w-3 h-3 accent-[var(--fg)]/50"
-              />
-              Sem mov.
-            </label>
+            <Checkbox
+              rotulo="Sem movimento"
+              checked={semMovimentoAtivo}
+              onChange={() => handleToggleSemMovimento(tipo)}
+              disabled={isPending}
+              className="min-h-[44px] whitespace-nowrap sm:min-h-0"
+            />
           )}
 
           {feito && podeEditarTipo(tipo) && !etapasDefinidas && tipoResposta === 'data' && !semMovimentoAtivo && (
-            <button
+            <Button
+              tamanho="p"
+              icone={<Unlock size={14} aria-hidden="true" />}
               onClick={() => setUnlockingTipo(isUnlocking ? null : tipo)}
-              className="text-xs text-[var(--fg)]/30 hover:text-[var(--fg)]/60 px-2 py-1 rounded-lg border border-[var(--fg)]/8 hover:border-[var(--fg)]/20 transition-all whitespace-nowrap"
+              className="max-sm:h-11"
             >
-              {isUnlocking ? 'Cancelar' : 'Desbloquear'}
-            </button>
+              Desbloquear
+            </Button>
           )}
+
+          <IndicadorSalvamento estado={salvamento[tipo]} className="ml-auto" />
         </div>
 
-        {isUnlocking && (
-          <div className="mt-1 ml-5 p-3 bg-[var(--fg)]/3 border border-[var(--fg)]/10 rounded-xl flex flex-col gap-2">
-            <p className="text-xs text-[var(--fg)]/50">Informe o motivo para desbloquear esta tarefa:</p>
-            <textarea
-              value={motivoMap[tipo] ?? ''}
-              onChange={e => setMotivoMap(prev => ({ ...prev, [tipo]: e.target.value }))}
-              placeholder="Motivo obrigatório..."
-              rows={2}
-              className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder-[var(--fg)]/20 resize-none focus:outline-none focus:border-[var(--accent)]/50"
-            />
-            <button
-              onClick={() => handleUnlock(tipo)}
-              disabled={!(motivoMap[tipo]?.trim()) || unlockPending}
-              className="self-end text-xs bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] px-3 py-1.5 rounded-lg hover:bg-[var(--accent)]/30 transition-all disabled:opacity-40"
-            >
-              {unlockPending ? 'Aguarde...' : 'Confirmar desbloqueio'}
-            </button>
-          </div>
-        )}
+        <ErroSalvamento estado={salvamento[tipo]} className="mt-2.5 px-[18px] pl-[38px]" />
 
         {etapasDefinidas && !semMovimentoAtivo && (
-          <div className="ml-5 mt-1 grid grid-cols-2 gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
+          <div className="mb-3 ml-[38px] mr-[18px] grid grid-cols-1 gap-x-[18px] gap-y-2.5 rounded-[10px] border border-line-soft p-3 sm:grid-cols-2 lg:grid-cols-3">
             {etapasDefinidas.map(etapaNome => {
-              const etapaFeita = !!etapasDaTarefa(tipo).find(e => e.nome === etapaNome)?.concluida
               const etapaDisplay = getEtapaDisplayValue(tipo, etapaNome)
+              const etapaFeita = getSavedEtapaIso(tipo, etapaNome) !== ''
+
               return (
-                <div key={etapaNome} className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-[var(--fg)]/60">{etapaNome}</span>
-                  <input
+                <div key={etapaNome} className="flex items-center justify-between gap-2.5">
+                  <span className="flex-1 text-[13px] text-fg-2">{etapaNome}</span>
+                  <Input
                     type="text"
                     value={etapaDisplay}
                     onChange={e => handleEtapaTextChange(tipo, etapaNome, e.target.value)}
                     onBlur={() => handleEtapaTextBlur(tipo, etapaNome)}
-                    disabled={!podeEditarTipo(tipo) || isPending}
-                    placeholder="DD/MM/AAAA"
+                    disabled={semPermissao || isPending}
+                    placeholder="dd/mm/aaaa"
+                    aria-label={`${etapaNome} de ${tipo}`}
                     maxLength={10}
-                    className={inputCls(etapaFeita)}
+                    className={`w-[128px] text-center tabular-nums ${etapaFeita ? 'border-ok-soft text-ok' : ''}`}
                   />
                 </div>
               )
@@ -388,48 +399,58 @@ export default function TarefaChecklist({
         )}
 
         {tipoResposta === 'texto' && !etapasDefinidas && !semMovimentoAtivo && (
-          <div className="ml-5 mt-1 flex flex-col gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
-            <textarea
+          <div className="mb-3 ml-[38px] mr-[18px] flex flex-col gap-2.5">
+            <Textarea
               value={getRespostaTexto(tipo)}
               onChange={e => handleRespostaTextoChange(tipo, e.target.value)}
               onBlur={() => handleRespostaTextoBlur(tipo)}
-              disabled={!podeEditarTipo(tipo) || isPending}
+              disabled={semPermissao || isPending}
               placeholder="Digite a resposta..."
+              aria-label={`Resposta de ${tipo}`}
               rows={2}
-              className="w-full px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50 disabled:opacity-40"
+              className="min-h-[56px]"
             />
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2">
               {podeEditarTipo(tipo) && (
-                <label className={`text-[10px] px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
-                  uploadingTipo === tipo
-                    ? 'opacity-50 pointer-events-none'
-                    : 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/25'
+                <label className={`inline-flex h-[30px] cursor-pointer items-center gap-2 rounded-[7px] border border-line bg-raised px-2.5 text-[13px] font-medium text-fg transition-colors hover:border-fg-3 focus-within:ring-2 focus-within:ring-acc max-sm:h-11 ${
+                  uploadingTipo === tipo ? 'pointer-events-none opacity-50' : ''
                 }`}>
-                  {uploadingTipo === tipo ? 'Enviando...' : '+ Anexar'}
+                  <Paperclip size={14} aria-hidden="true" />
+                  {uploadingTipo === tipo ? 'Enviando...' : 'Anexar arquivo'}
                   <input
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
                     multiple
-                    className="hidden"
+                    className="sr-only"
                     onChange={e => handleUploadArquivo(tipo, e.target.files)}
                     disabled={isPending}
                   />
                 </label>
               )}
               {arquivosDaTarefa(tipo).map(arq => (
-                <span key={arq.id} className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
-                  <a href={`/api/arquivos/tarefa/${arq.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                    📎 {arq.name}
+                <span key={arq.id} className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-raised py-1 pl-2.5 pr-1 text-[13px] text-fg-2">
+                  <a href={`/api/arquivos/tarefa/${arq.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:underline">
+                    <Paperclip size={14} aria-hidden="true" />
+                    {arq.name}
                   </a>
-                  · {formatBytes(arq.size)}
+                  <span className="text-fg-3">{formatBytes(arq.size)}</span>
                   {podeEditarTipo(tipo) && (
-                    <button type="button" onClick={() => handleExcluirArquivo(arq.id)}
-                      className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
+                    <IconButton
+                      rotulo={`Excluir ${arq.name}`}
+                      icone={<X size={14} aria-hidden="true" />}
+                      onClick={() => handleExcluirArquivo(tipo, arq.id)}
+                      className="h-7 w-7 max-sm:h-11 max-sm:w-11"
+                    />
                   )}
                 </span>
               ))}
+              {erroUpload[tipo] && (
+                <span role="alert" className="inline-flex items-center gap-1.5 text-[13px] text-danger">
+                  <AlertCircle size={14} aria-hidden="true" />
+                  {erroUpload[tipo]}
+                </span>
+              )}
             </div>
-            {erroUpload[tipo] && <p className="text-red-400 text-[10px]">{erroUpload[tipo]}</p>}
           </div>
         )}
       </div>
@@ -456,18 +477,20 @@ export default function TarefaChecklist({
       const expandido = gruposExpandidos.has(grupoDaTarefa.id)
 
       return (
-        <div key={`grupo-${grupoDaTarefa.id}`} className="flex flex-col gap-2">
+        <div key={`grupo-${grupoDaTarefa.id}`} className="flex flex-col border-b border-line-soft last:border-b-0">
           <button
             type="button"
             onClick={() => toggleGrupo(grupoDaTarefa.id)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/3 hover:bg-[var(--fg)]/5 transition-all text-left"
+            aria-expanded={expandido}
+            className="flex min-h-[50px] items-center gap-3 px-[18px] text-left transition-colors hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
           >
-            <span className={`text-[10px] text-[var(--fg)]/40 transition-transform ${expandido ? 'rotate-90' : ''}`}>▶</span>
-            <span className="text-sm flex-1 text-[var(--fg)] font-medium">{grupoDaTarefa.nome}</span>
-            <span className="text-xs text-[var(--fg)]/40">{concluidasDoGrupo}/{tarefasDoGrupo.length}</span>
+            <ChevronRight size={18} aria-hidden="true" className={`flex-none text-fg-3 transition-transform ${expandido ? 'rotate-90' : ''}`} />
+            <Layers size={16} aria-hidden="true" className="flex-none text-fg-3" />
+            <span className="flex-1 font-semibold text-fg">{grupoDaTarefa.nome}</span>
+            <Badge>{concluidasDoGrupo} de {tarefasDoGrupo.length}</Badge>
           </button>
           {expandido && (
-            <div className="ml-5 flex flex-col gap-2">
+            <div className="ml-5 flex flex-col border-l border-line-soft">
               {tarefasDoGrupo.map(t => renderLinhaTarefa(t))}
             </div>
           )}
@@ -476,42 +499,102 @@ export default function TarefaChecklist({
     })
   }
 
+  const tarefaDesbloqueando = unlockingTipo
+  const motivoAtual = tarefaDesbloqueando ? (motivoMap[tarefaDesbloqueando] ?? '') : ''
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">
-          Tarefas — {MESES[mes - 1]}/{ano}
-        </h3>
-        <span className="text-xs text-[var(--fg)]/40">{concluidas}/{total}</span>
-      </div>
-
-      <div className="w-full h-1.5 bg-[var(--fg)]/8 rounded-full mb-5">
-        <div
-          className="h-full bg-[var(--accent)] rounded-full transition-all duration-300"
-          style={{ width: `${total > 0 ? (concluidas / total) * 100 : 0}%` }}
+    <Card
+      titulo={`Tarefas de ${MESES_EXTENSO[mes - 1]}`}
+      meta={total > 0 ? <Badge tom={concluidas === total ? 'ok' : 'neu'}>{concluidas} de {total}</Badge> : undefined}
+      semPadding
+    >
+      {total === 0 ? (
+        <EmptyState
+          compacto
+          icone={<ListChecks size={20} />}
+          titulo={`Nenhuma tarefa em ${MESES_EXTENSO[mes - 1]}`}
+          descricao="Este cliente não tem tarefas do Fiscal para o mês selecionado."
         />
-      </div>
+      ) : (
+        <>
+          <div
+            role="progressbar"
+            aria-label="Tarefas concluídas no mês"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={concluidas}
+            className="h-1.5 w-full bg-raised"
+          >
+            <div
+              className="h-full bg-acc transition-all duration-300"
+              style={{ width: `${(concluidas / total) * 100}%` }}
+            />
+          </div>
 
-      <div className="flex flex-col gap-2">
-        {renderLista()}
-      </div>
+          <div className="flex flex-col">
+            {renderLista()}
+          </div>
+        </>
+      )}
 
       {grupo === 'normal' && (
-        <div className="mt-6 pt-5 border-t border-[var(--fg)]/8">
-          <label className="block text-xs font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-2">
-            MIT
-          </label>
-          <input
-            type="text"
-            value={mit}
-            onChange={e => setMit(e.target.value)}
-            onBlur={handleMITBlur}
-            disabled={!podeEditar}
-            placeholder="Anotação MIT..."
-            className="w-full bg-[var(--fg)]/5 border border-[var(--fg)]/10 rounded-xl px-4 py-2.5 text-sm text-[var(--fg)] placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-40"
-          />
+        <div className="border-t border-line-soft px-[18px] py-4">
+          <Field rotulo="MIT · anotação do mês (regime normal)">
+            {({ id }) => (
+              <div className="flex items-center gap-3">
+                <Input
+                  id={id}
+                  type="text"
+                  value={mit}
+                  onChange={e => setMit(e.target.value)}
+                  onBlur={handleMITBlur}
+                  disabled={!podeEditar}
+                  placeholder="Anotação MIT..."
+                  className="min-w-0 flex-1"
+                />
+                <IndicadorSalvamento estado={salvamento[CHAVE_MIT]} />
+              </div>
+            )}
+          </Field>
+          <ErroSalvamento estado={salvamento[CHAVE_MIT]} className="mb-0 mt-2" />
         </div>
       )}
-    </div>
+
+      <Modal
+        aberto={tarefaDesbloqueando !== null}
+        onFechar={() => setUnlockingTipo(null)}
+        titulo="Desbloquear tarefa"
+        subtitulo={tarefaDesbloqueando ?? undefined}
+        largura="p"
+        bloqueado={unlockPending}
+        rodape={
+          <div className="ml-auto flex gap-2.5">
+            <Button variante="fantasma" onClick={() => setUnlockingTipo(null)} disabled={unlockPending}>Cancelar</Button>
+            <Button
+              variante="primario"
+              onClick={() => { if (tarefaDesbloqueando) handleUnlock(tarefaDesbloqueando) }}
+              disabled={!motivoAtual.trim()}
+              carregando={unlockPending}
+            >
+              {unlockPending ? 'Aguarde...' : 'Confirmar desbloqueio'}
+            </Button>
+          </div>
+        }
+      >
+        <Field rotulo="Informe o motivo para desbloquear esta tarefa" ajuda="O motivo é obrigatório e fica no log.">
+          {({ id, describedBy }) => (
+            <Textarea
+              id={id}
+              aria-describedby={describedBy}
+              data-autofocus=""
+              value={motivoAtual}
+              onChange={e => { if (tarefaDesbloqueando) setMotivoMap(prev => ({ ...prev, [tarefaDesbloqueando]: e.target.value })) }}
+              placeholder="Motivo obrigatório..."
+              rows={3}
+            />
+          )}
+        </Field>
+      </Modal>
+    </Card>
   )
 }

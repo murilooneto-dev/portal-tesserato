@@ -1,8 +1,8 @@
-﻿'use client'
+'use client'
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import type { Cliente } from '@/lib/types'
+import { ChevronRight, Check, Clock, Plus, Search, SlidersHorizontal, StickyNote, Users, X } from 'lucide-react'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
 import type { PendenciaVinculo } from '@/lib/vinculos'
@@ -10,38 +10,26 @@ import { formatarBadgeVinculo } from '@/lib/vinculos'
 import EmpresaModal from './EmpresaModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import { bucketDoRegime, type GrupoBucket } from '@/lib/regime-bucket'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Chip } from '@/components/ui/Chip'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Avatar } from '@/components/ui/Avatar'
+import { BarraProgresso } from '@/components/ui/BarraProgresso'
+import { cn } from '@/components/ui/cn'
+import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Input, Select, Switch } from '@/components/ui/Input'
+import { MonthPill } from '@/components/ui/MonthPill'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 
 const LABEL_BUCKET: Record<GrupoBucket, string> = {
   normal: 'Regime Normal',
   simples: 'Simples Nacional',
   mei: 'MEI',
   isento: 'Isento',
-}
-
-const CORES_REGIME: Record<string, string> = {
-  simples:   '#10b981',
-  presumido: '#0ea5e9',
-  real:      '#8b5cf6',
-  mei:       '#f59e0b',
-  isenta:    '#6b7280',
-  normal:    '#3b82f6',
-}
-
-function corRegime(regime: string): string {
-  const r = regime.toLowerCase()
-  for (const [key, cor] of Object.entries(CORES_REGIME)) {
-    if (r.includes(key)) return cor
-  }
-  return '#6b7280'
-}
-
-const CORES_RESP: string[] = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316','#ef4444','#84cc16']
-const _respColorCache: Record<string, string> = {}
-function corResponsavel(nome: string): string {
-  if (!_respColorCache[nome]) {
-    _respColorCache[nome] = CORES_RESP[Object.keys(_respColorCache).length % CORES_RESP.length]
-  }
-  return _respColorCache[nome]
 }
 
 interface Props {
@@ -61,15 +49,14 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
   const [filtroResponsavel, setFiltroResponsavel] = useFiltroPersistente('clientes:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('clientes:grupo', 'TODOS')
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('clientes:atividade', [])
-  const [filtroPrioridade, setFiltroPrioridade] = useFiltroPersistente('clientes:prioridade', 'TODOS')
   const [filtroPendencia, setFiltroPendencia] = useFiltroPersistente('clientes:pendencia', false)
   const [mostrarDesabilitados, setMostrarDesabilitados] = useFiltroPersistente('clientes:mostrarDesabilitados', false)
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
 
   const responsaveis = useMemo(() => ['TODOS', ...Array.from(new Set(
     clientes.map(c => c.responsavel ?? '').filter(Boolean)
   )).sort()], [clientes])
-
 
   const atividades = catalogo.atividades
 
@@ -78,10 +65,6 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
       filtroAtividade.includes(nome) ? filtroAtividade.filter(a => a !== nome) : [...filtroAtividade, nome]
     )
   }
-
-  const prioridades = useMemo(() => Array.from(new Set(
-    clientes.map(c => c.prioridade).filter((p): p is number => !!p && p > 0)
-  )).sort((a, b) => a - b), [clientes])
 
   const filtrados = useMemo(() => clientes.filter(c => {
     if (busca) {
@@ -95,82 +78,98 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
     if (filtroGrupo !== 'TODOS' && bucketDoRegime(c.regime) !== filtroGrupo) return false
     if (filtroAtividade.length > 0 && !((c.atividade ?? []).length === filtroAtividade.length && filtroAtividade.every(a => (c.atividade ?? []).includes(a)))) return false
-    if (filtroPrioridade !== 'TODOS' && String(c.prioridade ?? '') !== filtroPrioridade) return false
     if (filtroPendencia && !comPendencia.has(c.id)) return false
     if (!mostrarDesabilitados && c.ativo === false) return false
     return true
-  }), [clientes, busca, filtroResponsavel, filtroGrupo, filtroAtividade, filtroPrioridade, filtroPendencia, mostrarDesabilitados, comPendencia])
+  }), [clientes, busca, filtroResponsavel, filtroGrupo, filtroAtividade, filtroPendencia, mostrarDesabilitados, comPendencia])
 
-  const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
+  // No celular os filtros ficam recolhidos atrás do botão "Filtros", que fica
+  // destacado quando algum deles está em uso.
+  const filtrosAtivos = [filtroGrupo !== 'TODOS', filtroResponsavel !== 'TODOS', filtroAtividade.length > 0, filtroPendencia, mostrarDesabilitados].filter(Boolean).length
+  const temFiltro = busca.trim() !== '' || filtrosAtivos > 0
+
+  function limparFiltros() {
+    setBusca('')
+    setFiltroResponsavel('TODOS')
+    setFiltroGrupo('TODOS')
+    setFiltroAtividade([])
+    setFiltroPendencia(false)
+    setMostrarDesabilitados(false)
+  }
+
+  const vazio = clientes.length === 0 ? (
+    <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente cadastrado" descricao="Os clientes do Fiscal aparecem aqui assim que forem cadastrados." />
+  ) : temFiltro ? (
+    <EmptyState
+      icone={<Users size={24} />}
+      titulo="Nenhum cliente com esses filtros"
+      descricao={`Há ${clientes.length} ${clientes.length === 1 ? 'cliente' : 'clientes'} no Fiscal, mas nenhum com a busca e os filtros escolhidos.`}
+      acao={<Button icone={<X size={16} aria-hidden="true" />} onClick={limparFiltros}>Limpar filtros</Button>}
+    />
+  ) : (
+    <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente ativo" descricao="Todos os clientes do Fiscal estão desabilitados. Ligue “Mostrar desabilitados” nos filtros para vê-los." />
+  )
+
+  const subtitulo = `${filtrados.length} ${filtrados.length === 1 ? 'cliente' : 'clientes'} · ${MESES[mes - 1]}/${ano}`
 
   return (
-    <div>
-      {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <input
-          type="text"
-          placeholder="Buscar cliente ou CNPJ..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-        />
-        <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} className={selectClass}>
-          {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r === 'TODOS' ? 'TODOS' : r}</option>)}
-        </select>
-        <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[var(--bg-surface)]">Todos</option>
-          {(Object.keys(LABEL_BUCKET) as GrupoBucket[]).map(b => (
-            <option key={b} value={b} className="bg-[var(--bg-surface)]">{LABEL_BUCKET[b]}</option>
-          ))}
-        </select>
-        <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} className={selectClass}>
-          <option value="TODOS" className="bg-[var(--bg-surface)]">Todas as prioridades</option>
-          {prioridades.map(p => <option key={p} value={p} className="bg-[var(--bg-surface)]">{`P${p}`}</option>)}
-        </select>
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
-          <input
-            type="checkbox"
-            checked={filtroPendencia}
-            onChange={e => setFiltroPendencia(e.target.checked)}
-            className="w-4 h-4 accent-[var(--accent)]"
+    <Pagina>
+      <CabecalhoPagina
+        titulo="Clientes"
+        subtitulo={subtitulo}
+        acoes={<Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalNovoOpen(true)}>Novo cliente</Button>}
+      />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex w-full min-w-0 items-end gap-2 sm:w-[300px]">
+          <Field rotulo="Buscar" className="min-w-0 flex-1">
+            {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Cliente, CNPJ ou código" value={busca} onChange={e => setBusca(e.target.value)} />}
+          </Field>
+          <IconButton
+            borda
+            rotulo={filtrosAbertos ? 'Esconder filtros' : 'Mostrar filtros'}
+            aria-expanded={filtrosAbertos}
+            aria-controls="filtros-clientes-fiscal"
+            icone={<SlidersHorizontal size={18} aria-hidden="true" />}
+            onClick={() => setFiltrosAbertos(a => !a)}
+            className={cn('h-11 w-11 sm:hidden', filtrosAtivos > 0 && 'border-acc text-acc-text')}
           />
-          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Apenas pendentes</span>
-        </label>
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
-          <input
-            type="checkbox"
-            checked={mostrarDesabilitados}
-            onChange={e => setMostrarDesabilitados(e.target.checked)}
-            className="w-4 h-4 accent-[var(--accent)]"
-          />
-          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Mostrar desabilitados</span>
-        </label>
-        <button
-          onClick={() => setModalNovoOpen(true)}
-          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap">
-          + Novo Cliente
-        </button>
+        </div>
+        <div id="filtros-clientes-fiscal" className={cn('w-full flex-col gap-3 sm:contents', filtrosAbertos ? 'flex' : 'hidden')}>
+          <Field rotulo="Regime" className="w-full sm:w-[190px]">
+            {c => (
+              <Select id={c.id} value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)}>
+                <option value="TODOS">Todos</option>
+                {(Object.keys(LABEL_BUCKET) as GrupoBucket[]).map(b => (
+                  <option key={b} value={b}>{LABEL_BUCKET[b]}</option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field rotulo="Responsável" className="w-full sm:w-[190px]">
+            {c => (
+              <Select id={c.id} value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
+                {responsaveis.map(r => <option key={r} value={r}>{r === 'TODOS' ? 'Todos' : r}</option>)}
+              </Select>
+            )}
+          </Field>
+          {atividades.length > 0 && (
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <span id="rotulo-filtro-atividade" className="text-[13px] font-medium text-fg-2">Atividade</span>
+              <div role="group" aria-labelledby="rotulo-filtro-atividade" className="flex flex-wrap gap-2">
+                {atividades.map(nome => (
+                  <Chip key={nome} ativo={filtroAtividade.includes(nome)} onClick={() => toggleAtividade(nome)}>{nome}</Chip>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {atividades.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className="text-xs text-[var(--fg)]/40">Atividade:</span>
-          {atividades.map(nome => (
-            <button
-              key={nome}
-              type="button"
-              onClick={() => toggleAtividade(nome)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                filtroAtividade.includes(nome)
-                  ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
-                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
-              }`}
-            >
-              {nome}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className={cn('flex-wrap items-center gap-x-6 gap-y-3 sm:flex', filtrosAbertos ? 'flex' : 'hidden')}>
+        <Switch ligado={filtroPendencia} onMudar={setFiltroPendencia} rotulo="Apenas pendentes" />
+        <Switch ligado={mostrarDesabilitados} onMudar={setMostrarDesabilitados} rotulo="Mostrar desabilitados" />
+      </div>
 
       {modalNovoOpen && (
         <EmpresaModal
@@ -181,109 +180,141 @@ export default function ClientesLista({ clientes, comPendencia, progressoMap, me
         />
       )}
 
-      {/* Contador */}
-      <p className="text-[var(--fg)]/30 text-xs mb-3">
-        {filtrados.length} clientes · {MESES[mes - 1]}/{ano}
-      </p>
+      {filtrados.length === 0 ? (
+        <Card>{vazio}</Card>
+      ) : (
+        <>
+          {/* Celular (nav-03): um cartão por cliente; o toque leva à ficha. */}
+          <ul className="flex flex-col gap-2.5 sm:hidden">
+            {filtrados.map(cliente => {
+              const prog = progressoMap[cliente.id]
+              const vinculos = pendenciasVinculo[cliente.id] ?? []
+              const temObs = !!(cliente.obs?.trim())
+              const temSelos = vinculos.length > 0 || temObs || cliente.ativo === false || !!cliente.regime
+              return (
+                <li key={cliente.id}>
+                  <Link
+                    href={`/fiscal/clientes/${cliente.id}`}
+                    className="flex flex-col gap-2.5 rounded-xl border border-line-soft bg-surface px-4 py-3.5 transition-colors active:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="min-w-0 flex-1"><NomeCliente nome={cliente.nome} cnpj={cliente.cnpj} /></div>
+                      <ChevronRight size={18} aria-hidden="true" className="mt-0.5 flex-none text-fg-3" />
+                    </div>
+                    {temSelos && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {vinculos.map((p, i) => (
+                          <Badge
+                            key={i}
+                            tom={p.liberada ? 'ok' : 'warn'}
+                            icone={p.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+                          >
+                            {formatarBadgeVinculo(p).texto}
+                          </Badge>
+                        ))}
+                        {cliente.regime && <Badge tom="acc">{cliente.regime.split('/')[0].trim()}</Badge>}
+                        {temObs && <Badge tom="warn" icone={<StickyNote size={14} aria-hidden="true" />}>Observação</Badge>}
+                        {cliente.ativo === false && <Badge>Desabilitado</Badge>}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                      {cliente.responsavel ? (
+                        <span className="inline-flex min-w-0 max-w-[50%] items-center gap-2">
+                          <Avatar nome={cliente.responsavel} />
+                          <span className="truncate text-[13px] text-fg-2">{cliente.responsavel}</span>
+                        </span>
+                      ) : <span className="text-[13px] text-fg-3">Sem responsável</span>}
+                      <div className="flex min-w-0 flex-1 justify-end">
+                        <BarraProgresso feitas={prog?.concluidas ?? 0} total={prog?.total ?? 0} className="w-full" />
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
 
-      {/* Lista */}
-      <div className="flex flex-col gap-1.5">
-        {filtrados.length === 0 && (
-          <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
-        )}
-
-        {filtrados.map(cliente => {
-          const prog = progressoMap[cliente.id]
-          const total = prog?.total ?? 0
-          const concluidas = prog?.concluidas ?? 0
-          const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
-          const pendente = comPendencia.has(cliente.id)
-          const temObs = !!(cliente.obs?.trim())
-
-          return (
-            <Link
-              key={cliente.id}
-              href={`/fiscal/clientes/${cliente.id}`}
-              className="flex items-center gap-4 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 hover:border-[var(--fg)]/15 transition-all group"
-            >
-              {/* Prioridade */}
-              {cliente.prioridade && cliente.prioridade > 0 ? (
-                <div className="w-7 h-7 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0">
-                  <span className="text-red-400 text-[10px] font-bold">P{cliente.prioridade}</span>
-                </div>
-              ) : (
-                <div className="w-7 h-7 shrink-0" />
-              )}
-
-              {/* Nome + CNPJ */}
-              <div className="flex-1 min-w-0">
-                <p className="text-[var(--fg)] text-sm font-semibold truncate">
-                  {cliente.cnpj && (
-                    <span className="text-[var(--fg)]/40 font-normal mr-1.5">
-                      {cliente.cnpj.replace(/^(\d{2})\.?(\d{3})\.?(\d{3}).*/, '$1.$2.$3')}
-                    </span>
-                  )}
-                  {cliente.nome}
-                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
-                    const badge = formatarBadgeVinculo(p)
-                    return (
-                      <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
-                        {badge.texto}
-                      </span>
-                    )
-                  })}
-                </p>
-                <p className="text-[var(--fg)]/25 text-xs mt-0.5">{cliente.cnpj ?? '—'}</p>
-              </div>
-
-              {/* Badges */}
-              <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                {cliente.regime && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                    style={{ backgroundColor: corRegime(cliente.regime) + '25', color: corRegime(cliente.regime), border: `1px solid ${corRegime(cliente.regime)}50` }}>
-                    {cliente.regime.split('/')[0].trim()}
-                  </span>
-                )}
-                {(cliente.atividade ?? []).map(a => (
-                  <span key={a} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-                    {a}
-                  </span>
-                ))}
-                {cliente.responsavel && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                    style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
-                    {cliente.responsavel}
-                  </span>
-                )}
-                {cliente.ativo === false && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
-                    Desabilitado
-                  </span>
-                )}
-              </div>
-
-              {/* Progresso */}
-              {total > 0 && (
-                <div className="w-20 shrink-0 text-right">
-                  <p className={`text-sm font-bold ${pct === 100 ? 'text-[#10b981]' : pendente ? 'text-amber-400' : 'text-[var(--fg)]'}`}>
-                    {pct}%
-                  </p>
-                  <div className="w-full h-1 bg-[var(--fg)]/10 rounded-full mt-1">
-                    <div className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : pendente ? '#f59e0b' : 'var(--accent)' }} />
-                  </div>
-                  <p className="text-[var(--fg)]/25 text-[10px] mt-0.5">{concluidas}/{total}</p>
-                </div>
-              )}
-
-              {/* Alerta obs */}
-              <div className="w-4 shrink-0 text-center">
-                {temObs && <span className="text-amber-400 text-sm font-bold">!</span>}
-              </div>
-            </Link>
-          )
-        })}
-      </div>
-    </div>
+          <Card semPadding className="hidden overflow-hidden sm:block">
+          <div className="relative overflow-x-auto xl:overflow-visible">
+            <Tabela className="min-w-[820px]">
+              <thead>
+                <tr>
+                  <Th>Cliente</Th>
+                  <Th largura={170}>Regime</Th>
+                  <Th largura={150}>Atividade</Th>
+                  <Th largura={150}>Responsável</Th>
+                  <Th largura={150}>Progresso do mês</Th>
+                  <Th largura={56}><span className="sr-only">Abrir</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map(cliente => {
+                  const prog = progressoMap[cliente.id]
+                  const total = prog?.total ?? 0
+                  const concluidas = prog?.concluidas ?? 0
+                  const pct = total > 0 ? Math.round((concluidas / total) * 100) : null
+                  const temObs = !!(cliente.obs?.trim())
+                  const vinculos = pendenciasVinculo[cliente.id] ?? []
+                  const atividadesCliente = cliente.atividade ?? []
+                  const href = `/fiscal/clientes/${cliente.id}`
+                  return (
+                    <tr key={cliente.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
+                      <Td>
+                        <Link href={href} className="block w-full min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <NomeCliente
+                            nome={cliente.nome}
+                            cnpj={cliente.cnpj}
+                            depoisDoNome={
+                              <>
+                                {temObs && <Badge tom="warn" icone={<StickyNote size={14} aria-hidden="true" />}>Observação</Badge>}
+                                {cliente.ativo === false && <Badge>Desabilitado</Badge>}
+                              </>
+                            }
+                            abaixo={vinculos.length > 0 ? (
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                {vinculos.map((p, i) => (
+                                  <Badge
+                                    key={i}
+                                    tom={p.liberada ? 'ok' : 'warn'}
+                                    icone={p.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+                                  >
+                                    {formatarBadgeVinculo(p).texto}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : undefined}
+                          />
+                        </Link>
+                      </Td>
+                      <Td>
+                        {cliente.regime
+                          ? <Badge tom="acc" className="max-w-full overflow-hidden"><span className="truncate" title={cliente.regime}>{cliente.regime.split('/')[0].trim()}</span></Badge>
+                          : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td className="text-fg-2">{atividadesCliente.length > 0 ? atividadesCliente.join(', ') : <span className="text-fg-3">—</span>}</Td>
+                      <Td className="text-fg-2">{cliente.responsavel ? <span className="block truncate" title={cliente.responsavel}>{cliente.responsavel}</span> : <span className="text-fg-3">—</span>}</Td>
+                      <Td>
+                        {total > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <MonthPill percentual={pct} />
+                            <span className="text-[13px] text-fg-3">{concluidas}/{total}</span>
+                          </div>
+                        ) : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td alinhar="dir">
+                        <Link href={href} aria-label={`Abrir ${cliente.nome}`} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-3 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <ChevronRight size={18} aria-hidden="true" />
+                        </Link>
+                      </Td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </Tabela>
+          </div>
+          </Card>
+        </>
+      )}
+    </Pagina>
   )
 }

@@ -6,6 +6,12 @@ import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { filtrarClientes } from '@/lib/minhas-tarefas-filtro'
 import type { SecaoRelatorio } from '@/lib/relatorio-minhas-tarefas-pdf'
 import MinhasTarefasSecao from './MinhasTarefasSecao'
+import { FileText, Search, SlidersHorizontal } from 'lucide-react'
+import { Button, IconButton } from '@/components/ui/Button'
+import { cn } from '@/components/ui/cn'
+import { Chip } from '@/components/ui/Chip'
+import { Field } from '@/components/ui/Field'
+import { Input, Select } from '@/components/ui/Input'
 
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
@@ -15,7 +21,7 @@ const LABEL_STATUS: Record<StatusFiltroMinhasTarefas, string> = {
   TODOS: 'Todos os status',
   PENDENTE: 'Pendente',
   CONCLUIDA: 'Concluída',
-  SEM_MOVIMENTO: 'Sem Movimento',
+  SEM_MOVIMENTO: 'Sem movimento',
 }
 
 interface Secao {
@@ -38,9 +44,6 @@ interface Props {
   onAtualizarEtapa: (clienteId: string, tipo: string, etapaNome: string, concluida: boolean, data?: string) => Promise<void>
 }
 
-const inputCls = "flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-const selectCls = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-const botaoPdfCls = "px-4 py-2 rounded-xl bg-[var(--accent)]/15 border border-[var(--accent)]/30 text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent)]/25 transition-colors disabled:opacity-40"
 
 function getIsoTarefa(tarefa: Pick<Tarefa, 'concluida' | 'concluida_em'> | undefined): string | null {
   return tarefa?.concluida && tarefa.concluida_em ? tarefa.concluida_em.slice(0, 10) : null
@@ -57,6 +60,10 @@ export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas
   const [tarefaFiltro, setTarefaFiltro] = useFiltroPersistente('minhas-tarefas:tarefa', 'TODAS')
   const [atividadeFiltro, setAtividadeFiltro] = useFiltroPersistente<string[]>('minhas-tarefas:atividade', [])
   const [gerandoPdf, setGerandoPdf] = useState(false)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
+  // No celular (mob-10) só a busca fica à mostra; o botão "Filtros" fica
+  // destacado quando algum filtro está em uso.
+  const filtrosAtivos = [tarefaFiltro !== 'TODAS', statusFiltro !== 'TODOS', atividadeFiltro.length > 0].filter(Boolean).length
 
   const secoesFiltradas = useMemo(
     () => secoes.filter(s => tarefaFiltro === 'TODAS' || s.tipo === tarefaFiltro),
@@ -122,48 +129,59 @@ export default function MinhasTarefasFiltro({ secoes, atividadesCatalogo, etapas
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="text"
-          placeholder="Buscar por nome do cliente..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          className={inputCls}
-        />
-        <select value={tarefaFiltro} onChange={e => setTarefaFiltro(e.target.value)} className={selectCls}>
-          <option value="TODAS" className="bg-[var(--bg-surface)]">Todas as tarefas</option>
-          {secoes.map(s => (
-            <option key={s.tipo} value={s.tipo} className="bg-[var(--bg-surface)]">{s.tipo}</option>
-          ))}
-        </select>
-        <select value={statusFiltro} onChange={e => setStatusFiltro(e.target.value as StatusFiltroMinhasTarefas)} className={selectCls}>
-          {(Object.keys(LABEL_STATUS) as StatusFiltroMinhasTarefas[]).map(s => (
-            <option key={s} value={s} className="bg-[var(--bg-surface)]">{LABEL_STATUS[s]}</option>
-          ))}
-        </select>
-        <button type="button" onClick={handleGerarPdf} disabled={gerandoPdf} className={botaoPdfCls}>
-          {gerandoPdf ? 'Gerando...' : 'Gerar Relatório em PDF'}
-        </button>
+    <div className="flex min-w-0 flex-col gap-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex w-full min-w-0 items-end gap-2 sm:w-[300px]">
+          <Field rotulo="Buscar" className="min-w-0 flex-1">
+            {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Nome do cliente" value={busca} onChange={e => setBusca(e.target.value)} />}
+          </Field>
+          <IconButton
+            borda
+            rotulo={filtrosAbertos ? 'Esconder filtros' : 'Mostrar filtros'}
+            aria-expanded={filtrosAbertos}
+            aria-controls="filtros-minhas-tarefas"
+            icone={<SlidersHorizontal size={18} aria-hidden="true" />}
+            onClick={() => setFiltrosAbertos(a => !a)}
+            className={cn('h-11 w-11 sm:hidden', filtrosAtivos > 0 && 'border-acc text-acc-text')}
+          />
+        </div>
+        <div id="filtros-minhas-tarefas" className={cn('w-full flex-col gap-3 sm:contents', filtrosAbertos ? 'flex' : 'hidden')}>
+        <Field rotulo="Tarefa" className="w-full sm:w-[210px]">
+          {c => (
+            <Select id={c.id} value={tarefaFiltro} onChange={e => setTarefaFiltro(e.target.value)}>
+              <option value="TODAS">Todas as tarefas</option>
+              {secoes.map(s => <option key={s.tipo} value={s.tipo}>{s.tipo}</option>)}
+            </Select>
+          )}
+        </Field>
+        <Field rotulo="Status" className="w-full sm:w-[190px]">
+          {c => (
+            <Select id={c.id} value={statusFiltro} onChange={e => setStatusFiltro(e.target.value as StatusFiltroMinhasTarefas)}>
+              {(Object.keys(LABEL_STATUS) as StatusFiltroMinhasTarefas[]).map(s => (
+                <option key={s} value={s}>{LABEL_STATUS[s]}</option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        </div>
+        <Button
+          icone={<FileText size={16} aria-hidden="true" />}
+          onClick={handleGerarPdf}
+          carregando={gerandoPdf}
+          className="max-sm:h-11 max-sm:w-full sm:ml-auto"
+        >
+          {gerandoPdf ? 'Gerando...' : 'Gerar relatório em PDF'}
+        </Button>
       </div>
 
       {atividadesCatalogo.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 -mt-4">
-          <span className="text-xs text-[var(--fg)]/40">Atividade:</span>
-          {atividadesCatalogo.map(nome => (
-            <button
-              key={nome}
-              type="button"
-              onClick={() => toggleAtividade(nome)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                atividadeFiltro.includes(nome)
-                  ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
-                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
-              }`}
-            >
-              {nome}
-            </button>
-          ))}
+        <div className={cn('min-w-0 flex-col gap-1.5 sm:flex', filtrosAbertos ? 'flex' : 'hidden')}>
+          <span id="rotulo-minhas-tarefas-atividade" className="text-[13px] font-medium text-fg-2">Atividade</span>
+          <div role="group" aria-labelledby="rotulo-minhas-tarefas-atividade" className="flex flex-wrap gap-2">
+            {atividadesCatalogo.map(nome => (
+              <Chip key={nome} ativo={atividadeFiltro.includes(nome)} onClick={() => toggleAtividade(nome)}>{nome}</Chip>
+            ))}
+          </div>
         </div>
       )}
 

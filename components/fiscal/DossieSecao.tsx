@@ -1,8 +1,17 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
+import { FolderOpen, Lock, Search, X } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { STATUS_DOSSIE_OPCOES, type StatusDossie } from '@/lib/status-dossie'
+import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Checkbox, Input, Select } from '@/components/ui/Input'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 
 interface ClienteDossie {
   id: string
@@ -17,9 +26,6 @@ interface Props {
   onAtualizarStatus: (clienteId: string, status: StatusDossie) => Promise<{ error: string | null }>
   onAtualizarFinalizado: (clienteId: string, finalizado: boolean) => Promise<{ error: string | null }>
 }
-
-const inputCls = "flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-const selectCls = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50"
 
 export default function DossieSecao({ clientes, onAtualizarStatus, onAtualizarFinalizado }: Props) {
   const [busca, setBusca] = useFiltroPersistente('dossie:busca', '')
@@ -52,67 +58,106 @@ export default function DossieSecao({ clientes, onAtualizarStatus, onAtualizarFi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [clientes, busca, statusFiltro, overlay])
 
+  const seletorStatus = (cliente: ClienteDossie, finalizado: boolean, classe?: string) => (
+    <Select
+      value={getStatus(cliente)}
+      onChange={e => handleStatusChange(cliente.id, e.target.value as StatusDossie)}
+      disabled={finalizado}
+      aria-label={`Situação do dossiê de ${cliente.nome}`}
+      className={classe}
+    >
+      {STATUS_DOSSIE_OPCOES.map(s => <option key={s.valor} value={s.valor}>{s.label}</option>)}
+    </Select>
+  )
+
+  const checkFinalizado = (cliente: ClienteDossie, finalizado: boolean) => (
+    <Checkbox
+      rotulo="Finalizado"
+      checked={finalizado}
+      onChange={e => handleFinalizadoChange(cliente.id, e.target.checked)}
+      aria-label={`Finalizado: ${cliente.nome}`}
+      className="min-h-11 sm:min-h-0"
+    />
+  )
+
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <input
-          type="text"
-          placeholder="Buscar por nome do cliente..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          className={inputCls}
-        />
-        <select value={statusFiltro} onChange={e => setStatusFiltro(e.target.value as 'TODOS' | StatusDossie)} className={selectCls}>
-          <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os status</option>
-          {STATUS_DOSSIE_OPCOES.map(s => <option key={s.valor} value={s.valor} className="bg-[var(--bg-surface)]">{s.label}</option>)}
-        </select>
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field rotulo="Buscar" className="w-full sm:w-[300px]">
+          {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Nome do cliente" value={busca} onChange={e => setBusca(e.target.value)} />}
+        </Field>
+        <Field rotulo="Situação" className="w-full sm:w-[220px]">
+          {c => (
+            <Select id={c.id} value={statusFiltro} onChange={e => setStatusFiltro(e.target.value as 'TODOS' | StatusDossie)}>
+              <option value="TODOS">Todos os status</option>
+              {STATUS_DOSSIE_OPCOES.map(s => <option key={s.valor} value={s.valor}>{s.label}</option>)}
+            </Select>
+          )}
+        </Field>
       </div>
 
-      {filtrados.length === 0 ? (
-        <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--fg)]/10">
-                <th className="text-left py-2 px-3 text-[var(--fg)]/40 font-medium">Empresa</th>
-                <th className="text-left py-2 px-3 text-[var(--fg)]/40 font-medium">CNPJ</th>
-                <th className="text-left py-2 px-3 text-[var(--fg)]/40 font-medium">Status</th>
-                <th className="text-center py-2 px-3 text-[var(--fg)]/40 font-medium">Finalizado</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card semPadding className="overflow-hidden">
+        {filtrados.length === 0 ? (
+          clientes.length === 0 ? (
+            <EmptyState icone={<FolderOpen size={24} />} titulo="Nenhum cliente no Dossiê" descricao="Os clientes ativos do Fiscal aparecem aqui para acompanhar a situação do dossiê." />
+          ) : (
+            <EmptyState
+              icone={<FolderOpen size={24} />}
+              titulo="Nenhum cliente com esses filtros"
+              descricao="Mude a busca ou o filtro de situação."
+              acao={<Button icone={<X size={16} aria-hidden="true" />} onClick={() => { setBusca(''); setStatusFiltro('TODOS') }}>Limpar filtros</Button>}
+            />
+          )
+        ) : (
+          <>
+            <div className="hidden sm:block"><div className="relative overflow-x-auto xl:overflow-visible">
+              <Tabela className="min-w-[680px]">
+                <thead>
+                  <tr>
+                    <Th>Cliente</Th>
+                    <Th largura={240}>Situação</Th>
+                    <Th alinhar="centro" largura={150}>Finalizado</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtrados.map(cliente => {
+                    const finalizado = getFinalizado(cliente)
+                    return (
+                      <tr key={cliente.id}>
+                        <Td>
+                          <NomeCliente
+                            nome={cliente.nome}
+                            cnpj={cliente.cnpj}
+                            depoisDoNome={finalizado ? <Badge tom="ok" icone={<Lock size={14} aria-hidden="true" />}>Finalizado</Badge> : undefined}
+                          />
+                        </Td>
+                        <Td>{seletorStatus(cliente, finalizado)}</Td>
+                        <Td alinhar="centro">{checkFinalizado(cliente, finalizado)}</Td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </Tabela>
+            </div></div>
+
+            <ul className="flex flex-col sm:hidden">
               {filtrados.map(cliente => {
                 const finalizado = getFinalizado(cliente)
                 return (
-                  <tr key={cliente.id} className="border-b border-[var(--fg)]/5">
-                    <td className="py-2 px-3 text-[var(--fg)]">{cliente.nome}</td>
-                    <td className="py-2 px-3 text-[var(--fg)]/60 font-mono text-xs">{cliente.cnpj ?? '—'}</td>
-                    <td className="py-2 px-3">
-                      <select
-                        value={getStatus(cliente)}
-                        onChange={e => handleStatusChange(cliente.id, e.target.value as StatusDossie)}
-                        disabled={finalizado}
-                        className={selectCls}
-                      >
-                        {STATUS_DOSSIE_OPCOES.map(s => <option key={s.valor} value={s.valor} className="bg-[var(--bg-surface)]">{s.label}</option>)}
-                      </select>
-                    </td>
-                    <td className="text-center py-2 px-3">
-                      <input
-                        type="checkbox"
-                        checked={finalizado}
-                        onChange={e => handleFinalizadoChange(cliente.id, e.target.checked)}
-                        className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
-                      />
-                    </td>
-                  </tr>
+                  <li key={cliente.id} className="flex flex-col gap-2 border-b border-line-soft px-4 py-3 last:border-b-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <NomeCliente nome={cliente.nome} cnpj={cliente.cnpj} />
+                      {finalizado && <Badge tom="ok" icone={<Lock size={14} aria-hidden="true" />}>Finalizado</Badge>}
+                    </div>
+                    {seletorStatus(cliente, finalizado, 'h-11')}
+                    {checkFinalizado(cliente, finalizado)}
+                  </li>
                 )
               })}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </ul>
+          </>
+        )}
+      </Card>
     </div>
   )
 }

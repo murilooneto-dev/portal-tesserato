@@ -1,7 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { renomearSecaoParcelamento, removerSecaoParcelamento } from '@/lib/parcelamento-secoes-actions'
+import { Check, FolderOpen, Pencil, Plus, Trash2, X } from 'lucide-react'
+import {
+  criarSecaoParcelamento, renomearSecaoParcelamento, removerSecaoParcelamento,
+} from '@/lib/parcelamento-secoes-actions'
+import { Modal } from '@/components/ui/Modal'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { useConfirmar } from '@/components/ui/ConfirmDialog'
 
 interface SecaoParcelamento {
   id: string
@@ -11,14 +20,20 @@ interface SecaoParcelamento {
 interface Props {
   secoes: SecaoParcelamento[]
   onClose: () => void
-  onChanged: () => void
+  onChanged: () => void | Promise<void>
+  /** Chamado depois que uma seção nova foi criada e a lista recarregada (nome já normalizado). */
+  onCriada?: (nome: string) => void
 }
 
-export default function GerenciarSecoesModal({ secoes, onClose, onChanged }: Props) {
+export default function GerenciarSecoesModal({ secoes, onClose, onChanged, onCriada }: Props) {
+  const confirmar = useConfirmar()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [novoNome, setNovoNome] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [criando, setCriando] = useState(false)
+  const ocupado = busyId !== null || criando
 
   function startEdit(s: SecaoParcelamento) {
     setEditingId(s.id)
@@ -47,7 +62,13 @@ export default function GerenciarSecoesModal({ secoes, onClose, onChanged }: Pro
   }
 
   async function remover(s: SecaoParcelamento) {
-    if (!confirm(`Remover a seção "${s.nome}"?`)) return
+    const ok = await confirmar({
+      titulo: 'Remover seção?',
+      descricao: `Remover a seção "${s.nome}"?`,
+      textoConfirmar: 'Remover',
+      perigo: true,
+    })
+    if (!ok) return
     setErro(null)
     setBusyId(s.id)
     try {
@@ -59,70 +80,80 @@ export default function GerenciarSecoesModal({ secoes, onClose, onChanged }: Pro
     }
   }
 
+  async function criar() {
+    const nome = novoNome.trim()
+    if (!nome || ocupado) return
+    setErro(null)
+    setCriando(true)
+    try {
+      const { error } = await criarSecaoParcelamento(nome)
+      if (error) { setErro(error); return }
+      setNovoNome('')
+      await onChanged()
+      onCriada?.(nome.toUpperCase())
+    } finally {
+      setCriando(false)
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
+    <Modal
+      aberto
+      onFechar={onClose}
+      bloqueado={ocupado}
+      largura="p"
+      titulo="Gerenciar seções"
+      subtitulo="As seções agrupam os parcelamentos na lista."
+      rodape={<Button className="ml-auto" onClick={onClose} disabled={ocupado}>Fechar</Button>}
+    >
+      {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
 
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">Gerenciar seções</h2>
-          <button onClick={onClose} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
-        </div>
+      <ul className="flex flex-col gap-2">
+        {secoes.map(s => (
+          <li key={s.id} className="flex items-center gap-2 rounded-lg border border-line-soft bg-inset px-3 py-2">
+            {editingId === s.id ? (
+              <>
+                <Input
+                  aria-label={`Novo nome da seção ${s.nome}`}
+                  data-autofocus
+                  className="flex-1"
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); if (editValue.trim()) salvarEdicao(s) }
+                    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelEdit() }
+                  }}
+                />
+                <IconButton rotulo="Salvar nome" icone={<Check size={16} aria-hidden="true" />} onClick={() => salvarEdicao(s)} disabled={busyId === s.id || !editValue.trim()} />
+                <IconButton rotulo="Cancelar edição" icone={<X size={16} aria-hidden="true" />} onClick={cancelEdit} disabled={busyId === s.id} />
+              </>
+            ) : (
+              <>
+                <span className="min-w-0 flex-1 truncate text-sm text-fg">{s.nome}</span>
+                <IconButton rotulo={`Renomear ${s.nome}`} icone={<Pencil size={16} aria-hidden="true" />} onClick={() => startEdit(s)} disabled={ocupado} />
+                <IconButton rotulo={`Remover ${s.nome}`} icone={<Trash2 size={16} aria-hidden="true" />} onClick={() => remover(s)} disabled={ocupado} />
+              </>
+            )}
+          </li>
+        ))}
+        {secoes.length === 0 && (
+          <li><EmptyState compacto icone={<FolderOpen size={20} />} titulo="Nenhuma seção cadastrada" descricao="Crie a primeira abaixo para agrupar os parcelamentos." /></li>
+        )}
+      </ul>
 
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-2">
-          {erro && (
-            <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm mb-2">
-              ⚠ {erro}
-            </div>
-          )}
-
-          {secoes.map(s => (
-            <div key={s.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2">
-              {editingId === s.id ? (
-                <>
-                  <input
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    autoFocus
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--accent)]/50 text-[var(--fg)] text-sm focus:outline-none"
-                  />
-                  <button onClick={() => salvarEdicao(s)} disabled={busyId === s.id || !editValue.trim()}
-                    className="text-xs font-semibold text-[var(--accent)] hover:opacity-80 disabled:opacity-40 transition-opacity px-2 py-1">
-                    Salvar
-                  </button>
-                  <button onClick={cancelEdit} disabled={busyId === s.id}
-                    className="text-xs text-[var(--fg)]/40 hover:text-[var(--fg)] transition-colors px-2 py-1">
-                    Cancelar
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span className="flex-1 text-sm text-[var(--fg)]">{s.nome}</span>
-                  <button onClick={() => startEdit(s)} disabled={busyId !== null}
-                    className="text-xs font-semibold text-[var(--fg)]/50 hover:text-[var(--fg)] transition-colors px-2 py-1">
-                    Editar
-                  </button>
-                  <button onClick={() => remover(s)} disabled={busyId !== null}
-                    className="text-xs font-semibold text-[var(--fg)]/50 hover:text-red-400 transition-colors px-2 py-1">
-                    {busyId === s.id ? '...' : 'Remover'}
-                  </button>
-                </>
-              )}
-            </div>
-          ))}
-
-          {secoes.length === 0 && (
-            <p className="text-center text-[var(--fg)]/20 text-sm py-8">Nenhuma seção cadastrada.</p>
-          )}
-        </div>
-
-        <div className="flex justify-end px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <button onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-            Fechar
-          </button>
-        </div>
+      <div className="flex items-center gap-2 border-t border-line-soft pt-4">
+        <Input
+          aria-label="Nome da nova seção"
+          className="flex-1"
+          placeholder="Nome da nova seção"
+          value={novoNome}
+          onChange={e => setNovoNome(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criar() } }}
+        />
+        <Button icone={<Plus size={16} aria-hidden="true" />} onClick={criar} carregando={criando} disabled={!novoNome.trim() || busyId !== null}>
+          {criando ? 'Criando…' : 'Criar seção'}
+        </Button>
       </div>
-    </div>
+    </Modal>
   )
 }

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { Layers, Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
@@ -10,8 +11,16 @@ import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import SeletorAtividades from '@/components/geral/SeletorAtividades'
 import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
 import GruposTarefasModal from '@/components/geral/GruposTarefasModal'
+import { Secao } from '@/components/fiscal/CamposFiscais'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import { salvarClientePessoal } from '@/app/pessoal/clientes/actions'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Select } from '@/components/ui/Input'
+import { Aviso } from '@/components/ui/Aviso'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
+import { useConfirmar } from '@/components/ui/ConfirmDialog'
 
 interface FormData {
   cnpj: string
@@ -41,14 +50,17 @@ const emptyForm = (tarefasPadrao: string[]): FormData => ({
   prioridade: 3, tarefas_personalizadas: tarefasPadrao, tarefas_excluidas: [],
 })
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
-const selectCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors disabled:opacity-50 disabled:cursor-default"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
+const UFS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB',
+  'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
+]
 
 export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
+  const confirmar = useConfirmar()
+  const identificacaoRef = useRef<HTMLDivElement>(null)
 
   const [form, setForm] = useState<FormData>(emptyForm(tarefasPadrao))
   const [personalizadasOriginais, setPersonalizadasOriginais] = useState<string[]>([])
@@ -81,13 +93,19 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
       })
       setPersonalizadasOriginais(data.tarefas_personalizadas ?? [])
       setLoading(false)
+      // O foco inicial do Modal rodou com o formulário ainda carregando: foca a Razão social agora.
+      if (!readOnly) {
+        requestAnimationFrame(() => requestAnimationFrame(() => identificacaoRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus()))
+      }
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId])
 
   useEffect(() => {
     sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').then(({ data }) => {
       setCatalogoNomes((data ?? []).map(t => t.nome as string))
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function fetchCnpj(raw: string) {
@@ -129,7 +147,12 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
   async function handleSave() {
     if (!form.nome.trim()) return
     const removidas = personalizadasOriginais.filter(t => !form.tarefas_personalizadas.includes(t))
-    if (removidas.length > 0 && !confirm(`Remover ${removidas.map(t => `"${t}"`).join(', ')} deste cliente apaga o histórico dessa tarefa nele (concluída, respostas, anexos). Outros clientes não são afetados. Continuar?`)) return
+    if (removidas.length > 0 && !(await confirmar({
+      titulo: 'Remover tarefas deste cliente?',
+      descricao: `Remover ${removidas.map(t => `"${t}"`).join(', ')} deste cliente apaga o histórico dessa tarefa nele (concluída, respostas, anexos). Outros clientes não são afetados. Continuar?`,
+      textoConfirmar: 'Continuar',
+      perigo: true,
+    }))) return
     setSaving(true)
     setErro(null)
 
@@ -157,62 +180,70 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
     onClose()
   }
 
+  const titulo = readOnly ? 'Visualizar empresa' : isEdit ? 'Editar empresa' : 'Nova empresa'
+  // UF já gravada que não está na lista continua selecionável.
+  const ufForaDaLista = form.uf && !UFS.includes(form.uf)
+
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
-
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">{readOnly ? 'Visualizar Empresa' : isEdit ? 'Editar Empresa' : 'Nova Empresa'}</h2>
-          <button onClick={onClose} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          {loading ? (
-            <p className="text-[var(--fg)]/30 text-sm text-center py-8">Carregando...</p>
-          ) : (<>
-
-            <div>
-              <label className={labelCls}>CNPJ {loadingCnpj && <span className="text-[var(--accent)] normal-case tracking-normal">Buscando...</span>}</label>
-              <input className={inputCls + ' font-mono'} value={form.cnpj}
-                onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }}
-                placeholder="00.000.000/0000-00" disabled={readOnly} />
+      <Modal
+        aberto
+        onFechar={onClose}
+        bloqueado={saving}
+        largura="g"
+        titulo={titulo}
+        subtitulo={isEdit && form.nome ? form.nome : undefined}
+        rodape={
+          <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2">
+            {erro && <div role="alert" className="min-w-0 flex-1 basis-60"><Aviso tom="dng">{erro}</Aviso></div>}
+            <div className="ml-auto flex gap-2.5">
+              {readOnly ? (
+                <Button onClick={onClose}>Fechar</Button>
+              ) : (
+                <>
+                  <Button variante="fantasma" onClick={onClose} disabled={saving}>Cancelar</Button>
+                  <Button variante="primario" onClick={handleSave} carregando={saving} disabled={loading || !form.nome.trim()}>
+                    {saving ? 'Salvando…' : 'Salvar empresa'}
+                  </Button>
+                </>
+              )}
             </div>
-
-            <div>
-              <label className={labelCls}>Razão Social *</label>
-              <input className={inputCls} value={form.nome} onChange={e => set('nome', e.target.value)} required disabled={readOnly} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Município</label>
-                <input className={inputCls} value={form.municipio} onChange={e => set('municipio', e.target.value)} disabled={readOnly} />
+          </div>
+        }
+      >
+        {loading ? (
+          <EsqueletoLinhas linhas={6} className="py-4" />
+        ) : (
+          <>
+            <Secao titulo="Identificação">
+              <div ref={identificacaoRef} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                <Field rotulo="CNPJ" ajuda={loadingCnpj ? 'Buscando dados do CNPJ…' : 'Buscamos os dados quando o CNPJ estiver completo'} className="sm:col-span-3">
+                  {c => <Input id={c.id} aria-describedby={c.describedBy} className="font-mono" placeholder="00.000.000/0000-00" disabled={readOnly}
+                    value={form.cnpj} onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }} />}
+                </Field>
+                <Field rotulo="UF">
+                  {c => (
+                    <Select id={c.id} disabled={readOnly} value={form.uf} onChange={e => set('uf', e.target.value)}>
+                      <option value="">Selecionar…</option>
+                      {ufForaDaLista && <option value={form.uf}>{form.uf} (atual)</option>}
+                      {UFS.map(u => <option key={u} value={u}>{u}</option>)}
+                    </Select>
+                  )}
+                </Field>
+                <Field rotulo="Razão social" obrigatorio className="sm:col-span-3">
+                  {c => <Input id={c.id} data-autofocus disabled={readOnly} value={form.nome} onChange={e => set('nome', e.target.value)} />}
+                </Field>
+                <Field rotulo="Município">
+                  {c => <Input id={c.id} disabled={readOnly} value={form.municipio} onChange={e => set('municipio', e.target.value)} />}
+                </Field>
+                <Field rotulo="Contato" className="sm:col-span-4">
+                  {c => <Input id={c.id} placeholder="Nome ou telefone" disabled={readOnly} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} />}
+                </Field>
               </div>
-              <div>
-                <label className={labelCls}>UF</label>
-                <input className={inputCls + ' uppercase'} value={form.uf}
-                  onChange={e => set('uf', e.target.value.toUpperCase().slice(0, 2))} maxLength={2} disabled={readOnly} />
-              </div>
-            </div>
+            </Secao>
 
-            <div>
-              <label className={labelCls}>Contato</label>
-              <input className={inputCls} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} disabled={readOnly} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Atividade</label>
-                <SeletorAtividades
-                  valores={form.atividade}
-                  opcoes={catalogo.atividades}
-                  onChange={v => set('atividade', v)}
-                  readOnly={readOnly}
-                />
-              </div>
-              <div>
+            <Secao titulo="Enquadramento">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {/* O catálogo de Regimes deste setor (/admin/configuracoes) precisa
                     conter exatamente 'normal', 'simples', 'mei', 'isento' (minúsculo,
                     sem acento) — o filtro por Regime e a cor do badge na listagem
@@ -220,66 +251,86 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
                     labelRegime()/CORES_REGIME) comparam contra esses 4 textos
                     literais. Um regime com outro nome não quebra o formulário, mas
                     perde o filtro e a cor no badge da listagem. */}
-                <label className={labelCls}>Regime</label>
-                <select className={selectCls} value={form.regime} onChange={e => set('regime', e.target.value)} disabled={readOnly}>
-                  <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
-                  {form.regime && !catalogo.regimes.includes(form.regime) && (
-                    <option value={form.regime} className="bg-[var(--bg-surface)]">{form.regime} (atual)</option>
+                <Field rotulo="Regime">
+                  {c => (
+                    <Select id={c.id} value={form.regime} onChange={e => set('regime', e.target.value)} disabled={readOnly}>
+                      <option value="">Selecionar…</option>
+                      {form.regime && !catalogo.regimes.includes(form.regime) && (
+                        <option value={form.regime}>{form.regime} (atual)</option>
+                      )}
+                      {catalogo.regimes.map(r => <option key={r} value={r}>{r}</option>)}
+                    </Select>
                   )}
-                  {catalogo.regimes.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
-                </select>
+                </Field>
+                <Field rotulo="Responsável">
+                  {c => (
+                    <Select id={c.id} value={form.responsavel} onChange={e => set('responsavel', e.target.value)} disabled={readOnly}>
+                      <option value="">Selecionar…</option>
+                      {responsaveis.map(r => <option key={r} value={r}>{r}</option>)}
+                    </Select>
+                  )}
+                </Field>
+                <Field rotulo="Prioridade (0 a 5)">
+                  {c => <Input id={c.id} type="number" min={0} max={5} disabled={readOnly} value={form.prioridade}
+                    onChange={e => set('prioridade', Number(e.target.value))} />}
+                </Field>
               </div>
-            </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[13px] font-medium text-fg-2">Atividades</span>
+                <SeletorAtividades
+                  valores={form.atividade}
+                  opcoes={catalogo.atividades}
+                  onChange={v => set('atividade', v)}
+                  readOnly={readOnly}
+                />
+              </div>
+            </Secao>
 
-            <div className="grid grid-cols-2 gap-4">
+            <Secao titulo="Tarefas do cliente">
               <div>
-                <label className={labelCls}>Responsável</label>
-                <select className={selectCls} value={form.responsavel} onChange={e => set('responsavel', e.target.value)} disabled={readOnly}>
-                  <option value="" className="bg-[var(--bg-surface)]">Selecionar...</option>
-                  {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Prioridade (0–5)</label>
-                <input className={inputCls} type="number" min={0} max={5} value={form.prioridade}
-                  onChange={e => set('prioridade', Number(e.target.value))} disabled={readOnly} />
-              </div>
-            </div>
+                <div className="mb-2 flex items-center gap-2.5">
+                  <span className="text-[13px] font-medium text-fg-2">Tarefas ({form.tarefas_personalizadas.length})</span>
+                  {isEdit && clienteId && !readOnly && (
+                    <Button className="ml-auto" tamanho="p" icone={<Layers size={14} aria-hidden="true" />} onClick={() => setGruposAberto(true)}>
+                      Agrupar tarefas
+                    </Button>
+                  )}
+                </div>
 
-            <div className="rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2 p-4">
-              <div className="flex items-center justify-between mb-0">
-                <label className={labelCls}>Tarefas ({form.tarefas_personalizadas.length})</label>
-                {isEdit && clienteId && !readOnly && (
-                  <button type="button" onClick={() => setGruposAberto(true)}
-                    className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] hover:border-[var(--fg)]/25 transition-colors">
-                    Agrupar tarefas
-                  </button>
+                <div className="mb-3 flex min-h-[34px] flex-wrap gap-2">
+                  {form.tarefas_personalizadas.length === 0 && (
+                    <p className="text-xs text-fg-3">Nenhuma tarefa adicionada.</p>
+                  )}
+                  {form.tarefas_personalizadas.map((t, i) => (
+                    <span key={i}
+                      className="inline-flex min-h-[30px] items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--acc)_55%,transparent)] bg-acc-soft px-3 text-[13px] text-fg">
+                      {t}
+                      {!readOnly && (
+                        <button type="button"
+                          aria-label={`Remover ${t}`}
+                          onClick={() => set('tarefas_personalizadas', form.tarefas_personalizadas.filter((_, idx) => idx !== i))}
+                          className="-mr-1.5 inline-grid h-6 w-6 max-sm:h-11 max-sm:w-11 place-items-center rounded-full text-fg-3 transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <X size={13} aria-hidden="true" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+
+                {!readOnly && (
+                  <div className="flex gap-2">
+                    <Input
+                      className="flex-1"
+                      aria-label="Nome da nova tarefa"
+                      value={novaTarefa}
+                      onChange={e => setNovaTarefa(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefa())}
+                      placeholder="Digite o nome da tarefa e pressione Enter"
+                    />
+                    <Button icone={<Plus size={16} aria-hidden="true" />} onClick={addTarefa}>Adicionar</Button>
+                  </div>
                 )}
               </div>
-              <div className="flex flex-wrap gap-1.5 mb-3 mt-2 min-h-[32px]">
-                {form.tarefas_personalizadas.map((t, i) => (
-                  <span key={i} className="flex items-center gap-1.5 text-xs bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] px-2.5 py-1 rounded-lg">
-                    {t}
-                    {!readOnly && (
-                      <button type="button"
-                        onClick={() => set('tarefas_personalizadas', form.tarefas_personalizadas.filter((_, idx) => idx !== i))}
-                        className="text-[var(--fg)]/40 hover:text-red-400 transition-colors font-bold">×</button>
-                    )}
-                  </span>
-                ))}
-              </div>
-              {!readOnly && (
-                <div className="flex gap-2">
-                  <input value={novaTarefa} onChange={e => setNovaTarefa(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTarefa())}
-                    placeholder="Digitar nome da tarefa e pressionar Enter..."
-                    className={inputCls + ' flex-1 text-xs'} />
-                  <button type="button" onClick={addTarefa}
-                    className="px-4 py-2 rounded-xl bg-[var(--accent)]/20 border border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/30 text-xs font-semibold transition-colors whitespace-nowrap">
-                    + Adicionar
-                  </button>
-                </div>
-              )}
 
               <TarefasAutomaticasCampo
                 setor="pessoal"
@@ -290,52 +341,26 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
                 onChangeExcluidas={v => set('tarefas_excluidas', v)}
                 readOnly={readOnly}
               />
-            </div>
-
-          </>)}
-        </div>
-
-        {erro && (
-          <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            ⚠ {erro}
-          </div>
+            </Secao>
+          </>
         )}
-
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          {readOnly ? (
-            <button onClick={onClose}
-              className="px-6 py-2.5 rounded-xl bg-[var(--fg)]/8 border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-sm transition-colors">
-              Fechar
-            </button>
-          ) : (<>
-            <button onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-              Cancelar
-            </button>
-            <button onClick={handleSave} disabled={saving || !form.nome.trim()}
-              className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--fg)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-              {saving ? 'Salvando...' : 'Salvar empresa'}
-            </button>
-          </>)}
-        </div>
-      </div>
-    </div>
-    {nomeParaCriar && (
-      <NovoTipoTarefaModal
-        nome={nomeParaCriar}
-        setor="pessoal"
-        onCancel={() => setNomeParaCriar(null)}
-        onCriado={handleTipoCriado}
-      />
-    )}
-    {gruposAberto && clienteId && (
-      <GruposTarefasModal
-        clienteId={clienteId}
-        setor="pessoal"
-        tarefasDisponiveis={form.tarefas_personalizadas}
-        onClose={() => setGruposAberto(false)}
-      />
-    )}
+      </Modal>
+      {nomeParaCriar && (
+        <NovoTipoTarefaModal
+          nome={nomeParaCriar}
+          setor="pessoal"
+          onCancel={() => setNomeParaCriar(null)}
+          onCriado={handleTipoCriado}
+        />
+      )}
+      {gruposAberto && clienteId && (
+        <GruposTarefasModal
+          clienteId={clienteId}
+          setor="pessoal"
+          tarefasDisponiveis={form.tarefas_personalizadas}
+          onClose={() => setGruposAberto(false)}
+        />
+      )}
     </>
   )
 }

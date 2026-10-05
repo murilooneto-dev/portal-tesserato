@@ -6,9 +6,10 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { nomesTarefaTipoData, nomesTarefaTipoNaoData, type ClienteFiltro } from '@/lib/preenchimento-rapido'
 import { toggleTarefaFiscal } from '@/app/fiscal/clientes/actions'
 import PreenchimentoRapido from '@/components/PreenchimentoRapido'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
 import type { Tarefa } from '@/lib/types'
 
-export const metadata = { title: 'Preenchimento Rápido — Tesserato Fiscal' }
+export const metadata = { title: 'Preenchimento rápido — Tesserato Fiscal' }
 
 interface ClienteRow {
   id: string
@@ -79,13 +80,11 @@ export default async function PreenchimentoRapidoFiscalPage() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[var(--fg)]">Preenchimento Rápido</h1>
-        <p className="text-[var(--fg)]/40 mt-1 text-sm">
-          Marque a mesma tarefa pra vários clientes de uma vez.
-        </p>
-      </div>
+    <Pagina>
+      <CabecalhoPagina
+        titulo="Preenchimento rápido"
+        subtitulo="Marque a mesma tarefa em vários clientes de uma vez. Cada marcação é salva na hora."
+      />
       <PreenchimentoRapido
         camposDisponiveis={['regime', 'atividade']}
         clientes={clientes}
@@ -95,6 +94,6 @@ export default async function PreenchimentoRapidoFiscalPage() {
         estadoInicial={estadoInicial}
         onToggle={onToggle}
       />
-    </div>
+    </Pagina>
   )
 }
