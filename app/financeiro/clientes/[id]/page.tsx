@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import ClienteCard from '@/components/financeiro/ClienteCardFinanceiro'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
 import { getMesAno } from '@/lib/mes-atual-server'
 import {
   listarTarefasFinanceiroDoCliente,
@@ -9,15 +10,13 @@ import {
   atualizarEtapaFinanceiro,
   salvarRespostaTextoFinanceiro,
 } from '../tarefas-actions'
-import TarefasFinanceiroChecklist from '@/components/financeiro/TarefasFinanceiroChecklist'
+import TarefasSetorChecklist from '@/components/geral/TarefasSetorChecklist'
 import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import type { TarefaEtapa } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string }>
 }
-
-const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 export default async function ClienteFinanceiroDetalhePage({ params }: Props) {
   const { id } = await params
@@ -63,36 +62,37 @@ export default async function ClienteFinanceiroDetalhePage({ params }: Props) {
     return await salvarRespostaTextoFinanceiro(id, tipo, mes, ano, texto)
   }
 
+  const local = cliente.municipio ? `${cliente.municipio}${cliente.uf ? `/${cliente.uf}` : ''}` : null
+
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-6 flex items-start gap-4">
-        <Link href="/financeiro/clientes" className="mt-1 text-[var(--fg)]/30 hover:text-[var(--fg)]/70 transition-colors text-lg">←</Link>
-        <div className="flex-1">
-          <ClienteCard
-            nome={cliente.nome}
-            cnpj={cliente.cnpj}
-            municipio={cliente.municipio}
-            uf={cliente.uf}
-            contatoChat={cliente.contato_chat}
-          />
-        </div>
-      </div>
+    <Pagina>
+      <nav aria-label="Caminho" className="-mb-2 flex min-w-0 items-center gap-1.5 text-[13px] text-fg-3">
+        <Link href="/financeiro/clientes" className="flex-none transition-colors hover:text-fg">Clientes</Link>
+        <ChevronRight size={14} aria-hidden="true" className="flex-none" />
+        <b className="min-w-0 truncate font-medium text-fg-2" aria-current="page">{cliente.nome}</b>
+      </nav>
 
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">Tarefas</h2>
-          <span className="text-[var(--fg)]/40 text-xs font-medium">{MESES_ABREV[mes - 1]} / {ano}</span>
-        </div>
-        <TarefasFinanceiroChecklist
-          tarefas={tarefasFinanceiro}
-          etapas={(etapasCatalogo ?? []) as TarefaEtapa[]}
-          podeEditar={true}
-          onToggle={onToggle}
-          onAtualizarEtapa={onAtualizarEtapa}
-          onSalvarTexto={onSalvarTexto}
-        />
-      </div>
+      <CabecalhoPagina
+        titulo={<span className="block min-w-[15ch] truncate" title={cliente.nome}>{cliente.nome}</span>}
+        subtitulo={
+          <span className="mt-1.5 flex flex-wrap gap-x-[18px] gap-y-1 text-[13px] text-fg-2">
+            <span><span className="text-fg-3">CNPJ</span> {cliente.cnpj?.trim() ? <span className="font-mono">{cliente.cnpj}</span> : '—'}</span>
+            <span><span className="text-fg-3">Município / UF</span> {local ?? '—'}</span>
+            <span className="min-w-0 break-words"><span className="text-fg-3">Contato</span> {cliente.contato_chat?.trim() || '—'}</span>
+          </span>
+        }
+      />
 
-    </div>
+      <TarefasSetorChecklist
+        tarefas={tarefasFinanceiro}
+        etapas={(etapasCatalogo ?? []) as TarefaEtapa[]}
+        podeEditar={true}
+        mes={mes}
+        className="w-full max-w-[820px]"
+        onToggle={onToggle}
+        onAtualizarEtapa={onAtualizarEtapa}
+        onSalvarTexto={onSalvarTexto}
+      />
+    </Pagina>
   )
 }

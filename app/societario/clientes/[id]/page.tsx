@@ -1,8 +1,12 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Building2, ChevronRight, Paperclip } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import ClienteCard from '@/components/societario/ClienteCard'
-import { statusProcedimentoBadge, type StatusProcedimento } from '@/lib/status-procedimento'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { tomStatusProcedimento, rotuloStatusProcedimento, type StatusProcedimento } from '@/lib/status-procedimento'
 import { getMesAno } from '@/lib/mes-atual-server'
 import {
   listarTarefasSocietarioDoCliente,
@@ -10,7 +14,7 @@ import {
   atualizarEtapaSocietario,
   salvarRespostaTextoSocietario,
 } from '../tarefas-actions'
-import TarefasSocietarioChecklist from '@/components/societario/TarefasSocietarioChecklist'
+import TarefasSetorChecklist from '@/components/geral/TarefasSetorChecklist'
 import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import type { TarefaEtapa } from '@/lib/types'
 
@@ -32,11 +36,10 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// created_at é timestamptz: formata no fuso de Brasília (o servidor roda em UTC).
 function formatarData(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR')
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
 }
-
-const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 export default async function ClienteSocietarioDetalhePage({ params }: Props) {
   const { id } = await params
@@ -90,68 +93,79 @@ export default async function ClienteSocietarioDetalhePage({ params }: Props) {
     return await salvarRespostaTextoSocietario(id, tipo, mes, ano, texto)
   }
 
-  return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-6 flex items-start gap-4">
-        <Link href="/societario/clientes" className="mt-1 text-[var(--fg)]/30 hover:text-[var(--fg)]/70 transition-colors text-lg">←</Link>
-        <div className="flex-1">
-          <ClienteCard
-            nome={cliente.nome}
-            cnpj={cliente.cnpj}
-            municipio={cliente.municipio}
-            uf={cliente.uf}
-            contatoChat={cliente.contato_chat}
-          />
-        </div>
-      </div>
+  const local = cliente.municipio ? `${cliente.municipio}${cliente.uf ? `/${cliente.uf}` : ''}` : null
 
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">Tarefas</h2>
-          <span className="text-[var(--fg)]/40 text-xs font-medium">{MESES_ABREV[mes - 1]} / {ano}</span>
-        </div>
-        <TarefasSocietarioChecklist
+  return (
+    <Pagina>
+      <nav aria-label="Caminho" className="-mb-2 flex min-w-0 items-center gap-1.5 text-[13px] text-fg-3">
+        <Link href="/societario/clientes" className="flex-none transition-colors hover:text-fg">Clientes</Link>
+        <ChevronRight size={14} aria-hidden="true" className="flex-none" />
+        <b className="min-w-0 truncate font-medium text-fg-2" aria-current="page">{cliente.nome}</b>
+      </nav>
+
+      <CabecalhoPagina
+        titulo={<span className="block min-w-[15ch] truncate" title={cliente.nome}>{cliente.nome}</span>}
+        subtitulo={
+          <span className="mt-1.5 flex flex-wrap gap-x-[18px] gap-y-1 text-[13px] text-fg-2">
+            <span><span className="text-fg-3">CNPJ</span> {cliente.cnpj?.trim() ? <span className="font-mono">{cliente.cnpj}</span> : '—'}</span>
+            <span><span className="text-fg-3">Município / UF</span> {local ?? '—'}</span>
+            <span className="min-w-0 break-words"><span className="text-fg-3">Contato</span> {cliente.contato_chat?.trim() || '—'}</span>
+          </span>
+        }
+      />
+
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
+        <TarefasSetorChecklist
           tarefas={tarefasSocietario}
           etapas={(etapasCatalogo ?? []) as TarefaEtapa[]}
           podeEditar={true}
+          mes={mes}
+          avisoSalvoAutomatico
           onToggle={onToggle}
           onAtualizarEtapa={onAtualizarEtapa}
           onSalvarTexto={onSalvarTexto}
         />
-      </div>
 
-      <div className="mt-8">
-        <h2 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest mb-4">Histórico de Procedimentos</h2>
-
-        {procedimentos.length === 0 ? (
-          <p className="text-[var(--fg)]/25 text-sm py-4">Nenhum procedimento registrado para este cliente.</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {procedimentos.map(p => {
-              const { bg, text, label } = statusProcedimentoBadge(p.status)
-              return (
-                <div key={p.id} className="px-4 py-3 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/2">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-[var(--fg)]">{p.processo_tipos?.nome ?? '—'}</p>
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${bg} ${text}`}>{label}</span>
+        <Card titulo="Histórico de procedimentos" semPadding>
+          {procedimentos.length === 0 ? (
+            <EmptyState
+              icone={<Building2 size={24} />}
+              titulo="Nenhum procedimento para este cliente"
+              descricao="Os procedimentos abertos em Procedimentos aparecem aqui com a situação e os anexos."
+            />
+          ) : (
+            <ul className="flex flex-col">
+              {procedimentos.map(p => (
+                <li key={p.id} className="border-b border-line-soft px-[18px] py-3.5 last:border-b-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 font-semibold text-fg">{p.processo_tipos?.nome ?? '—'}</p>
+                    <Badge tom={tomStatusProcedimento(p.status)}>{rotuloStatusProcedimento(p.status)}</Badge>
                   </div>
-                  <p className="text-[10px] text-[var(--fg)]/30 mt-1">{formatarData(p.created_at)}</p>
+                  <p className="mt-0.5 text-[13px] text-fg-3">Aberto em {formatarData(p.created_at)}</p>
                   {p.procedimento_arquivos.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="mt-2.5 flex flex-wrap gap-2">
                       {p.procedimento_arquivos.map(arq => (
-                        <a key={arq.id} href={`/api/arquivos/procedimento/${arq.id}`} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 text-[10px] bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 hover:underline px-2 py-1 rounded-lg">
-                          📎 {arq.name} · {formatBytes(arq.size)}
+                        <a
+                          key={arq.id}
+                          href={`/api/arquivos/procedimento/${arq.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={arq.name}
+                          className="inline-flex h-[30px] max-w-[260px] items-center gap-2 rounded-[7px] border border-line-soft bg-raised px-2.5 text-[13px] text-fg-2 transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+                        >
+                          <Paperclip size={14} aria-hidden="true" className="flex-none" />
+                          <span className="min-w-0 truncate">{arq.name}</span>
+                          <span className="flex-none text-fg-3">{formatBytes(arq.size)}</span>
                         </a>
                       ))}
                     </div>
                   )}
-                </div>
-              )
-            })}
-          </div>
-        )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
       </div>
-    </div>
+    </Pagina>
   )
 }
