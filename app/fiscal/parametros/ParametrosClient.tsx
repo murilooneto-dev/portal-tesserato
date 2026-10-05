@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Profile } from '@/lib/types'
@@ -8,29 +8,11 @@ import { SETORES, SETOR_LABEL, type UserSetor } from '@/lib/types'
 import { PAGINAS_POR_SETOR } from '@/lib/paginas-setor'
 import { salvarComunicado, atualizarPerfil, criarUsuario, deletarUsuario, salvarConfiguracoes } from './actions'
 
-interface TaskLog {
-  id: string
-  created_at: string
-  usuario_nome: string | null
-  cliente_nome: string | null
-  tarefa: string | null
-  competencia: string | null
-  valor_antigo: string | null
-  valor_novo: string | null
-  motivo: string | null
-}
-
 interface Props {
   profiles: Profile[]
   currentUserId: string
   dashboardAnnouncement: string
-  taskLogs: TaskLog[]
   emailSettings?: Record<string, string>
-}
-
-function formatDate(s: string | null) {
-  if (!s) return '—'
-  return new Date(s).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 const inputCls = "w-full px-4 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/8 text-[var(--fg)] text-sm placeholder-[var(--fg)]/20 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
@@ -50,7 +32,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   )
 }
 
-export default function ParametrosClient({ profiles, currentUserId, dashboardAnnouncement, taskLogs, emailSettings = {} }: Props) {
+export default function ParametrosClient({ profiles, currentUserId, dashboardAnnouncement, emailSettings = {} }: Props) {
   const router = useRouter()
 
   // Comunicado
@@ -93,9 +75,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
   const [criandoUser, setCriandoUser] = useState(false)
   const [novoUserErr, setNovoUserErr] = useState('')
   const [novoUserOk, setNovoUserOk] = useState(false)
-
-  // Logs modais
-  const [logModal, setLogModal] = useState<'tarefas' | null>(null)
 
   async function handleSaveComunicado() {
     setSavingAnn(true)
@@ -233,14 +212,8 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
             href="/fiscal/parametros/logs"
             className="px-4 py-2 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 text-sm font-semibold hover:bg-sky-500/25 transition-colors"
           >
-            Log de Eventos
+            Logs do sistema
           </Link>
-          <button
-            onClick={() => setLogModal('tarefas')}
-            className="px-4 py-2 rounded-xl bg-orange-500/15 border border-orange-500/30 text-orange-400 text-sm font-semibold hover:bg-orange-500/25 transition-colors"
-          >
-            Log de Tarefas
-          </button>
         </div>
       </div>
 
@@ -544,50 +517,6 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
 
       </div>
 
-      {/* Log modal */}
-      {logModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[var(--bg-page)] border border-[var(--fg)]/10 rounded-2xl w-full max-w-5xl max-h-[80vh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8">
-              <h2 className="text-[var(--fg)] font-semibold">
-                {`Log de Tarefas (últimos ${taskLogs.length})`}
-              </h2>
-              <button onClick={() => setLogModal(null)}
-                className="w-8 h-8 rounded-lg bg-[var(--fg)]/5 hover:bg-[var(--fg)]/10 text-[var(--fg)]/50 hover:text-[var(--fg)] transition-colors flex items-center justify-center text-sm">
-                ✕
-              </button>
-            </div>
-            <div className="overflow-auto p-6">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-[var(--fg)]/8">
-                    {['Data/Hora','Usuário','Cliente','Tarefa','Comp.','Antes','Depois','Motivo'].map(h => (
-                      <th key={h} className="text-left px-3 py-2 text-[var(--fg)]/40 font-medium whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {taskLogs.length === 0 && (
-                    <tr><td colSpan={8} className="px-3 py-6 text-center text-[var(--fg)]/20">Nenhum registro</td></tr>
-                  )}
-                  {taskLogs.map(log => (
-                    <tr key={log.id} className="border-b border-[var(--fg)]/5 hover:bg-[var(--fg)]/2">
-                      <td className="px-3 py-2 text-[var(--fg)]/50 whitespace-nowrap">{formatDate(log.created_at)}</td>
-                      <td className="px-3 py-2 text-[var(--fg)]/70">{log.usuario_nome ?? '—'}</td>
-                      <td className="px-3 py-2 text-[var(--fg)]/70">{log.cliente_nome ?? '—'}</td>
-                      <td className="px-3 py-2 text-[var(--fg)]/70">{log.tarefa ?? '—'}</td>
-                      <td className="px-3 py-2 text-[var(--fg)]/70">{log.competencia ?? '—'}</td>
-                      <td className="px-3 py-2 text-[var(--fg)]/50">{log.valor_antigo ?? '—'}</td>
-                      <td className="px-3 py-2 text-[var(--fg)]/50">{log.valor_novo ?? '—'}</td>
-                      <td className="px-3 py-2 text-[var(--fg)]/50">{log.motivo ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
