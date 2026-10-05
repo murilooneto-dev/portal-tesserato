@@ -139,7 +139,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
             >
               {cliente.prioridade && cliente.prioridade > 0 ? (
                 <div className="w-7 h-7 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0">
-                  <span className="text-red-400 text-[10px] font-bold">P{cliente.prioridade}</span>
+                  <span className="text-red-400 text-xs font-bold">P{cliente.prioridade}</span>
                 </div>
               ) : (
                 <div className="w-7 h-7 shrink-0" />
@@ -151,7 +151,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
                   {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
                     const badge = formatarBadgeVinculo(p)
                     return (
-                      <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
+                      <span key={i} className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
                         {badge.texto}
                       </span>
                     )
@@ -162,24 +162,24 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
 
               <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                 {cliente.regime && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-md"
                     style={{ backgroundColor: (CORES_REGIME[cliente.regime] ?? '#6b7280') + '25', color: CORES_REGIME[cliente.regime] ?? '#6b7280', border: `1px solid ${CORES_REGIME[cliente.regime] ?? '#6b7280'}50` }}>
                     {labelRegime(cliente.regime)}
                   </span>
                 )}
                 {(cliente.atividade ?? []).map(a => (
-                  <span key={a} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+                  <span key={a} className="text-xs font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
                     {a}
                   </span>
                 ))}
                 {cliente.responsavel && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-md"
                     style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
                     {cliente.responsavel}
                   </span>
                 )}
                 {cliente.ativo === false && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
                     Desabilitado
                   </span>
                 )}
@@ -192,7 +192,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
                     <div className="h-full rounded-full transition-all"
                       style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : 'var(--accent)' }} />
                   </div>
-                  <p className="text-[var(--fg)]/25 text-[10px] mt-0.5">{concluidas}/{total}</p>
+                  <p className="text-[var(--fg)]/25 text-xs mt-0.5">{concluidas}/{total}</p>
                 </div>
               )}
 

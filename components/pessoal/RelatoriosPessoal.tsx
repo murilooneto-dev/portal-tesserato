@@ -98,10 +98,9 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
   <div class="stat" style="border-color:#ef4444"><div class="n" style="color:#ef4444">${stats.zero}</div><div>Não Iniciados</div></div>
 </div>
 <table>
-  <thead><tr><th>#</th><th>Cliente</th><th>CNPJ</th><th>Responsável</th><th>Progresso</th><th>Tarefas Pendentes</th><th>Observação</th><th>MIT</th></tr></thead>
+  <thead><tr><th>Cliente</th><th>CNPJ</th><th>Responsável</th><th>Progresso</th><th>Tarefas Pendentes</th><th>Observação</th><th>MIT</th></tr></thead>
   <tbody>
-    ${filtrados.map((r, i) => `<tr>
-      <td>${i+1}</td>
+    ${filtrados.map(r => `<tr>
       <td><strong>${escapeHtml(r.cliente.nome)}</strong></td>
       <td>${escapeHtml(r.cliente.cnpj) || '—'}</td>
       <td>${escapeHtml(r.cliente.responsavel) || '—'}</td>
@@ -192,19 +191,18 @@ export default function RelatoriosPessoal({ clientes, tarefas, isAdmin, mes, ano
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--fg)]/12">
-              {['#','Cliente','CNPJ','Responsável','Progresso','Tarefas Pendentes','Observação','MIT'].map(h => (
+              {['Cliente','CNPJ','Responsável','Progresso','Tarefas Pendentes','Observação','MIT'].map(h => (
                 <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtrados.map((r, i) => (
+            {filtrados.map(r => (
               <tr
                 key={r.cliente.id}
                 onClick={() => router.push(`/pessoal/clientes/${r.cliente.id}`)}
                 className="border-b border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 cursor-pointer transition-colors"
               >
-                <td className="px-4 py-3 text-[var(--fg)]/40 text-xs">{i+1}</td>
                 <td className="px-4 py-3 text-[var(--fg)] text-sm font-medium">{r.cliente.nome}</td>
                 <td className="px-4 py-3 text-[var(--fg)]/50 text-xs font-mono">{r.cliente.cnpj ?? '—'}</td>
                 <td className="px-4 py-3 text-[var(--fg)]/60 text-xs">{r.cliente.responsavel ?? '—'}</td>

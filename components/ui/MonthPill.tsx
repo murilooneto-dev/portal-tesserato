@@ -16,7 +16,7 @@ export function tomDoPercentual(p: number | null | undefined): TomPercentual {
   return 'parcial'
 }
 
-const COR: Record<TomPercentual, string> = {
+export const COR: Record<TomPercentual, string> = {
   vazio: 'text-fg-3 font-medium',
   zero: 'bg-danger-soft text-danger',
   parcial: 'bg-warn-soft text-warn',

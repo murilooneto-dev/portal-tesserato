@@ -46,7 +46,7 @@ export default function ClienteContabilAcoes({ cliente, responsaveis, tarefasPad
       </button>
 
       {cliente.ativo === false && (
-        <span className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15 uppercase tracking-wide">
+        <span className="text-xs font-bold px-2 py-1.5 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15 uppercase tracking-wide">
           Desabilitado
         </span>
       )}
