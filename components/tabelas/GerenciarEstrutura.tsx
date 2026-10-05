@@ -86,13 +86,15 @@ export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas, t
     }
   }
 
-  async function salvarNomeColuna(coluna: ColunaResumo, nomeNovo: string) {
-    if (nomeNovo.trim() === coluna.nome || nomeNovo.trim() === '') return
+  async function salvarNomeColuna(coluna: ColunaResumo, campo: HTMLInputElement) {
+    const nomeNovo = campo.value
+    if (nomeNovo.trim() === coluna.nome) return
+    if (nomeNovo.trim() === '') { campo.value = coluna.nome; return }
     setErro(null)
     setOcupado(true)
     try {
       const { error } = await renomearColuna({ colunaId: coluna.id, nome: nomeNovo })
-      if (error) { setErro(error); return }
+      if (error) { campo.value = coluna.nome; setErro(error); return }
       router.refresh()
     } finally {
       setOcupado(false)
@@ -226,7 +228,7 @@ export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas, t
         <div className="flex w-full items-center gap-2.5">
           <span className="text-[13px] text-fg-3">Alterações salvas na hora</span>
           <div className="ml-auto">
-            <Button variante="fantasma" onClick={fechar}>Fechar</Button>
+            <Button variante="fantasma" disabled={ocupado} onClick={fechar}>Fechar</Button>
           </div>
         </div>
       }
@@ -247,7 +249,7 @@ export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas, t
             <div key={c.id} className={cn(i > 0 && 'border-t border-line-soft')}>
               <div className="flex flex-wrap items-center gap-1.5 px-3.5 py-2.5">
                 <Input defaultValue={c.nome} maxLength={120} disabled={ocupado} className="h-8 min-w-[8rem] flex-1"
-                  aria-label={`Nome da coluna ${c.nome}`} onBlur={e => salvarNomeColuna(c, e.target.value)} />
+                  aria-label={`Nome da coluna ${c.nome}`} onBlur={e => salvarNomeColuna(c, e.target)} />
                 <Badge tom="neu">{ROTULO_TIPO[c.tipo]}</Badge>
                 <IconButton rotulo="Mover para cima" icone={<ArrowUp size={16} aria-hidden="true" />} disabled={ocupado || i === 0} onClick={() => mover(c, 'cima')} />
                 <IconButton rotulo="Mover para baixo" icone={<ArrowDown size={16} aria-hidden="true" />} disabled={ocupado || i === colunas.length - 1} onClick={() => mover(c, 'baixo')} />

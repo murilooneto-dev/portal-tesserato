@@ -88,7 +88,7 @@ export default function BarraConsulta({ base, consulta, colunas, exportarHref }:
             aria-label="Buscar em todas as colunas" maxLength={200} iconeEsquerda={<Search size={16} />} />
         </div>
         <Button type="submit" variante="primario">Buscar</Button>
-        <Button aria-expanded={aberto} aria-controls={painelId} icone={<SlidersHorizontal size={16} aria-hidden="true" />}
+        <Button aria-expanded={aberto} aria-controls={aberto ? painelId : undefined} icone={<SlidersHorizontal size={16} aria-hidden="true" />}
           onClick={() => setAberto(a => !a)}>
           Filtros
           {ativos > 0 && <Badge tom="acc" className="ml-0.5">{ativos}</Badge>}

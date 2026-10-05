@@ -198,7 +198,8 @@ export default function NovaTabelaWizard({ setor, clientes }: { setor: SetorTabe
 
   const podeContinuarDoArquivo = planilha !== null && nome.trim() !== '' && erroLeitura === null
   const podeContinuarDasColunas = nomeDuplicado === null
-  const podeCriar = planilha !== null && nome.trim() !== '' && !criando && erroLeitura === null && nomeDuplicado === null
+  const colunaSemNome = colunas.some(c => c.nome.trim() === '')
+  const podeCriar = planilha !== null && nome.trim() !== '' && !criando && erroLeitura === null && nomeDuplicado === null && !colunaSemNome
 
   if (!aberto) {
     return (
