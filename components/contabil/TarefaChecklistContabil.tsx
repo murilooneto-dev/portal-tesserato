@@ -1,7 +1,7 @@
 'use client'
 
 import { useTransition, useState, type ReactNode } from 'react'
-import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Layers, Paperclip, X } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Layers, ListChecks, Paperclip, X } from 'lucide-react'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, TarefaGrupo } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
@@ -11,6 +11,7 @@ import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-che
 import { Badge, type BadgeTom } from '@/components/ui/Badge'
 import { IconButton } from '@/components/ui/Button'
 import { Checkbox, Input, Textarea } from '@/components/ui/Input'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/components/ui/cn'
 import { ErroSalvamento, IndicadorSalvamento, useSalvamento } from '@/components/geral/TarefasSetorChecklist'
 
@@ -499,7 +500,12 @@ export default function TarefaChecklistContabil({
 
       <div className="flex flex-col">
         {total === 0 ? (
-          <p className="px-[18px] py-6 text-center text-[13px] text-fg-3">Nenhuma tarefa para este cliente neste mês.</p>
+          <EmptyState
+            compacto
+            icone={<ListChecks size={20} />}
+            titulo="Nenhuma tarefa neste mês"
+            descricao="Este cliente não tem tarefas do Contábil para o mês selecionado."
+          />
         ) : renderLista()}
       </div>
     </section>

@@ -7,10 +7,11 @@ import { formatarBadgeVinculo } from '@/lib/vinculos'
 import { desbloquearTarefa, salvarMIT, marcarSemMovimento } from '@/app/fiscal/clientes/actions'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
 import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
-import { AlertCircle, Check, ChevronRight, Clock, Layers, Lock, Paperclip, Unlock, X } from 'lucide-react'
+import { AlertCircle, Check, ChevronRight, Clock, Layers, ListChecks, Lock, Paperclip, Unlock, X } from 'lucide-react'
 import { Badge, type BadgeTom } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Checkbox, Input, Textarea } from '@/components/ui/Input'
 import { Field } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
@@ -504,30 +505,41 @@ export default function TarefaChecklist({
   return (
     <Card
       titulo={`Tarefas de ${MESES_EXTENSO[mes - 1]}`}
-      meta={<Badge tom={total > 0 && concluidas === total ? 'ok' : 'neu'}>{concluidas} de {total}</Badge>}
+      meta={total > 0 ? <Badge tom={concluidas === total ? 'ok' : 'neu'}>{concluidas} de {total}</Badge> : undefined}
       semPadding
     >
-      <div
-        role="progressbar"
-        aria-label="Tarefas concluídas no mês"
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={concluidas}
-        className="h-1.5 w-full bg-raised"
-      >
-        <div
-          className="h-full bg-acc transition-all duration-300"
-          style={{ width: `${total > 0 ? (concluidas / total) * 100 : 0}%` }}
+      {total === 0 ? (
+        <EmptyState
+          compacto
+          icone={<ListChecks size={20} />}
+          titulo={`Nenhuma tarefa em ${MESES_EXTENSO[mes - 1]}`}
+          descricao="Este cliente não tem tarefas do Fiscal para o mês selecionado."
         />
-      </div>
+      ) : (
+        <>
+          <div
+            role="progressbar"
+            aria-label="Tarefas concluídas no mês"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={concluidas}
+            className="h-1.5 w-full bg-raised"
+          >
+            <div
+              className="h-full bg-acc transition-all duration-300"
+              style={{ width: `${(concluidas / total) * 100}%` }}
+            />
+          </div>
 
-      <div className="flex flex-col">
-        {renderLista()}
-      </div>
+          <div className="flex flex-col">
+            {renderLista()}
+          </div>
+        </>
+      )}
 
       {grupo === 'normal' && (
         <div className="border-t border-line-soft px-[18px] py-4">
-          <Field rotulo="MIT">
+          <Field rotulo="MIT · anotação do mês (regime normal)">
             {({ id }) => (
               <div className="flex items-center gap-3">
                 <Input

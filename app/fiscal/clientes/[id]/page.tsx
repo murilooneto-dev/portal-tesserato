@@ -246,7 +246,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
           {
             chave: 'eventos',
             aba: 'eventos',
-            conteudo: <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} />,
+            conteudo: <EventosAvulsosSecao clienteId={id} setor="fiscal" eventos={eventosAvulsos} podeEditar={podeEditar} mes={mes} />,
           },
           {
             chave: 'conferencia',

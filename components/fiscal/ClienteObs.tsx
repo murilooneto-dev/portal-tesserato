@@ -6,6 +6,7 @@ import { salvarObs } from '@/app/fiscal/clientes/actions'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Input'
+import { MESES } from '@/lib/mes-navegacao'
 
 interface Props {
   clienteId: string
@@ -19,6 +20,7 @@ export default function ClienteObs({ clienteId, obsInicial, mes, ano, podeEditar
   const [obs, setObs] = useState(obsInicial)
   const [editando, setEditando] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const titulo = `Observação de ${MESES[mes - 1].toLowerCase()}`
 
   function salvar() {
     startTransition(async () => {
@@ -29,7 +31,7 @@ export default function ClienteObs({ clienteId, obsInicial, mes, ano, podeEditar
 
   return (
     <Card
-      titulo="Observação do mês"
+      titulo={titulo}
       acoes={!editando && podeEditar ? (
         <Button variante="fantasma" tamanho="p" icone={<Pencil size={14} aria-hidden="true" />} onClick={() => setEditando(true)}>
           {obs ? 'Editar' : 'Escrever'}
@@ -39,7 +41,7 @@ export default function ClienteObs({ clienteId, obsInicial, mes, ano, podeEditar
       {editando ? (
         <div className="flex flex-col gap-3">
           <Textarea
-            aria-label="Observação do mês"
+            aria-label={titulo}
             value={obs}
             onChange={e => setObs(e.target.value)}
             rows={3}

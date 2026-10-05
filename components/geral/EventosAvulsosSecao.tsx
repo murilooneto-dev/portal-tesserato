@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Checkbox } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { MESES } from '@/lib/mes-navegacao'
 import EventoAvulsoModal from './EventoAvulsoModal'
 import type { UserSetor } from '@/lib/types'
 
@@ -18,6 +19,8 @@ interface Props {
   // Sem a margem/borda de separação de cima — usado quando o cliente já é
   // o próprio cabeçalho da seção (ex: visão consolidada de eventos).
   compacto?: boolean
+  /** Mês mostrado (1–12), para o vazio dizer "em setembro"; sem ele, "neste mês". */
+  mes?: number
 }
 
 function formatarData(iso: string): string {
@@ -31,7 +34,7 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function EventosAvulsosSecao({ clienteId, setor, eventos, podeEditar, compacto }: Props) {
+export default function EventosAvulsosSecao({ clienteId, setor, eventos, podeEditar, compacto, mes }: Props) {
   const [modalAberto, setModalAberto] = useState(false)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -73,13 +76,16 @@ export default function EventosAvulsosSecao({ clienteId, setor, eventos, podeEdi
     </Button>
   ) : undefined
 
+  const noMes = mes ? `em ${MESES[mes - 1].toLowerCase()}` : 'neste mês'
+
   const lista = eventos.length === 0 ? (
     compacto
-      ? <p className="py-2 text-[13px] text-fg-3">Nenhum evento avulso neste mês.</p>
+      ? <p className="py-2 text-[13px] text-fg-3">Nenhum evento avulso {noMes}.</p>
       : <EmptyState
-          icone={<CalendarDays size={22} />}
-          titulo="Nenhum evento avulso neste mês"
-          descricao="Registre aqui compromissos pontuais deste cliente, com data e anexos."
+          compacto
+          icone={<CalendarDays size={20} />}
+          titulo={`Nenhum evento avulso ${noMes}`}
+          descricao="Registre aqui compromissos pontuais deste cliente no mês."
         />
   ) : (
     <ul className="flex flex-col gap-2">

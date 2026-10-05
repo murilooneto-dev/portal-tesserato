@@ -226,7 +226,7 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
           {
             chave: 'eventos',
             aba: 'eventos',
-            conteudo: <EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} />,
+            conteudo: <EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} mes={mes} />,
           },
           {
             chave: 'observacoes',
