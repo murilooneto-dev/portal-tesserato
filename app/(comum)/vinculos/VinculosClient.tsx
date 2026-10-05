@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronRight, Link2, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Link2, ListChecks, Plus, Trash2 } from 'lucide-react'
 import { criarVinculos, excluirVinculo } from './actions'
 import { calcularNovosPares, resumoNovosVinculos } from '@/lib/vinculos'
 import { SETOR_LABEL, type UserSetor, type TarefaVinculo } from '@/lib/types'
@@ -88,7 +88,7 @@ export default function VinculosClient({ vinculosIniciais, tiposPorSetor }: Prop
 
       <Card titulo="Vínculos ativos" meta={<Badge>{vinculosIniciais.length}</Badge>} semPadding>
         {vinculosIniciais.length === 0 ? (
-          <EmptyState icone={<Link2 size={24} />} titulo="Nenhum vínculo cadastrado" descricao="Crie o primeiro no quadro abaixo." />
+          <EmptyState compacto icone={<Link2 size={20} />} titulo="Nenhum vínculo cadastrado" descricao="Crie o primeiro no quadro abaixo." />
         ) : (
           <div className="relative overflow-x-auto">
             <Tabela className="min-w-[640px]">
@@ -161,7 +161,9 @@ function LadoVinculo({ titulo, setor, onSetor, tipos, marcados, onMarcar }: {
       </Field>
       <span id={idRotulo} className="text-[13px] font-medium text-fg-2">Tarefas de {titulo}</span>
       {tipos.length === 0 ? (
-        <p className="text-[13px] text-fg-3">Nenhuma tarefa nesse setor.</p>
+        <div className="rounded-[10px] border border-line-soft bg-page">
+          <EmptyState compacto icone={<ListChecks size={20} />} titulo="Nenhuma tarefa nesse setor" />
+        </div>
       ) : (
         <ul role="group" aria-labelledby={idRotulo} className="max-h-72 overflow-y-auto rounded-[10px] border border-line-soft bg-page">
           {tipos.map((t, i) => {

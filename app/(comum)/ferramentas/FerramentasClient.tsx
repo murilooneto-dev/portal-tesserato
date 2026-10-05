@@ -6,11 +6,12 @@ import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { bucketDoRegime } from '@/lib/regime-bucket'
 import { ChevronDown, ChevronUp, Download, ExternalLink, Eye, EyeOff, FileText, Search, Store } from 'lucide-react'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
-import { Button, IconButton } from '@/components/ui/Button'
+import { Button, IconButton, buttonClassName } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Tabela, Th, Td } from '@/components/ui/Tabela'
 import { NomeCliente } from '@/components/ui/NomeCliente'
 import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 interface Props {
   clientes: ClienteComFiscal[]
@@ -140,7 +141,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
         subtitulo={<>Acesso rápido às ferramentas do setor fiscal{!isAdmin && userNome && <span> · {userNome}</span>}</>}
         acoes={
           <a href="https://tesshub.com.br/login" target="_blank" rel="noopener noreferrer"
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-acc bg-acc px-3.5 text-sm font-semibold text-acc-ink hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc focus-visible:ring-offset-2 focus-visible:ring-offset-page">
+            className={buttonClassName({ variante: 'primario' })}>
             <ExternalLink size={16} aria-hidden="true" />
             Acessar TessHub
           </a>
@@ -197,6 +198,9 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
               </Button>
             </div>
           </div>
+          {listaFiltrada.length === 0 ? (
+            <EmptyState compacto icone={<Search size={20} />} titulo="Nenhum cliente encontrado" descricao={search.trim() ? 'Nenhum cliente desta lista corresponde à busca.' : undefined} />
+          ) : (
           <div className="relative overflow-x-auto">
             <Tabela className={aberto === 'ISS' ? 'min-w-[900px]' : 'min-w-[560px]'}>
               <thead>
@@ -209,9 +213,6 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
                 </tr>
               </thead>
               <tbody>
-                {listaFiltrada.length === 0 && (
-                  <tr><Td colSpan={3 + (aberto === 'ISS' ? 3 : 0) + (isAdmin ? 1 : 0)} alinhar="centro" className="py-10 text-fg-3">Nenhum cliente encontrado.</Td></tr>
-                )}
                 {listaFiltrada.map((c, i) => (
                   <tr key={c.id}>
                     <Td className="font-mono text-[13px] text-fg-3">{i + 1}</Td>
@@ -230,6 +231,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
               </tbody>
             </Tabela>
           </div>
+          )}
         </section>
       )}
 
@@ -248,7 +250,7 @@ function SenhaCell({ senha }: { senha: string | null }) {
     <div className="flex items-center gap-1">
       <span className="font-mono text-[13px] text-fg-2">{visivel ? senha : '••••••••'}</span>
       <IconButton rotulo={visivel ? 'Ocultar senha' : 'Mostrar senha'} icone={visivel ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
-        onClick={() => setVisivel(v => !v)} className="h-7 w-7" />
+        onClick={() => setVisivel(v => !v)} />
     </div>
   )
 }
