@@ -1,43 +1,40 @@
 import { createClient } from '@/lib/supabase/server'
+import { buscarEmBlocos } from '@/lib/financeiro-movimentos'
 import MovimentoListClient, { type MovimentoLinha } from '@/components/financeiro/MovimentoListClient'
 
 export const metadata = { title: 'Pagamentos — Tesserato Financeiro' }
 
+interface LinhaBanco {
+  id: string; tipo_id: string; centro_custo_id: string | null; valor: number; data: string; observacao: string | null; created_at: string
+  financeiro_tipos: { nome: string } | null
+  financeiro_centros_custo: { nome: string } | null
+}
+
 export default async function PagamentosPage() {
   const supabase = await createClient()
 
-  const { data } = await supabase
+  // Todos os lançamentos, em blocos de 1000: a busca, a ordenação e o total
+  // da tela valem para tudo (antes parava em 200 sem aviso).
+  const linhas = await buscarEmBlocos<LinhaBanco>((inicio, fim) => supabase
     .from('financeiro_movimentos')
     .select('id, tipo_id, centro_custo_id, valor, data, observacao, created_at, financeiro_tipos(nome), financeiro_centros_custo(nome)')
     .eq('natureza', 'saida')
     .order('created_at', { ascending: false })
-    .limit(200)
+    .order('id', { ascending: true })
+    .range(inicio, fim)
+    .overrideTypes<LinhaBanco[], { merge: false }>())
 
-  const movimentos: MovimentoLinha[] = (data ?? []).map(row => {
-    const r = row as unknown as {
-      id: string; tipo_id: string; centro_custo_id: string | null; valor: number; data: string; observacao: string | null; created_at: string
-      financeiro_tipos: { nome: string } | null
-      financeiro_centros_custo: { nome: string } | null
-    }
-    return {
-      id: r.id,
-      tipo_id: r.tipo_id,
-      centro_custo_id: r.centro_custo_id,
-      valor: r.valor,
-      data: r.data,
-      observacao: r.observacao,
-      created_at: r.created_at,
-      tipo_nome: r.financeiro_tipos?.nome ?? '—',
-      centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
-    }
-  })
+  const movimentos: MovimentoLinha[] = linhas.map(r => ({
+    id: r.id,
+    tipo_id: r.tipo_id,
+    centro_custo_id: r.centro_custo_id,
+    valor: r.valor,
+    data: r.data,
+    observacao: r.observacao,
+    created_at: r.created_at,
+    tipo_nome: r.financeiro_tipos?.nome ?? '—',
+    centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
+  }))
 
-  return (
-    <MovimentoListClient
-      natureza="saida"
-      titulo="Pagamentos"
-      botaoNovo="+ Novo pagamento"
-      movimentos={movimentos}
-    />
-  )
+  return <MovimentoListClient natureza="saida" movimentos={movimentos} />
 }

@@ -76,16 +76,14 @@ export default async function ClientesSocietarioPage() {
   )
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <ClientesListaSocietario
-        clientes={clientes}
-        tiposPorCliente={tiposPorCliente}
-        concluidasPorCliente={concluidasPorCliente}
-        tarefasDisponiveis={tarefasDisponiveis}
-        mes={mes}
-        ano={ano}
-        pendenciasVinculo={pendenciasVinculo}
-      />
-    </div>
+    <ClientesListaSocietario
+      clientes={clientes}
+      tiposPorCliente={tiposPorCliente}
+      concluidasPorCliente={concluidasPorCliente}
+      tarefasDisponiveis={tarefasDisponiveis}
+      mes={mes}
+      ano={ano}
+      pendenciasVinculo={pendenciasVinculo}
+    />
   )
 }

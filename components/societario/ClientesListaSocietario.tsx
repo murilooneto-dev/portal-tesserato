@@ -2,9 +2,20 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { Check, ChevronRight, Clock, Search, Users } from 'lucide-react'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { PendenciaVinculo } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
+import { MESES } from '@/lib/mes-navegacao'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Badge } from '@/components/ui/Badge'
+import { BarraProgresso } from '@/components/ui/BarraProgresso'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Input, Select, Switch } from '@/components/ui/Input'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
 
 interface ClienteResumo {
   id: string
@@ -24,7 +35,6 @@ interface Props {
   pendenciasVinculo: Record<string, PendenciaVinculo[]>
 }
 
-const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 const TODAS_TAREFAS = 'TODAS'
 
 export default function ClientesListaSocietario({ clientes, tiposPorCliente, concluidasPorCliente, tarefasDisponiveis, mes, ano, pendenciasVinculo }: Props) {
@@ -32,12 +42,15 @@ export default function ClientesListaSocietario({ clientes, tiposPorCliente, con
   const [filtroTarefa, setFiltroTarefa] = useFiltroPersistente('clientes-societario:tarefa', TODAS_TAREFAS)
   const [apenasPendentes, setApenasPendentes] = useFiltroPersistente('clientes-societario:apenasPendentes', false)
 
-  const selectClass = "bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-
   const filtrados = useMemo(() => clientes.filter(c => {
     if (busca) {
       const q = busca.toLowerCase()
-      if (!c.nome.toLowerCase().includes(q) && !(c.cnpj ?? '').includes(q)) return false
+      // Só compara dígitos do CNPJ quando a busca é só número/pontuação;
+      // senão "Posto 2" listaria todo CNPJ que tem "2".
+      const digitos = /^[\d.\/\-\s]+$/.test(busca) ? busca.replace(/\D/g, '') : ''
+      const cnpj = c.cnpj ?? ''
+      const bateCnpj = cnpj.includes(q) || (digitos.length > 0 && cnpj.replace(/\D/g, '').includes(digitos))
+      if (!c.nome.toLowerCase().includes(q) && !bateCnpj) return false
     }
     if (filtroTarefa !== TODAS_TAREFAS && !tiposPorCliente[c.id]?.includes(filtroTarefa)) return false
     if (apenasPendentes) {
@@ -52,83 +65,92 @@ export default function ClientesListaSocietario({ clientes, tiposPorCliente, con
     return true
   }), [clientes, busca, filtroTarefa, apenasPendentes, tiposPorCliente, concluidasPorCliente])
 
+  const subtitulo = `${filtrados.length} ${filtrados.length === 1 ? 'cliente' : 'clientes'} · ${MESES[mes - 1]} ${ano}`
+
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <input
-          type="text"
-          placeholder="Buscar cliente ou CNPJ..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          className="flex-1 min-w-[220px] px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--fg)]/10 text-[var(--fg)] placeholder-[var(--fg)]/25 text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-        />
-        <select value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)} className={selectClass}>
-          <option value={TODAS_TAREFAS} className="bg-[var(--bg-surface)]">Todas as tarefas</option>
-          {tarefasDisponiveis.map(t => <option key={t} value={t} className="bg-[var(--bg-surface)]">{t}</option>)}
-        </select>
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer select-none hover:border-[var(--fg)]/20 transition-colors">
-          <input
-            type="checkbox"
-            checked={apenasPendentes}
-            onChange={e => setApenasPendentes(e.target.checked)}
-            className="w-4 h-4 accent-[var(--accent)]"
-          />
-          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Apenas pendentes</span>
-        </label>
+    <Pagina>
+      <CabecalhoPagina titulo="Clientes" subtitulo={subtitulo} />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <Field rotulo="Buscar" className="w-full sm:w-[300px]">
+          {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Nome ou CNPJ" value={busca} onChange={e => setBusca(e.target.value)} />}
+        </Field>
+        <Field rotulo="Tarefa" className="w-full sm:w-[220px]">
+          {c => (
+            <Select id={c.id} value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)}>
+              <option value={TODAS_TAREFAS}>Todas as tarefas</option>
+              {tarefasDisponiveis.map(t => <option key={t} value={t}>{t}</option>)}
+            </Select>
+          )}
+        </Field>
+        <div className="flex h-9 items-center">
+          <Switch ligado={apenasPendentes} onMudar={setApenasPendentes} rotulo="Só pendentes" />
+        </div>
       </div>
 
-      <p className="text-[var(--fg)]/30 text-xs mb-3">
-        {filtrados.length} clientes · {MESES[mes - 1]}/{ano}
-      </p>
-
-      <div className="flex flex-col gap-1.5">
-        {filtrados.length === 0 && (
-          <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
+      <Card semPadding className="overflow-hidden">
+        {filtrados.length === 0 ? (
+          <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou os filtros." />
+        ) : (
+          <div className="relative overflow-x-auto xl:overflow-visible">
+            <Tabela className="min-w-[640px]">
+              <thead>
+                <tr>
+                  <Th>Cliente</Th>
+                  <Th largura={220}>Município / UF</Th>
+                  <Th largura={300}>Progresso do mês</Th>
+                  <Th largura={56}><span className="sr-only">Abrir</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map(cliente => {
+                  const total = tiposPorCliente[cliente.id]?.length ?? 0
+                  const concluidas = concluidasPorCliente[cliente.id]?.length ?? 0
+                  const vinculos = pendenciasVinculo[cliente.id] ?? []
+                  const href = `/societario/clientes/${cliente.id}`
+                  const local = cliente.municipio ? `${cliente.municipio}${cliente.uf ? `/${cliente.uf}` : ''}` : null
+                  return (
+                    <tr key={cliente.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
+                      <Td>
+                        <Link href={href} className="block w-full min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <NomeCliente
+                            nome={cliente.nome}
+                            cnpj={cliente.cnpj}
+                            abaixo={vinculos.length > 0 ? (
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                {vinculos.map((p, i) => (
+                                  <Badge
+                                    key={i}
+                                    tom={p.liberada ? 'ok' : 'warn'}
+                                    icone={p.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+                                  >
+                                    {formatarBadgeVinculo(p).texto.replace(/^(✓|⏳)\s*/, '')}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : undefined}
+                          />
+                        </Link>
+                      </Td>
+                      <Td className="text-fg-2">
+                        {local ? <span className="block truncate" title={local}>{local}</span> : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td>
+                        <BarraProgresso feitas={concluidas} total={total} className="w-[260px] max-w-full" />
+                      </Td>
+                      <Td alinhar="dir">
+                        <Link href={href} aria-label={`Abrir ${cliente.nome}`} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-3 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <ChevronRight size={18} aria-hidden="true" />
+                        </Link>
+                      </Td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </Tabela>
+          </div>
         )}
-
-        {filtrados.map(cliente => {
-          const total = tiposPorCliente[cliente.id]?.length ?? 0
-          const concluidas = concluidasPorCliente[cliente.id]?.length ?? 0
-          const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
-
-          return (
-            <Link
-              key={cliente.id}
-              href={`/societario/clientes/${cliente.id}`}
-              className="flex items-center gap-4 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 hover:border-[var(--fg)]/15 transition-all group"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-[var(--fg)] text-sm font-semibold truncate">
-                  {cliente.nome}
-                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
-                    const badge = formatarBadgeVinculo(p)
-                    return (
-                      <span key={i} className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
-                        {badge.texto}
-                      </span>
-                    )
-                  })}
-                </p>
-                <p className="text-[var(--fg)]/25 text-xs mt-0.5">
-                  {cliente.cnpj ?? '—'}
-                  {cliente.municipio && ` · ${cliente.municipio}${cliente.uf ? `/${cliente.uf}` : ''}`}
-                </p>
-              </div>
-
-              {total > 0 && (
-                <div className="w-20 shrink-0 text-right">
-                  <p className={`text-sm font-bold ${pct === 100 ? 'text-[#10b981]' : 'text-[var(--fg)]'}`}>{pct}%</p>
-                  <div className="w-full h-1 bg-[var(--fg)]/10 rounded-full mt-1">
-                    <div className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : 'var(--accent)' }} />
-                  </div>
-                  <p className="text-[var(--fg)]/25 text-[10px] mt-0.5">{concluidas}/{total}</p>
-                </div>
-              )}
-            </Link>
-          )
-        })}
-      </div>
-    </div>
+      </Card>
+    </Pagina>
   )
 }
