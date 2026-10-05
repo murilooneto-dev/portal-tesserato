@@ -23,11 +23,12 @@ export default async function RelatoriosPessoalPage() {
   let clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_PESSOAL).eq('clientes_pessoal.ativo', true).order('nome')
   if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('clientes_pessoal.responsavel', profile.nome)
 
-  const [{ data: clientesRaw }, tarefas, { data: tiposRaw }, { data: observacoes }] = await Promise.all([
+  const [{ data: clientesRaw }, tarefas, { data: tiposRaw }, { data: observacoes }, { data: usuariosSetor }] = await Promise.all([
     clientesQ,
     buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano, '*', 'pessoal'),
     supabase.from('tarefa_tipos').select('nome, meses_visiveis').eq('setor', 'pessoal'),
     supabase.from('observacoes_clientes').select('cliente_id,texto').eq('mes', mes).eq('ano', ano),
+    supabase.from('profiles').select('nome, cor').contains('setores', ['pessoal']),
   ])
 
   const clientes = (clientesRaw ?? []).map(flattenClientePessoal)
@@ -42,6 +43,12 @@ export default async function RelatoriosPessoalPage() {
     if (row.texto?.trim()) obsPorCliente[row.cliente_id] = row.texto
   }
 
+  // Cor do perfil de cada responsável, para a bolinha com a inicial.
+  const coresResponsavel: Record<string, string> = {}
+  for (const u of usuariosSetor ?? []) {
+    if (u.nome && u.cor) coresResponsavel[(u.nome as string).toUpperCase()] = u.cor as string
+  }
+
   return (
     <RelatoriosPessoal
       clientes={clientes}
@@ -52,7 +59,8 @@ export default async function RelatoriosPessoalPage() {
       mesesVisiveisPorTipo={mesesVisiveisPorTipo}
       obsPorCliente={obsPorCliente}
       mapaVinculos={mapaVinculos}
-      atividadesCatalogo={catalogo.atividades}
+      regimesCatalogo={catalogo.regimes}
+      coresResponsavel={coresResponsavel}
     />
   )
 }
