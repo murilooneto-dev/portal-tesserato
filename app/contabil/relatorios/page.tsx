@@ -5,7 +5,6 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
 import type { Tarefa } from '@/lib/types'
 import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
-import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { listarGruposDoSetor } from '@/lib/tarefa-grupos-actions'
 
 export const metadata = { title: 'Relatórios — Tesserato Contábil' }
@@ -24,20 +23,26 @@ export default async function RelatoriosContabilPage() {
   let clientesQ = supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).eq('clientes_contabil.ativo', true).order('nome')
   if (!isAdmin && profile?.nome) clientesQ = clientesQ.ilike('clientes_contabil.responsavel', profile.nome)
 
-  const [{ data: clientesRaw }, tarefas, { data: observacoes }] = await Promise.all([
+  const [{ data: clientesRaw }, tarefas, { data: observacoes }, { data: usuariosSetor }] = await Promise.all([
     clientesQ,
     buscarTodasTarefasDoMes<Tarefa>(supabase, mes, ano, '*', 'contabil'),
     supabase.from('observacoes_clientes').select('cliente_id,texto').eq('mes', mes).eq('ano', ano),
+    supabase.from('profiles').select('nome, cor').contains('setores', ['contabil']),
   ])
 
   const clientes = (clientesRaw ?? []).map(flattenClienteContabil)
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
-  const catalogo = await buscarCatalogoCliente(supabase, 'contabil')
   const { data: gruposCatalogo } = await listarGruposDoSetor('contabil')
 
   const obsPorCliente: Record<string, string> = {}
   for (const row of observacoes ?? []) {
     if (row.texto?.trim()) obsPorCliente[row.cliente_id] = row.texto
+  }
+
+  // Cor do perfil de cada responsável, para a bolinha com a inicial.
+  const coresResponsavel: Record<string, string> = {}
+  for (const u of usuariosSetor ?? []) {
+    if (u.nome && u.cor) coresResponsavel[(u.nome as string).toUpperCase()] = u.cor as string
   }
 
   return (
@@ -49,8 +54,8 @@ export default async function RelatoriosContabilPage() {
       ano={ano}
       obsPorCliente={obsPorCliente}
       mapaVinculos={mapaVinculos}
-      atividadesCatalogo={catalogo.atividades}
       gruposCatalogo={gruposCatalogo}
+      coresResponsavel={coresResponsavel}
     />
   )
 }

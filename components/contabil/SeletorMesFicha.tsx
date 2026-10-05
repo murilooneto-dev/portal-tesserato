@@ -27,7 +27,7 @@ export default function SeletorMesFicha({ mes, ano, basePath, progresso }: {
       <Link
         href={hrefDo(anterior.mes, anterior.ano)}
         aria-label="Mês anterior"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--fg)]/10 text-[var(--fg)]/60 hover:text-[var(--fg)] hover:border-[var(--fg)]/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-fg-2 transition-colors hover:bg-raised hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
       >
         <ChevronLeft size={16} aria-hidden="true" />
       </Link>
@@ -37,7 +37,7 @@ export default function SeletorMesFicha({ mes, ano, basePath, progresso }: {
         aria-haspopup="true"
         onClick={() => setAberto(v => !v)}
         onKeyDown={e => { if (e.key === 'Escape') setAberto(false) }}
-        className="inline-flex h-9 min-w-[190px] items-center justify-between gap-2 rounded-lg border border-[var(--fg)]/10 bg-[var(--bg-surface)] px-3 text-sm font-semibold text-[var(--fg)] hover:border-[var(--fg)]/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+        className="inline-flex h-9 min-w-[190px] items-center justify-between gap-2 rounded-lg border border-acc bg-acc-soft px-3 text-sm font-semibold text-fg transition-colors hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
       >
         <span>{MESES[mes - 1]} {ano}</span>
         <ChevronDown size={16} aria-hidden="true" className={cn('transition-transform', aberto && 'rotate-180')} />
@@ -45,15 +45,15 @@ export default function SeletorMesFicha({ mes, ano, basePath, progresso }: {
       <Link
         href={hrefDo(proximo.mes, proximo.ano)}
         aria-label="Próximo mês"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--fg)]/10 text-[var(--fg)]/60 hover:text-[var(--fg)] hover:border-[var(--fg)]/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-fg-2 transition-colors hover:bg-raised hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
       >
         <ChevronRight size={16} aria-hidden="true" />
       </Link>
 
       {aberto && (
-        <div className="absolute left-0 top-full z-20 mt-2 w-[min(360px,calc(100vw-32px))] rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] p-3 shadow-lg">
-          <p className="mb-2 text-xs font-semibold text-[var(--fg)]/50">Andamento de {ano}</p>
-          <div className="grid grid-cols-3 gap-1.5">
+        <div role="group" aria-label={`Andamento de ${ano}`} className="absolute left-0 top-full z-20 mt-2 w-[min(520px,calc(100vw-32px))] rounded-xl border border-line bg-raised p-3.5 shadow-lg">
+          <p className="mb-2.5 text-center text-sm font-bold text-fg">{ano}</p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {MESES.map((nome, i) => {
               const mesNum = i + 1
               const pct = normalizarPercentual(progresso[mesNum] ?? null)
@@ -65,13 +65,17 @@ export default function SeletorMesFicha({ mes, ano, basePath, progresso }: {
                   aria-current={atual ? 'date' : undefined}
                   onClick={() => setAberto(false)}
                   className={cn(
-                    'flex flex-col items-start rounded-lg px-2.5 py-2 transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc',
-                    COR[tomDoPercentual(pct)],
+                    'flex items-center gap-2 rounded-[9px] border px-2.5 py-2 text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc',
+                    atual ? 'border-acc bg-acc-soft font-bold' : 'border-line-soft bg-surface font-medium hover:bg-raised',
                   )}
-                  style={atual ? { boxShadow: 'inset 0 0 0 2px var(--acc)' } : undefined}
                 >
-                  <span className="text-xs font-semibold leading-none">{nome.slice(0, 3)}</span>
-                  <span className="mt-1 text-sm font-bold tabular-nums leading-none">{pct === null ? '—' : `${pct}%`}</span>
+                  <span className="flex-1 text-sm">{nome.slice(0, 3)}</span>
+                  <span
+                    title={pct === null ? 'Sem tarefas no mês' : `${pct}% concluído`}
+                    className={cn('inline-flex h-6 min-w-10 items-center justify-center rounded-[7px] px-1 text-xs font-bold tabular-nums', COR[tomDoPercentual(pct)])}
+                  >
+                    {pct === null ? '—' : `${pct}%`}
+                  </span>
                 </Link>
               )
             })}

@@ -1,11 +1,18 @@
 'use client'
 
 import { useTransition, useState, type ReactNode } from 'react'
+import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Layers, Paperclip, X } from 'lucide-react'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, TarefaGrupo } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
-import { tarefaVisivelNoMes } from '@/lib/tarefa-tipos'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
+import { hojeISO } from '@/lib/mes-atual'
+import { tarefaVisivelNoMes } from '@/lib/tarefa-tipos'
+import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
+import { Badge, type BadgeTom } from '@/components/ui/Badge'
+import { IconButton } from '@/components/ui/Button'
+import { Checkbox, Input, Textarea } from '@/components/ui/Input'
+import { cn } from '@/components/ui/cn'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -17,7 +24,6 @@ interface TipoInfo {
 
 interface Props {
   tarefasPersonalizadas: string[]
-  seletorMes?: ReactNode
   grupos?: TarefaGrupo[]
   tarefaTipos: Record<string, TipoInfo>
   tarefas: Tarefa[]
@@ -25,6 +31,7 @@ interface Props {
   arquivos: Omit<TarefaArquivo, 'content_base64'>[]
   vinculos?: Record<string, VinculoStatus>
   prazosPorTipo?: Record<string, number>
+  seletorMes?: ReactNode
   mes: number
   ano: number
   onToggleSimples: (tipo: string, concluida: boolean, data?: string) => Promise<void>
@@ -36,30 +43,12 @@ interface Props {
   podeEditar: boolean
 }
 
-function isoParaDisplay(iso: string): string {
-  if (!iso) return ''
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
-}
-
-function displayParaIso(display: string): string | null {
-  const digits = display.replace(/\D/g, '')
-  if (digits.length !== 8) return null
-  const d = digits.slice(0, 2)
-  const m = digits.slice(2, 4)
-  const y = digits.slice(4, 8)
-  if (parseInt(y, 10) < 1000) return null
-  const iso = `${y}-${m}-${d}`
-  const dateObj = new Date(iso + 'T12:00:00')
-  if (isNaN(dateObj.getTime())) return null
-  return iso
-}
-
-function autoFormatarData(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 8)
-  if (digits.length > 4) return `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`
-  if (digits.length > 2) return `${digits.slice(0,2)}/${digits.slice(2)}`
-  return digits
+// Tom do selo de prazo: mesmas faixas de alertaLabel (lib/calendario), em tokens do desenho novo.
+function tomDoPrazo(dias: number): BadgeTom {
+  if (dias <= 1) return 'dng'
+  if (dias <= 5) return 'warn'
+  if (dias <= 10) return 'info'
+  return 'neu'
 }
 
 function formatBytes(bytes: number) {
@@ -70,7 +59,6 @@ function formatBytes(bytes: number) {
 
 export default function TarefaChecklistPessoal({
   tarefasPersonalizadas,
-  seletorMes,
   grupos = [],
   tarefaTipos,
   tarefas,
@@ -78,6 +66,7 @@ export default function TarefaChecklistPessoal({
   arquivos,
   vinculos = {},
   prazosPorTipo = {},
+  seletorMes,
   mes,
   ano,
   onToggleSimples,
@@ -161,6 +150,15 @@ export default function TarefaChecklistPessoal({
     setLocalText(prev => { const n = { ...prev }; delete n[key]; return n })
   }
 
+  function handleHoje(tipo: string, marcar: boolean, etapaNome?: string) {
+    const key = keyLocal(tipo, etapaNome)
+    setLocalText(prev => { const n = { ...prev }; delete n[key]; return n })
+    startTransition(() => {
+      if (etapaNome) onAtualizarEtapa(tipo, etapaNome, marcar, marcar ? hojeISO() : undefined)
+      else onToggleSimples(tipo, marcar, marcar ? hojeISO() : undefined)
+    })
+  }
+
   function getRespostaTexto(tipo: string): string {
     if (tipo in localResposta) return localResposta[tipo]
     return mapaTarefa.get(tipo)?.resposta_texto ?? ''
@@ -208,12 +206,6 @@ export default function TarefaChecklistPessoal({
     startTransition(() => { onMarcarSemMovimento(tipo, novo) })
   }
 
-  const inputCls = (feito: boolean) => `text-xs px-2 py-1 rounded-lg border transition-all focus:outline-none disabled:opacity-40 w-[106px] text-center ${
-    feito
-      ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] focus:border-[var(--accent)]/60'
-      : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60 focus:border-[var(--fg)]/30 placeholder-[var(--fg)]/20'
-  }`
-
   function toggleGrupo(grupoId: string) {
     setGruposExpandidos(prev => {
       const next = new Set(prev)
@@ -223,86 +215,123 @@ export default function TarefaChecklistPessoal({
     })
   }
 
-  function renderLinhaTarefa(tipo: string) {
+  // Caixa de marcar do jeito do desenho novo (18 px, cor de destaque).
+  const caixa = 'h-[18px] w-[18px] flex-none cursor-pointer accent-[var(--acc)] disabled:cursor-not-allowed'
+
+  // Uma tarefa = uma LINHA dentro do cartão: caixa, nome, data e "Sem movimento".
+  // `recuo` = subtarefa de um grupo (fica recuada sob o cabeçalho do grupo).
+  function renderLinhaTarefa(tipo: string, recuo = false) {
     const info = tarefaTipos[tipo]
     const etapasDefinidas = info?.etapas ?? null
     const tipoResposta: TipoResposta = info?.tipoResposta ?? 'data'
     const feito = !!mapaTarefa.get(tipo)?.concluida
     const semMovimentoAtivo = getSemMovimento(tipo)
     const mostrarCheckboxSemMovimento = podeEditar && !(feito && !semMovimentoAtivo)
+    const temSemMovimento = mostrarCheckboxSemMovimento || semMovimentoAtivo
     const displayVal = getDisplayValue(tipo)
     const diasPrazo = !feito ? (prazosPorTipo[normalizarTitulo(tipo)] ?? null) : null
+    const vinculo = vinculos[tipo]
+    const badgeVinculo = vinculo ? formatarBadgeVinculo(vinculo) : null
+    const campoData = tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo
+    const recuoEsq = recuo ? 'pl-[42px]' : 'pl-[18px]'
+    const recuoBloco = recuo ? 'ml-[72px] max-sm:ml-[42px]' : 'ml-[48px] max-sm:ml-[18px]'
 
     return (
-      <div key={tipo} className="flex flex-col gap-0">
-        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
-          feito ? 'bg-[var(--accent)]/8 border-[var(--accent)]/25' : 'bg-[var(--fg)]/3 border-[var(--fg)]/8'
-        }`}>
-          <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${feito ? 'bg-[var(--accent)]' : 'bg-[var(--fg)]/15'}`} />
-          <span className={`text-sm flex-1 transition-colors ${feito ? 'text-[var(--fg)]/50 line-through' : 'text-[var(--fg)]'}`}>
+      <div key={tipo} className="flex flex-col border-b border-line-soft last:border-b-0">
+        <div className={cn('flex min-h-[54px] flex-wrap items-center gap-x-3 gap-y-2 py-2.5 pr-[18px]', recuoEsq)}>
+          {campoData ? (
+            <input
+              type="checkbox"
+              checked={feito}
+              onChange={e => handleHoje(tipo, e.target.checked)}
+              disabled={!podeEditar || isPending}
+              title="Preencher com a data de hoje"
+              aria-label={`Concluir ${tipo} com a data de hoje`}
+              className={caixa}
+            />
+          ) : (
+            // Tarefas com etapas, texto ou sem movimento: a caixa só mostra o estado
+            // (a conclusão vem das etapas/resposta ou do "Sem movimento").
+            <input type="checkbox" checked={feito} readOnly disabled aria-label={`${tipo}: ${feito ? 'concluída' : 'pendente'}`} className={caixa} />
+          )}
+
+          <span className={cn('flex min-w-0 flex-1 basis-40 flex-wrap items-center gap-x-2.5 gap-y-1 font-medium', feito ? 'text-fg-3 line-through' : 'text-fg')}>
             {tipo}
-            {vinculos[tipo] && (
-              <span className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${formatarBadgeVinculo(vinculos[tipo]).classe}`}>
-                {formatarBadgeVinculo(vinculos[tipo]).texto}
-              </span>
+            {badgeVinculo && vinculo && (
+              <Badge
+                tom={vinculo.liberada ? 'ok' : 'warn'}
+                icone={vinculo.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+                className="no-underline"
+              >
+                {badgeVinculo.texto.replace(/^(✓|⏳)\s*/, '')}
+              </Badge>
             )}
             {diasPrazo !== null && (
-              <span className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap bg-[var(--fg)]/5 ${alertaLabel(diasPrazo).cls}`}>
-                ⏱ {alertaLabel(diasPrazo).text}
-              </span>
+              <Badge tom={tomDoPrazo(diasPrazo)} icone={<Clock size={14} aria-hidden="true" />} className="no-underline">
+                {alertaLabel(diasPrazo).text}
+              </Badge>
             )}
           </span>
 
-          {tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo && (
-            <input
-              type="text"
-              value={displayVal}
-              onChange={e => handleTextChange(tipo, e.target.value)}
-              onBlur={() => handleTextBlur(tipo)}
-              disabled={!podeEditar || isPending}
-              placeholder="DD/MM/AAAA"
-              maxLength={10}
-              className={inputCls(feito)}
-            />
-          )}
-
-          {semMovimentoAtivo && (
-            <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-[var(--fg)]/10 text-[var(--fg)]/60 whitespace-nowrap">
-              SEM MOVIMENTO
-            </span>
-          )}
-
-          {mostrarCheckboxSemMovimento && (
-            <label className="flex items-center gap-1 text-xs text-[var(--fg)]/40 whitespace-nowrap cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={semMovimentoAtivo}
-                onChange={() => handleToggleSemMovimento(tipo)}
-                disabled={isPending}
-                className="w-3 h-3 accent-[var(--fg)]/50"
+          {(campoData || temSemMovimento) && <div className="flex w-full items-center gap-3 pl-[30px] sm:w-auto sm:pl-0">
+            {campoData && (
+              <Input
+                type="text"
+                value={displayVal}
+                onChange={e => handleTextChange(tipo, e.target.value)}
+                onBlur={() => handleTextBlur(tipo)}
+                disabled={!podeEditar || isPending}
+                placeholder="dd/mm/aaaa"
+                aria-label={`Data de conclusão de ${tipo}`}
+                maxLength={10}
+                className={cn('text-center tabular-nums max-sm:h-11 max-sm:flex-1 sm:w-[150px]', feito && 'border-ok-soft text-ok')}
               />
-              Sem mov.
-            </label>
-          )}
+            )}
+
+            {/* "Sem movimento" aparece uma vez só: a caixa para quem edita, o selo para quem só lê. */}
+            <div className={cn('flex-none sm:w-[140px]', !temSemMovimento && 'max-sm:hidden')}>
+              {mostrarCheckboxSemMovimento ? (
+                <Checkbox
+                  rotulo={<><span className="sm:hidden">Sem mov.</span><span className="max-sm:hidden">Sem movimento</span></>}
+                  checked={semMovimentoAtivo}
+                  onChange={() => handleToggleSemMovimento(tipo)}
+                  disabled={isPending}
+                  className="min-h-11 whitespace-nowrap text-[13px] sm:min-h-0"
+                />
+              ) : semMovimentoAtivo ? (
+                <Badge>Sem movimento</Badge>
+              ) : null}
+            </div>
+          </div>}
         </div>
 
         {etapasDefinidas && !semMovimentoAtivo && (
-          <div className="ml-5 mt-1 grid grid-cols-2 gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
+          <div className={cn('mb-3 mr-[18px] -mt-0.5 grid grid-cols-1 gap-x-[22px] gap-y-2.5 rounded-[10px] border border-line-soft p-3 sm:grid-cols-2', recuoBloco)}>
             {etapasDefinidas.map(etapaNome => {
               const etapaFeita = !!etapasDaTarefa(tipo).find(e => e.nome === etapaNome)?.concluida
               const etapaDisplay = getDisplayValue(tipo, etapaNome)
               return (
-                <div key={etapaNome} className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-[var(--fg)]/60">{etapaNome}</span>
+                <div key={etapaNome} className="flex items-center gap-2.5">
                   <input
+                    type="checkbox"
+                    checked={etapaFeita}
+                    onChange={e => handleHoje(tipo, e.target.checked, etapaNome)}
+                    disabled={!podeEditar || isPending}
+                    title="Preencher com a data de hoje"
+                    aria-label={`Concluir ${etapaNome} de ${tipo} com a data de hoje`}
+                    className={caixa}
+                  />
+                  <span className="min-w-0 flex-1 text-[13px] text-fg-2">{etapaNome}</span>
+                  <Input
                     type="text"
                     value={etapaDisplay}
                     onChange={e => handleTextChange(tipo, e.target.value, etapaNome)}
                     onBlur={() => handleTextBlur(tipo, etapaNome)}
                     disabled={!podeEditar || isPending}
-                    placeholder="DD/MM/AAAA"
+                    placeholder="dd/mm/aaaa"
+                    aria-label={`${etapaNome} de ${tipo}`}
                     maxLength={10}
-                    className={inputCls(etapaFeita)}
+                    className={cn('w-[128px] text-center tabular-nums max-sm:h-11', etapaFeita && 'border-ok-soft text-ok')}
                   />
                 </div>
               )
@@ -311,48 +340,59 @@ export default function TarefaChecklistPessoal({
         )}
 
         {tipoResposta === 'texto' && !etapasDefinidas && !semMovimentoAtivo && (
-          <div className="ml-5 mt-1 flex flex-col gap-2 p-3 bg-[var(--fg)]/2 border border-[var(--fg)]/8 rounded-xl">
-            <textarea
+          <div className={cn('mb-3 mr-[18px] flex flex-col gap-2.5', recuoBloco)}>
+            <Textarea
               value={getRespostaTexto(tipo)}
               onChange={e => handleRespostaTextoChange(tipo, e.target.value)}
               onBlur={() => handleRespostaTextoBlur(tipo)}
               disabled={!podeEditar || isPending}
               placeholder="Digite a resposta..."
+              aria-label={`Resposta de ${tipo}`}
               rows={2}
-              className="w-full px-3 py-2 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-xs focus:outline-none focus:border-[var(--accent)]/50 disabled:opacity-40"
+              className="min-h-[56px]"
             />
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2">
               {podeEditar && (
-                <label className={`text-xs px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
-                  uploadingTipo === tipo
-                    ? 'opacity-50 pointer-events-none'
-                    : 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/25'
-                }`}>
-                  {uploadingTipo === tipo ? 'Enviando...' : '+ Anexar'}
+                <label className={cn(
+                  'inline-flex h-[30px] cursor-pointer items-center gap-2 rounded-[7px] border border-line bg-raised px-2.5 text-[13px] font-medium text-fg transition-colors hover:border-fg-3 focus-within:ring-2 focus-within:ring-acc max-sm:h-11',
+                  uploadingTipo === tipo && 'pointer-events-none opacity-50',
+                )}>
+                  <Paperclip size={14} aria-hidden="true" />
+                  {uploadingTipo === tipo ? 'Enviando...' : 'Anexar arquivo'}
                   <input
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.docx"
                     multiple
-                    className="hidden"
+                    className="sr-only"
                     onChange={e => handleUploadArquivo(tipo, e.target.files)}
                     disabled={isPending}
                   />
                 </label>
               )}
               {arquivosDaTarefa(tipo).map(arq => (
-                <span key={arq.id} className="flex items-center gap-1.5 text-xs bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)]/70 px-2 py-1 rounded-lg">
-                  <a href={`/api/arquivos/tarefa/${arq.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                    📎 {arq.name}
+                <span key={arq.id} className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-line bg-raised py-1 pl-2.5 pr-1 text-[13px] text-fg-2">
+                  <a href={`/api/arquivos/tarefa/${arq.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-w-0 items-center gap-1.5 hover:underline">
+                    <Paperclip size={14} aria-hidden="true" className="flex-none" />
+                    <span className="truncate">{arq.name}</span>
                   </a>
-                  · {formatBytes(arq.size)}
+                  <span className="flex-none text-fg-3">{formatBytes(arq.size)}</span>
                   {podeEditar && (
-                    <button type="button" onClick={() => handleExcluirArquivo(arq.id)}
-                      className="text-[var(--fg)]/40 hover:text-red-400 font-bold">×</button>
+                    <IconButton
+                      rotulo={`Excluir ${arq.name}`}
+                      icone={<X size={14} aria-hidden="true" />}
+                      onClick={() => handleExcluirArquivo(arq.id)}
+                      className="h-7 w-7 max-sm:h-11 max-sm:w-11"
+                    />
                   )}
                 </span>
               ))}
+              {erroUpload[tipo] && (
+                <span role="alert" className="inline-flex items-center gap-1.5 text-[13px] text-danger">
+                  <AlertCircle size={14} aria-hidden="true" />
+                  {erroUpload[tipo]}
+                </span>
+              )}
             </div>
-            {erroUpload[tipo] && <p className="text-red-400 text-xs">{erroUpload[tipo]}</p>}
           </div>
         )}
       </div>
@@ -377,21 +417,26 @@ export default function TarefaChecklistPessoal({
       const tarefasDoGrupo = grupoDaTarefa.tarefas.filter(t => tarefasVisiveis.includes(t))
       const concluidasDoGrupo = tarefasDoGrupo.filter(t => !!mapaTarefa.get(t)?.concluida).length
       const expandido = gruposExpandidos.has(grupoDaTarefa.id)
+      const Seta = expandido ? ChevronDown : ChevronRight
 
       return (
-        <div key={`grupo-${grupoDaTarefa.id}`} className="flex flex-col gap-2">
+        <div key={`grupo-${grupoDaTarefa.id}`} className="flex flex-col border-b border-line-soft last:border-b-0">
           <button
             type="button"
             onClick={() => toggleGrupo(grupoDaTarefa.id)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[var(--fg)]/8 bg-[var(--fg)]/3 hover:bg-[var(--fg)]/5 transition-all text-left"
+            aria-expanded={expandido}
+            className="flex min-h-12 items-center gap-3 bg-fg/[0.025] px-[18px] text-left transition-colors hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-acc"
           >
-            <span className={`text-xs text-[var(--fg)]/40 transition-transform ${expandido ? 'rotate-90' : ''}`}>▶</span>
-            <span className="text-sm flex-1 text-[var(--fg)] font-medium">{grupoDaTarefa.nome}</span>
-            <span className="text-xs text-[var(--fg)]/40">{concluidasDoGrupo}/{tarefasDoGrupo.length}</span>
+            <Seta size={18} aria-hidden="true" className="flex-none text-acc-text" />
+            <Layers size={16} aria-hidden="true" className="flex-none text-fg-3" />
+            <span className="min-w-0 flex-1 font-semibold text-fg">{grupoDaTarefa.nome}</span>
+            <Badge tom={tarefasDoGrupo.length > 0 && concluidasDoGrupo === tarefasDoGrupo.length ? 'ok' : 'neu'}>
+              {concluidasDoGrupo} de {tarefasDoGrupo.length}
+            </Badge>
           </button>
           {expandido && (
-            <div className="ml-5 flex flex-col gap-2">
-              {tarefasDoGrupo.map(t => renderLinhaTarefa(t))}
+            <div className="flex flex-col border-t border-line-soft">
+              {tarefasDoGrupo.map(t => renderLinhaTarefa(t, true))}
             </div>
           )}
         </div>
@@ -399,27 +444,37 @@ export default function TarefaChecklistPessoal({
     })
   }
 
+  const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        {seletorMes ?? (
-          <h3 className="text-sm font-semibold text-[var(--fg)]/40 uppercase tracking-widest">
-            Tarefas — {MESES[mes - 1]}/{ano}
-          </h3>
+    <section className="min-w-0 rounded-xl border border-line-soft bg-surface">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-3 border-b border-line-soft px-[18px] py-3.5">
+        {seletorMes ? (
+          <>
+            <h2 className="text-[15px] font-semibold text-fg max-sm:sr-only">Tarefas de</h2>
+            {seletorMes}
+          </>
+        ) : (
+          <h2 className="text-[15px] font-semibold text-fg">Tarefas — {MESES[mes - 1]}/{ano}</h2>
         )}
-        <span className="text-xs text-[var(--fg)]/40">{concluidas}/{total}</span>
-      </div>
-
-      <div className="w-full h-1.5 bg-[var(--fg)]/8 rounded-full mb-5">
+        <Badge tom={total > 0 && concluidas === total ? 'ok' : 'acc'}>{concluidas} de {total}</Badge>
         <div
-          className="h-full bg-[var(--accent)] rounded-full transition-all duration-300"
-          style={{ width: `${total > 0 ? (concluidas / total) * 100 : 0}%` }}
-        />
+          role="progressbar"
+          aria-label="Tarefas concluídas no mês"
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={concluidas}
+          className="ml-auto h-1.5 w-full overflow-hidden rounded bg-raised sm:w-[180px]"
+        >
+          <div className="h-full rounded bg-acc transition-all duration-300" style={{ width: `${pct}%` }} />
+        </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        {renderLista()}
+      <div className="flex flex-col">
+        {total === 0 ? (
+          <p className="px-[18px] py-6 text-center text-[13px] text-fg-3">Nenhuma tarefa para este cliente neste mês.</p>
+        ) : renderLista()}
       </div>
-    </div>
+    </section>
   )
 }

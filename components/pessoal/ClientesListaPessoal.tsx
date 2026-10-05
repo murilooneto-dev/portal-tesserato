@@ -118,8 +118,8 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
         {filtrados.length === 0 ? (
           <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou os filtros." />
         ) : (
-          <div className="relative overflow-x-auto">
-            <Tabela className="min-w-[640px]">
+          <div className="relative overflow-x-auto xl:overflow-visible">
+            <Tabela className="min-w-[560px]">
               <thead>
                 <tr>
                   <Th>Cliente</Th>
@@ -146,7 +146,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
                             cnpj={cliente.cnpj}
                             depoisDoNome={
                               <>
-                                {cliente.prioridade && cliente.prioridade > 0 && <Badge tom="dng">P{cliente.prioridade}</Badge>}
+                                {(cliente.prioridade ?? 0) > 0 && <Badge tom="dng">P{cliente.prioridade}</Badge>}
                                 {temObs && <Badge tom="warn" icone={<StickyNote size={14} aria-hidden="true" />}>Observação</Badge>}
                                 {cliente.ativo === false && <Badge>Desabilitado</Badge>}
                               </>

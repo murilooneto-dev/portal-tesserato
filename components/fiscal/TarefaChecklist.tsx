@@ -15,7 +15,7 @@ import { Checkbox, Input, Textarea } from '@/components/ui/Input'
 import { Field } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 
-const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+const MESES_EXTENSO = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
 
 interface TipoInfo {
   etapas: string[] | null
@@ -488,7 +488,7 @@ export default function TarefaChecklist({
 
   return (
     <Card
-      titulo={`Tarefas — ${MESES[mes - 1]}/${ano}`}
+      titulo={`Tarefas de ${MESES_EXTENSO[mes - 1]}`}
       meta={<Badge tom={total > 0 && concluidas === total ? 'ok' : 'neu'}>{concluidas} de {total}</Badge>}
       semPadding
     >

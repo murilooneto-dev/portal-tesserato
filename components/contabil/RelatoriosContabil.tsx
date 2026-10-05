@@ -1,11 +1,32 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Check, ChevronRight, ClipboardList, Printer } from 'lucide-react'
 import type { Tarefa } from '@/lib/types'
 import type { ClienteComContabil } from '@/lib/clientes-contabil'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { escapeHtml } from '@/lib/escape-html'
 import { calcularTarefasEsperadas, type MapaVinculosSetor } from '@/lib/tarefas-esperadas'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Field } from '@/components/ui/Field'
+import { Select, Switch } from '@/components/ui/Input'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { Tabela, Th, Td } from '@/components/ui/Tabela'
+
+// Colunas da tabela (mockup c-07/p-04): CNPJ fica embaixo do nome, sem coluna própria.
+const COLUNAS: { titulo: string; largura?: number }[] = [
+  { titulo: 'Cliente', largura: 288 },
+  { titulo: 'Responsável', largura: 150 },
+  { titulo: 'Progresso', largura: 160 },
+  { titulo: 'Tarefas pendentes' },
+  { titulo: 'Observação', largura: 150 },
+  { titulo: 'MIT', largura: 80 },
+]
 
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
@@ -19,6 +40,32 @@ function progresso(cliente: ClienteComContabil, tarefas: Tarefa[], mapa: MapaVin
   return { total, feitas, pct: total > 0 ? Math.round((feitas / total) * 100) : 0, pendentes }
 }
 
+// Responsável com a bolinha da inicial na cor do perfil (mesmo desenho da
+// ficha do Fiscal); sem cor cadastrada, usa a cor de destaque.
+function Responsavel({ nome, cores }: { nome: string | null; cores: Record<string, string> }) {
+  if (!nome) return <span className="text-fg-3">Sem responsável</span>
+  const cor = cores[nome.toUpperCase()] || 'var(--acc)'
+  return (
+    <span className="inline-flex min-w-0 max-w-full items-center gap-2">
+      <span aria-hidden="true" className="grid h-6 w-6 flex-none place-items-center rounded-full text-xs font-bold text-acc-ink" style={{ backgroundColor: cor }}>
+        {nome.charAt(0).toUpperCase()}
+      </span>
+      <span className="truncate text-fg-2" title={nome}>{nome}</span>
+    </span>
+  )
+}
+
+function Progresso({ feitas, total, pct }: { feitas: number; total: number; pct: number }) {
+  return (
+    <div className="flex items-center gap-2.5" role="progressbar" aria-label={`${feitas} de ${total} tarefas concluídas`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded bg-raised">
+        <div className={`h-full rounded ${pct === 100 ? 'bg-ok' : 'bg-acc'}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="min-w-[34px] text-right text-[13px] tabular-nums text-fg-2">{feitas}/{total}</span>
+    </div>
+  )
+}
+
 interface Props {
   clientes: ClienteComContabil[]
   tarefas: Tarefa[]
@@ -27,14 +74,13 @@ interface Props {
   ano: number
   obsPorCliente: Record<string, string>
   mapaVinculos: MapaVinculosSetor
-  atividadesCatalogo: string[]
   gruposCatalogo: { nome: string; tarefas: string[] }[]
+  coresResponsavel: Record<string, string>
 }
 
-export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, ano, obsPorCliente, mapaVinculos, atividadesCatalogo, gruposCatalogo }: Props) {
+export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, ano, obsPorCliente, mapaVinculos, gruposCatalogo, coresResponsavel }: Props) {
   const router = useRouter()
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios-contabil:responsavel', 'TODOS')
-  const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('relatorios-contabil:atividade', [])
   const [filtroGrupoTarefas, setFiltroGrupoTarefas] = useFiltroPersistente('relatorios-contabil:grupo', 'TODOS')
   const [filtroTarefa, setFiltroTarefa] = useFiltroPersistente('relatorios-contabil:tarefa', 'TODAS')
   const [apenasP, setApenasP] = useFiltroPersistente('relatorios-contabil:pendencia', false)
@@ -49,24 +95,16 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
     if (tarefasDoNovoGrupo && !tarefasDoNovoGrupo.has(filtroTarefa)) setFiltroTarefa('TODAS')
   }
 
-  function toggleAtividade(nome: string) {
-    setFiltroAtividade(
-      filtroAtividade.includes(nome) ? filtroAtividade.filter(a => a !== nome) : [...filtroAtividade, nome]
-    )
-  }
-
   const responsaveis = isAdmin
     ? ['TODOS', ...Array.from(new Set(clientes.map(c => c.responsavel).filter(Boolean) as string[]))]
     : []
 
-  const atividades = atividadesCatalogo
   const tarefasDisponiveis = filtroGrupoTarefas === 'TODOS'
     ? Array.from(new Set(clientes.flatMap(c => calcularTarefasEsperadas(c, mapaVinculos)))).sort()
     : Array.from(new Set(gruposCatalogo.filter(g => g.nome === filtroGrupoTarefas).flatMap(g => g.tarefas))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
-    .filter(c => filtroAtividade.length === 0 || ((c.atividade ?? []).length === filtroAtividade.length && filtroAtividade.every(a => (c.atividade ?? []).includes(a))))
     .filter(c => filtroTarefa === 'TODAS' || calcularTarefasEsperadas(c, mapaVinculos).includes(filtroTarefa))
     .map(c => ({ cliente: c, ...progresso(c, tarefas, mapaVinculos) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
@@ -94,6 +132,7 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
   table { width: 100%; border-collapse: collapse; }
   th { background: #1a1a2e; color: white; padding: 6px 8px; text-align: left; font-size: 9px; text-transform: uppercase; }
   td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; font-size: 9px; vertical-align: middle; }
+  td .cnpj { display: block; color: #666; font-family: monospace; font-size: 8px; margin-top: 2px; }
   tr:nth-child(even) td { background: #fafafa; }
   .bar-bg { background: #e5e7eb; border-radius: 3px; height: 6px; width: 60px; display: inline-block; vertical-align: middle; margin-right: 4px; }
   .bar-fill { background: #00CCEB; height: 6px; border-radius: 3px; display: block; }
@@ -109,14 +148,13 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
   <div class="stat" style="border-color:#ef4444"><div class="n" style="color:#ef4444">${stats.zero}</div><div>Não Iniciados</div></div>
 </div>
 <table>
-  <thead><tr><th>Cliente</th><th>CNPJ</th><th>Responsável</th><th>Progresso</th><th>Tarefas Pendentes</th><th>Observação</th><th>MIT</th></tr></thead>
+  <thead><tr><th>Cliente</th><th>Responsável</th><th>Progresso</th><th>Tarefas Pendentes</th><th>Observação</th><th>MIT</th></tr></thead>
   <tbody>
     ${filtrados.map(r => `<tr>
-      <td><strong>${escapeHtml(r.cliente.nome)}</strong></td>
-      <td>${escapeHtml(r.cliente.cnpj) || '—'}</td>
+      <td><strong>${escapeHtml(r.cliente.nome)}</strong><span class="cnpj">${escapeHtml(r.cliente.cnpj) || 'CNPJ não informado'}</span></td>
       <td>${escapeHtml(r.cliente.responsavel) || '—'}</td>
-      <td><span class="bar-bg"><span class="bar-fill" style="width:${r.pct}%"></span></span>${r.pct}%</td>
-      <td>${r.pct === 100 ? '✓ Concluído' : escapeHtml(r.pendentes.join(', '))}</td>
+      <td><span class="bar-bg"><span class="bar-fill" style="width:${r.pct}%"></span></span>${r.feitas}/${r.total}</td>
+      <td>${r.pct === 100 ? 'Concluído' : escapeHtml(r.pendentes.join(', '))}</td>
       <td>${escapeHtml(obsPorCliente[r.cliente.id])}</td>
       <td>${escapeHtml(r.cliente.mit) || '—'}</td>
     </tr>`).join('')}
@@ -131,129 +169,138 @@ export default function RelatoriosContabil({ clientes, tarefas, isAdmin, mes, an
     setTimeout(() => win.print(), 500)
   }
 
+  const statsCards = [
+    { label: 'Total de clientes', val: stats.total, cor: 'text-fg' },
+    { label: '100% concluídos', val: stats.cem, cor: 'text-ok' },
+    { label: 'Em andamento', val: stats.andamento, cor: 'text-warn' },
+    { label: 'Não iniciados', val: stats.zero, cor: 'text-danger' },
+  ]
+
+  function pendencias(r: (typeof filtrados)[number]) {
+    if (r.pct === 100) return <Badge tom="ok" icone={<Check size={14} aria-hidden="true" />}>Concluído</Badge>
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {r.pendentes.slice(0, 3).map(p => <Badge key={p} tom="warn" className="max-w-full"><span className="truncate" title={p}>{p}</span></Badge>)}
+        {r.pendentes.length > 3 && <Badge>+{r.pendentes.length - 3}</Badge>}
+      </div>
+    )
+  }
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-2xl font-bold text-[var(--fg)] mr-2">
-          Relatório <span className="text-[var(--fg)]/40 font-normal text-lg">{String(mes).padStart(2,'0')}/{ano}</span>
-        </h1>
+    <Pagina className="mx-auto w-full max-w-7xl">
+      <CabecalhoPagina
+        titulo="Relatórios"
+        subtitulo={`Situação da carteira do Contábil em ${MESES_NOME[mes - 1]} ${ano}`}
+        acoes={<Button variante="primario" icone={<Printer size={16} aria-hidden="true" />} onClick={imprimir}>Imprimir ou salvar PDF</Button>}
+      />
 
+      <div className="flex flex-wrap items-end gap-3">
         {isAdmin && (
-          <select value={filtroResp} onChange={e => setFiltroResp(e.target.value)}
-            className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
-            {responsaveis.map(r => <option key={r} value={r} className="bg-[var(--bg-surface)]">{r}</option>)}
-          </select>
+          <Field rotulo="Responsável" className="w-full sm:w-[170px]">
+            {c => (
+              <Select id={c.id} value={filtroResp} onChange={e => setFiltroResp(e.target.value)}>
+                {responsaveis.map(r => <option key={r} value={r}>{r === 'TODOS' ? 'Todos' : r}</option>)}
+              </Select>
+            )}
+          </Field>
         )}
-
         {gruposDisponiveis.length > 0 && (
-          <select value={filtroGrupoTarefas} onChange={e => selecionarGrupo(e.target.value)}
-            className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
-            <option value="TODOS" className="bg-[var(--bg-surface)]">Todos os grupos</option>
-            {gruposDisponiveis.map(g => <option key={g} value={g} className="bg-[var(--bg-surface)]">{g}</option>)}
-          </select>
+          <Field rotulo="Grupo" className="w-full sm:w-[190px]">
+            {c => (
+              <Select id={c.id} value={filtroGrupoTarefas} onChange={e => selecionarGrupo(e.target.value)}>
+                <option value="TODOS">Todos os grupos</option>
+                {gruposDisponiveis.map(g => <option key={g} value={g}>{g}</option>)}
+              </Select>
+            )}
+          </Field>
         )}
-
-        <select value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)}
-          className="bg-[var(--bg-surface)] border border-[var(--fg)]/10 rounded-xl px-3 py-2 text-[var(--fg)]/70 text-sm focus:outline-none focus:border-[var(--accent)]/50">
-          <option value="TODAS" className="bg-[var(--bg-surface)]">Todas as tarefas</option>
-          {tarefasDisponiveis.map(t => <option key={t} value={t} className="bg-[var(--bg-surface)]">{t}</option>)}
-        </select>
-
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--fg)]/10 bg-[var(--bg-surface)] cursor-pointer hover:border-[var(--fg)]/20 transition-colors">
-          <input type="checkbox" checked={apenasP} onChange={e => setApenasP(e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" />
-          <span className="text-sm text-[var(--fg)]/70 whitespace-nowrap">Apenas pendências</span>
-        </label>
-
-        <div className="flex-1" />
-
-        <button onClick={imprimir}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--fg)] text-sm font-semibold px-5 py-2.5 rounded-xl transition-all whitespace-nowrap">
-          🖨 Imprimir / Salvar PDF
-        </button>
+        <Field rotulo="Tarefa" className="w-full sm:w-[220px]">
+          {c => (
+            <Select id={c.id} value={filtroTarefa} onChange={e => setFiltroTarefa(e.target.value)}>
+              <option value="TODAS">Todas as tarefas</option>
+              {tarefasDisponiveis.map(t => <option key={t} value={t}>{t}</option>)}
+            </Select>
+          )}
+        </Field>
+        <div className="flex min-h-11 items-center">
+          <Switch ligado={apenasP} onMudar={setApenasP} rotulo="Só com pendências" />
+        </div>
       </div>
 
-      {atividades.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <span className="text-xs text-[var(--fg)]/40">Atividade:</span>
-          {atividades.map(nome => (
-            <button
-              key={nome}
-              type="button"
-              onClick={() => toggleAtividade(nome)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                filtroAtividade.includes(nome)
-                  ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]'
-                  : 'bg-[var(--fg)]/5 border-[var(--fg)]/10 text-[var(--fg)]/60'
-              }`}
-            >
-              {nome}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Total Clientes', val: stats.total, cor: 'var(--fg)' },
-          { label: '100% Concluídos', val: stats.cem, cor: '#10b981' },
-          { label: 'Em Andamento', val: stats.andamento, cor: '#f59e0b' },
-          { label: 'Não Iniciados', val: stats.zero, cor: '#ef4444' },
-        ].map(s => (
-          <div key={s.label} className="p-4 rounded-xl bg-[var(--fg)]/6 border border-[var(--fg)]/12">
-            <p className="text-2xl font-bold" style={{ color: s.cor }}>{s.val}</p>
-            <p className="text-[var(--fg)]/60 text-xs mt-1">{s.label}</p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        {statsCards.map(s => (
+          <div key={s.label} className="min-w-0 rounded-xl border border-line-soft bg-surface px-5 py-[18px]">
+            <p className="text-[13px] font-medium text-fg-3">{s.label}</p>
+            <p className={`mt-1.5 text-[30px] font-semibold leading-tight tabular-nums ${s.cor}`}>{s.val}</p>
           </div>
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[var(--fg)]/12">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[var(--fg)]/12">
-              {['Cliente','CNPJ','Responsável','Progresso','Tarefas Pendentes','Observação','MIT'].map(h => (
-                <th key={h} className="text-left text-xs font-semibold text-[var(--fg)]/60 uppercase tracking-widest px-4 py-3">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
+      {filtrados.length === 0 ? (
+        <Card><EmptyState icone={<ClipboardList size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude os filtros." /></Card>
+      ) : (
+        <>
+          {/* Celular: um cartão por cliente */}
+          <div className="flex flex-col gap-3 sm:hidden">
             {filtrados.map(r => (
-              <tr
+              <Link
                 key={r.cliente.id}
-                onClick={() => router.push(`/contabil/clientes/${r.cliente.id}`)}
-                className="border-b border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 cursor-pointer transition-colors"
+                href={`/contabil/clientes/${r.cliente.id}`}
+                className="flex min-w-0 flex-col gap-3 rounded-xl border border-line-soft bg-surface p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
               >
-                <td className="px-4 py-3 text-[var(--fg)] text-sm font-medium">{r.cliente.nome}</td>
-                <td className="px-4 py-3 text-[var(--fg)]/50 text-xs font-mono">{r.cliente.cnpj ?? '—'}</td>
-                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs">{r.cliente.responsavel ?? '—'}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-1.5 bg-[var(--fg)]/15 rounded-full overflow-hidden">
-                      <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${r.pct}%` }} />
-                    </div>
-                    <span className="text-xs text-[var(--fg)]/70">{r.pct}%</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm w-40">
-                  {r.pct === 100
-                    ? <span className="text-green-400 text-xs font-medium">✓ Concluído</span>
-                    : (
-                      <div className="text-[var(--fg)]/60 text-xs leading-relaxed space-y-0.5">
-                        {r.pendentes.slice(0, 3).map(p => <div key={p} className="truncate">{p}</div>)}
-                        {r.pendentes.length > 3 && <div className="text-[var(--fg)]/35">+{r.pendentes.length - 3}</div>}
-                      </div>
-                    )
-                  }
-                </td>
-                <td className="px-4 py-3 text-[var(--fg)]/60 text-xs max-w-[200px] truncate" title={obsPorCliente[r.cliente.id]}>{obsPorCliente[r.cliente.id] ?? ''}</td>
-                <td className="px-4 py-3 text-[var(--fg)]/50 text-xs">{r.cliente.mit ?? '—'}</td>
-              </tr>
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="min-w-0 flex-1"><NomeCliente nome={r.cliente.nome} cnpj={r.cliente.cnpj ?? null} /></div>
+                  <ChevronRight size={18} className="mt-0.5 flex-none text-fg-3" aria-hidden="true" />
+                </div>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
+                  <Responsavel nome={r.cliente.responsavel} cores={coresResponsavel} />
+                  {r.cliente.mit && <span className="text-fg-3">MIT: {r.cliente.mit}</span>}
+                </div>
+                <Progresso feitas={r.feitas} total={r.total} pct={r.pct} />
+                {pendencias(r)}
+                {obsPorCliente[r.cliente.id] && <p className="text-[13px] text-fg-2">{obsPorCliente[r.cliente.id]}</p>}
+              </Link>
             ))}
-          </tbody>
-        </table>
-        {filtrados.length === 0 && (
-          <p className="text-center text-[var(--fg)]/30 py-12 text-sm">Nenhum cliente encontrado.</p>
-        )}
-      </div>
-    </div>
+          </div>
+
+          {/* Tela larga: tabela */}
+          <Card semPadding className="hidden overflow-hidden sm:block">
+            <div className="relative overflow-x-auto 2xl:overflow-visible">
+              <Tabela className="min-w-[1000px]">
+                <thead>
+                  <tr>
+                    {COLUNAS.map(c => <Th key={c.titulo} largura={c.largura}>{c.titulo}</Th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtrados.map(r => (
+                    <tr
+                      key={r.cliente.id}
+                      onClick={() => router.push(`/contabil/clientes/${r.cliente.id}`)}
+                      className="cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]"
+                    >
+                      <Td>
+                        <Link href={`/contabil/clientes/${r.cliente.id}`} onClick={e => e.stopPropagation()} className="block w-full min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                          <NomeCliente nome={r.cliente.nome} cnpj={r.cliente.cnpj ?? null} />
+                        </Link>
+                      </Td>
+                      <Td><Responsavel nome={r.cliente.responsavel} cores={coresResponsavel} /></Td>
+                      <Td><Progresso feitas={r.feitas} total={r.total} pct={r.pct} /></Td>
+                      <Td>{pendencias(r)}</Td>
+                      <Td className="text-[13px] text-fg-2">
+                        {obsPorCliente[r.cliente.id]
+                          ? <span className="block truncate" title={obsPorCliente[r.cliente.id]}>{obsPorCliente[r.cliente.id]}</span>
+                          : <span className="text-fg-3">—</span>}
+                      </Td>
+                      <Td className="text-fg-2">{r.cliente.mit ?? <span className="text-fg-3">—</span>}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Tabela>
+            </div>
+          </Card>
+        </>
+      )}
+    </Pagina>
   )
 }

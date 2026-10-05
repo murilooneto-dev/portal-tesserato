@@ -15,10 +15,11 @@ export default async function ClientesContabilPage() {
   const { mes, ano } = await getMesAno()
   const catalogo = await buscarCatalogoCliente(supabase, 'contabil')
 
-  const [{ data: clientesRaw }, tarefasDoAno, { data: tiposRaw }] = await Promise.all([
+  const [{ data: clientesRaw }, tarefasDoAno, { data: tiposRaw }, { data: usuariosSetor }] = await Promise.all([
     supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).order('nome'),
     buscarTodasTarefasDoAno<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo' | 'mes'>>(supabase, ano, 'cliente_id, concluida, tipo, mes', 'contabil'),
     supabase.from('tarefa_tipos').select('nome').eq('setor', 'contabil').order('nome'),
+    supabase.from('profiles').select('nome, cor').contains('setores', ['contabil']),
   ])
 
   const clientes = (clientesRaw ?? []).map(flattenClienteContabil)
@@ -49,17 +50,22 @@ export default async function ClientesContabilPage() {
     ano,
   )
 
+  // Cor do perfil de cada responsável, para a bolinha com a inicial.
+  const coresResponsavel: Record<string, string> = {}
+  for (const u of usuariosSetor ?? []) {
+    if (u.nome && u.cor) coresResponsavel[(u.nome as string).toUpperCase()] = u.cor as string
+  }
+
   return (
-    <div className="p-8">
-      <ClientesListaContabil
-        clientes={clientes}
-        progressoAnualMap={progressoAnualMap}
-        mes={mes}
-        ano={ano}
-        tarefasPadrao={tarefasPadrao}
-        catalogo={catalogo}
-        pendenciasVinculo={pendenciasVinculo}
-      />
-    </div>
+    <ClientesListaContabil
+      clientes={clientes}
+      progressoAnualMap={progressoAnualMap}
+      mes={mes}
+      ano={ano}
+      tarefasPadrao={tarefasPadrao}
+      catalogo={catalogo}
+      pendenciasVinculo={pendenciasVinculo}
+      coresResponsavel={coresResponsavel}
+    />
   )
 }

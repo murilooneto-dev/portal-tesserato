@@ -1,5 +1,10 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import { ChevronRight, CreditCard } from 'lucide-react'
+import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Aviso } from '@/components/ui/Aviso'
+import { Badge } from '@/components/ui/Badge'
+import AbasFichaSetor from '@/components/geral/AbasFichaSetor'
 import { createClient, createClienteLeituraVinculos } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
@@ -20,12 +25,19 @@ import { labelRegime } from '@/lib/atividades-regimes'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import HistoricoResponsavel from '@/components/HistoricoResponsavel'
 
-const MESES_LABEL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
 interface Props {
   params: Promise<{ id: string }>
   searchParams: Promise<{ mes?: string; ano?: string }>
 }
+
+// Abas da ficha no celular (no desktop vira duas colunas). Sem "Arquivos": o setor não tem arquivos na ficha.
+const ABAS_FICHA = [
+  { id: 'tarefas', rotulo: 'Tarefas' },
+  { id: 'eventos', rotulo: 'Eventos' },
+  { id: 'observacoes', rotulo: 'Observações' },
+  { id: 'historico', rotulo: 'Histórico' },
+]
 
 export default async function ClienteContabilDetalhePage({ params, searchParams }: Props) {
   const { id } = await params
@@ -35,13 +47,15 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('nome,role').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('profiles').select('nome,role,setores').eq('id', user.id).single()
 
   const { data: clienteRaw } = await supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).eq('id', id).single()
   if (!clienteRaw) notFound()
   const cliente = flattenClienteContabil(clienteRaw)
 
   const podeEditar = profile?.role === 'admin' || cliente.responsavel?.toLowerCase() === profile?.nome?.toLowerCase()
+  // Desabilitar vale para a empresa em todos os setores: só Admin e Societário (regra do Cadastro de clientes).
+  const podeDesabilitar = profile?.role === 'admin' || (profile?.setores ?? []).includes('societario')
 
   const mesParam = Number(sp.mes)
   const anoParam = Number(sp.ano)
@@ -54,7 +68,7 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
 
   const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }, labelsParcelamento, { data: gruposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
-    supabase.from('profiles').select('nome').contains('setores', ['contabil']),
+    supabase.from('profiles').select('nome, cor').contains('setores', ['contabil']),
     supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'contabil'),
     supabase.from('calendario_eventos').select('*').eq('setor', 'contabil'),
     buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null),
@@ -77,6 +91,8 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
   const responsaveis = Array.from(new Set(
     (usuariosContabil ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
+  // Cor do avatar do responsável (a mesma do Progresso por responsável no dashboard).
+  const corResponsavel = (usuariosContabil ?? []).find(p => p.nome?.toUpperCase() === cliente.responsavel?.toUpperCase())?.cor || 'var(--acc)'
 
   const tarefaTipos: Record<string, { etapas: string[] | null; tipoResposta: TipoResposta }> = {}
   for (const t of tiposRaw ?? []) {
@@ -137,71 +153,89 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-8 pb-6 border-b border-[var(--fg)]/8">
-        <div className="flex items-start gap-4">
-          <Link href="/contabil/clientes" className="mt-1 text-[var(--fg)]/30 hover:text-[var(--fg)]/70 transition-colors text-lg">←</Link>
-          <div className="flex-1">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <h1 className="text-xl font-bold text-[var(--fg)]">{cliente.nome}</h1>
-                <p className="text-[var(--fg)]/40 text-sm mt-0.5">{cliente.cnpj ?? '—'}</p>
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {cliente.regime && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{labelRegime(cliente.regime)}</span>}
-                  {(cliente.atividade ?? []).map(a => (
-                    <span key={a} className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{a}</span>
-                  ))}
-                  {cliente.responsavel && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.responsavel}</span>}
-                  {cliente.municipio && <span className="text-xs text-[var(--fg)]/50 bg-[var(--fg)]/5 px-2 py-0.5 rounded-full">{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</span>}
-                  {cliente.ativo === false && <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-semibold">Desabilitado</span>}
-                </div>
-                {override && (
-                  <div className="mt-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1 rounded-full">
-                      Visualizando {MESES_LABEL[override.mes - 1]}/{override.ano}
-                    </span>
-                  </div>
-                )}
-                {labelsParcelamento.length > 0 && (
-                  <div className="mt-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 bg-red-500/15 px-3 py-1 rounded-full">
-                      ⚠️ Cliente possui parcelamento! {labelsParcelamento.join(' / ')}
-                    </span>
-                  </div>
-                )}
-              </div>
-              {podeEditar && <ClienteContabilAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} catalogo={catalogo} />}
-            </div>
-          </div>
-        </div>
-      </div>
+    <Pagina>
+      <nav aria-label="Caminho" className="-mb-2 flex min-w-0 items-center gap-1.5 text-[13px] text-fg-3 print:hidden">
+        <Link href="/contabil/clientes" className="flex-none transition-colors hover:text-fg">Clientes</Link>
+        <ChevronRight size={14} aria-hidden="true" className="flex-none" />
+        <b className="min-w-0 truncate font-medium text-fg-2" aria-current="page">{cliente.nome}</b>
+      </nav>
 
-      <TarefaChecklistContabil
-        tarefasPersonalizadas={tarefasEsperadas}
-        seletorMes={<SeletorMesFicha mes={mes} ano={ano} basePath={`/contabil/clientes/${id}`} progresso={progressoFicha} />}
-        grupos={(gruposRaw ?? []) as TarefaGrupo[]}
-        tarefaTipos={tarefaTipos}
-        tarefas={(tarefas ?? []) as Tarefa[]}
-        etapas={(etapas ?? []) as TarefaEtapa[]}
-        arquivos={(arquivos ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}
-        vinculos={vinculos}
-        mes={mes}
-        ano={ano}
-        onToggleSimples={onToggleSimples}
-        onMarcarSemMovimento={onMarcarSemMovimento}
-        onAtualizarEtapa={onAtualizarEtapa}
-        onSalvarTexto={onSalvarTexto}
-        onUploadArquivo={onUploadArquivo}
-        onExcluirArquivo={onExcluirArquivo}
-        podeEditar={podeEditar}
-        prazosPorTipo={prazosPorTipo}
+      <CabecalhoPagina
+        titulo={<span className="block min-w-[15ch] truncate" title={cliente.nome}>{cliente.nome}</span>}
+        subtitulo={
+          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
+            <span className="font-mono text-[13px]">{cliente.cnpj?.trim() || 'CNPJ não informado'}</span>
+            {cliente.regime && <Badge tom="acc">{labelRegime(cliente.regime)}</Badge>}
+            {(cliente.atividade ?? []).map(a => <Badge key={a}>{a}</Badge>)}
+            {cliente.responsavel && (
+              <span className="inline-flex items-center gap-1.5 text-[13px] text-fg-2">
+                <span aria-hidden="true" className="grid h-5 w-5 flex-none place-items-center rounded-full text-xs font-bold text-acc-ink" style={{ backgroundColor: corResponsavel }}>
+                  {cliente.responsavel.charAt(0).toUpperCase()}
+                </span>
+                {cliente.responsavel}
+              </span>
+            )}
+            {cliente.municipio && <Badge>{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</Badge>}
+            {cliente.ativo === false && <Badge tom="warn">Desabilitado</Badge>}
+          </span>
+        }
+        acoes={
+          podeEditar
+            ? <ClienteContabilAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} catalogo={catalogo} podeDesabilitar={podeDesabilitar} />
+            : undefined
+        }
       />
 
-      <div className="mt-6"><EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} /></div>
+      {labelsParcelamento.length > 0 && (
+        <Aviso tom="warn" icone={<CreditCard size={18} />}>
+          <b>Este cliente possui parcelamento:</b> {labelsParcelamento.join(' / ')}.
+        </Aviso>
+      )}
 
-      <ClienteNotas clienteId={id} setor="contabil" notas={notas} podeEditar={podeEditar} adicionarNota={adicionarNotaCliente} editarNota={editarNotaCliente} excluirNota={excluirNotaCliente} />
-
-      <HistoricoResponsavel clienteId={id} setor="contabil" className="mt-6" />
-    </div>
+      <AbasFichaSetor
+        abas={ABAS_FICHA}
+        principal={[
+          {
+            chave: 'tarefas',
+            aba: 'tarefas',
+            conteudo: (
+              <TarefaChecklistContabil
+                tarefasPersonalizadas={tarefasEsperadas}
+                seletorMes={<SeletorMesFicha mes={mes} ano={ano} basePath={`/contabil/clientes/${id}`} progresso={progressoFicha} />}
+                grupos={(gruposRaw ?? []) as TarefaGrupo[]}
+                tarefaTipos={tarefaTipos}
+                tarefas={(tarefas ?? []) as Tarefa[]}
+                etapas={(etapas ?? []) as TarefaEtapa[]}
+                arquivos={(arquivos ?? []) as Omit<TarefaArquivo, 'content_base64'>[]}
+                vinculos={vinculos}
+                mes={mes}
+                ano={ano}
+                onToggleSimples={onToggleSimples}
+                onMarcarSemMovimento={onMarcarSemMovimento}
+                onAtualizarEtapa={onAtualizarEtapa}
+                onSalvarTexto={onSalvarTexto}
+                onUploadArquivo={onUploadArquivo}
+                onExcluirArquivo={onExcluirArquivo}
+                podeEditar={podeEditar}
+                prazosPorTipo={prazosPorTipo}
+              />
+            ),
+          },
+        ]}
+        lateral={[
+          {
+            chave: 'eventos',
+            aba: 'eventos',
+            conteudo: <EventosAvulsosSecao clienteId={id} setor="contabil" eventos={eventosAvulsos} podeEditar={podeEditar} />,
+          },
+          {
+            chave: 'observacoes',
+            aba: 'observacoes',
+            conteudo: <ClienteNotas clienteId={id} setor="contabil" notas={notas} podeEditar={podeEditar} adicionarNota={adicionarNotaCliente} editarNota={editarNotaCliente} excluirNota={excluirNotaCliente} />,
+          },
+          { chave: 'historico', aba: 'historico', conteudo: <HistoricoResponsavel clienteId={id} setor="contabil" /> },
+        ]}
+      />
+    </Pagina>
   )
 }

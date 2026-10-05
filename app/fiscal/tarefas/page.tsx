@@ -89,7 +89,7 @@ export default async function TarefasPage() {
         {linhas.length === 0 ? (
           <EmptyState icone={<ClipboardList size={24} />} titulo="Nenhum cliente encontrado" />
         ) : (
-          <div className="relative overflow-x-auto">
+          <div className="relative overflow-x-auto xl:overflow-visible">
             <Tabela className="min-w-[560px]">
               <thead>
                 <tr>

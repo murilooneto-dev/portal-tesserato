@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ChevronRight, CreditCard } from 'lucide-react'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
 import { Aviso } from '@/components/ui/Aviso'
 import { Badge } from '@/components/ui/Badge'
@@ -31,9 +31,6 @@ import HistoricoResponsavel from '@/components/HistoricoResponsavel'
 interface Props {
   params: Promise<{ id: string }>
 }
-
-const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-
 
 export default async function ClienteDetalhePage({ params }: Props) {
   const { id } = await params
@@ -143,10 +140,12 @@ export default async function ClienteDetalhePage({ params }: Props) {
   }
 
   // Dados pro EmpresaModal (editar cliente)
-  const { data: usuariosFiscal } = await supabase.from('profiles').select('nome').contains('setores', ['fiscal'])
+  const { data: usuariosFiscal } = await supabase.from('profiles').select('nome, cor').contains('setores', ['fiscal'])
   const responsaveis = Array.from(new Set(
     (usuariosFiscal ?? []).map(p => p.nome ?? '').filter(Boolean)
   )).sort()
+  // Cor do avatar do responsável (a mesma do Progresso por responsável no dashboard).
+  const corResponsavel = (usuariosFiscal ?? []).find(p => p.nome?.toUpperCase() === cliente.responsavel?.toUpperCase())?.cor || 'var(--acc)'
   const catalogo = await buscarCatalogoCliente(supabase, 'fiscal')
 
   async function toggleTarefa(tipo: string, concluida: boolean, data?: string) {
@@ -176,10 +175,11 @@ export default async function ClienteDetalhePage({ params }: Props) {
 
   return (
     <Pagina>
-      <Link href="/fiscal/clientes" className="inline-flex w-fit items-center gap-1.5 text-[13px] text-fg-3 transition-colors hover:text-fg print:hidden">
-        <ArrowLeft size={16} aria-hidden="true" />
-        Clientes
-      </Link>
+      <nav aria-label="Caminho" className="-mb-2 flex min-w-0 items-center gap-1.5 text-[13px] text-fg-3 print:hidden">
+        <Link href="/fiscal/clientes" className="flex-none transition-colors hover:text-fg">Clientes</Link>
+        <ChevronRight size={14} aria-hidden="true" className="flex-none" />
+        <b className="min-w-0 truncate font-medium text-fg-2" aria-current="page">{cliente.nome}</b>
+      </nav>
 
       <CabecalhoPagina
         titulo={<span className="block min-w-[15ch] truncate" title={cliente.nome}>{cliente.nome}</span>}
@@ -188,22 +188,27 @@ export default async function ClienteDetalhePage({ params }: Props) {
             <span className="font-mono text-[13px]">{cliente.cnpj?.trim() || 'CNPJ não informado'}</span>
             {cliente.regime && <Badge tom="acc">{cliente.regime}</Badge>}
             {(cliente.atividade ?? []).map(a => <Badge key={a}>{a}</Badge>)}
-            {cliente.responsavel && <Badge>{cliente.responsavel}</Badge>}
+            {cliente.responsavel && (
+              <span className="inline-flex items-center gap-1.5 text-[13px] text-fg-2">
+                <span aria-hidden="true" className="grid h-5 w-5 flex-none place-items-center rounded-full text-xs font-bold text-acc-ink" style={{ backgroundColor: corResponsavel }}>
+                  {cliente.responsavel.charAt(0).toUpperCase()}
+                </span>
+                {cliente.responsavel}
+              </span>
+            )}
             {cliente.municipio && <Badge>{cliente.municipio}{cliente.uf ? `/${cliente.uf}` : ''}</Badge>}
             {cliente.ativo === false && <Badge tom="warn">Desabilitado</Badge>}
           </span>
         }
         acoes={
-          <>
-            <span className="text-sm font-medium text-fg">{MESES_ABREV[mes-1]} / {ano}</span>
-            {podeEditar && <ClienteAcoes cliente={cliente} responsaveis={responsaveis} catalogo={catalogo} />}
-          </>
+          podeEditar ? <ClienteAcoes cliente={cliente} responsaveis={responsaveis} catalogo={catalogo} /> : undefined
         }
       />
 
       {labelsParcelamento.length > 0 && (
-        <Aviso tom="warn">
-          <b>Cliente possui parcelamento!</b> {labelsParcelamento.join(' / ')}
+        <Aviso tom="warn" icone={<CreditCard size={18} />}>
+          <b>Este cliente possui parcelamento:</b> {labelsParcelamento.join(' / ')}.{' '}
+          <Link href="/fiscal/parcelamentos" className="font-semibold text-acc-text underline-offset-2 hover:underline print:hidden">Ver parcelamentos</Link>
         </Aviso>
       )}
 

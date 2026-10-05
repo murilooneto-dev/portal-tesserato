@@ -100,7 +100,7 @@ export default function DossieSecao({ clientes, onAtualizarStatus, onAtualizarFi
           <EmptyState icone={<FolderOpen size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou o filtro de situação." />
         ) : (
           <>
-            <div className="hidden sm:block"><div className="relative overflow-x-auto">
+            <div className="hidden sm:block"><div className="relative overflow-x-auto xl:overflow-visible">
               <Tabela className="min-w-[680px]">
                 <thead>
                   <tr>

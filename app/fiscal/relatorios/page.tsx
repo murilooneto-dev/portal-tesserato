@@ -316,7 +316,7 @@ export default function RelatoriosPage() {
 
           {/* Tela larga: tabela */}
           <Card semPadding className="hidden overflow-hidden sm:block">
-            <div className="relative overflow-x-auto">
+            <div className="relative overflow-x-auto 2xl:overflow-visible">
               <Tabela className="min-w-[1100px]">
                 <thead>
                   <tr>
