@@ -8,7 +8,12 @@ import type { PendenciaVinculo } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import EmpresaPessoalModal from './EmpresaPessoalModal'
-import { REGIMES, labelRegime } from '@/lib/atividades-regimes'
+import { labelRegime } from '@/lib/atividades-regimes'
+import { Badge } from '@/components/ui/Badge'
+import { NomeCliente } from '@/components/ui/NomeCliente'
+import { COR, tomDoPercentual } from '@/components/ui/MonthPill'
+import { cn } from '@/components/ui/cn'
+import type { ProgressoMesPessoal } from '@/lib/pessoal-progresso'
 
 const CORES_RESP: string[] = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316','#ef4444','#84cc16']
 const _respColorCache: Record<string, string> = {}
@@ -19,16 +24,9 @@ function corResponsavel(nome: string): string {
   return _respColorCache[nome]
 }
 
-const CORES_REGIME: Record<string, string> = {
-  normal:  '#3b82f6',
-  simples: '#10b981',
-  mei:     '#f59e0b',
-}
-
-
 interface Props {
   clientes: ClienteComPessoal[]
-  progressoMap: Record<string, { total: number; concluidas: number }>
+  progressoMap: Record<string, Record<number, ProgressoMesPessoal>>
   mes: number
   ano: number
   tarefasPadrao: string[]
@@ -116,93 +114,85 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
       )}
 
       <p className="text-[var(--fg)]/30 text-xs mb-3">
-        {filtrados.length} clientes · {MESES[mes - 1]}/{ano}
+        {filtrados.length} clientes · {ano}
       </p>
 
-      <div className="flex flex-col gap-1.5">
-        {filtrados.length === 0 && (
-          <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
-        )}
+      {filtrados.length === 0 ? (
+        <p className="text-center text-[var(--fg)]/20 py-12 text-sm">Nenhum cliente encontrado.</p>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-[var(--fg)]/8">
 
-        {filtrados.map(cliente => {
-          const prog = progressoMap[cliente.id]
-          const total = prog?.total ?? 0
-          const concluidas = prog?.concluidas ?? 0
-          const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0
-          const temObs = !!(cliente.obs?.trim())
+          {filtrados.map(cliente => {
+            const porMes = progressoMap[cliente.id]
+            const temObs = !!(cliente.obs?.trim())
+            const vinculos = pendenciasVinculo[cliente.id] ?? []
+            const temP1 = !!cliente.prioridade && cliente.prioridade > 0
 
-          return (
-            <Link
-              key={cliente.id}
-              href={`/pessoal/clientes/${cliente.id}`}
-              className="flex items-center gap-4 px-4 py-3 rounded-xl bg-[var(--fg)]/3 border border-[var(--fg)]/8 hover:bg-[var(--fg)]/6 hover:border-[var(--fg)]/15 transition-all group"
-            >
-              {cliente.prioridade && cliente.prioridade > 0 ? (
-                <div className="w-7 h-7 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0">
-                  <span className="text-red-400 text-xs font-bold">P{cliente.prioridade}</span>
-                </div>
-              ) : (
-                <div className="w-7 h-7 shrink-0" />
-              )}
-
-              <div className="flex-1 min-w-0">
-                <p className="text-[var(--fg)] text-sm font-semibold truncate">
-                  {cliente.nome}
-                  {(pendenciasVinculo[cliente.id] ?? []).map((p, i) => {
-                    const badge = formatarBadgeVinculo(p)
-                    return (
-                      <span key={i} className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}>
-                        {badge.texto}
+            return (
+              <div key={cliente.id} className="border-t border-[var(--fg)]/6 first:border-t-0 px-3 py-3 hover:bg-[var(--fg)]/3 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <Link href={`/pessoal/clientes/${cliente.id}`} className="min-w-0 flex-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
+                    <NomeCliente
+                      nome={cliente.nome}
+                      cnpj={cliente.cnpj ?? null}
+                      depoisDoNome={
+                        <>
+                          {temP1 && <Badge tom="dng">P{cliente.prioridade}</Badge>}
+                          {temObs && <Badge tom="warn">Observação</Badge>}
+                          {cliente.ativo === false && <Badge>Desabilitado</Badge>}
+                        </>
+                      }
+                    />
+                  </Link>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                    {vinculos.map((p, i) => {
+                      const badge = formatarBadgeVinculo(p)
+                      return (
+                        <Badge key={i} tom={p.liberada ? 'ok' : 'warn'}>
+                          {badge.texto.replace(/^(✓|⏳)\s*/, '')}
+                        </Badge>
+                      )
+                    })}
+                    {cliente.regime && <Badge tom="acc">{labelRegime(cliente.regime)}</Badge>}
+                    {cliente.responsavel && (
+                      <span className="inline-flex h-[22px] items-center whitespace-nowrap rounded-md px-2 text-xs font-semibold leading-none"
+                        style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
+                        {cliente.responsavel}
                       </span>
-                    )
-                  })}
-                </p>
-                <p className="text-[var(--fg)]/25 text-xs mt-0.5">{cliente.cnpj ?? '—'}</p>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                {cliente.regime && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md"
-                    style={{ backgroundColor: (CORES_REGIME[cliente.regime] ?? '#6b7280') + '25', color: CORES_REGIME[cliente.regime] ?? '#6b7280', border: `1px solid ${CORES_REGIME[cliente.regime] ?? '#6b7280'}50` }}>
-                    {labelRegime(cliente.regime)}
-                  </span>
-                )}
-                {(cliente.atividade ?? []).map(a => (
-                  <span key={a} className="text-xs font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-                    {a}
-                  </span>
-                ))}
-                {cliente.responsavel && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md"
-                    style={{ backgroundColor: corResponsavel(cliente.responsavel) + '25', color: corResponsavel(cliente.responsavel), border: `1px solid ${corResponsavel(cliente.responsavel)}50` }}>
-                    {cliente.responsavel}
-                  </span>
-                )}
-                {cliente.ativo === false && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[var(--fg)]/10 text-[var(--fg)]/40 border border-[var(--fg)]/15">
-                    Desabilitado
-                  </span>
-                )}
-              </div>
-
-              {total > 0 && (
-                <div className="w-20 shrink-0 text-right">
-                  <p className={`text-sm font-bold ${pct === 100 ? 'text-[#10b981]' : 'text-[var(--fg)]'}`}>{pct}%</p>
-                  <div className="w-full h-1 bg-[var(--fg)]/10 rounded-full mt-1">
-                    <div className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : 'var(--accent)' }} />
+                    )}
                   </div>
-                  <p className="text-[var(--fg)]/25 text-xs mt-0.5">{concluidas}/{total}</p>
                 </div>
-              )}
 
-              <div className="w-4 shrink-0 text-center">
-                {temObs && <span className="text-amber-400 text-sm font-bold">!</span>}
+                <div className="mt-2.5 overflow-x-auto">
+                  <div className="grid min-w-[620px] grid-cols-12 gap-1">
+                    {MESES.map((nomeMes, i) => {
+                      const mesNum = i + 1
+                      const p = porMes?.[mesNum]
+                      const pct = p?.pct ?? null
+                      const atual = mesNum === mes
+                      return (
+                        <span
+                          key={mesNum}
+                          aria-current={atual ? 'date' : undefined}
+                          title={p && p.total > 0 ? `${nomeMes}: ${p.concluidas}/${p.total} concluídas` : `${nomeMes}: sem tarefas no mês`}
+                          className={cn(
+                            'flex flex-col items-center justify-center rounded-lg py-1.5',
+                            COR[tomDoPercentual(pct)],
+                          )}
+                          style={atual ? { boxShadow: 'inset 0 0 0 2px var(--acc)' } : undefined}
+                        >
+                          <span className="text-xs font-semibold leading-none">{nomeMes}</span>
+                          <span className="mt-1 text-sm font-bold tabular-nums leading-none">{pct === null ? '—' : `${pct}%`}</span>
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
-            </Link>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
