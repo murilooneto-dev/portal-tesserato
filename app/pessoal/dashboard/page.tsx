@@ -158,7 +158,7 @@ export default async function DashboardPessoalPage({ searchParams }: { searchPar
               }
             />
           ) : (
-            <ul className="mt-2">
+            <ul className="mt-2 max-h-[236px] overflow-y-auto pr-1" aria-label="Próximos prazos" tabIndex={0}>
               {alertas.map((a, i) => (
                 <li key={a.evento.id} className={`flex items-center gap-3.5 py-2.5 ${i ? 'border-t border-line-soft' : ''}`}>
                   <div className="w-11 flex-none text-center">
