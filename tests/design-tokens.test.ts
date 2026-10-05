@@ -63,8 +63,8 @@ test('as cores viram classes Tailwind via @theme inline', () => {
   }
 })
 
-test('remendo de contraste do tema claro continua até as telas migrarem', () => {
-  assert.match(CSS, /:root\.light \.text-\\\[var\\\(--fg\\\)\\\]\\\/40/)
+test('remendo de contraste do tema claro saiu na Fase 8 (nenhuma tela usa mais text-[var(--fg)]/NN)', () => {
+  assert.ok(!CSS.includes(String.raw`.text-\[var\(--fg\)\]`))
 })
 
 test('impressão força fundo branco e texto preto também nas variáveis novas', () => {
