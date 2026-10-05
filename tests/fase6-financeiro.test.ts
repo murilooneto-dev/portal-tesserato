@@ -142,7 +142,7 @@ test('relatório: desenho fn-02', () => {
     'window.print()', 'hidden print:block', 'rotulo="Natureza"', 'rotulo="Tipo"', 'rotulo="Centro de custo"', 'rotulo="De"', 'rotulo="Até"',
     'sm:w-[130px]', 'sm:w-[160px]', 'sm:w-[150px]', '<Filter', 'Aplicar filtros', '>Limpar<',
     "label: 'Entradas'", "label: 'Saídas'", "label: 'Saldo'", 'saldo < 0 ? COR_SAIDA : COR_ENTRADA', 'formatarValorComSinal(saldo)',
-    'sm:grid-cols-3', 'text-ok print:text-emerald-700', 'text-danger print:text-red-700',
+    'sm:grid-cols-3', "const COR_ENTRADA = 'text-ok'", "const COR_SAIDA = 'text-danger'",
     '<Badge tom="ok" icone={<ArrowDownLeft', '<Badge tom="dng" icone={<ArrowUpRight',
     'w-[130px]', 'w-[200px]', 'w-[180px]', 'w-[190px]', 'relative overflow-x-auto xl:overflow-visible',
     'formatarValorComSinal(-m.valor)', '<EmptyState', 'Nenhum registro', 'sm:hidden print:hidden']) assert.ok(src.includes(t), t)
