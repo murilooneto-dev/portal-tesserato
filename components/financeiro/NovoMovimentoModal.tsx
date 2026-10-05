@@ -160,12 +160,12 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
   const podeSerRecorrente = natureza === 'saida' && !movimento
   const datasDaSerie = podeSerRecorrente && recorrente ? datasRecorrentes(data) : []
   const ajudaRecorrente = !recorrente
-    ? 'Repete este pagamento no mesmo dia de cada mês, até dezembro.'
+    ? 'Repete esta conta no mesmo dia de cada mês, até dezembro. Cada mês fica "A pagar" até você confirmar o pagamento.'
     : !data
       ? 'Escolha a data para ver os meses que serão lançados.'
       : datasDaSerie.length <= 1
         ? 'Não há outros meses neste ano: será lançado só este pagamento.'
-        : `Serão ${datasDaSerie.length} lançamentos, um por mês até dezembro: de ${formatarDdMm(datasDaSerie[0])} a ${formatarDdMm(datasDaSerie[datasDaSerie.length - 1])}.`
+        : `Serão ${datasDaSerie.length} lançamentos, um por mês até dezembro: de ${formatarDdMm(datasDaSerie[0])} a ${formatarDdMm(datasDaSerie[datasDaSerie.length - 1])}. Todos ficam "A pagar" até você confirmar cada pagamento.`
 
   async function handleSave() {
     const valorNumerico = Number(valor.replace(',', '.'))
@@ -259,7 +259,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     >
       {sucesso && !erro && (
         <Aviso tom="ok">
-          {quantidadeSalva > 1 ? <b>{quantidadeSalva} lançamentos salvos.</b> : <b>Lançamento salvo.</b>} Os campos foram limpos para o próximo; a data foi mantida.
+          {quantidadeSalva > 1 ? <b>{quantidadeSalva} lançamentos salvos.</b> : <b>Lançamento salvo.</b>} Os campos foram limpos para o próximo; a data foi mantida.{quantidadeSalva > 1 && ' Cada mês fica como a pagar até você confirmar o pagamento.'} A lista mostra só os lançamentos do mês escolhido no topo.
         </Aviso>
       )}
 

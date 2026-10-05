@@ -53,3 +53,21 @@ export function datasRecorrentes(dataISO: string): string[] {
   }
   return datas
 }
+
+/** Primeiro e último dia (YYYY-MM-DD) do mês escolhido no seletor do portal. */
+export function intervaloDoMes(mes: number, ano: number): { inicio: string; fim: string } {
+  const mm = String(mes).padStart(2, '0')
+  const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate()
+  return { inicio: `${ano}-${mm}-01`, fim: `${ano}-${mm}-${String(ultimo).padStart(2, '0')}` }
+}
+
+export type SituacaoPagamento = 'pago' | 'a_pagar' | 'vencido'
+
+/**
+ * Situação de um pagamento: confirmado é "pago"; sem confirmação é "a pagar"
+ * até o dia do vencimento (inclusive) e "vencido" depois dele.
+ */
+export function situacaoPagamento(m: { pago?: boolean | null; data: string }, hoje: string): SituacaoPagamento {
+  if (m.pago !== false) return 'pago'
+  return m.data < hoje ? 'vencido' : 'a_pagar'
+}

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, createClient } from './supabase/server'
 import { validarNomeEntidade, normalizarNome } from './config-entidades'
 import { datasRecorrentes } from './financeiro-movimentos'
+import { hojeISO } from './mes-atual'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from './types'
 
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
@@ -289,6 +290,8 @@ export async function criarMovimento(input: {
   // Recorrente: um lançamento por mês, todos com o mesmo recorrencia_id, num
   // único insert (ou entram todos, ou nenhum). Lançado em dezembro não há mês
   // seguinte, então vira um lançamento comum, sem série.
+  // Os lançamentos da série nascem "a pagar" (pago = false): registram só que
+  // a conta vai existir naquela data; o usuário confirma cada um quando paga.
   let datas = [input.data]
   if (input.recorrente && input.natureza === 'saida') {
     datas = datasRecorrentes(input.data)
@@ -305,6 +308,7 @@ export async function criarMovimento(input: {
     observacao: input.observacao,
     criado_por: user.id,
     recorrencia_id: recorrenciaId,
+    pago: recorrenciaId === null,
   }))).select('id, data')
 
   const novo = novos?.find(n => n.data === input.data) ?? novos?.[0]
@@ -343,6 +347,29 @@ export async function atualizarMovimento(input: {
   if (error) return { error: error.message }
 
   revalidatePath(input.natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')
+  revalidatePath('/financeiro/relatorios')
+  return { error: null }
+}
+
+/**
+ * Confirma que um pagamento previsto foi feito (ou desfaz a confirmação).
+ * Só pagamentos: recebimento não tem esse controle.
+ */
+export async function definirPagamentoConfirmado(id: string, pago: boolean): Promise<{ error: string | null }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const { data: alterados, error } = await supabase.from('financeiro_movimentos')
+    .update({ pago, pago_em: pago ? hojeISO() : null })
+    .eq('id', id)
+    .eq('natureza', 'saida')
+    .select('id')
+
+  if (error) return { error: error.message }
+  if (!alterados || alterados.length === 0) return { error: 'Pagamento não encontrado.' }
+
+  revalidatePath('/financeiro/pagamentos')
   revalidatePath('/financeiro/relatorios')
   return { error: null }
 }
