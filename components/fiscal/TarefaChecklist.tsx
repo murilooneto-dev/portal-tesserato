@@ -301,7 +301,7 @@ export default function TarefaChecklist({
     const campoData = tipoResposta === 'data' && !etapasDefinidas && !semMovimentoAtivo
 
     return (
-      <div key={tipo} className="flex flex-col">
+      <div key={tipo} className="flex flex-col border-b border-line-soft last:border-b-0">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-[18px] py-3 last:border-b-0">
           <span
             aria-hidden="true"
