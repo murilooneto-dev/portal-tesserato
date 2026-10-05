@@ -71,7 +71,7 @@ test('tipos de processo: desenho a-04', () => {
     'placeholder="Nome da nova etapa"', '>Adicionar etapa</Button>', 'border-t border-line-soft pt-3.5',
     "'Criar tipo de processo'", "'Salvar'", '>Cancelar</Button>',
     '<Card titulo="Tipos cadastrados" semPadding>', "etapa{item.etapas.length === 1 ? '' : 's'}", '<Pencil', 'rotulo={`Excluir ${item.nome}`}',
-    '<EmptyState', 'Nenhum tipo de processo cadastrado ainda.', '<Aviso tom="dng">{erro}</Aviso>'])
+    '<EmptyState', 'Nenhum tipo de processo cadastrado ainda', '<Aviso tom="dng">{erro}</Aviso>'])
   // "Sim ou não" é só rótulo: o valor checklist não some.
   assert.ok(!src.includes("'Checklist'"))
 })
@@ -100,7 +100,7 @@ test('documentações: desenho a-14 e mesmas actions', () => {
     '{arquivo.name} ({formatarTamanho(arquivo.size)})',
     '<Th>Modelo</Th>', '<Th largura={140}>Tamanho</Th>', '<Th largura={56}>', 'tabular-nums', '<FileText',
     'href={`/api/arquivos/documentacao/${item.id}`}', 'target="_blank"', 'rel="noopener noreferrer"',
-    'rotulo={`Excluir modelo ${item.nome}`}', 'Nenhum modelo de documentação cadastrado ainda.',
+    'rotulo={`Excluir modelo ${item.nome}`}', 'Nenhum modelo de documentação cadastrado ainda',
     'listarDocumentacaoModelos()', "formData.append('arquivo', arquivo)", 'criarDocumentacaoModelo(novoNome, formData)',
     'excluirDocumentacaoModelo(item.id)', 'if (!novoNome.trim() || !arquivo || salvando) return',
     'Excluir o modelo de documentação "${item.nome}"?'])
@@ -144,7 +144,7 @@ for (const [arq, setor] of [[SOC_VINCULAR, 'societario'], [FIN_VINCULAR, 'financ
     contem(src, [`from '@/lib/tarefa-tipo-vinculos-${setor}-actions'`, '<Modal', 'largura="p"',
       'titulo={`Clientes de "${tarefaTipoNome}"`}', 'placeholder="Buscar cliente"', '<Search', '<Checkbox',
       'Vincular agora não cria pendências de meses/períodos passados — só a partir do período atual.',
-      'variante="fantasma" onClick={onClose}', '>Fechar</Button>', 'Nenhum cliente encontrado.',
+      'variante="fantasma" onClick={onClose}', '>Fechar</Button>', 'Nenhum cliente encontrado',
       'listarClientesParaVinculo()', 'listarClienteIdsVinculados(tarefaTipoId)',
       'alternarVinculoCliente(tarefaTipoId, clienteId, !jaVinculado)',
       'c.nome.toLowerCase().includes(busca.trim().toLowerCase())'])

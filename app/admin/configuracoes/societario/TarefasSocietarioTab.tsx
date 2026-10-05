@@ -23,6 +23,7 @@ import { Field } from '@/components/ui/Field'
 import { Input, Select } from '@/components/ui/Input'
 import { Aviso } from '@/components/ui/Aviso'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/components/ui/cn'
@@ -128,9 +129,9 @@ export default function TarefasSocietarioTab() {
 
       <Card semPadding className="overflow-hidden">
         {carregando ? (
-          <p className="px-[18px] py-4 text-sm text-fg-3">Carregando…</p>
+          <EsqueletoLinhas linhas={4} className="px-[18px] py-5" />
         ) : itens.length === 0 ? (
-          <EmptyState icone={<ListChecks size={24} />} titulo="Nenhuma tarefa cadastrada nesse setor ainda." />
+          <EmptyState compacto icone={<ListChecks size={24} />} titulo="Nenhuma tarefa cadastrada nesse setor ainda" />
         ) : (
           <div className="relative overflow-x-auto xl:overflow-visible">
             <Tabela className="min-w-[880px]">

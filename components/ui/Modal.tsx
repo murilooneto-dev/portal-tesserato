@@ -71,22 +71,36 @@ function useJanela(aberto: boolean, painel: RefObject<HTMLDivElement | null>, te
   }, [aberto, painel])
 }
 
-function Cabecalho({ idTitulo, idSub, titulo, subtitulo, icone, onFechar, bloqueado }: {
-  idTitulo: string; idSub: string; titulo: ReactNode; subtitulo?: ReactNode; icone?: ReactNode; onFechar: () => void; bloqueado: boolean
+function Cabecalho({ idTitulo, idSub, titulo, subtitulo, icone, onFechar, bloqueado, comAlca = false, fecharGrande = false }: {
+  idTitulo: string; idSub: string; titulo: ReactNode; subtitulo?: ReactNode; icone?: ReactNode; onFechar: () => void; bloqueado: boolean; comAlca?: boolean; fecharGrande?: boolean
 }) {
   return (
-    <div className="flex items-start gap-3 border-b border-line-soft px-[22px] py-[18px]">
+    <div className={cn('flex flex-none items-start gap-3 border-b border-line-soft px-4 sm:px-[22px] sm:py-[18px]', comAlca ? 'pb-3 pt-2.5' : 'py-3.5')}>
       {icone}
       <div className="min-w-0 flex-1">
         <h2 id={idTitulo} className="text-[17px] font-semibold text-fg">{titulo}</h2>
         {subtitulo && <p id={idSub} className="mt-0.5 text-[13px] text-fg-3">{subtitulo}</p>}
       </div>
-      <IconButton rotulo="Fechar (Esc)" icone={<X size={18} aria-hidden="true" />} onClick={onFechar} disabled={bloqueado} data-fechar="" />
+      <IconButton rotulo="Fechar (Esc)" icone={<X size={18} aria-hidden="true" />} onClick={onFechar} disabled={bloqueado} data-fechar="" className={fecharGrande ? '-my-2 -mr-2 h-11 w-11' : 'max-sm:-my-2 max-sm:-mr-2 max-sm:h-11 max-sm:w-11'} />
     </div>
   )
 }
 
 const LARGURA = { p: 'max-w-[520px]', m: 'max-w-[640px]', g: 'max-w-[780px]' } as const
+
+// Rodapé: no celular os botões ocupam a largura e têm 48px de altura (mob-07).
+const RODAPE =
+  'flex items-center gap-2.5 border-t border-line-soft px-[22px] py-3.5 ' +
+  'max-sm:flex-wrap max-sm:px-4 max-sm:pb-[max(14px,env(safe-area-inset-bottom))] max-sm:[&>*]:flex-1 max-sm:[&_button]:min-h-12 max-sm:[&_button]:flex-1'
+
+// Gaveta: rodapé sem esticar botões (a gaveta do menu tem avatar + ícones no rodapé).
+const RODAPE_GAVETA =
+  'flex items-center gap-2.5 border-t border-line-soft px-[22px] py-3.5 max-sm:px-4 max-sm:pb-[max(14px,env(safe-area-inset-bottom))]'
+
+// Alça do bottom sheet (só no celular).
+function Alca() {
+  return <span aria-hidden="true" className="mx-auto mt-2.5 block h-1 w-9 flex-none rounded-sm bg-line sm:hidden" />
+}
 
 export function Modal({
   aberto, onFechar, titulo, subtitulo, icone, rodape, children,
@@ -100,7 +114,7 @@ export function Modal({
   if (!aberto) return null
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 sm:p-10"
+      className="fixed inset-0 z-[70] flex items-end justify-center overflow-y-auto bg-[var(--scrim)] sm:items-start sm:p-10"
       onMouseDown={e => { if (e.target === e.currentTarget && !cliqueNaBarraDeRolagem(e.clientX - e.currentTarget.getBoundingClientRect().left, e.currentTarget.clientWidth)) tentarFechar('fundo') }}
     >
       <div
@@ -110,11 +124,18 @@ export function Modal({
         aria-labelledby={idTitulo}
         aria-describedby={idDescricao ?? (subtitulo ? idSub : undefined)}
         tabIndex={-1}
-        className={cn('flex w-full flex-col overflow-hidden rounded-[14px] border border-line bg-surface shadow-modal', LARGURA[largura])}
+        className={cn(
+          'flex w-full flex-col overflow-hidden border border-line bg-surface shadow-modal',
+          // celular: abre de baixo (bottom sheet), largura toda, rolagem interna
+          'max-h-[90dvh] rounded-t-[18px] border-x-0 border-b-0',
+          'sm:max-h-none sm:rounded-[14px] sm:border-x sm:border-b',
+          LARGURA[largura],
+        )}
       >
-        <Cabecalho idTitulo={idTitulo} idSub={idSub} titulo={titulo} subtitulo={subtitulo} icone={icone} onFechar={() => tentarFechar('botao')} bloqueado={bloqueado} />
-        <div className="flex flex-col gap-5 px-[22px] py-5">{children}</div>
-        {rodape && <div className="flex items-center gap-2.5 border-t border-line-soft px-[22px] py-3.5">{rodape}</div>}
+        <Alca />
+        <Cabecalho idTitulo={idTitulo} idSub={idSub} titulo={titulo} subtitulo={subtitulo} icone={icone} onFechar={() => tentarFechar('botao')} bloqueado={bloqueado} comAlca />
+        <div className="flex min-h-0 flex-col gap-5 overflow-y-auto px-4 py-5 sm:overflow-visible sm:px-[22px]">{children}</div>
+        {rodape && <div className={RODAPE}>{rodape}</div>}
       </div>
     </div>
   )
@@ -122,8 +143,8 @@ export function Modal({
 
 export function Drawer({
   aberto, onFechar, titulo, subtitulo, icone, rodape, children,
-  larguraPx = 520, fecharAoClicarFora = true, bloqueado = false, idDescricao, lado = 'direita',
-}: BaseProps & { larguraPx?: number; lado?: 'esquerda' | 'direita' }) {
+  larguraPx = 520, fecharAoClicarFora = true, bloqueado = false, idDescricao, lado = 'direita', fecharGrande = false,
+}: BaseProps & { larguraPx?: number; lado?: 'esquerda' | 'direita'; fecharGrande?: boolean }) {
   const painel = useRef<HTMLDivElement>(null)
   const idTitulo = useId()
   const idSub = useId()
@@ -148,9 +169,9 @@ export function Drawer({
           lado === 'esquerda' ? 'left-0 border-r' : 'right-0 border-l',
         )}
       >
-        <Cabecalho idTitulo={idTitulo} idSub={idSub} titulo={titulo} subtitulo={subtitulo} icone={icone} onFechar={() => tentarFechar('botao')} bloqueado={bloqueado} />
-        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-[22px] py-5">{children}</div>
-        {rodape && <div className="flex items-center gap-2.5 border-t border-line-soft px-[22px] py-3.5">{rodape}</div>}
+        <Cabecalho idTitulo={idTitulo} idSub={idSub} titulo={titulo} subtitulo={subtitulo} icone={icone} onFechar={() => tentarFechar('botao')} bloqueado={bloqueado} fecharGrande={fecharGrande} />
+        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 py-5 sm:px-[22px]">{children}</div>
+        {rodape && <div className={RODAPE_GAVETA}>{rodape}</div>}
       </div>
     </div>
   )

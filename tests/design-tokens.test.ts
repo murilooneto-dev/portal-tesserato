@@ -2,8 +2,7 @@
 //
 // Garante que as cores do Design System aprovado (artifact SdZ3EYdm8CbusrZnGzz7sV,
 // prancheta ds-01-cores) estão em app/globals.css com os valores exatos, que os
-// nomes antigos continuam existindo (as telas atuais usam) e que a impressão
-// continua em branco e preto.
+// apelidos antigos saíram (Fase 8) e que a impressão continua em branco e preto.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -46,11 +45,11 @@ test('tema claro tem as cores do Design System', () => {
   for (const [nome, cor] of Object.entries(CLARO)) assert.equal(valor(b, nome)?.toUpperCase(), cor, `--${nome}`)
 })
 
-test('nomes antigos continuam existindo nos dois temas', () => {
+test('apelidos antigos saíram dos dois temas (Fase 8)', () => {
   for (const sel of [':root', ':root.light']) {
     const b = bloco(sel)
     for (const nome of ['bg-page', 'bg-surface', 'bg-surface-2', 'accent', 'accent-hover', 'accent-ink']) {
-      assert.ok(valor(b, nome), `${sel} deveria definir --${nome}`)
+      assert.equal(valor(b, nome), undefined, `${sel} não deveria mais definir --${nome}`)
     }
   }
 })
@@ -64,15 +63,15 @@ test('as cores viram classes Tailwind via @theme inline', () => {
   }
 })
 
-test('remendo de contraste do tema claro continua até as telas migrarem', () => {
-  assert.match(CSS, /:root\.light \.text-\\\[var\\\(--fg\\\)\\\]\\\/40/)
+test('remendo de contraste do tema claro saiu na Fase 8 (nenhuma tela usa mais text-[var(--fg)]/NN)', () => {
+  assert.ok(!CSS.includes(String.raw`.text-\[var\(--fg\)\]`))
 })
 
 test('impressão força fundo branco e texto preto também nas variáveis novas', () => {
   const i = CSS.indexOf('@media print')
   assert.ok(i >= 0)
   const b = CSS.slice(i)
-  for (const nome of ['page', 'surface', 'raised', 'inset', 'bg-page', 'bg-surface']) assert.match(b, new RegExp(`--${nome}:\\s*#ffffff`, 'i'), `print --${nome}`)
+  for (const nome of ['page', 'surface', 'raised', 'inset']) assert.match(b, new RegExp(`--${nome}:\\s*#ffffff`, 'i'), `print --${nome}`)
   assert.match(b, /--fg:\s*#000000/i)
 })
 

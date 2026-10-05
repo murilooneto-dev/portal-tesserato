@@ -7,14 +7,17 @@ import { formatarBadgeVinculo } from '@/lib/vinculos'
 import { desbloquearTarefa, salvarMIT, marcarSemMovimento } from '@/app/fiscal/clientes/actions'
 import { normalizarTitulo, alertaLabel } from '@/lib/calendario'
 import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
-import { AlertCircle, Check, ChevronRight, Clock, Layers, Lock, Paperclip, Unlock, X } from 'lucide-react'
+import { AlertCircle, Check, ChevronRight, Clock, Layers, ListChecks, Lock, Paperclip, Unlock, X } from 'lucide-react'
 import { Badge, type BadgeTom } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Checkbox, Input, Textarea } from '@/components/ui/Input'
 import { Field } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
+import { ErroSalvamento, IndicadorSalvamento, useSalvamento } from '@/components/geral/TarefasSetorChecklist'
 
+const CHAVE_MIT = '__mit__'
 const MESES_EXTENSO = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
 
 interface TipoInfo {
@@ -98,6 +101,8 @@ export default function TarefaChecklist({
   const [localResposta, setLocalResposta] = useState<Record<string, string>>({})
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null)
   const [erroUpload, setErroUpload] = useState<Record<string, string>>({})
+  // "Salvando… / Salvo / Erro" por tarefa (chave = tipo) e do MIT (CHAVE_MIT).
+  const { estados: salvamento, iniciar, acompanhar } = useSalvamento()
 
   const tipos = tarefasPersonalizadas
   const mapaTarefa = new Map(tarefas.map(t => [t.tipo, t]))
@@ -128,7 +133,8 @@ export default function TarefaChecklist({
     const novo = !getSemMovimento(tipo)
     setOptimisticSemMovimento(prev => ({ ...prev, [tipo]: novo }))
     setOptimisticDates(prev => ({ ...prev, [tipo]: novo ? new Date().toISOString().slice(0, 10) : null }))
-    startTransition(() => { marcarSemMovimento(clienteId, tipo, mes, ano, novo) })
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, marcarSemMovimento(clienteId, tipo, mes, ano, novo)) })
   }
 
   const concluidas = tipos.filter(t => getSavedIso(t) !== '').length
@@ -142,7 +148,8 @@ export default function TarefaChecklist({
     if (iso) {
       setOptimisticDates(prev => ({ ...prev, [tipo]: iso }))
       setLocalText(prev => { const n = { ...prev }; delete n[tipo]; return n })
-      startTransition(() => onToggle(tipo, true, iso))
+      iniciar(tipo)
+      startTransition(() => acompanhar(tipo, onToggle(tipo, true, iso)))
     }
   }
 
@@ -179,7 +186,8 @@ export default function TarefaChecklist({
   }
 
   async function handleMITBlur() {
-    await salvarMIT(clienteId, mit)
+    iniciar(CHAVE_MIT)
+    await acompanhar(CHAVE_MIT, salvarMIT(clienteId, mit))
   }
 
   function etapasDaTarefa(tipo: string): TarefaEtapa[] {
@@ -213,7 +221,8 @@ export default function TarefaChecklist({
     const iso = displayParaIso(formatted)
     if (iso) {
       setLocalEtapaText(prev => { const n = { ...prev }; delete n[key]; return n })
-      startTransition(() => { onAtualizarEtapa?.(tipo, etapaNome, true, iso) })
+      iniciar(tipo)
+      startTransition(() => { acompanhar(tipo, onAtualizarEtapa?.(tipo, etapaNome, true, iso)) })
     }
   }
 
@@ -222,7 +231,8 @@ export default function TarefaChecklist({
     const val = localEtapaText[key]
     if (val === undefined) return
     if (val === '') {
-      startTransition(() => { onAtualizarEtapa?.(tipo, etapaNome, false) })
+      iniciar(tipo)
+      startTransition(() => { acompanhar(tipo, onAtualizarEtapa?.(tipo, etapaNome, false)) })
     }
     setLocalEtapaText(prev => { const n = { ...prev }; delete n[key]; return n })
   }
@@ -239,7 +249,8 @@ export default function TarefaChecklist({
   function handleRespostaTextoBlur(tipo: string) {
     const valor = localResposta[tipo]
     if (valor === undefined) return
-    startTransition(() => { onSalvarTexto?.(tipo, valor) })
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, onSalvarTexto?.(tipo, valor)) })
     setLocalResposta(prev => { const n = { ...prev }; delete n[tipo]; return n })
   }
 
@@ -259,8 +270,9 @@ export default function TarefaChecklist({
     }
   }
 
-  function handleExcluirArquivo(arquivoId: string) {
-    startTransition(() => { onExcluirArquivo?.(arquivoId) })
+  function handleExcluirArquivo(tipo: string, arquivoId: string) {
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, onExcluirArquivo?.(arquivoId)) })
   }
 
 
@@ -304,7 +316,7 @@ export default function TarefaChecklist({
                 icone={vinculo.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
                 className="no-underline"
               >
-                {badgeVinculo.texto.replace(/^(✓|⏳)\s*/, '')}
+                {badgeVinculo.texto}
               </Badge>
             )}
             {diasPrazo !== null && (
@@ -354,7 +366,11 @@ export default function TarefaChecklist({
               Desbloquear
             </Button>
           )}
+
+          <IndicadorSalvamento estado={salvamento[tipo]} className="ml-auto" />
         </div>
+
+        <ErroSalvamento estado={salvamento[tipo]} className="mt-2.5 px-[18px] pl-[38px]" />
 
         {etapasDefinidas && !semMovimentoAtivo && (
           <div className="mb-3 ml-[38px] mr-[18px] grid grid-cols-1 gap-x-[18px] gap-y-2.5 rounded-[10px] border border-line-soft p-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -422,7 +438,7 @@ export default function TarefaChecklist({
                     <IconButton
                       rotulo={`Excluir ${arq.name}`}
                       icone={<X size={14} aria-hidden="true" />}
-                      onClick={() => handleExcluirArquivo(arq.id)}
+                      onClick={() => handleExcluirArquivo(tipo, arq.id)}
                       className="h-7 w-7 max-sm:h-11 max-sm:w-11"
                     />
                   )}
@@ -489,42 +505,58 @@ export default function TarefaChecklist({
   return (
     <Card
       titulo={`Tarefas de ${MESES_EXTENSO[mes - 1]}`}
-      meta={<Badge tom={total > 0 && concluidas === total ? 'ok' : 'neu'}>{concluidas} de {total}</Badge>}
+      meta={total > 0 ? <Badge tom={concluidas === total ? 'ok' : 'neu'}>{concluidas} de {total}</Badge> : undefined}
       semPadding
     >
-      <div
-        role="progressbar"
-        aria-label="Tarefas concluídas no mês"
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={concluidas}
-        className="h-1.5 w-full bg-raised"
-      >
-        <div
-          className="h-full bg-acc transition-all duration-300"
-          style={{ width: `${total > 0 ? (concluidas / total) * 100 : 0}%` }}
+      {total === 0 ? (
+        <EmptyState
+          compacto
+          icone={<ListChecks size={20} />}
+          titulo={`Nenhuma tarefa em ${MESES_EXTENSO[mes - 1]}`}
+          descricao="Este cliente não tem tarefas do Fiscal para o mês selecionado."
         />
-      </div>
+      ) : (
+        <>
+          <div
+            role="progressbar"
+            aria-label="Tarefas concluídas no mês"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={concluidas}
+            className="h-1.5 w-full bg-raised"
+          >
+            <div
+              className="h-full bg-acc transition-all duration-300"
+              style={{ width: `${(concluidas / total) * 100}%` }}
+            />
+          </div>
 
-      <div className="flex flex-col">
-        {renderLista()}
-      </div>
+          <div className="flex flex-col">
+            {renderLista()}
+          </div>
+        </>
+      )}
 
       {grupo === 'normal' && (
         <div className="border-t border-line-soft px-[18px] py-4">
-          <Field rotulo="MIT">
+          <Field rotulo="MIT · anotação do mês (regime normal)">
             {({ id }) => (
-              <Input
-                id={id}
-                type="text"
-                value={mit}
-                onChange={e => setMit(e.target.value)}
-                onBlur={handleMITBlur}
-                disabled={!podeEditar}
-                placeholder="Anotação MIT..."
-              />
+              <div className="flex items-center gap-3">
+                <Input
+                  id={id}
+                  type="text"
+                  value={mit}
+                  onChange={e => setMit(e.target.value)}
+                  onBlur={handleMITBlur}
+                  disabled={!podeEditar}
+                  placeholder="Anotação MIT..."
+                  className="min-w-0 flex-1"
+                />
+                <IndicadorSalvamento estado={salvamento[CHAVE_MIT]} />
+              </div>
             )}
           </Field>
+          <ErroSalvamento estado={salvamento[CHAVE_MIT]} className="mb-0 mt-2" />
         </div>
       )}
 

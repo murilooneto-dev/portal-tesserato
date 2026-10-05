@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search } from 'lucide-react'
+import { History, ListChecks, Search } from 'lucide-react'
 import type { UserSetor } from '@/lib/types'
 import {
   listarTarefaTiposDoSetor,
@@ -17,6 +17,8 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Checkbox } from '@/components/ui/Input'
 import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
 import { cn } from '@/components/ui/cn'
 
 interface Props {
@@ -153,7 +155,7 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
       iconeEsquerda={<Search size={16} />}
     />
   )
-  const semResultado = <p className="text-sm text-fg-3">Nenhuma tarefa encontrada com essa busca.</p>
+  const semResultado = <EmptyState compacto icone={<Search size={20} />} titulo="Nenhuma tarefa encontrada com essa busca" />
 
   return (
     <Modal
@@ -167,7 +169,7 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
       {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
 
       {carregando ? (
-        <p className="text-sm text-fg-3">Carregando…</p>
+        <EsqueletoLinhas linhas={5} />
 
       ) : entidadeTipo === 'regime' ? (
         <>
@@ -176,7 +178,7 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
             Recrie pela aba Atividades escolhendo a atividade certa e este regime, depois remova daqui.
           </Aviso>
           {tarefasLegadoRegime.length === 0 ? (
-            <p className="text-sm text-fg-3">Nenhum vínculo antigo restante.</p>
+            <EmptyState compacto icone={<History size={20} />} titulo="Nenhum vínculo antigo restante" />
           ) : (
             <>
               {campoBusca}
@@ -195,7 +197,7 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
         </>
 
       ) : tarefas.length === 0 ? (
-        <p className="text-sm text-fg-3">Nenhuma tarefa cadastrada no catálogo desse setor ainda.</p>
+        <EmptyState compacto icone={<ListChecks size={20} />} titulo="Nenhuma tarefa cadastrada no catálogo desse setor ainda" />
 
       ) : entidadeTipo === 'atividade' ? (
         <>
@@ -211,10 +213,11 @@ export default function VincularTarefasModal({ entidadeTipo, entidadeId, entidad
                       rotulo={<NomeTarefa tarefa={t} />}
                       checked={vinculada}
                       onChange={() => handleToggleAtividade(t.id)}
-                      className="min-w-0 flex-1"
+                      className="min-w-0 flex-1 max-sm:basis-full"
                     />
                     {vinculada && (
-                      <div className="w-[200px] flex-none">
+                      // No celular o regime desce para a linha de baixo e não espreme o nome.
+                      <div className="w-[200px] flex-none max-sm:w-full max-sm:pl-7">
                         <Select
                           aria-label={`Regime de ${t.nome}`}
                           value={regimeId ?? ''}

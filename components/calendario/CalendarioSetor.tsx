@@ -13,10 +13,11 @@ import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Aviso } from '@/components/ui/Aviso'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/components/ui/cn'
 import CalendarioEventoModal from './CalendarioEventoModal'
-import type { CalendarioEvento, UserSetor } from '@/lib/types'
+import { SETOR_LABEL, type CalendarioEvento, type UserSetor } from '@/lib/types'
 
 interface Props {
   setor: UserSetor
@@ -67,13 +68,23 @@ export default function CalendarioSetor({ setor, eventos, isAdmin, hojeInicial }
     <Pagina>
       <CabecalhoPagina
         titulo="Calendário"
-        subtitulo="Prazos internos e vencimentos oficiais"
+        subtitulo={`Prazos internos do escritório e vencimentos oficiais do ${SETOR_LABEL[setor]}`}
         acoes={isAdmin && (
           <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setCriando(true)}>Novo evento</Button>
         )}
       />
-      {erro && <p role="alert" className="text-sm text-danger">{erro}</p>}
+      {erro && <div role="alert"><Aviso tom="dng"><b>Não foi possível excluir o evento.</b> {erro}</Aviso></div>}
 
+      {eventos.length === 0 ? (
+        <section className="rounded-xl border border-line-soft bg-surface">
+          <EmptyState
+            icone={<CalendarDays size={24} />}
+            titulo="Nenhum prazo cadastrado ainda"
+            descricao="Os prazos cadastrados aparecem no calendário do mês e no Dashboard quando estiverem perto de vencer."
+            acao={isAdmin ? <Button icone={<Plus size={16} aria-hidden="true" />} onClick={() => setCriando(true)}>Cadastrar o primeiro prazo</Button> : undefined}
+          />
+        </section>
+      ) : (
       <div className="grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section aria-label="Calendário do mês" className="min-w-0 overflow-hidden rounded-xl border border-line-soft bg-surface">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line-soft px-[18px] py-3.5">
@@ -144,7 +155,7 @@ export default function CalendarioSetor({ setor, eventos, isAdmin, hojeInicial }
         <section aria-label="Próximos prazos" className="min-w-0 rounded-xl border border-line-soft bg-surface">
           <h2 className="border-b border-line-soft px-[18px] py-3.5 text-[15px] font-semibold text-fg">Próximos prazos</h2>
           {cards.length === 0 ? (
-            <EmptyState icone={<CalendarDays size={22} />} titulo="Nenhum evento cadastrado ainda" descricao={isAdmin ? 'Crie o primeiro em "Novo evento".' : undefined} />
+            <EmptyState compacto icone={<CalendarDays size={20} />} titulo="Nenhum prazo pela frente" descricao="Nenhum dos prazos cadastrados tem data pela frente." />
           ) : (
             <ul className="divide-y divide-line-soft">
               {cards.map(({ evento, dias }) => (
@@ -167,6 +178,7 @@ export default function CalendarioSetor({ setor, eventos, isAdmin, hojeInicial }
           )}
         </section>
       </div>
+      )}
 
       {criando && <CalendarioEventoModal setor={setor} evento={null} onClose={() => setCriando(false)} />}
       {editando && <CalendarioEventoModal setor={setor} evento={editando} onClose={() => setEditando(null)} />}

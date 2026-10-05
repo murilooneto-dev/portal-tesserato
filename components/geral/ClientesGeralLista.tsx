@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Pencil, Plus, Printer, Search, Users } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Eye, Pencil, Plus, Printer, Search, SlidersHorizontal, Users, X } from 'lucide-react'
 import { SETOR_LABEL, type Cliente, type TarefaVinculo } from '@/lib/types'
 import ClienteGeralModal from './ClienteGeralModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
@@ -17,6 +17,7 @@ import { Field } from '@/components/ui/Field'
 import { Input, Select } from '@/components/ui/Input'
 import { NomeCliente } from '@/components/ui/NomeCliente'
 import { Tabela, Th, Td } from '@/components/ui/Tabela'
+import { cn } from '@/components/ui/cn'
 import {
   SETORES_DE_CLIENTE, TODOS, filtrarClientesGeral, proximaOrdenacao, ariaSort, setoresDoCliente,
   type Ordenacao, type CampoOrdem,
@@ -46,6 +47,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
   const [filtroSetor, setFiltroSetor] = useFiltroPersistente('clientesGeral:setor', TODOS)
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('clientesGeral:atividade', [])
   const [ordenacao, setOrdenacao] = useState<Ordenacao>(null)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
 
   function toggleAtividade(nome: string) {
     setFiltroAtividade(
@@ -59,6 +61,33 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
   )
 
   const total = clientes.length
+
+  // No celular os filtros ficam recolhidos atrás do botão "Filtros", que fica
+  // destacado quando algum deles está em uso.
+  const filtrosAtivos = [filtroRegime !== TODOS, filtroSetor !== TODOS, filtroAtividade.length > 0].filter(Boolean).length
+
+  function limparFiltros() {
+    setBusca('')
+    setFiltroRegime(TODOS)
+    setFiltroSetor(TODOS)
+    setFiltroAtividade([])
+  }
+
+  const vazio = total === 0 ? (
+    <EmptyState
+      icone={<Users size={24} />}
+      titulo="Nenhum cliente cadastrado"
+      descricao="Os clientes de todos os setores aparecem aqui assim que forem cadastrados."
+      acao={podeCriar ? <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalNovoOpen(true)}>Novo cliente</Button> : undefined}
+    />
+  ) : (
+    <EmptyState
+      icone={<Users size={24} />}
+      titulo="Nenhum cliente com esses filtros"
+      descricao={`Há ${total} ${total === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}, mas nenhum com a busca e os filtros escolhidos.`}
+      acao={<Button icone={<X size={16} aria-hidden="true" />} onClick={limparFiltros}>Limpar filtros</Button>}
+    />
+  )
   const subtitulo = filtrados.length === total
     ? `${total} ${total === 1 ? 'cliente' : 'clientes'} · todos os setores`
     : `${filtrados.length} de ${total} clientes · todos os setores`
@@ -94,9 +123,21 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
       />
 
       <div className="flex flex-wrap items-end gap-3 print:hidden">
-        <Field rotulo="Buscar" className="w-full sm:w-[300px]">
-          {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Nome ou CNPJ" value={busca} onChange={e => setBusca(e.target.value)} />}
-        </Field>
+        <div className="flex w-full min-w-0 items-end gap-2 sm:w-[300px]">
+          <Field rotulo="Buscar" className="min-w-0 flex-1">
+            {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Nome ou CNPJ" value={busca} onChange={e => setBusca(e.target.value)} />}
+          </Field>
+          <IconButton
+            borda
+            rotulo={filtrosAbertos ? 'Esconder filtros' : 'Mostrar filtros'}
+            aria-expanded={filtrosAbertos}
+            aria-controls="filtros-clientes-geral"
+            icone={<SlidersHorizontal size={18} aria-hidden="true" />}
+            onClick={() => setFiltrosAbertos(a => !a)}
+            className={cn('h-11 w-11 sm:hidden', filtrosAtivos > 0 && 'border-acc text-acc-text')}
+          />
+        </div>
+        <div id="filtros-clientes-geral" className={cn('w-full flex-col gap-3 sm:contents', filtrosAbertos ? 'flex' : 'hidden')}>
         <Field rotulo="Regime" className="w-full sm:w-[190px]">
           {c => (
             <Select id={c.id} value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)}>
@@ -123,12 +164,46 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
             </div>
           </div>
         )}
+        </div>
       </div>
 
-      <Card semPadding className="overflow-hidden">
-        {filtrados.length === 0 ? (
-          <EmptyState icone={<Users size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou os filtros." />
-        ) : (
+      {filtrados.length === 0 ? (
+        <Card>{vazio}</Card>
+      ) : (
+        <>
+          {/* Celular (nav-03): um cartão por cliente; o toque abre o cadastro. A impressão continua usando a tabela. */}
+          <ul className="flex flex-col gap-2.5 sm:hidden print:hidden">
+            {filtrados.map(c => {
+              const desabilitado = empresaDesabilitada([c.clientes_fiscal, c.clientes_contabil, c.clientes_pessoal])
+              const regime = c.clientes_fiscal?.regime
+              const setores = setoresDoCliente(c.setores)
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => setClienteAbertoId(c.id)}
+                    aria-label={`${isAdmin ? 'Editar' : 'Ver'} ${c.nome}`}
+                    className="flex w-full flex-col gap-2.5 rounded-xl border border-line-soft bg-surface px-4 py-3.5 text-left transition-colors active:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+                  >
+                    <div className="flex w-full items-start gap-2.5">
+                      <div className="min-w-0 flex-1"><NomeCliente nome={c.nome} cnpj={c.cnpj} /></div>
+                      <ChevronRight size={18} aria-hidden="true" className="mt-0.5 flex-none text-fg-3" />
+                    </div>
+                    {(regime || desabilitado || setores.length > 0) && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {regime && <Badge tom="acc">{regime.split('/')[0].trim()}</Badge>}
+                        {setores.map(s => <Badge key={s}>{SETOR_LABEL[s]}</Badge>)}
+                        {desabilitado && <Badge tom="warn">Desabilitado</Badge>}
+                      </div>
+                    )}
+                    {c.contato_chat?.trim() && <span className="block w-full truncate text-[13px] text-fg-2">{c.contato_chat}</span>}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+
+          <Card semPadding className="hidden overflow-hidden sm:block print:block">
           <div className="relative overflow-x-auto xl:overflow-visible">
             <Tabela className="min-w-[940px]">
               <thead>
@@ -180,8 +255,9 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
               </tbody>
             </Tabela>
           </div>
-        )}
-      </Card>
+          </Card>
+        </>
+      )}
 
       {modalNovoOpen && (
         <ClienteGeralModal

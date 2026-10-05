@@ -258,7 +258,7 @@ export default async function ClientePessoalDetalhePage({ params, searchParams }
           {
             chave: 'eventos',
             aba: 'eventos',
-            conteudo: <EventosAvulsosSecao clienteId={id} setor="pessoal" eventos={eventosAvulsos} podeEditar={podeEditar} />,
+            conteudo: <EventosAvulsosSecao clienteId={id} setor="pessoal" eventos={eventosAvulsos} podeEditar={podeEditar} mes={mes} />,
           },
           {
             chave: 'observacoes',

@@ -18,8 +18,8 @@ const VARIANTE: Record<ButtonVariant, string> = {
 }
 
 const TAMANHO: Record<ButtonSize, string> = {
-  p: 'h-[30px] px-2.5 text-[13px] rounded-[7px]',
-  m: 'h-9 px-3.5 text-sm rounded-lg',
+  p: 'h-[30px] px-2.5 text-[13px] rounded-[7px] max-sm:min-h-11',
+  m: 'h-9 px-3.5 text-sm rounded-lg max-sm:min-h-11',
   g: 'h-11 px-[18px] text-[15px] rounded-lg',
 }
 
@@ -73,6 +73,10 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   borda?: boolean
 }
 
+// Alvo de toque de 44px no celular, a não ser que o chamador já defina o tamanho
+// (h-*, w-* ou size-* sem prefixo de tela).
+const TEM_TAMANHO = /(^|\s)(h|w|size)-/
+
 export function IconButton({ rotulo, icone, borda = false, className, type = 'button', ...rest }: IconButtonProps) {
   return (
     <button
@@ -83,6 +87,7 @@ export function IconButton({ rotulo, icone, borda = false, className, type = 'bu
         'inline-grid h-[34px] w-[34px] flex-none place-items-center rounded-lg text-fg-2 transition-colors hover:bg-raised hover:text-fg',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc disabled:cursor-not-allowed disabled:opacity-45',
         borda ? 'border border-line' : 'border border-transparent',
+        !TEM_TAMANHO.test(className ?? '') && 'max-sm:h-11 max-sm:w-11',
         className,
       )}
       {...rest}

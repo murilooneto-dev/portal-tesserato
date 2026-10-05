@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { CalendarDays, Plus, Search } from 'lucide-react'
+import { CalendarDays, Plus, Search, X } from 'lucide-react'
+import { MESES } from '@/lib/mes-navegacao'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { TarefaAvulsaComCriador } from '@/lib/tarefas-avulsas'
 import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
@@ -24,9 +25,11 @@ interface Props {
   clientes: { id: string; nome: string }[]
   eventos: TarefaAvulsaComCriador[]
   podeEditar: boolean
+  /** Mês de trabalho (1–12), só para o texto da lista vazia. */
+  mes?: number
 }
 
-export default function EventosConsolidados({ clientes, eventos, podeEditar }: Props) {
+export default function EventosConsolidados({ clientes, eventos, podeEditar, mes }: Props) {
   const [busca, setBusca] = useFiltroPersistente('eventos-consolidados:busca', '')
   const [seletorAberto, setSeletorAberto] = useState(false)
   const [buscaSeletor, setBuscaSeletor] = useState('')
@@ -86,11 +89,21 @@ export default function EventosConsolidados({ clientes, eventos, podeEditar }: P
 
       {gruposFiltrados.length === 0 ? (
         <Card semPadding>
-          <EmptyState
-            icone={<CalendarDays size={24} />}
-            titulo="Nenhum evento neste mês"
-            descricao={busca ? 'Mude a busca para ver outros clientes.' : undefined}
-          />
+          {busca && grupos.length > 0 ? (
+            <EmptyState
+              icone={<Search size={24} />}
+              titulo="Nenhum evento com essa busca"
+              descricao="Nenhum cliente com eventos no mês tem esse nome."
+              acao={<Button icone={<X size={16} aria-hidden="true" />} onClick={() => setBusca('')}>Limpar busca</Button>}
+            />
+          ) : (
+            <EmptyState
+              icone={<CalendarDays size={24} />}
+              titulo={mes ? `Nenhum evento em ${MESES[mes - 1].toLowerCase()}` : 'Nenhum evento neste mês'}
+              descricao="Os eventos avulsos criados nas fichas dos clientes aparecem aqui, agrupados por cliente."
+              acao={podeEditar ? <Button icone={<Plus size={16} aria-hidden="true" />} onClick={() => setSeletorAberto(true)}>Novo evento</Button> : undefined}
+            />
+          )}
         </Card>
       ) : (
         <div className="flex flex-col gap-4">
@@ -130,7 +143,7 @@ export default function EventosConsolidados({ clientes, eventos, podeEditar }: P
         </Field>
         <div className="-mx-2 flex max-h-[50vh] flex-col overflow-y-auto">
           {clientesSeletorFiltrados.length === 0 ? (
-            <p className="py-6 text-center text-sm text-fg-3">Nenhum cliente encontrado.</p>
+            <EmptyState compacto icone={<Search size={20} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca para ver outros clientes." />
           ) : (
             clientesSeletorFiltrados.map(c => (
               <button

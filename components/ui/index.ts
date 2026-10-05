@@ -11,6 +11,7 @@ export { ConfirmDialog, ConfirmProvider, useConfirmar, type OpcoesConfirmacao } 
 export { Card } from './Card'
 export { Aviso, type AvisoTom } from './Aviso'
 export { EmptyState } from './EmptyState'
+export { EsqueletoLinhas, EsqueletoCartao } from './Esqueleto'
 export { Tabela, Th, Td } from './Tabela'
 export { ToastProvider, useToast, filaDeAvisos, type AvisoSalvo } from './Toast'
 export { Providers } from './Providers'

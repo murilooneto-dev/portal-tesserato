@@ -16,7 +16,7 @@ export function Input({ invalido = false, iconeEsquerda, className, ...rest }: I
   const input = (
     <input
       aria-invalid={invalido || undefined}
-      className={cn(CAMPO, 'h-9', iconeEsquerda ? 'pl-9' : undefined, invalido && INVALIDO, className)}
+      className={cn(CAMPO, 'h-9 max-sm:h-11', iconeEsquerda ? 'pl-9' : undefined, invalido && INVALIDO, className)}
       {...rest}
     />
   )
@@ -36,7 +36,7 @@ export function Select({ invalido = false, className, children, ...rest }: Selec
     <div className="relative min-w-0">
       <select
         aria-invalid={invalido || undefined}
-        className={cn(CAMPO, 'h-9 appearance-none pr-9', invalido && INVALIDO, className)}
+        className={cn(CAMPO, 'h-9 appearance-none pr-9 max-sm:h-11', invalido && INVALIDO, className)}
         {...rest}
       >
         {children}
@@ -52,7 +52,7 @@ export function Textarea({ invalido = false, className, ...rest }: TextareaHTMLA
   return (
     <textarea
       aria-invalid={invalido || undefined}
-      className={cn(CAMPO, 'min-h-[88px] py-2 leading-relaxed', invalido && INVALIDO, className)}
+      className={cn(CAMPO, 'min-h-[88px] py-2 leading-relaxed max-sm:min-h-11', invalido && INVALIDO, className)}
       {...rest}
     />
   )

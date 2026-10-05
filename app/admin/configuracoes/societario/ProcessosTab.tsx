@@ -31,6 +31,7 @@ import { Input, Select } from '@/components/ui/Input'
 import { Segmentado } from '@/components/ui/Segmentado'
 import { Aviso } from '@/components/ui/Aviso'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/components/ui/cn'
@@ -335,9 +336,9 @@ export default function ProcessosTab() {
 
         <Card titulo="Tipos cadastrados" semPadding>
           {carregando ? (
-            <p className="px-[18px] py-4 text-sm text-fg-3">Carregando…</p>
+            <EsqueletoLinhas linhas={4} className="px-[18px] py-5" />
           ) : itens.length === 0 ? (
-            <EmptyState icone={<GitBranch size={24} />} titulo="Nenhum tipo de processo cadastrado ainda." />
+            <EmptyState compacto icone={<GitBranch size={24} />} titulo="Nenhum tipo de processo cadastrado ainda" />
           ) : (
             <ul>
               {itens.map((item, indice) => {

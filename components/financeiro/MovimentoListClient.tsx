@@ -1,14 +1,15 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import { Pencil, Plus, Receipt, Search, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Receipt, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { excluirMovimento } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
 import { formatarDdMm } from '@/lib/formatar-data'
 import { formatarValor } from '@/lib/financeiro-movimentos'
 import type { FinanceiroNatureza } from '@/lib/types'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
-import { Button } from '@/components/ui/Button'
+import { Button, IconButton } from '@/components/ui/Button'
+import { cn } from '@/components/ui/cn'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Field } from '@/components/ui/Field'
@@ -68,6 +69,7 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
   const [busca, setBusca] = useState('')
   const [ordenacao, setOrdenacao] = useState<Ordenacao>('lancamento')
   const [pagina, setPagina] = useState(1)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
 
   function pedirExclusao(id: string) {
     setErroExcluir(null)
@@ -163,7 +165,7 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
   )
 
   return (
-    <Pagina>
+    <Pagina className="pb-24 sm:pb-24 lg:pb-7">
       <CabecalhoPagina
         titulo={titulo}
         subtitulo={<>{plural(n)} · total <b className="font-semibold text-fg tabular-nums">{formatarValor(total)}</b></>}
@@ -175,19 +177,31 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
       />
 
       <div className="flex flex-wrap items-end gap-3">
-        <Field rotulo="Buscar" className="w-full sm:w-[360px]">
-          {c => (
-            <Input
-              id={c.id}
-              type="search"
-              value={busca}
-              onChange={e => { setBusca(e.target.value); setPagina(1); setExcluindoId(null) }}
-              placeholder="Tipo, centro de custo ou observação"
-              iconeEsquerda={<Search size={16} />}
-            />
-          )}
-        </Field>
-        <Field rotulo="Ordenar por" className="w-full sm:w-[230px]">
+        <div className="flex w-full min-w-0 items-end gap-2 sm:w-[360px]">
+          <Field rotulo="Buscar" className="min-w-0 flex-1">
+            {c => (
+              <Input
+                id={c.id}
+                type="search"
+                value={busca}
+                onChange={e => { setBusca(e.target.value); setPagina(1); setExcluindoId(null) }}
+                placeholder="Tipo, centro de custo ou observação"
+                iconeEsquerda={<Search size={16} />}
+              />
+            )}
+          </Field>
+          {/* No celular a ordenação fica atrás do botão "Filtros", destacado quando mudou. */}
+          <IconButton
+            borda
+            rotulo={filtrosAbertos ? 'Esconder filtros' : 'Mostrar filtros'}
+            aria-expanded={filtrosAbertos}
+            aria-controls="filtros-movimentos"
+            icone={<SlidersHorizontal size={18} aria-hidden="true" />}
+            onClick={() => setFiltrosAbertos(a => !a)}
+            className={cn('h-11 w-11 sm:hidden', ordenacao !== 'lancamento' && 'border-acc text-acc-text')}
+          />
+        </div>
+        <Field rotulo="Ordenar por" className={cn('w-full sm:flex sm:w-[230px]', !filtrosAbertos && 'max-sm:hidden')}>
           {c => (
             <Select id={c.id} value={ordenacao} onChange={e => { setOrdenacao(e.target.value as Ordenacao); setPagina(1); setExcluindoId(null) }}>
               {OPCOES_ORDENACAO.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -198,10 +212,21 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
 
       {n === 0 ? (
         <Card>
-          <EmptyState
-            icone={<Receipt size={24} />}
-            titulo={movimentos.length === 0 ? 'Nenhum lançamento ainda.' : 'Nenhum lançamento encontrado com esse filtro.'}
-          />
+          {movimentos.length === 0 ? (
+            <EmptyState
+              icone={<Receipt size={24} />}
+              titulo="Nenhum lançamento ainda"
+              descricao="Os lançamentos aparecem aqui assim que forem registrados."
+              acao={<Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalAberto(true)}>{botaoNovo}</Button>}
+            />
+          ) : (
+            <EmptyState
+              icone={<Search size={24} />}
+              titulo="Nenhum lançamento com essa busca"
+              descricao="Mude a busca para ver outros lançamentos."
+              acao={<Button icone={<X size={16} aria-hidden="true" />} onClick={() => { setBusca(''); setPagina(1); setExcluindoId(null) }}>Limpar busca</Button>}
+            />
+          )}
         </Card>
       ) : (
         <>
@@ -318,7 +343,7 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
         variante="primario"
         icone={<Plus size={18} aria-hidden="true" />}
         onClick={() => setModalAberto(true)}
-        className="fixed right-4 bottom-[84px] z-30 h-[52px] rounded-[26px] px-5 shadow-lg lg:hidden"
+        className="fixed right-4 bottom-[84px] md:bottom-6 z-30 h-[52px] rounded-[26px] px-5 shadow-lg lg:hidden"
       >
         {botaoNovo}
       </Button>

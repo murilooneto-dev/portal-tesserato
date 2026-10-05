@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, type ReactNode } from 'react'
-import { ArrowRight, Trash2 } from 'lucide-react'
+import { ArrowRight, Link2, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
@@ -19,6 +19,8 @@ import { Field } from '@/components/ui/Field'
 import { Input, Checkbox, Switch } from '@/components/ui/Input'
 import { Chip } from '@/components/ui/Chip'
 import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/components/ui/cn'
 
@@ -277,7 +279,7 @@ export default function ClienteGeralModal({ clienteId, vinculosCatalogo, onClose
         {falhaAoCarregar ? (
           <div role="alert"><Aviso tom="dng">Não foi possível carregar o cliente. Feche a janela e tente de novo.</Aviso></div>
         ) : loading ? (
-          <p role="status" className="py-8 text-center text-sm text-fg-3">Carregando…</p>
+          <EsqueletoLinhas linhas={6} className="py-4" />
         ) : (
           <>
             <Secao titulo="Identificação">
@@ -318,7 +320,12 @@ export default function ClienteGeralModal({ clienteId, vinculosCatalogo, onClose
                 disabled={readOnly}
               />
               {mostrarVinculos && (vinculosAplicaveis.length === 0 ? (
-                <p className="text-[13px] text-fg-3">Nenhum vínculo do catálogo se aplica aos setores marcados.</p>
+                <EmptyState
+                  compacto
+                  icone={<Link2 size={20} />}
+                  titulo="Nenhum vínculo para estes setores"
+                  descricao="Nenhum vínculo do catálogo se aplica aos setores marcados."
+                />
               ) : (
                 <ul className="overflow-hidden rounded-[10px] border border-line-soft">
                   {vinculosAplicaveis.map((v, i) => (

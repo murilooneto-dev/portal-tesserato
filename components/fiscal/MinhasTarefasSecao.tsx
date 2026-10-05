@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Fragment, useState, useTransition } from 'react'
+import { FileText, Search, Users } from 'lucide-react'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
 import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-checklist'
 import { desbloquearTarefa, marcarSemMovimento } from '@/app/fiscal/clientes/actions'
@@ -10,6 +11,7 @@ import type { StatusFiltroMinhasTarefas } from './MinhasTarefasFiltro'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Checkbox, Input, Textarea } from '@/components/ui/Input'
 import { NomeCliente } from '@/components/ui/NomeCliente'
 import { Tabela, Th, Td } from '@/components/ui/Tabela'
@@ -223,13 +225,11 @@ export default function MinhasTarefasSecao({
       className="overflow-hidden"
     >
       {clientes.length === 0 ? (
-        <p className="px-[18px] py-4 text-sm text-fg-3">Nenhum cliente com essa tarefa aplicável.</p>
+        <EmptyState compacto icone={<Users size={20} />} titulo="Nenhum cliente com essa tarefa" descricao="Nenhum cliente ativo tem essa tarefa aplicável no mês." />
       ) : tipoResposta !== 'data' ? (
-        <p className="px-[18px] py-4 text-sm text-fg-3">
-          Esse tipo não é de data/etapas — edite pela ficha de cada cliente.
-        </p>
+        <EmptyState compacto icone={<FileText size={20} />} titulo="Preenchimento pela ficha" descricao="Esse tipo não é de data/etapas — edite pela ficha de cada cliente." />
       ) : clientesFiltrados.length === 0 ? (
-        <p className="px-[18px] py-4 text-sm text-fg-3">Nenhum cliente encontrado com esse filtro.</p>
+        <EmptyState compacto icone={<Search size={20} />} titulo="Nenhum cliente com esse filtro" descricao="Mude a busca, a situação ou a atividade." />
       ) : (
         <>
           <div className="hidden sm:block"><div className="relative overflow-x-auto">

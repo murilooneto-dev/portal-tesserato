@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Clock, Plus } from 'lucide-react'
+import { CalendarDays, Clock, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { CabecalhoPagina } from '@/components/ui/Pagina'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
@@ -147,7 +148,7 @@ export default function Agenda({ titulo, subtitulo, topo, hojeInicial }: { titul
       <section aria-label="Compromissos de hoje" className="rounded-xl border border-line-soft bg-surface px-3.5 py-3 sm:hidden">
         <h2 className="text-sm font-semibold text-fg">{`Hoje · ${tituloDoDia(hoje.getFullYear(), hoje.getMonth() + 1, hoje.getDate())}`}</h2>
         {deHoje.length === 0 ? (
-          <p className="mt-2 text-[13px] text-fg-3">Nenhum compromisso hoje.</p>
+          <EmptyState compacto icone={<CalendarDays size={20} />} titulo="Nenhum compromisso hoje" />
         ) : (
           <ul>
             {deHoje.map(item => (

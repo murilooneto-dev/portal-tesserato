@@ -7,7 +7,7 @@ export const metadata = { title: 'Agenda — Tesserato Fiscal' }
 export default function AgendaPage() {
   return (
     <Pagina>
-      <Agenda hojeInicial={chaveHojeNoBrasil()} titulo="Agenda" subtitulo="Sua agenda pessoal" />
+      <Agenda hojeInicial={chaveHojeNoBrasil()} titulo="Agenda" subtitulo="Seus compromissos pessoais" />
     </Pagina>
   )
 }

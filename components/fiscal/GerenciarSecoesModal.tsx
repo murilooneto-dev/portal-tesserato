@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Check, FolderOpen, Pencil, Plus, Trash2, X } from 'lucide-react'
 import {
   criarSecaoParcelamento, renomearSecaoParcelamento, removerSecaoParcelamento,
 } from '@/lib/parcelamento-secoes-actions'
@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 
 interface SecaoParcelamento {
@@ -136,7 +137,7 @@ export default function GerenciarSecoesModal({ secoes, onClose, onChanged, onCri
           </li>
         ))}
         {secoes.length === 0 && (
-          <li className="py-4 text-center text-sm text-fg-3">Nenhuma seção cadastrada.</li>
+          <li><EmptyState compacto icone={<FolderOpen size={20} />} titulo="Nenhuma seção cadastrada" descricao="Crie a primeira abaixo para agrupar os parcelamentos." /></li>
         )}
       </ul>
 

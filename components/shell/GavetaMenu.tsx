@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { LogOut, Moon, Sun } from 'lucide-react'
 import { Drawer } from '@/components/ui/Modal'
 import { IconButton } from '@/components/ui/Button'
@@ -26,9 +27,15 @@ export function GavetaMenu({ aberto, onFechar, profile, grupos, pathname, setore
     <Drawer
       aberto={aberto}
       onFechar={onFechar}
-      titulo="Tesserato"
+      titulo={
+        <span className="flex items-center gap-2.5 font-bold tracking-[.01em]">
+          <Image src="/logo.ico" alt="" width={28} height={28} className="rounded-lg" />
+          Tesserato
+        </span>
+      }
       lado="esquerda"
       larguraPx={316}
+      fecharGrande
       rodape={
         <div className="flex w-full items-center gap-2.5">
           <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-full text-[13px] font-bold text-white" style={{ backgroundColor: profile.cor }}>

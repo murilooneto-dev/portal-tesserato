@@ -45,8 +45,8 @@ interface Props {
 const NATUREZA_LABEL: Record<string, string> = { entrada: 'Entrada', saida: 'Saída' }
 
 // Verde para o que entra, vermelho para o que sai; no papel a cor continua.
-const COR_ENTRADA = 'text-ok print:text-emerald-700'
-const COR_SAIDA = 'text-danger print:text-red-700'
+const COR_ENTRADA = 'text-ok'
+const COR_SAIDA = 'text-danger'
 
 function SeloNatureza({ natureza }: { natureza: 'entrada' | 'saida' }) {
   return natureza === 'entrada'
@@ -156,15 +156,15 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
       </Card>
 
       <div className="hidden print:block">
-        <h1 className="text-lg font-bold text-black">Relatório Financeiro</h1>
-        {filtrosAplicados && <p className="mt-1 text-xs text-black/70">Filtros: {filtrosAplicados}</p>}
-        <p className="mt-1 text-xs text-black/50" suppressHydrationWarning>Gerado em {geradoEm}</p>
+        <h1 className="text-lg font-bold text-fg">Relatório Financeiro</h1>
+        {filtrosAplicados && <p className="mt-1 text-xs text-fg-3">Filtros: {filtrosAplicados}</p>}
+        <p className="mt-1 text-xs text-ph" suppressHydrationWarning>Gerado em {geradoEm}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 print:grid-cols-3">
         {kpis.map(k => (
-          <div key={k.label} className="min-w-0 rounded-xl border border-line-soft bg-surface px-5 py-[18px] print:border-black/20 print:px-3 print:py-2">
-            <p className="text-[13px] font-medium text-fg-3 print:text-black/60">{k.label}</p>
+          <div key={k.label} className="min-w-0 rounded-xl border border-line-soft bg-surface px-5 py-[18px] print:border-line print:px-3 print:py-2">
+            <p className="text-[13px] font-medium text-fg-3 print:text-ph">{k.label}</p>
             <p className={`mt-1.5 truncate text-2xl font-semibold leading-tight tabular-nums xl:text-[30px] print:text-base ${k.cor}`} title={k.val}>{k.val}</p>
           </div>
         ))}
@@ -193,7 +193,7 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
           </div>
 
           {/* Tela larga e impressão: tabela */}
-          <Card semPadding className="hidden overflow-hidden sm:block print:block print:overflow-visible print:rounded-none print:border-black/20">
+          <Card semPadding className="hidden overflow-hidden sm:block print:block print:overflow-visible print:rounded-none print:border-line">
             <div className="relative overflow-x-auto xl:overflow-visible print:overflow-visible">
               <Tabela className="min-w-[980px] print:min-w-0 print:text-xs">
                 <thead>

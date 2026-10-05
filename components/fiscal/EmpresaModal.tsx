@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
 import { Input, Select } from '@/components/ui/Input'
 import { Aviso } from '@/components/ui/Aviso'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 
 interface FormData {
@@ -234,7 +235,7 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
         }
       >
         {loading ? (
-          <p role="status" className="py-8 text-center text-sm text-fg-3">Carregando…</p>
+          <EsqueletoLinhas linhas={6} className="py-4" />
         ) : (
           <>
             <Secao titulo="Identificação">

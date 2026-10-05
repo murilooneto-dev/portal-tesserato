@@ -56,7 +56,8 @@ test('barra inferior: atalhos com a página atual e o botão Mais, alvos de 44 p
   const mais = inf.match(/<button[^>]*>/)?.[0] ?? ''
   assert.match(mais, /aria-expanded="false"/)
   assert.match(mais, /aria-haspopup="dialog"/)
-  assert.match(inf, /lg:hidden/)
+  // Fase 8: no tablet (768–1023) o trilho de ícones substitui a barra inferior.
+  assert.match(inf, /md:hidden/)
   assert.match(inf, /min-h-11|h-16/)
 })
 

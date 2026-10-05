@@ -17,6 +17,7 @@ import { Field } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
 import { Aviso } from '@/components/ui/Aviso'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/components/ui/cn'
@@ -136,9 +137,9 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label, mostrada 
 
       <Card semPadding className="overflow-hidden">
         {carregando && itens.length === 0 ? (
-          <p className="px-[18px] py-6 text-sm text-fg-3">Carregando…</p>
+          <EsqueletoLinhas linhas={4} className="px-[18px] py-5" />
         ) : itens.length === 0 ? (
-          <EmptyState icone={<List size={24} />} titulo={`Nenhum ${label} cadastrado ainda`} descricao="Crie pelo campo acima." />
+          <EmptyState compacto icone={<List size={24} />} titulo={`Nenhum ${label} cadastrado ainda`} descricao="Crie pelo campo acima." />
         ) : (
           <div className="relative overflow-x-auto xl:overflow-visible">
             <Tabela className="min-w-[480px]">

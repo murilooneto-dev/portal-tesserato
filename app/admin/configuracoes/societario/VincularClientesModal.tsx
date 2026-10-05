@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Users } from 'lucide-react'
 import {
   listarClientesParaVinculo,
   listarClienteIdsVinculados,
@@ -13,6 +13,8 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Checkbox } from '@/components/ui/Input'
 import { Aviso } from '@/components/ui/Aviso'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
 import { cn } from '@/components/ui/cn'
 
 interface Props {
@@ -89,9 +91,9 @@ export default function VincularClientesModal({ tarefaTipoId, tarefaTipoNome, on
       {erro && <div role="alert"><Aviso tom="dng">{erro}</Aviso></div>}
 
       {carregando ? (
-        <p className="text-sm text-fg-3">Carregando…</p>
+        <EsqueletoLinhas linhas={5} />
       ) : clientesFiltrados.length === 0 ? (
-        <p className="text-sm text-fg-3">Nenhum cliente encontrado.</p>
+        <EmptyState compacto icone={<Users size={20} />} titulo={busca.trim() ? 'Nenhum cliente com essa busca' : 'Nenhum cliente encontrado'} />
       ) : (
         <ul className="max-h-[50vh] overflow-y-auto rounded-[10px] border border-line-soft">
           {clientesFiltrados.map((c, i) => {

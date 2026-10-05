@@ -231,9 +231,9 @@ export default function LogsEventosClient({ logs, taskLogs, clientes, filtros, c
       </form>
 
       <div className="hidden print:block">
-        <h1 className="text-lg font-bold text-black">Relatório de Log de Eventos</h1>
-        {filtrosAplicados && <p className="mt-1 text-xs text-black/70">Filtros: {filtrosAplicados}</p>}
-        <p className="mt-1 text-xs text-black/50">Gerado em {new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+        <h1 className="text-lg font-bold text-fg">Relatório de Log de Eventos</h1>
+        {filtrosAplicados && <p className="mt-1 text-xs text-fg-3">Filtros: {filtrosAplicados}</p>}
+        <p className="mt-1 text-xs text-ph">Gerado em {new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
       </div>
 
       <Card semPadding className="overflow-hidden print:overflow-visible print:border-0">
@@ -278,8 +278,8 @@ export default function LogsEventosClient({ logs, taskLogs, clientes, filtros, c
   const tarefas = (
     <div className="flex min-w-0 flex-col gap-5">
       <div className="hidden print:block">
-        <h1 className="text-lg font-bold text-black">Relatório de alterações de tarefas</h1>
-        <p className="mt-1 text-xs text-black/50">Gerado em {new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+        <h1 className="text-lg font-bold text-fg">Relatório de alterações de tarefas</h1>
+        <p className="mt-1 text-xs text-ph">Gerado em {new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
       </div>
 
       <Card semPadding className="overflow-hidden print:overflow-visible print:border-0">

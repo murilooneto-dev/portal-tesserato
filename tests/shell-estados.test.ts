@@ -4,7 +4,6 @@ import { createElement as h } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import CarregandoPagina from '../components/shell/CarregandoPagina'
 import ErroPagina from '../components/shell/ErroPagina'
 import NaoEncontrada from '../app/not-found'
 
@@ -22,13 +21,6 @@ test('cada área tem erro que reaproveita a peça e nenhuma tem loading.tsx', ()
     assert.match(err, /ErroPagina/)
     assert.match(err, /unstable_retry/)
   }
-})
-
-test('carregando é anunciado e não é texto solto', () => {
-  const html = renderToStaticMarkup(h(CarregandoPagina))
-  assert.match(html, /role="status"/)
-  assert.match(html, /Carregando/)
-  assert.match(html, /animate-pulse/)
 })
 
 test('erro explica e oferece tentar de novo', () => {

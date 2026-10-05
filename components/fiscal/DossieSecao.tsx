@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import { FolderOpen, Lock, Search } from 'lucide-react'
+import { FolderOpen, Lock, Search, X } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { STATUS_DOSSIE_OPCOES, type StatusDossie } from '@/lib/status-dossie'
 import { Badge } from '@/components/ui/Badge'
@@ -97,7 +98,16 @@ export default function DossieSecao({ clientes, onAtualizarStatus, onAtualizarFi
 
       <Card semPadding className="overflow-hidden">
         {filtrados.length === 0 ? (
-          <EmptyState icone={<FolderOpen size={24} />} titulo="Nenhum cliente encontrado" descricao="Mude a busca ou o filtro de situação." />
+          clientes.length === 0 ? (
+            <EmptyState icone={<FolderOpen size={24} />} titulo="Nenhum cliente no Dossiê" descricao="Os clientes ativos do Fiscal aparecem aqui para acompanhar a situação do dossiê." />
+          ) : (
+            <EmptyState
+              icone={<FolderOpen size={24} />}
+              titulo="Nenhum cliente com esses filtros"
+              descricao="Mude a busca ou o filtro de situação."
+              acao={<Button icone={<X size={16} aria-hidden="true" />} onClick={() => { setBusca(''); setStatusFiltro('TODOS') }}>Limpar filtros</Button>}
+            />
+          )
         ) : (
           <>
             <div className="hidden sm:block"><div className="relative overflow-x-auto xl:overflow-visible">

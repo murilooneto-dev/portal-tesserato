@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useCallback, useState, useTransition } from 'react'
 import { AlertCircle, Check, ListChecks } from 'lucide-react'
 import type { Tarefa, TarefaEtapa, TipoResposta } from '@/lib/types'
 import { formatarDdMm, parseDdMmParaIso } from '@/lib/formatar-data'
@@ -23,7 +23,7 @@ export interface TarefaSetorAplicavel {
 }
 
 type Resultado = { error: string | null } | void
-type EstadoSalvar = { tipo: 'salvando' } | { tipo: 'salvo' } | { tipo: 'erro'; mensagem: string }
+export type EstadoSalvar = { tipo: 'salvando' } | { tipo: 'salvo' } | { tipo: 'erro'; mensagem: string }
 
 interface Props {
   tarefas: TarefaSetorAplicavel[]
@@ -211,4 +211,67 @@ export default function TarefasSetorChecklist({
       )}
     </Card>
   )
+}
+
+// ---------------------------------------------------------------------------
+// Salvamento automático (ds-06) reaproveitado pelos checklists do Fiscal, do
+// Contábil e do Pessoal: "Salvando…", "Salvo" ou o erro ao lado do campo.
+// Só OBSERVA a promessa da chamada que a tela já fazia: não muda o que é salvo,
+// nem quando, nem se a transição espera por ela.
+// ---------------------------------------------------------------------------
+
+const ERRO_SALVAR = 'Não foi possível salvar. Tente de novo.'
+
+export function useSalvamento() {
+  const [estados, setEstados] = useState<Record<string, EstadoSalvar>>({})
+
+  // Chamado ANTES do startTransition, para o "Salvando…" aparecer na hora
+  // (atualização feita dentro de uma transição só aparece quando ela termina).
+  const iniciar = useCallback((chave: string) => {
+    setEstados(prev => ({ ...prev, [chave]: { tipo: 'salvando' } }))
+  }, [])
+
+  // Recebe a MESMA promessa da chamada e a devolve intocada: quem a passava
+  // de volta ao startTransition continua passando.
+  const acompanhar = useCallback(<T,>(chave: string, promessa: Promise<T> | undefined): Promise<T> | undefined => {
+    if (!promessa) {
+      setEstados(prev => { const n = { ...prev }; delete n[chave]; return n })
+      return promessa
+    }
+    promessa.then(
+      res => {
+        const erro = res && typeof res === 'object' && 'error' in res ? (res as { error?: unknown }).error : null
+        setEstados(prev => ({ ...prev, [chave]: erro ? { tipo: 'erro', mensagem: String(erro) } : { tipo: 'salvo' } }))
+      },
+      () => setEstados(prev => ({ ...prev, [chave]: { tipo: 'erro', mensagem: ERRO_SALVAR } })),
+    )
+    return promessa
+  }, [])
+
+  return { estados, iniciar, acompanhar }
+}
+
+/** "Salvando…" / "Salvo" / "Erro" ao lado do campo (a região fica sempre montada para o leitor de tela anunciar). */
+export function IndicadorSalvamento({ estado, className }: { estado?: EstadoSalvar; className?: string }) {
+  return (
+    <span aria-live="polite" className={estado ? cn('flex-none whitespace-nowrap text-[13px]', className) : 'sr-only'}>
+      {estado?.tipo === 'salvando' && <span className="text-fg-3">Salvando…</span>}
+      {estado?.tipo === 'salvo' && (
+        <span className="inline-flex items-center gap-1 text-ok">
+          <Check size={14} strokeWidth={2.4} aria-hidden="true" />Salvo
+        </span>
+      )}
+      {estado?.tipo === 'erro' && (
+        <span className="inline-flex items-center gap-1 text-danger" title={estado.mensagem}>
+          <AlertCircle size={14} aria-hidden="true" />Erro
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** Linha com a mensagem do erro, logo abaixo da tarefa. */
+export function ErroSalvamento({ estado, className }: { estado?: EstadoSalvar; className?: string }) {
+  if (estado?.tipo !== 'erro') return null
+  return <p role="alert" className={cn('mb-2.5 text-[13px] text-danger', className)}>{estado.mensagem}</p>
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useTransition, useState, type ReactNode } from 'react'
-import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Layers, Paperclip, X } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Layers, ListChecks, Paperclip, X } from 'lucide-react'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, TarefaGrupo } from '@/lib/types'
 import type { VinculoStatus } from '@/lib/vinculos'
 import { formatarBadgeVinculo } from '@/lib/vinculos'
@@ -12,7 +12,9 @@ import { isoParaDisplay, displayParaIso, autoFormatarData } from '@/lib/data-che
 import { Badge, type BadgeTom } from '@/components/ui/Badge'
 import { IconButton } from '@/components/ui/Button'
 import { Checkbox, Input, Textarea } from '@/components/ui/Input'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/components/ui/cn'
+import { ErroSalvamento, IndicadorSalvamento, useSalvamento } from '@/components/geral/TarefasSetorChecklist'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -84,6 +86,8 @@ export default function TarefaChecklistPessoal({
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null)
   const [erroUpload, setErroUpload] = useState<Record<string, string>>({})
   const [gruposExpandidos, setGruposExpandidos] = useState<Set<string>>(new Set())
+  // "Salvando… / Salvo / Erro" por tarefa (chave = tipo).
+  const { estados: salvamento, iniciar, acompanhar } = useSalvamento()
 
   const tarefasVisiveis = tarefasPersonalizadas.filter(tipo => tarefaVisivelNoMes(tarefaTipos[tipo]?.mesesVisiveis, mes))
 
@@ -130,9 +134,10 @@ export default function TarefaChecklistPessoal({
     const iso = displayParaIso(formatted)
     if (iso) {
       setLocalText(prev => { const n = { ...prev }; delete n[key]; return n })
+      iniciar(tipo)
       startTransition(() => {
-        if (etapaNome) onAtualizarEtapa(tipo, etapaNome, true, iso)
-        else onToggleSimples(tipo, true, iso)
+        if (etapaNome) acompanhar(tipo, onAtualizarEtapa(tipo, etapaNome, true, iso))
+        else acompanhar(tipo, onToggleSimples(tipo, true, iso))
       })
     }
   }
@@ -142,9 +147,10 @@ export default function TarefaChecklistPessoal({
     const val = localText[key]
     if (val === undefined) return
     if (val === '') {
+      iniciar(tipo)
       startTransition(() => {
-        if (etapaNome) onAtualizarEtapa(tipo, etapaNome, false)
-        else onToggleSimples(tipo, false)
+        if (etapaNome) acompanhar(tipo, onAtualizarEtapa(tipo, etapaNome, false))
+        else acompanhar(tipo, onToggleSimples(tipo, false))
       })
     }
     setLocalText(prev => { const n = { ...prev }; delete n[key]; return n })
@@ -153,9 +159,10 @@ export default function TarefaChecklistPessoal({
   function handleHoje(tipo: string, marcar: boolean, etapaNome?: string) {
     const key = keyLocal(tipo, etapaNome)
     setLocalText(prev => { const n = { ...prev }; delete n[key]; return n })
+    iniciar(tipo)
     startTransition(() => {
-      if (etapaNome) onAtualizarEtapa(tipo, etapaNome, marcar, marcar ? hojeISO() : undefined)
-      else onToggleSimples(tipo, marcar, marcar ? hojeISO() : undefined)
+      if (etapaNome) acompanhar(tipo, onAtualizarEtapa(tipo, etapaNome, marcar, marcar ? hojeISO() : undefined))
+      else acompanhar(tipo, onToggleSimples(tipo, marcar, marcar ? hojeISO() : undefined))
     })
   }
 
@@ -171,7 +178,8 @@ export default function TarefaChecklistPessoal({
   function handleRespostaTextoBlur(tipo: string) {
     const valor = localResposta[tipo]
     if (valor === undefined) return
-    startTransition(() => { onSalvarTexto(tipo, valor) })
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, onSalvarTexto(tipo, valor)) })
     setLocalResposta(prev => { const n = { ...prev }; delete n[tipo]; return n })
   }
 
@@ -191,8 +199,9 @@ export default function TarefaChecklistPessoal({
     }
   }
 
-  function handleExcluirArquivo(arquivoId: string) {
-    startTransition(() => { onExcluirArquivo(arquivoId) })
+  function handleExcluirArquivo(tipo: string, arquivoId: string) {
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, onExcluirArquivo(arquivoId)) })
   }
 
   function getSemMovimento(tipo: string): boolean {
@@ -203,7 +212,8 @@ export default function TarefaChecklistPessoal({
   function handleToggleSemMovimento(tipo: string) {
     const novo = !getSemMovimento(tipo)
     setOptimisticSemMovimento(prev => ({ ...prev, [tipo]: novo }))
-    startTransition(() => { onMarcarSemMovimento(tipo, novo) })
+    iniciar(tipo)
+    startTransition(() => { acompanhar(tipo, onMarcarSemMovimento(tipo, novo)) })
   }
 
   function toggleGrupo(grupoId: string) {
@@ -263,7 +273,7 @@ export default function TarefaChecklistPessoal({
                 icone={vinculo.liberada ? <Check size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
                 className="no-underline"
               >
-                {badgeVinculo.texto.replace(/^(✓|⏳)\s*/, '')}
+                {badgeVinculo.texto}
               </Badge>
             )}
             {diasPrazo !== null && (
@@ -302,8 +312,12 @@ export default function TarefaChecklistPessoal({
                 <Badge>Sem movimento</Badge>
               ) : null}
             </div>
+            <IndicadorSalvamento estado={salvamento[tipo]} className="ml-auto" />
           </div>}
+          {!(campoData || temSemMovimento) && <IndicadorSalvamento estado={salvamento[tipo]} className="ml-auto" />}
         </div>
+
+        <ErroSalvamento estado={salvamento[tipo]} className={cn('-mt-1', recuoBloco)} />
 
         {etapasDefinidas && !semMovimentoAtivo && (
           <div className={cn('mb-3 mr-[18px] -mt-0.5 grid grid-cols-1 gap-x-[22px] gap-y-2.5 rounded-[10px] border border-line-soft p-3 sm:grid-cols-2', recuoBloco)}>
@@ -380,7 +394,7 @@ export default function TarefaChecklistPessoal({
                     <IconButton
                       rotulo={`Excluir ${arq.name}`}
                       icone={<X size={14} aria-hidden="true" />}
-                      onClick={() => handleExcluirArquivo(arq.id)}
+                      onClick={() => handleExcluirArquivo(tipo, arq.id)}
                       className="h-7 w-7 max-sm:h-11 max-sm:w-11"
                     />
                   )}
@@ -472,7 +486,12 @@ export default function TarefaChecklistPessoal({
 
       <div className="flex flex-col">
         {total === 0 ? (
-          <p className="px-[18px] py-6 text-center text-[13px] text-fg-3">Nenhuma tarefa para este cliente neste mês.</p>
+          <EmptyState
+            compacto
+            icone={<ListChecks size={20} />}
+            titulo="Nenhuma tarefa neste mês"
+            descricao="Este cliente não tem tarefas do Pessoal para o mês selecionado."
+          />
         ) : renderLista()}
       </div>
     </section>

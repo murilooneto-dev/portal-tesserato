@@ -103,7 +103,7 @@ test('vincular m-18: janela, busca e a lógica de hoje (atividade escolhe o regi
     '{vinculada && (', 'w-[200px]', 'className="h-8"', '<option value="">Todos os regimes</option>',
     'Cada marcação salva na hora. Vincular não cria pendências de meses passados.',
     '<Button variante="fantasma" onClick={onClose} className="ml-auto">Fechar</Button>',
-    '<Aviso tom="info">', 'Vínculo direto por regime foi descontinuado', 'Nenhum vínculo antigo restante.', '>Remover</Button>'])
+    '<Aviso tom="info">', 'Vínculo direto por regime foi descontinuado', 'Nenhum vínculo antigo restante', '>Remover</Button>'])
   assert.ok(!src.includes('Todas as atividades'))
   assert.ok(!src.includes('variante="primario"'))
 })
