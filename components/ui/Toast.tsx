@@ -19,6 +19,12 @@ const ToastContext = createContext<Mostrar | null>(null)
 
 const ICONE = { ok: CheckCircle2, dng: AlertCircle, info: Info }
 const COR = { ok: 'text-ok', dng: 'text-danger', info: 'text-info' }
+const BORDA = { ok: 'border-line', dng: 'border-danger/60', info: 'border-line' }
+
+// No celular e no tablet os botões flutuantes ficam em bottom-[84px] com 52px
+// de altura; o aviso sobe acima deles. No desktop fica no canto, como antes.
+export const POSICAO_TOAST =
+  'pointer-events-none fixed inset-x-4 bottom-[148px] z-[80] flex flex-col gap-2 sm:inset-x-auto sm:right-4 lg:bottom-4'
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [fila, despachar] = useReducer(filaDeAvisos, [])
@@ -33,13 +39,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={mostrar}>
       {children}
-      <div aria-live="polite" role="status" className="pointer-events-none fixed bottom-20 right-4 z-[80] lg:bottom-4 flex flex-col gap-2">
+      <div aria-live="polite" role="status" className={POSICAO_TOAST}>
         {fila.map(a => {
           const Icone = ICONE[a.tom]
           return (
-            <div key={a.id} className="pointer-events-auto flex items-center gap-2.5 rounded-[10px] border border-line bg-raised px-4 py-3 text-sm text-fg shadow-modal">
+            <div key={a.id} className={cn('pointer-events-auto flex items-center gap-2.5 rounded-[10px] border bg-raised px-4 py-3 text-sm text-fg shadow-modal', BORDA[a.tom], a.tom === 'dng' && 'border-l-4')}>
               <Icone size={18} aria-hidden="true" className={cn('flex-none', COR[a.tom])} />
-              {a.texto}
+              {a.tom === 'dng' && <span className="sr-only">Erro: </span>}
+              <span className="min-w-0">{a.texto}</span>
             </div>
           )
         })}
