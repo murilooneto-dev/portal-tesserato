@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   criarMovimento, atualizarMovimento, listarFinanceiroTiposAtivos, listarFinanceiroCentrosCustoAtivos,
@@ -8,6 +8,11 @@ import {
 } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from '@/lib/types'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Aviso } from '@/components/ui/Aviso'
+import { Field } from '@/components/ui/Field'
+import { Input, Textarea } from '@/components/ui/Input'
 import SeletorComBusca from './SeletorComBusca'
 
 export interface MovimentoParaEditar {
@@ -27,8 +32,19 @@ interface Props {
   movimento?: MovimentoParaEditar
 }
 
-const inputCls = "w-full px-3 py-2.5 rounded-xl bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-const labelCls = "block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1.5"
+// Link "Novo tipo" / "Novo centro" à direita do rótulo (m-16). Fica fora do
+// <label> do Field para o clique não cair no campo.
+function LinkDoRotulo({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="absolute right-0 top-0 rounded text-[13px] font-semibold leading-[19px] text-acc-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+    >
+      {children}
+    </button>
+  )
+}
 
 export default function NovoMovimentoModal({ natureza, onClose, movimento }: Props) {
   const router = useRouter()
@@ -176,9 +192,9 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
       return
     }
 
-    // Criando: modal fica aberto pra lançar o próximo em sequência, só
+    // Criando: a janela fica aberta pra lançar o próximo em sequência, só
     // limpa os campos (mantém a data — normalmente vários lançamentos do
-    // mesmo dia). Só o × fecha o modal a partir daqui.
+    // mesmo dia). Fechar ou o X do canto encerram.
     limparParaProximo()
     setSucesso(true)
   }
@@ -187,114 +203,150 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     ? (natureza === 'entrada' ? 'Editar recebimento' : 'Editar pagamento')
     : (natureza === 'entrada' ? 'Novo recebimento' : 'Novo pagamento')
 
+  const podeSalvar = !saving && !!tipoId && !!data && !!valor
+
+  const rodape = movimento ? (
+    <>
+      <div className="flex-1" />
+      <Button variante="fantasma" onClick={onClose} disabled={saving}>Cancelar</Button>
+      <Button variante="primario" onClick={handleSave} disabled={!podeSalvar} carregando={saving}>
+        {saving ? 'Salvando…' : 'Salvar'}
+      </Button>
+    </>
+  ) : (
+    <>
+      <Button variante="fantasma" onClick={() => { limparParaProximo(); setErro(null); setSucesso(false) }} disabled={saving}>Limpar</Button>
+      <div className="flex-1" />
+      <Button variante="fantasma" onClick={onClose} disabled={saving}>Fechar</Button>
+      <Button variante="primario" onClick={handleSave} disabled={!podeSalvar} carregando={saving}>
+        {saving ? 'Salvando…' : 'Salvar e lançar outro'}
+      </Button>
+    </>
+  )
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+    <Modal
+      aberto
+      onFechar={onClose}
+      titulo={titulo}
+      subtitulo="Financeiro"
+      largura="p"
+      fecharAoClicarFora={false}
+      bloqueado={saving}
+      rodape={rodape}
+    >
+      {sucesso && !erro && (
+        <Aviso tom="ok">
+          <b>Lançamento salvo.</b> Os campos foram limpos para o próximo; a data foi mantida.
+        </Aviso>
+      )}
 
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">{titulo}</h2>
-          <button onClick={onClose} className="text-[var(--fg)]/30 hover:text-[var(--fg)] transition-colors text-xl px-1">×</button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          <div>
-            <label className={labelCls}>Data *</label>
-            <input className={inputCls} type="date" value={data} onChange={e => setData(e.target.value)} />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className={labelCls + ' mb-0'}>Tipo *</label>
-              <button type="button" onClick={() => setCriandoTipo(v => !v)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">
-                {criandoTipo ? 'Cancelar' : '+ Novo tipo'}
-              </button>
-            </div>
-            {criandoTipo ? (
-              <div className="flex gap-2">
-                <input
-                  className={inputCls}
-                  value={novoTipoNome}
-                  onChange={e => setNovoTipoNome(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleCriarTipo()}
-                  placeholder="Nome do novo tipo"
-                  autoFocus
-                />
-                <button type="button" onClick={handleCriarTipo} disabled={salvandoTipo || !novoTipoNome.trim()}
-                  className="px-4 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50 shrink-0">
-                  Criar
-                </button>
-              </div>
-            ) : (
-              <SeletorComBusca value={tipoId} onChange={setTipoId} opcoes={tipos} placeholder="Selecione..." disabled={carregando} />
-            )}
-            {erroTipo && <p className="text-[10px] text-red-400 mt-1.5">{erroTipo}</p>}
-            {!criandoTipo && !carregando && tipos.length === 0 && (
-              <p className="text-[10px] text-[var(--fg)]/40 mt-1.5">Nenhum tipo cadastrado ainda.</p>
-            )}
-          </div>
-
-          <div>
-            <label className={labelCls}>Valor *</label>
-            <input className={inputCls} type="number" step="0.01" min="0.01" value={valor} onChange={e => setValor(e.target.value)} placeholder="0,00" />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className={labelCls + ' mb-0'}>Centro de custo</label>
-              <button type="button" onClick={() => setCriandoCentro(v => !v)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">
-                {criandoCentro ? 'Cancelar' : '+ Novo centro de custo'}
-              </button>
-            </div>
-            {criandoCentro ? (
-              <div className="flex gap-2">
-                <input
-                  className={inputCls}
-                  value={novoCentroNome}
-                  onChange={e => setNovoCentroNome(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleCriarCentro()}
-                  placeholder="Nome do novo centro de custo"
-                  autoFocus
-                />
-                <button type="button" onClick={handleCriarCentro} disabled={salvandoCentro || !novoCentroNome.trim()}
-                  className="px-4 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] disabled:opacity-50 shrink-0">
-                  Criar
-                </button>
-              </div>
-            ) : (
-              <SeletorComBusca value={centroCustoId} onChange={setCentroCustoId} opcoes={centrosCusto} placeholder="Nenhum" disabled={carregando} />
-            )}
-            {erroCentro && <p className="text-[10px] text-red-400 mt-1.5">{erroCentro}</p>}
-          </div>
-
-          <div>
-            <label className={labelCls}>Observação</label>
-            <textarea className={inputCls} rows={2} value={observacao} onChange={e => setObservacao(e.target.value)} />
-          </div>
-        </div>
-
-        {sucesso && !erro && (
-          <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm">
-            ✓ Lançamento salvo. Pronto para o próximo.
-          </div>
-        )}
-
-        {erro && (
-          <div className="mx-6 mb-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            ⚠ {erro}
-          </div>
-        )}
-
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--fg)]/8 shrink-0">
-          <button onClick={() => { if (movimento) { onClose() } else { limparParaProximo(); setErro(null); setSucesso(false) } }}
-            className="px-5 py-2.5 rounded-xl border border-[var(--fg)]/12 text-[var(--fg)]/50 hover:text-[var(--fg)] text-sm transition-colors">
-            {movimento ? 'Cancelar' : 'Limpar'}
-          </button>
-          <button onClick={handleSave} disabled={saving || !tipoId || !data || !valor}
-            className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50">
-            {saving ? 'Salvando...' : 'Salvar'}
-          </button>
-        </div>
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+        <Field rotulo="Data" obrigatorio>
+          {c => <Input id={c.id} type="date" value={data} onChange={e => setData(e.target.value)} />}
+        </Field>
+        <Field rotulo="Valor" obrigatorio>
+          {c => (
+            <Input
+              id={c.id}
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0.01"
+              value={valor}
+              onChange={e => setValor(e.target.value)}
+              placeholder="R$ 0,00"
+              className="tabular-nums"
+            />
+          )}
+        </Field>
       </div>
-    </div>
+
+      <div className="relative">
+        <Field
+          rotulo="Tipo"
+          obrigatorio
+          erro={erroTipo}
+          ajuda={!criandoTipo && !carregando && tipos.length === 0 ? 'Nenhum tipo cadastrado ainda.' : undefined}
+        >
+          {c => criandoTipo ? (
+            <div className="flex gap-2">
+              <Input
+                id={c.id}
+                aria-describedby={c.describedBy}
+                invalido={c.invalido}
+                value={novoTipoNome}
+                onChange={e => setNovoTipoNome(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleCriarTipo() }}
+                placeholder="Nome do novo tipo"
+                autoFocus
+              />
+              <Button onClick={handleCriarTipo} disabled={!novoTipoNome.trim()} carregando={salvandoTipo} className="flex-none">
+                Criar
+              </Button>
+            </div>
+          ) : (
+            <SeletorComBusca
+              id={c.id}
+              describedBy={c.describedBy}
+              invalido={c.invalido}
+              value={tipoId}
+              onChange={setTipoId}
+              opcoes={tipos}
+              placeholder="Buscar ou escolher"
+              disabled={carregando}
+            />
+          )}
+        </Field>
+        <LinkDoRotulo onClick={() => { setCriandoTipo(v => !v); setErroTipo(null) }}>
+          {criandoTipo ? 'Cancelar' : 'Novo tipo'}
+        </LinkDoRotulo>
+      </div>
+
+      <div className="relative">
+        <Field rotulo="Centro de custo" erro={erroCentro}>
+          {c => criandoCentro ? (
+            <div className="flex gap-2">
+              <Input
+                id={c.id}
+                aria-describedby={c.describedBy}
+                invalido={c.invalido}
+                value={novoCentroNome}
+                onChange={e => setNovoCentroNome(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleCriarCentro() }}
+                placeholder="Nome do novo centro de custo"
+                autoFocus
+              />
+              <Button onClick={handleCriarCentro} disabled={!novoCentroNome.trim()} carregando={salvandoCentro} className="flex-none">
+                Criar
+              </Button>
+            </div>
+          ) : (
+            <SeletorComBusca
+              id={c.id}
+              describedBy={c.describedBy}
+              invalido={c.invalido}
+              value={centroCustoId}
+              onChange={setCentroCustoId}
+              opcoes={centrosCusto}
+              placeholder="Nenhum"
+              disabled={carregando}
+              iconeBusca={false}
+            />
+          )}
+        </Field>
+        <LinkDoRotulo onClick={() => { setCriandoCentro(v => !v); setErroCentro(null) }}>
+          {criandoCentro ? 'Cancelar' : 'Novo centro'}
+        </LinkDoRotulo>
+      </div>
+
+      <Field rotulo="Observação">
+        {c => (
+          <Textarea id={c.id} rows={2} value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Opcional" className="min-h-[56px]" />
+        )}
+      </Field>
+
+      {erro && <Aviso tom="dng">{erro}</Aviso>}
+    </Modal>
   )
 }
