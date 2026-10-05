@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowDown, ArrowUp, Settings2, Trash2 } from 'lucide-react'
 import {
   adicionarColuna, renomearColuna, moverColuna, preVisualizarExclusaoColuna, excluirColuna,
   preVisualizarTrocaTipo, trocarTipoColuna, renomearTabela, excluirTabela,
@@ -11,6 +12,13 @@ import { TIPOS_COLUNA, opcoesDosValores, type TipoColuna, type OpcaoColuna } fro
 import type { SetorTabela } from '@/lib/tabelas/montar-payload'
 import type { ClienteMatch } from '@/lib/tabelas/cliente-match'
 import ReenviarPlanilhaWizard from './ReenviarPlanilhaWizard'
+import { Drawer } from '@/components/ui/Modal'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input, Select, Textarea } from '@/components/ui/Input'
+import { Badge } from '@/components/ui/Badge'
+import { Aviso } from '@/components/ui/Aviso'
+import { cn } from '@/components/ui/cn'
 
 const ROTULO_TIPO: Record<TipoColuna, string> = {
   texto: 'Texto', numero: 'Número', data: 'Data', opcoes: 'Lista de opções', cliente: 'Cliente',
@@ -26,9 +34,6 @@ interface Props {
   temColunaChave: boolean
   clientes: ClienteMatch[]
 }
-
-const inputCls = 'px-2 py-1.5 rounded-lg bg-[var(--fg)]/5 border border-[var(--fg)]/10 text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]/50'
-const btnCls = 'px-3 py-1.5 rounded-lg border border-[var(--fg)]/12 text-[var(--fg)]/70 hover:text-[var(--fg)] text-xs'
 
 export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas, temColunaChave, clientes }: Props) {
   const router = useRouter()
@@ -81,13 +86,15 @@ export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas, t
     }
   }
 
-  async function salvarNomeColuna(coluna: ColunaResumo, nomeNovo: string) {
-    if (nomeNovo.trim() === coluna.nome || nomeNovo.trim() === '') return
+  async function salvarNomeColuna(coluna: ColunaResumo, campo: HTMLInputElement) {
+    const nomeNovo = campo.value
+    if (nomeNovo.trim() === coluna.nome) return
+    if (nomeNovo.trim() === '') { campo.value = coluna.nome; return }
     setErro(null)
     setOcupado(true)
     try {
       const { error } = await renomearColuna({ colunaId: coluna.id, nome: nomeNovo })
-      if (error) { setErro(error); return }
+      if (error) { campo.value = coluna.nome; setErro(error); return }
       router.refresh()
     } finally {
       setOcupado(false)
@@ -124,6 +131,8 @@ export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas, t
 
   async function abrirExclusaoColuna(coluna: ColunaResumo) {
     setErro(null)
+    setColunaTrocando(null)
+    setPreviaTroca(null)
     setColunaExcluindo(coluna)
     setPreviaExclusao(null)
     const { error, total, preenchidas } = await preVisualizarExclusaoColuna(coluna.id)
@@ -147,6 +156,8 @@ export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas, t
 
   async function abrirTrocaTipo(coluna: ColunaResumo) {
     setErro(null)
+    setColunaExcluindo(null)
+    setPreviaExclusao(null)
     setColunaTrocando(coluna)
     setTipoAlvo(coluna.tipo === 'cliente' ? 'texto' : coluna.tipo)
     setOpcoesAlvoTexto('')
@@ -199,126 +210,143 @@ export default function GerenciarEstrutura({ planilhaId, nome, setor, colunas, t
 
   if (!aberto) {
     return (
-      <button onClick={() => setAberto(true)} className={btnCls}>Gerenciar colunas</button>
+      <Button icone={<Settings2 size={16} aria-hidden="true" />} onClick={() => setAberto(true)}>
+        Gerenciar colunas
+      </Button>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70"
-      onClick={e => e.target === e.currentTarget && fechar()}>
-      <div className="bg-[var(--bg-surface)] border border-[var(--fg)]/12 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--fg)]/8 shrink-0">
-          <h2 className="text-[var(--fg)] font-bold text-base">Gerenciar colunas</h2>
-          <button onClick={fechar} className="text-[var(--fg)]/30 hover:text-[var(--fg)] text-xl px-1">×</button>
+    <Drawer
+      aberto
+      onFechar={fechar}
+      bloqueado={ocupado}
+      larguraPx={560}
+      titulo="Gerenciar colunas"
+      subtitulo={nome}
+      rodape={
+        <div className="flex w-full items-center gap-2.5">
+          <span className="text-[13px] text-fg-3">Alterações salvas na hora</span>
+          <div className="ml-auto">
+            <Button variante="fantasma" disabled={ocupado} onClick={fechar}>Fechar</Button>
+          </div>
         </div>
+      }
+    >
+      {erro && <Aviso tom="dng">{erro}</Aviso>}
 
-        <div className="p-6 overflow-y-auto space-y-6">
-          {erro && <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{erro}</div>}
+      <Field rotulo="Nome da tabela">
+        {c => (
+          <Input id={c.id} value={nomeTabela} maxLength={120} disabled={ocupado}
+            onChange={e => setNomeTabela(e.target.value)} onBlur={salvarNomeTabela} />
+        )}
+      </Field>
 
-          <div>
-            <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest mb-1">Nome da tabela</label>
-            <input className={`${inputCls} w-full`} value={nomeTabela} maxLength={120}
-              onChange={e => setNomeTabela(e.target.value)} onBlur={salvarNomeTabela} disabled={ocupado} />
-          </div>
-
-          <ReenviarPlanilhaWizard planilhaId={planilhaId} setor={setor} colunas={colunas} temColunaChave={temColunaChave} clientes={clientes} />
-
-          <div className="rounded-xl border border-[var(--fg)]/12 divide-y divide-[var(--fg)]/8">
-            {colunas.map((c, i) => (
-              <div key={c.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
-                <input className={`${inputCls} flex-1 min-w-[8rem]`} defaultValue={c.nome} maxLength={120}
-                  onBlur={e => salvarNomeColuna(c, e.target.value)} disabled={ocupado} />
-                <span className="text-xs text-[var(--fg)]/50 min-w-[5rem]">{ROTULO_TIPO[c.tipo]}</span>
-                <button className={btnCls} disabled={ocupado || i === 0} onClick={() => mover(c, 'cima')}>↑</button>
-                <button className={btnCls} disabled={ocupado || i === colunas.length - 1} onClick={() => mover(c, 'baixo')}>↓</button>
+      <div className="flex flex-col gap-2">
+        <span className="text-[13px] font-medium text-fg-2">Colunas</span>
+        <div className="overflow-hidden rounded-[10px] border border-line-soft">
+          {colunas.map((c, i) => (
+            <div key={c.id} className={cn(i > 0 && 'border-t border-line-soft')}>
+              <div className="flex flex-wrap items-center gap-1.5 px-3.5 py-2.5">
+                <Input defaultValue={c.nome} maxLength={120} disabled={ocupado} className="h-8 min-w-[8rem] flex-1"
+                  aria-label={`Nome da coluna ${c.nome}`} onBlur={e => salvarNomeColuna(c, e.target)} />
+                <Badge tom="neu">{ROTULO_TIPO[c.tipo]}</Badge>
+                <IconButton rotulo="Mover para cima" icone={<ArrowUp size={16} aria-hidden="true" />} disabled={ocupado || i === 0} onClick={() => mover(c, 'cima')} />
+                <IconButton rotulo="Mover para baixo" icone={<ArrowDown size={16} aria-hidden="true" />} disabled={ocupado || i === colunas.length - 1} onClick={() => mover(c, 'baixo')} />
                 {c.tipo !== 'cliente' && (
-                  <button className={btnCls} disabled={ocupado} onClick={() => abrirTrocaTipo(c)}>Trocar tipo</button>
+                  <Button tamanho="p" disabled={ocupado} onClick={() => abrirTrocaTipo(c)}>Trocar tipo</Button>
                 )}
-                <button className={`${btnCls} text-red-400 border-red-500/20 hover:text-red-300`} disabled={ocupado}
-                  onClick={() => abrirExclusaoColuna(c)}>Excluir</button>
+                <Button tamanho="p" variante="perigo" disabled={ocupado} onClick={() => abrirExclusaoColuna(c)}>Excluir</Button>
               </div>
-            ))}
-          </div>
 
-          <div className="rounded-xl border border-[var(--fg)]/12 p-4 space-y-2">
-            <label className="block text-[10px] font-bold text-[var(--fg)]/40 uppercase tracking-widest">Adicionar coluna</label>
-            <div className="flex flex-wrap gap-2">
-              <input className={`${inputCls} flex-1 min-w-[10rem]`} placeholder="Nome da coluna" value={novoNome}
-                maxLength={120} onChange={e => setNovoNome(e.target.value)} />
-              <select className={inputCls} value={novoTipo} onChange={e => setNovoTipo(e.target.value as TipoColuna)}>
-                {TIPOS_COLUNA.map(t => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
-              </select>
-              <button className={btnCls} disabled={ocupado} onClick={adicionar}>Adicionar</button>
-            </div>
-            {novoTipo === 'opcoes' && (
-              <textarea className={`${inputCls} w-full`} rows={3} placeholder="Uma opção por linha"
-                value={novasOpcoesTexto} onChange={e => setNovasOpcoesTexto(e.target.value)} />
-            )}
-          </div>
-
-          {colunaExcluindo && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-2">
-              <p className="text-sm text-[var(--fg)]">Excluir a coluna &quot;{colunaExcluindo.nome}&quot;?</p>
-              {previaExclusao
-                ? <p className="text-xs text-[var(--fg)]/60">{previaExclusao.preenchidas} de {previaExclusao.total} linhas têm valor nessa coluna. Isso não pode ser desfeito.</p>
-                : <p className="text-xs text-[var(--fg)]/40">Calculando impacto…</p>}
-              <div className="flex gap-2">
-                <button className={`${btnCls} text-red-400 border-red-500/30`} disabled={ocupado || !previaExclusao}
-                  onClick={confirmarExclusaoColuna}>Confirmar exclusão</button>
-                <button className={btnCls} disabled={ocupado} onClick={() => { setColunaExcluindo(null); setPreviaExclusao(null) }}>Cancelar</button>
-              </div>
-            </div>
-          )}
-
-          {colunaTrocando && (
-            <div className="rounded-xl border border-[var(--fg)]/12 p-4 space-y-2">
-              <p className="text-sm text-[var(--fg)]">Trocar o tipo de &quot;{colunaTrocando.nome}&quot;</p>
-              <div className="flex flex-wrap gap-2 items-center">
-                <select className={inputCls} value={tipoAlvo}
-                  onChange={e => { setTipoAlvo(e.target.value as TipoColuna); setPreviaTroca(null) }}>
-                  {TIPOS_TROCAVEIS.map(t => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
-                </select>
-                <button className={btnCls} disabled={ocupado} onClick={calcularPreviaTroca}>Calcular</button>
-              </div>
-              {tipoAlvo === 'opcoes' && (
-                <textarea className={`${inputCls} w-full`} rows={3} placeholder="Uma opção por linha"
-                  value={opcoesAlvoTexto} onChange={e => { setOpcoesAlvoTexto(e.target.value); setPreviaTroca(null) }} />
-              )}
-              {previaTroca && (
-                <p className="text-xs text-[var(--fg)]/60">
-                  {previaTroca.convertidas} célula(s) convertem. {previaTroca.naoConvertidas > 0
-                    ? `${previaTroca.naoConvertidas} não convertem e ficam como estão (o valor original não é apagado).`
-                    : ''}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <button className={btnCls} disabled={ocupado || !previaTroca} onClick={confirmarTrocaTipo}>Confirmar troca</button>
-                <button className={btnCls} disabled={ocupado} onClick={() => { setColunaTrocando(null); setPreviaTroca(null) }}>Cancelar</button>
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-xl border border-red-500/30 p-4">
-            {!confirmandoExclusaoTabela ? (
-              <button className={`${btnCls} text-red-400 border-red-500/30`} onClick={() => setConfirmandoExclusaoTabela(true)}>
-                Excluir tabela
-              </button>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-[var(--fg)]">Isso apaga a tabela &quot;{nome}&quot; e todas as linhas dela, sem volta. Digite o nome exato pra confirmar:</p>
-                <input className={`${inputCls} w-full`} value={nomeDigitado} onChange={e => setNomeDigitado(e.target.value)} />
-                <div className="flex gap-2">
-                  <button className={`${btnCls} text-red-400 border-red-500/30`}
-                    disabled={ocupado || nomeDigitado.trim() !== nome} onClick={confirmarExclusaoTabela}>
-                    Excluir definitivamente
-                  </button>
-                  <button className={btnCls} disabled={ocupado} onClick={() => { setConfirmandoExclusaoTabela(false); setNomeDigitado('') }}>Cancelar</button>
+              {colunaExcluindo?.id === c.id && (
+                <div className="flex flex-col gap-2 border-t border-danger/30 bg-danger-soft px-3.5 py-3">
+                  <p className="text-sm text-fg">Excluir a coluna &quot;{c.nome}&quot;?</p>
+                  {previaExclusao
+                    ? <p className="text-xs text-fg-2">{previaExclusao.preenchidas} de {previaExclusao.total} linhas têm valor nessa coluna. Isso não pode ser desfeito.</p>
+                    : <p className="text-xs text-fg-3">Calculando impacto…</p>}
+                  <div className="flex gap-2">
+                    <Button tamanho="p" variante="perigo-solido" disabled={ocupado || !previaExclusao} onClick={confirmarExclusaoColuna}>
+                      Excluir coluna
+                    </Button>
+                    <Button tamanho="p" variante="fantasma" disabled={ocupado} onClick={() => { setColunaExcluindo(null); setPreviaExclusao(null) }}>
+                      Cancelar
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+
+              {colunaTrocando?.id === c.id && (
+                <div className="flex flex-col gap-2 border-t border-line-soft bg-raised px-3.5 py-3">
+                  <p className="text-sm text-fg">Trocar o tipo de &quot;{c.nome}&quot;</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select value={tipoAlvo} aria-label="Novo tipo da coluna"
+                      onChange={e => { setTipoAlvo(e.target.value as TipoColuna); setPreviaTroca(null) }}>
+                      {TIPOS_TROCAVEIS.map(t => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
+                    </Select>
+                    <Button tamanho="p" disabled={ocupado} onClick={calcularPreviaTroca}>Calcular</Button>
+                  </div>
+                  {tipoAlvo === 'opcoes' && (
+                    <Textarea rows={3} placeholder="Uma opção por linha" value={opcoesAlvoTexto}
+                      onChange={e => { setOpcoesAlvoTexto(e.target.value); setPreviaTroca(null) }} />
+                  )}
+                  {previaTroca && (
+                    <p className="text-xs text-fg-2">
+                      {previaTroca.convertidas} célula(s) convertem. {previaTroca.naoConvertidas > 0
+                        ? `${previaTroca.naoConvertidas} não convertem e ficam como estão (o valor original não é apagado).`
+                        : ''}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button tamanho="p" variante="primario" disabled={ocupado || !previaTroca} onClick={confirmarTrocaTipo}>Confirmar troca</Button>
+                    <Button tamanho="p" variante="fantasma" disabled={ocupado} onClick={() => { setColunaTrocando(null); setPreviaTroca(null) }}>Cancelar</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
-    </div>
+
+      <div className="flex flex-col gap-2 rounded-[10px] border border-line-soft p-3.5">
+        <span className="text-[13px] font-medium text-fg-2">Adicionar coluna</span>
+        <div className="flex flex-wrap gap-2">
+          <Input placeholder="Nome da coluna" value={novoNome} maxLength={120} className="min-w-[10rem] flex-1"
+            aria-label="Nome da nova coluna" onChange={e => setNovoNome(e.target.value)} />
+          <Select value={novoTipo} aria-label="Tipo da nova coluna" onChange={e => setNovoTipo(e.target.value as TipoColuna)}>
+            {TIPOS_COLUNA.map(t => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
+          </Select>
+          <Button tamanho="p" disabled={ocupado} onClick={adicionar}>Adicionar</Button>
+        </div>
+        {novoTipo === 'opcoes' && (
+          <Textarea rows={3} placeholder="Uma opção por linha" value={novasOpcoesTexto} onChange={e => setNovasOpcoesTexto(e.target.value)} />
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2.5">
+          <ReenviarPlanilhaWizard planilhaId={planilhaId} setor={setor} colunas={colunas} temColunaChave={temColunaChave} clientes={clientes} />
+          {!confirmandoExclusaoTabela && (
+            <Button variante="perigo" icone={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmandoExclusaoTabela(true)}>
+              Excluir tabela
+            </Button>
+          )}
+        </div>
+        {confirmandoExclusaoTabela && (
+          <div className="flex flex-col gap-2 rounded-[10px] border border-danger/30 bg-danger-soft p-3.5">
+            <p className="text-sm text-fg">Isso apaga a tabela &quot;{nome}&quot; e todas as linhas dela, sem volta. Digite o nome exato pra confirmar:</p>
+            <Input value={nomeDigitado} onChange={e => setNomeDigitado(e.target.value)} aria-label="Digite o nome da tabela para confirmar" />
+            <div className="flex gap-2">
+              <Button variante="perigo-solido" tamanho="p" disabled={ocupado || nomeDigitado.trim() !== nome} onClick={confirmarExclusaoTabela}>
+                Excluir definitivamente
+              </Button>
+              <Button variante="fantasma" tamanho="p" disabled={ocupado} onClick={() => { setConfirmandoExclusaoTabela(false); setNomeDigitado('') }}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Drawer>
   )
 }
