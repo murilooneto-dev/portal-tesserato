@@ -89,8 +89,38 @@ export function setoresVisiveis(profile: PerfilMenu): UserSetor[] {
 // desenho (Clientes e Minhas tarefas); sem elas, entram as primeiras do menu.
 const PREFERIDAS_NO_CELULAR = ['clientes', 'minhas-tarefas', 'recebimentos', 'procedimentos']
 
+// Setores cujo desenho troca o Início por páginas do próprio setor (mob-06,
+// mob-12). A ordem é a da barra; só entra o que o usuário pode abrir (vem do
+// menu já filtrado). Sobrando lugar, entra o Início e depois o resto do menu.
+const ATALHOS_DO_SETOR: Partial<Record<UserSetor, string[]>> = {
+  financeiro: ['recebimentos', 'pagamentos', 'clientes'],
+  societario: ['procedimentos', 'clientes'],
+}
+
+const MAX_ATALHOS = 3
+
+function setorDosItens(itens: ItemMenu[]): UserSetor | null {
+  const seg = itens[0]?.href.split('/')[1]
+  return seg && (SETORES as readonly string[]).includes(seg) ? (seg as UserSetor) : null
+}
+
 export function atalhosCelular(grupos: GrupoMenu[]): ItemMenu[] {
   const doSetor = grupos.find(g => g.id === 'setor')?.itens ?? []
+  const inicio = ITENS_GERAIS.find(i => i.href === '/intranet')!
+  const setor = setorDosItens(doSetor)
+  const proprios = setor ? ATALHOS_DO_SETOR[setor] : undefined
+
+  if (proprios) {
+    const porSlug = (slug: string) => doSetor.find(i => i.href.endsWith(`/${slug}`))
+    const escolhidos = proprios.map(porSlug).filter((i): i is ItemMenu => !!i)
+    if (escolhidos.length < MAX_ATALHOS) escolhidos.push(inicio)
+    for (const item of doSetor) {
+      if (escolhidos.length >= MAX_ATALHOS) break
+      if (!escolhidos.includes(item)) escolhidos.push(item)
+    }
+    return escolhidos.slice(0, MAX_ATALHOS)
+  }
+
   const prioridade = (item: ItemMenu) => {
     const i = PREFERIDAS_NO_CELULAR.findIndex(slug => item.href.endsWith(`/${slug}`))
     return i === -1 ? PREFERIDAS_NO_CELULAR.length : i
@@ -98,9 +128,9 @@ export function atalhosCelular(grupos: GrupoMenu[]): ItemMenu[] {
   const escolhidos = doSetor
     .map((item, ordem) => ({ item, ordem }))
     .sort((a, b) => prioridade(a.item) - prioridade(b.item) || a.ordem - b.ordem)
-    .slice(0, 2)
+    .slice(0, MAX_ATALHOS - 1)
     .map(x => x.item)
-  return [ITENS_GERAIS.find(i => i.href === '/intranet')!, ...escolhidos]
+  return [inicio, ...escolhidos]
 }
 
 // Item do menu que corresponde à página atual (o de href mais longo, para
