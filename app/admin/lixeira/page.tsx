@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { listarExclusoes } from '@/lib/lixeira-actions'
+import { Pagina } from '@/components/ui/Pagina'
 import LixeiraClient from './LixeiraClient'
 
 export const metadata = { title: 'Lixeira — Tesserato' }
@@ -16,8 +17,8 @@ export default async function LixeiraPage() {
   const { data, error } = await listarExclusoes()
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <Pagina>
       <LixeiraClient exclusoesIniciais={data} erroInicial={error} />
-    </div>
+    </Pagina>
   )
 }

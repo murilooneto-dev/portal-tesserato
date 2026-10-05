@@ -20,14 +20,12 @@ export default async function ParametrosPage() {
   const [
     { data: profiles },
     { data: appSettings },
-    { data: taskLogs },
   ] = await Promise.all([
     supabase.from('profiles').select('*').order('nome'),
     supabase.from('app_settings').select('*').eq('id', 1).single(),
-    supabase.from('task_unlock_log').select('*').order('created_at', { ascending: false }).limit(50),
   ])
 
-  const s = (appSettings as any) ?? {}
+  const s = (appSettings as Record<string, unknown> | null) ?? {}
   const emailKeys = [
     'email_ativo','gmail_remetente','gmail_senha','email_destinatario','usar_senha_app',
     'rotina1_ativo','rotina1_dia','rotina1_hora',
@@ -41,8 +39,7 @@ export default async function ParametrosPage() {
       <ParametrosClient
         profiles={profiles ?? []}
         currentUserId={user.id}
-        dashboardAnnouncement={s.dashboard_announcement ?? ''}
-        taskLogs={taskLogs ?? []}
+        dashboardAnnouncement={typeof s.dashboard_announcement === 'string' ? s.dashboard_announcement : ''}
         emailSettings={emailSettings}
       />
     </>
