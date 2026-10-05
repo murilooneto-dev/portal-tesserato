@@ -11,7 +11,7 @@ import { podeAcessarPagina, podeAcessarSetor } from './route-permissions'
 export type IconeMenu =
   | 'inicio' | 'cadastro' | 'ferramentas' | 'dashboard' | 'clientes' | 'calendario'
   | 'relatorios' | 'parcelamentos' | 'preenchimento' | 'minhas-tarefas' | 'procedimentos'
-  | 'tabelas' | 'recebimentos' | 'pagamentos' | 'configuracoes' | 'vinculos'
+  | 'recebimentos' | 'pagamentos' | 'configuracoes' | 'vinculos'
   | 'parametros' | 'lixeira' | 'em-construcao'
 
 export interface ItemMenu { href: string; rotulo: string; icone: IconeMenu }
@@ -33,7 +33,6 @@ const ICONE_PAGINA: Record<string, IconeMenu> = {
   'preenchimento-rapido': 'preenchimento',
   'minhas-tarefas': 'minhas-tarefas',
   procedimentos: 'procedimentos',
-  tabelas: 'tabelas',
   recebimentos: 'recebimentos',
   pagamentos: 'pagamentos',
 }

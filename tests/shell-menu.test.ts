@@ -30,7 +30,7 @@ test('alvo de toque de 44 px na gaveta', () => {
 })
 
 test('todo ícone do modelo tem desenho', () => {
-  const todos: IconeMenu[] = ['inicio', 'cadastro', 'ferramentas', 'dashboard', 'clientes', 'calendario', 'relatorios', 'parcelamentos', 'preenchimento', 'minhas-tarefas', 'procedimentos', 'tabelas', 'recebimentos', 'pagamentos', 'configuracoes', 'vinculos', 'parametros', 'lixeira', 'em-construcao']
+  const todos: IconeMenu[] = ['inicio', 'cadastro', 'ferramentas', 'dashboard', 'clientes', 'calendario', 'relatorios', 'parcelamentos', 'preenchimento', 'minhas-tarefas', 'procedimentos', 'recebimentos', 'pagamentos', 'configuracoes', 'vinculos', 'parametros', 'lixeira', 'em-construcao']
   for (const i of todos) assert.ok(ICONE[i], `sem ícone para ${i}`)
 })
 
