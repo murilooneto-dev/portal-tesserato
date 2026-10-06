@@ -1,8 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getAuthenticatedAdmin, createClient } from './supabase/server'
+import { getAuthenticatedAdmin, createClient, createAdminClient } from './supabase/server'
 import { validarNomeEntidade, normalizarNome } from './config-entidades'
+import { datasRecorrentes, datasSeguintesDaSerie } from './financeiro-movimentos'
+import { hojeISO } from './mes-atual'
+import { separarEmails } from './financeiro-aviso-vencimento'
+import { enviarAvisoVencimento } from './financeiro-aviso-vencimento-envio'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from './types'
 
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
@@ -225,6 +229,56 @@ export async function excluirFinanceiroCentroCusto(id: string): Promise<{ error:
   return { error: null }
 }
 
+// ---------- aviso de vencimento (financeiro_config) ----------
+
+export async function lerEmailAvisoVencimento(): Promise<{ email: string; error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { email: '', error }
+
+  const { data, error: queryError } = await supabase
+    .from('financeiro_config').select('email_aviso_vencimento').eq('id', 1).maybeSingle()
+  if (queryError) return { email: '', error: queryError.message }
+  return { email: data?.email_aviso_vencimento ?? '', error: null }
+}
+
+/** Grava o(s) destinatário(s) do aviso. Vazio desliga o aviso. */
+export async function salvarEmailAvisoVencimento(texto: string): Promise<{ email: string; error: string | null }> {
+  const { validos, invalidos } = separarEmails(texto)
+  if (invalidos.length > 0) return { email: texto, error: `E-mail inválido: ${invalidos.join(', ')}` }
+
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { email: texto, error }
+
+  const email = validos.join(', ')
+  const { error: upsertError } = await supabase
+    .from('financeiro_config').upsert({ id: 1, email_aviso_vencimento: email || null })
+  if (upsertError) return { email: texto, error: upsertError.message }
+
+  revalidatePath('/admin/configuracoes/financeiro')
+  return { email, error: null }
+}
+
+/**
+ * Manda agora, para o e-mail já salvo, o aviso dos pagamentos recorrentes que
+ * vencem amanhã. Não conta como o envio do dia.
+ */
+export async function enviarTesteAvisoVencimento(): Promise<{ mensagem: string | null; error: string | null }> {
+  const { error } = await exigirAdmin()
+  if (error) return { mensagem: null, error }
+
+  try {
+    const resultado = await enviarAvisoVencimento(createAdminClient(), { teste: true })
+    if (resultado.status === 'sem_destinatario') return { mensagem: null, error: 'Salve um e-mail antes de enviar o teste.' }
+    if (resultado.status !== 'enviado') return { mensagem: null, error: 'O teste não foi enviado.' }
+    const lista = resultado.quantidade === 0
+      ? 'sem pagamentos vencendo amanhã'
+      : resultado.quantidade === 1 ? 'com 1 pagamento' : `com ${resultado.quantidade} pagamentos`
+    return { mensagem: `Teste enviado para ${resultado.destinatarios.join(', ')} (${lista}).`, error: null }
+  } catch (e) {
+    return { mensagem: null, error: e instanceof Error ? e.message : 'Falha ao enviar o e-mail.' }
+  }
+}
+
 // ---------- financeiro_movimentos ----------
 
 // Leitura/escrita de movimentos não passa por exigirAdmin(): qualquer usuário
@@ -274,7 +328,9 @@ export async function criarMovimento(input: {
   valor: number
   data: string
   observacao: string | null
-}): Promise<{ id: string } | { error: string }> {
+  /** Só pagamentos: repete o lançamento no mesmo dia de cada mês até dezembro. */
+  recorrente?: boolean
+}): Promise<{ id: string; quantidade: number } | { error: string }> {
   if (!input.tipoId) return { error: 'Selecione o tipo.' }
   if (!input.data) return { error: 'Selecione a data.' }
   if (!Number.isFinite(input.valor) || input.valor <= 0) return { error: 'Informe um valor válido.' }
@@ -283,21 +339,36 @@ export async function criarMovimento(input: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  const { data: novo, error } = await supabase.from('financeiro_movimentos').insert({
+  // Recorrente: um lançamento por mês, todos com o mesmo recorrencia_id, num
+  // único insert (ou entram todos, ou nenhum). Lançado em dezembro não há mês
+  // seguinte, então vira um lançamento comum, sem série.
+  // Os lançamentos da série nascem "a pagar" (pago = false): registram só que
+  // a conta vai existir naquela data; o usuário confirma cada um quando paga.
+  let datas = [input.data]
+  if (input.recorrente && input.natureza === 'saida') {
+    datas = datasRecorrentes(input.data)
+    if (datas.length === 0) return { error: 'Selecione a data.' }
+  }
+  const recorrenciaId = datas.length > 1 ? crypto.randomUUID() : null
+
+  const { data: novos, error } = await supabase.from('financeiro_movimentos').insert(datas.map(data => ({
     natureza: input.natureza,
     tipo_id: input.tipoId,
     centro_custo_id: input.centroCustoId,
     valor: input.valor,
-    data: input.data,
+    data,
     observacao: input.observacao,
     criado_por: user.id,
-  }).select('id').single()
+    recorrencia_id: recorrenciaId,
+    pago: recorrenciaId === null,
+  }))).select('id, data')
 
+  const novo = novos?.find(n => n.data === input.data) ?? novos?.[0]
   if (error || !novo) return { error: error?.message ?? 'Falha ao criar movimento.' }
 
   revalidatePath(input.natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')
   revalidatePath('/financeiro/relatorios')
-  return { id: novo.id }
+  return { id: novo.id, quantidade: novos?.length ?? 1 }
 }
 
 export async function atualizarMovimento(input: {
@@ -308,6 +379,12 @@ export async function atualizarMovimento(input: {
   valor: number
   data: string
   observacao: string | null
+  /**
+   * Só pagamentos que ainda não são recorrentes: este vira o primeiro de uma
+   * série e os meses seguintes (de hoje em diante, até dezembro) são criados
+   * "a pagar". Este lançamento não muda de situação.
+   */
+  tornarRecorrente?: boolean
 }): Promise<{ error: string | null }> {
   if (!input.tipoId) return { error: 'Selecione o tipo.' }
   if (!input.data) return { error: 'Selecione a data.' }
@@ -317,13 +394,51 @@ export async function atualizarMovimento(input: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  const { error } = await supabase.from('financeiro_movimentos').update({
+  const campos = {
     tipo_id: input.tipoId,
     centro_custo_id: input.centroCustoId,
     valor: input.valor,
     data: input.data,
     observacao: input.observacao,
-  }).eq('id', input.id)
+  }
+
+  // Sem mês seguinte a vencer não há série: salva como edição comum.
+  const datasNovas = input.tornarRecorrente && input.natureza === 'saida'
+    ? datasSeguintesDaSerie(input.data, hojeISO())
+    : []
+
+  if (datasNovas.length > 0) {
+    const recorrenciaId = crypto.randomUUID()
+    // `.is('recorrencia_id', null)`: quem já é de uma série não entra em outra.
+    const { data: alterados, error: erroSerie } = await supabase.from('financeiro_movimentos')
+      .update({ ...campos, recorrencia_id: recorrenciaId })
+      .eq('id', input.id)
+      .eq('natureza', 'saida')
+      .is('recorrencia_id', null)
+      .select('id')
+    if (erroSerie) return { error: erroSerie.message }
+    if (!alterados || alterados.length === 0) return { error: 'Este pagamento já é recorrente ou não foi encontrado.' }
+
+    const { error: erroNovos } = await supabase.from('financeiro_movimentos').insert(datasNovas.map(data => ({
+      natureza: 'saida',
+      ...campos,
+      data,
+      criado_por: user.id,
+      recorrencia_id: recorrenciaId,
+      pago: false,
+    })))
+    if (erroNovos) {
+      // Os meses seguintes não entraram: desfaz o vínculo pra não sobrar série de um lançamento só.
+      await supabase.from('financeiro_movimentos').update({ recorrencia_id: null }).eq('id', input.id)
+      return { error: erroNovos.message }
+    }
+
+    revalidatePath('/financeiro/pagamentos')
+    revalidatePath('/financeiro/relatorios')
+    return { error: null }
+  }
+
+  const { error } = await supabase.from('financeiro_movimentos').update(campos).eq('id', input.id)
 
   if (error) return { error: error.message }
 
@@ -332,12 +447,51 @@ export async function atualizarMovimento(input: {
   return { error: null }
 }
 
-export async function excluirMovimento(id: string, natureza: FinanceiroNatureza): Promise<{ error: string | null }> {
+/**
+ * Confirma que um pagamento previsto foi feito (ou desfaz a confirmação).
+ * Só pagamentos: recebimento não tem esse controle.
+ */
+export async function definirPagamentoConfirmado(id: string, pago: boolean): Promise<{ error: string | null }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  const { error } = await supabase.from('financeiro_movimentos').delete().eq('id', id)
+  const { data: alterados, error } = await supabase.from('financeiro_movimentos')
+    .update({ pago, pago_em: pago ? hojeISO() : null })
+    .eq('id', id)
+    .eq('natureza', 'saida')
+    .select('id')
+
+  if (error) return { error: error.message }
+  if (!alterados || alterados.length === 0) return { error: 'Pagamento não encontrado.' }
+
+  revalidatePath('/financeiro/pagamentos')
+  revalidatePath('/financeiro/relatorios')
+  return { error: null }
+}
+
+export async function excluirMovimento(
+  id: string,
+  natureza: FinanceiroNatureza,
+  escopo: 'este' | 'este_e_proximos' = 'este',
+): Promise<{ error: string | null }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  // "Este e os próximos" de um pagamento recorrente: apaga os lançamentos da
+  // mesma série com data igual ou posterior à deste. Os anteriores ficam.
+  let serie: { recorrencia_id: string; data: string } | null = null
+  if (escopo === 'este_e_proximos') {
+    const { data: alvo, error: erroAlvo } = await supabase
+      .from('financeiro_movimentos').select('recorrencia_id, data').eq('id', id).maybeSingle()
+    if (erroAlvo) return { error: erroAlvo.message }
+    if (alvo?.recorrencia_id) serie = { recorrencia_id: alvo.recorrencia_id, data: alvo.data }
+  }
+
+  const { error } = serie
+    ? await supabase.from('financeiro_movimentos').delete().eq('recorrencia_id', serie.recorrencia_id).gte('data', serie.data)
+    : await supabase.from('financeiro_movimentos').delete().eq('id', id)
   if (error) return { error: error.message }
 
   revalidatePath(natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')

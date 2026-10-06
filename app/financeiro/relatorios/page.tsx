@@ -33,6 +33,9 @@ export default async function RelatoriosFinanceiroPage({ searchParams }: Props) 
     let query = supabase
       .from('financeiro_movimentos')
       .select('id, natureza, valor, data, observacao, financeiro_tipos(nome), financeiro_centros_custo(nome)')
+      // Só o que aconteceu de fato: pagamento previsto (recorrente ainda não
+      // confirmado) não entra no relatório nem nos totais.
+      .eq('pago', true)
       .order('data', { ascending: false })
       .order('id', { ascending: true })
 

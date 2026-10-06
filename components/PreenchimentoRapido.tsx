@@ -234,7 +234,7 @@ export default function PreenchimentoRapido({
                 <tr>
                   <Th className="sticky left-0 z-[1] min-w-[240px] bg-surface">Empresa</Th>
                   {colunas.map(tipo => (
-                    <Th key={tipo} alinhar="centro" largura={140}>{tipo}</Th>
+                    <Th key={tipo} alinhar="centro" largura={140} className="whitespace-normal break-words align-bottom leading-snug">{tipo}</Th>
                   ))}
                 </tr>
               </thead>

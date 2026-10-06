@@ -12,6 +12,7 @@ import {
 } from '../tarefas-actions'
 import TarefasSetorChecklist from '@/components/geral/TarefasSetorChecklist'
 import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
+import ClienteSetorSimplesAcoes from '@/components/geral/ClienteSetorSimplesAcoes'
 import type { TarefaEtapa } from '@/lib/types'
 
 interface Props {
@@ -24,7 +25,7 @@ export default async function ClienteFinanceiroDetalhePage({ params }: Props) {
 
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = user
-    ? await supabase.from('profiles').select('role').eq('id', user.id).single()
+    ? await supabase.from('profiles').select('role, setores').eq('id', user.id).single()
     : { data: null }
 
   const { data: cliente } = await supabase
@@ -33,6 +34,20 @@ export default async function ClienteFinanceiroDetalhePage({ params }: Props) {
     .eq('id', id)
     .single()
   if (!cliente) notFound()
+
+  // Editar dados e tarefas do cliente: admin ou membro do setor (mesma regra da action).
+  const podeEditarCliente = profile?.role === 'admin' || (profile?.setores ?? []).includes('financeiro')
+  const [{ data: catalogoRaw }, { data: vinculadasRaw }] = podeEditarCliente
+    ? await Promise.all([
+      supabase.from('tarefa_tipos').select('nome').eq('setor', 'financeiro').eq('ativo', true).order('nome'),
+      supabase.from('tarefa_tipo_vinculos')
+        .select('tarefa_tipos!inner(nome, ativo, setor)')
+        .eq('entidade_tipo', 'cliente').eq('entidade_id', id)
+        .eq('tarefa_tipos.setor', 'financeiro').eq('tarefa_tipos.ativo', true),
+    ])
+    : [{ data: [] }, { data: [] }]
+  const catalogoTarefas = (catalogoRaw ?? []).map(t => t.nome as string)
+  const tarefasDoCliente = (vinculadasRaw ?? []).map(v => (v.tarefa_tipos as unknown as { nome: string }).nome)
 
   const { mes, ano } = await getMesAno()
   const { data: tarefasFinanceiroTodas } = await listarTarefasFinanceiroDoCliente(id, mes, ano)
@@ -80,6 +95,11 @@ export default async function ClienteFinanceiroDetalhePage({ params }: Props) {
             <span><span className="text-fg-3">Município / UF</span> {local ?? '—'}</span>
             <span className="min-w-0 break-words"><span className="text-fg-3">Contato</span> {cliente.contato_chat?.trim() || '—'}</span>
           </span>
+        }
+        acoes={
+          podeEditarCliente
+            ? <ClienteSetorSimplesAcoes setor="financeiro" cliente={cliente} catalogoTarefas={catalogoTarefas} tarefasDoCliente={tarefasDoCliente} />
+            : undefined
         }
       />
 

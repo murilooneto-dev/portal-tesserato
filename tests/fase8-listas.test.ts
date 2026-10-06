@@ -83,7 +83,7 @@ test('listas mantêm as chaves de filtro persistente de antes', () => {
   tem(ler('components/fiscal/ClientesLista.tsx'), ["'clientes:busca'", "'clientes:grupo'", "'clientes:atividade'", "'clientes:pendencia'", "'clientes:mostrarDesabilitados'"])
   tem(ler('components/pessoal/ClientesListaPessoal.tsx'), ["'clientes-pessoal:busca'", "'clientes-pessoal:regime'", "'clientes-pessoal:prioridade'"])
   tem(ler(LISTA_CONTABIL), ["'clientes-contabil:busca'", "'clientes-contabil:regime'"])
-  tem(ler(LISTA_GERAL), ["'clientesGeral:regime'", "'clientesGeral:setor'", "'clientesGeral:atividade'"])
+  tem(ler(LISTA_GERAL), ["'clientesGeral:regimes'", "'clientesGeral:setor'", "'clientesGeral:atividade'"])
 })
 
 for (const arq of DASHBOARDS) {

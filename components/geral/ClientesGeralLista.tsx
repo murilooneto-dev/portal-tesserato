@@ -43,11 +43,18 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
   const [modalNovoOpen, setModalNovoOpen] = useState(false)
   const [clienteAbertoId, setClienteAbertoId] = useState<string | null>(null)
   const clienteAberto = clientes.find(c => c.id === clienteAbertoId)
-  const [filtroRegime, setFiltroRegime] = useFiltroPersistente('clientesGeral:regime', TODOS)
+  // Chave nova ('regimes'): a antiga guardava um regime só, em texto.
+  const [filtroRegime, setFiltroRegime] = useFiltroPersistente<string[]>('clientesGeral:regimes', [])
   const [filtroSetor, setFiltroSetor] = useFiltroPersistente('clientesGeral:setor', TODOS)
   const [filtroAtividade, setFiltroAtividade] = useFiltroPersistente<string[]>('clientesGeral:atividade', [])
   const [ordenacao, setOrdenacao] = useState<Ordenacao>(null)
   const [filtrosAbertos, setFiltrosAbertos] = useState(false)
+
+  function toggleRegime(nome: string) {
+    setFiltroRegime(
+      filtroRegime.includes(nome) ? filtroRegime.filter(r => r !== nome) : [...filtroRegime, nome]
+    )
+  }
 
   function toggleAtividade(nome: string) {
     setFiltroAtividade(
@@ -56,7 +63,7 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
   }
 
   const filtrados = useMemo(
-    () => filtrarClientesGeral(clientes, { busca, regime: filtroRegime, setor: filtroSetor, atividades: filtroAtividade }, ordenacao),
+    () => filtrarClientesGeral(clientes, { busca, regimes: filtroRegime, setor: filtroSetor, atividades: filtroAtividade }, ordenacao),
     [clientes, busca, filtroRegime, filtroSetor, filtroAtividade, ordenacao],
   )
 
@@ -64,11 +71,11 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
 
   // No celular os filtros ficam recolhidos atrás do botão "Filtros", que fica
   // destacado quando algum deles está em uso.
-  const filtrosAtivos = [filtroRegime !== TODOS, filtroSetor !== TODOS, filtroAtividade.length > 0].filter(Boolean).length
+  const filtrosAtivos = [filtroRegime.length > 0, filtroSetor !== TODOS, filtroAtividade.length > 0].filter(Boolean).length
 
   function limparFiltros() {
     setBusca('')
-    setFiltroRegime(TODOS)
+    setFiltroRegime([])
     setFiltroSetor(TODOS)
     setFiltroAtividade([])
   }
@@ -138,14 +145,6 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
           />
         </div>
         <div id="filtros-clientes-geral" className={cn('w-full flex-col gap-3 sm:contents', filtrosAbertos ? 'flex' : 'hidden')}>
-        <Field rotulo="Regime" className="w-full sm:w-[190px]">
-          {c => (
-            <Select id={c.id} value={filtroRegime} onChange={e => setFiltroRegime(e.target.value)}>
-              <option value={TODOS}>Todos</option>
-              {catalogoFiscal.regimes.map(r => <option key={r} value={r}>{r}</option>)}
-            </Select>
-          )}
-        </Field>
         <Field rotulo="Setor" className="w-full sm:w-[170px]">
           {c => (
             <Select id={c.id} value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)}>
@@ -154,6 +153,16 @@ export default function ClientesGeralLista({ clientes, isAdmin, podeCriar, podeD
             </Select>
           )}
         </Field>
+        {catalogoFiscal.regimes.length > 0 && (
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span id="rotulo-filtro-regime" className="text-[13px] font-medium text-fg-2">Regime</span>
+            <div role="group" aria-labelledby="rotulo-filtro-regime" className="flex flex-wrap gap-2">
+              {catalogoFiscal.regimes.map(nome => (
+                <Chip key={nome} ativo={filtroRegime.includes(nome)} onClick={() => toggleRegime(nome)}>{nome}</Chip>
+              ))}
+            </div>
+          </div>
+        )}
         {catalogoFiscal.atividades.length > 0 && (
           <div className="flex min-w-0 flex-col gap-1.5">
             <span id="rotulo-filtro-atividade" className="text-[13px] font-medium text-fg-2">Atividade</span>
