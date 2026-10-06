@@ -40,7 +40,7 @@ export default async function PreenchimentoRapidoContabilPage() {
       .select('id, nome, cnpj, clientes_contabil!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_contabil.ativo', true)
       .order('nome'),
-    buscarMapaVinculosSetor(supabase, 'contabil'),
+    buscarMapaVinculosSetor(supabase, 'contabil', { mes, ano }),
     supabase.from('tarefa_tipos').select('nome, tipo_resposta, etapas').eq('setor', 'contabil'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'tipo' | 'concluida'>>(
       supabase, mes, ano, 'cliente_id, tipo, concluida', 'contabil',

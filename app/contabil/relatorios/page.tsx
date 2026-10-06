@@ -31,7 +31,7 @@ export default async function RelatoriosContabilPage() {
   ])
 
   const clientes = (clientesRaw ?? []).map(flattenClienteContabil)
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil', { mes, ano })
   const { data: gruposCatalogo } = await listarGruposDoSetor('contabil')
 
   const obsPorCliente: Record<string, string> = {}

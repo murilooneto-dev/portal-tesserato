@@ -97,7 +97,7 @@ export default function RelatoriosPage() {
           clientesQ,
           buscarTodasTarefasDoMes<Tarefa>(sb, mes, ano),
           sb.from('observacoes_clientes').select('cliente_id,texto').eq('mes', mes).eq('ano', ano),
-          buscarMapaVinculosSetor(sb, 'fiscal'),
+          buscarMapaVinculosSetor(sb, 'fiscal', { mes, ano }),
           buscarDonoNomePorTipoFiscal(),
           sb.from('atividades').select('nome').eq('setor', 'fiscal').eq('ativo', true).order('nome'),
         ]).then(([c, t, o, mapa, donos, at]) => {

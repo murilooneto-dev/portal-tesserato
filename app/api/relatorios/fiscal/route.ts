@@ -34,7 +34,7 @@ export async function POST() {
   const [{ data: clientesRows, error: clientesErr }, tarefas, mapaVinculos, donoNomePorTipo] = await Promise.all([
     admin.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('clientes_fiscal.ativo', true).order('nome'),
     buscarTodasTarefasDoMes<Tarefa>(admin, mes, ano),
-    buscarMapaVinculosSetor(admin, 'fiscal'),
+    buscarMapaVinculosSetor(admin, 'fiscal', { mes, ano }),
     buscarDonoNomePorTipo(admin, 'fiscal'),
   ])
   if (clientesErr) return NextResponse.json({ error: clientesErr.message }, { status: 500 })

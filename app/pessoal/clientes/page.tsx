@@ -51,7 +51,7 @@ export default async function ClientesPessoalPage() {
     }
   }
 
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal', { mes, ano })
   const progressoMap: Record<string, { total: number; concluidas: number }> = {}
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of clientes) {
