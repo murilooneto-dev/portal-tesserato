@@ -69,7 +69,7 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
   const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }, labelsParcelamento, { data: gruposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
     supabase.from('profiles').select('nome, cor').contains('setores', ['contabil']),
-    supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta').eq('setor', 'contabil'),
+    supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta, vigente_ate').eq('setor', 'contabil'),
     supabase.from('calendario_eventos').select('*').eq('setor', 'contabil'),
     buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null),
     supabase.from('tarefa_grupos').select('id, cliente_id, setor, nome, tarefas').eq('cliente_id', id).eq('setor', 'contabil'),
@@ -101,7 +101,7 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
       tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
     }
   }
-  const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
+  const tarefasPadrao = (tiposRaw ?? []).filter(t => !t.vigente_ate).map(t => t.nome as string)
   const catalogo = await buscarCatalogoCliente(supabase, 'contabil')
 
   const tarefaIds = (tarefas ?? []).map(t => t.id)

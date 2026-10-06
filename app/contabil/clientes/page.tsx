@@ -18,12 +18,12 @@ export default async function ClientesContabilPage() {
   const [{ data: clientesRaw }, tarefasDoAno, { data: tiposRaw }, { data: usuariosSetor }] = await Promise.all([
     supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).order('nome'),
     buscarTodasTarefasDoAno<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo' | 'mes'>>(supabase, ano, 'cliente_id, concluida, tipo, mes', 'contabil'),
-    supabase.from('tarefa_tipos').select('nome').eq('setor', 'contabil').order('nome'),
+    supabase.from('tarefa_tipos').select('nome, vigente_ate').eq('setor', 'contabil').order('nome'),
     supabase.from('profiles').select('nome, cor').contains('setores', ['contabil']),
   ])
 
   const clientes = (clientesRaw ?? []).map(flattenClienteContabil)
-  const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
+  const tarefasPadrao = (tiposRaw ?? []).filter(t => !t.vigente_ate).map(t => t.nome as string)
 
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil', { mes, ano })
   // Esperadas de cada mês do ano: tarefa criada no meio do ano só entra na

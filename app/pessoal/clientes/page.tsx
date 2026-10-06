@@ -27,11 +27,11 @@ export default async function ClientesPessoalPage() {
   const [{ data: clientesRaw }, tarefas, { data: tiposRaw }] = await Promise.all([
     supabase.from('clientes').select(SELECT_CLIENTE_PESSOAL).order('nome'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo' | 'parcelamento_id'>>(supabase, mes, ano, 'cliente_id, concluida, tipo, parcelamento_id', 'pessoal'),
-    supabase.from('tarefa_tipos').select('nome, meses_visiveis').eq('setor', 'pessoal').order('nome'),
+    supabase.from('tarefa_tipos').select('nome, meses_visiveis, vigente_ate').eq('setor', 'pessoal').order('nome'),
   ])
 
   const clientes = (clientesRaw ?? []).map(flattenClientePessoal)
-  const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
+  const tarefasPadrao = (tiposRaw ?? []).filter(t => !t.vigente_ate).map(t => t.nome as string)
 
   const mesesVisiveisPorTipo: Record<string, number[] | null> = {}
   for (const t of tiposRaw ?? []) mesesVisiveisPorTipo[t.nome as string] = t.meses_visiveis as number[] | null

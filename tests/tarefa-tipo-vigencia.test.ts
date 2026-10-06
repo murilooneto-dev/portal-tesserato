@@ -79,3 +79,58 @@ test('migration 063: coluna nula para os tipos antigos, default now() e data rea
   assert.ok(sql.includes('alter column criado_em set default now()'))
   assert.ok(sql.includes("detalhes::jsonb->>'entidade' = 'Tipo de tarefa'"))
 })
+
+// ---------- encerramento (migration 064) ----------
+
+test('tarefaVigenteNoPeriodo: tarefa encerrada conta até o mês do encerramento e some depois', () => {
+  const fim = '2026-09-01'
+  assert.equal(tarefaVigenteNoPeriodo(null, { mes: 8, ano: 2026 }, fim), true)
+  assert.equal(tarefaVigenteNoPeriodo(null, { mes: 9, ano: 2026 }, fim), true)
+  assert.equal(tarefaVigenteNoPeriodo(null, { mes: 10, ano: 2026 }, fim), false)
+  assert.equal(tarefaVigenteNoPeriodo(null, { mes: 1, ano: 2027 }, fim), false)
+  assert.equal(tarefaVigenteNoPeriodo(null, { mes: 12, ano: 2025 }, fim), true)
+  // qualquer dia do mês vale o mês inteiro, sem escorregar por fuso
+  assert.equal(tarefaVigenteNoPeriodo(null, { mes: 9, ano: 2026 }, '2026-09-30'), true)
+  assert.equal(tarefaVigenteNoPeriodo(null, { mes: 10, ano: 2026 }, '2026-09-30'), false)
+  for (const semFim of [null, undefined, '', 'lixo']) assert.equal(tarefaVigenteNoPeriodo(null, { mes: 1, ano: 2099 }, semFim), true)
+})
+
+test('tarefaVigenteNoPeriodo: começo e fim juntos delimitam a janela', () => {
+  const criada = '2026-03-10T12:00:00Z'
+  assert.equal(tarefaVigenteNoPeriodo(criada, { mes: 2, ano: 2026 }, '2026-09-01'), false)
+  assert.equal(tarefaVigenteNoPeriodo(criada, { mes: 3, ano: 2026 }, '2026-09-01'), true)
+  assert.equal(tarefaVigenteNoPeriodo(criada, { mes: 9, ano: 2026 }, '2026-09-01'), true)
+  assert.equal(tarefaVigenteNoPeriodo(criada, { mes: 10, ano: 2026 }, '2026-09-01'), false)
+})
+
+test('calcularTarefasEsperadas: tarefa encerrada em setembro some de outubro, do cliente e automática', () => {
+  const mapaFim: MapaVinculosSetor = {
+    porRegime: {},
+    porAtividade: { Comércio: [{ tarefa: 'Emissão de Folhas', regimeNome: null }, { tarefa: 'Automática antiga', regimeNome: null }] },
+    fimPorTarefa: { 'Folha de Pagamento': '2026-09-01', 'Automática antiga': '2026-09-01' },
+  }
+  const c = { regime: null, atividade: ['Comércio'], tarefas_personalizadas: ['Folha de Pagamento', '13º Salário'] }
+  assert.deepEqual(calcularTarefasEsperadas(c, mapaFim, { mes: 9, ano: 2026 }).sort(), ['13º Salário', 'Automática antiga', 'Emissão de Folhas', 'Folha de Pagamento'])
+  assert.deepEqual(calcularTarefasEsperadas(c, mapaFim, { mes: 10, ano: 2026 }).sort(), ['13º Salário', 'Emissão de Folhas'])
+  // cadastro do cliente (sem mês): a lista inteira continua lá
+  assert.equal(calcularTarefasEsperadas(c, mapaFim).length, 4)
+})
+
+test('migration 064 e leitura do encerramento', () => {
+  assert.ok(ler('supabase/migrations/064_tarefa_tipos_vigente_ate.sql').includes('add column if not exists vigente_ate date'))
+  const lib = ler('lib/tarefas-esperadas.ts')
+  assert.ok(lib.includes("select('nome, criado_em, vigente_ate')"))
+  assert.ok(lib.includes("or('criado_em.not.is.null,vigente_ate.not.is.null')"))
+})
+
+test('tipo encerrado não entra na lista padrão de cliente novo (Pessoal e Contábil)', () => {
+  for (const arq of ['app/pessoal/clientes/page.tsx', 'app/pessoal/clientes/[id]/page.tsx', 'app/contabil/clientes/page.tsx', 'app/contabil/clientes/[id]/page.tsx']) {
+    assert.ok(ler(arq).includes('.filter(t => !t.vigente_ate).map(t => t.nome as string)'), arq)
+  }
+})
+
+test('cadastro geral: cliente novo não recebe tipo padrão já encerrado', () => {
+  const src = ler('app/(comum)/clientes/actions.ts')
+  assert.equal(src.split(".eq('padrao', true).is('vigente_ate', null)").length - 1, 4)
+  assert.ok(!/\.eq\('padrao', true\)\.order/.test(src))
+})
