@@ -11,7 +11,7 @@ export interface ClienteGeralLinha {
   setores: UserSetor[] | null
   clientes_fiscal: { regime: string | null; atividade: string[] | null } | null
 }
-export interface FiltrosClientesGeral { busca: string; regime: string; setor: string; atividades: string[] }
+export interface FiltrosClientesGeral { busca: string; regimes: string[]; setor: string; atividades: string[] }
 export type CampoOrdem = 'nome' | 'regime'
 export type Ordenacao = { campo: CampoOrdem; direcao: 'asc' | 'desc' } | null
 
@@ -29,7 +29,7 @@ export function filtrarClientesGeral<T extends ClienteGeralLinha>(lista: T[], f:
       const noCnpj = digitos.length >= 3 && soDigitos(c.cnpj ?? '').includes(digitos)
       if (!noNome && !noCnpj) return false
     }
-    if (f.regime !== TODOS && c.clientes_fiscal?.regime !== f.regime) return false
+    if (f.regimes.length > 0 && !f.regimes.includes(c.clientes_fiscal?.regime ?? '')) return false
     if (f.setor !== TODOS && !(c.setores ?? []).includes(f.setor as UserSetor)) return false
     if (f.atividades.length > 0 && !f.atividades.some(a => (c.clientes_fiscal?.atividade ?? []).includes(a))) return false
     return true

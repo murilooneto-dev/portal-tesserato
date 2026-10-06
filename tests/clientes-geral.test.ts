@@ -14,7 +14,7 @@ const lista = [
   cli('Alfa Serviços', { setores: ['societario', 'financeiro'], clientes_fiscal: null }),
   cli('Beta Indústria', { cnpj: '98765432000110', clientes_fiscal: { regime: 'Lucro Presumido', atividade: ['Indústria', 'Serviço'] } }),
 ]
-const f = (extra: Partial<FiltrosClientesGeral> = {}): FiltrosClientesGeral => ({ busca: '', regime: TODOS, setor: TODOS, atividades: [], ...extra })
+const f = (extra: Partial<FiltrosClientesGeral> = {}): FiltrosClientesGeral => ({ busca: '', regimes: [], setor: TODOS, atividades: [], ...extra })
 const nomes = (r: ClienteGeralLinha[]) => r.map(c => c.nome)
 
 test('setores de cliente não incluem Configurações', () => {
@@ -43,7 +43,8 @@ test('busca com letras procura só no nome; CNPJ só com pelo menos 3 dígitos',
 })
 
 test('filtros de regime, setor e atividade', () => {
-  assert.deepEqual(nomes(filtrarClientesGeral(lista, f({ regime: 'Lucro Presumido' }), null)), ['Beta Indústria'])
+  assert.deepEqual(nomes(filtrarClientesGeral(lista, f({ regimes: ['Lucro Presumido'] }), null)), ['Beta Indústria'])
+  assert.deepEqual(nomes(filtrarClientesGeral(lista, f({ regimes: ['Lucro Presumido', 'Simples Nacional'] }), null)), ['Comércio São José LTDA', 'Beta Indústria'])
   assert.deepEqual(nomes(filtrarClientesGeral(lista, f({ setor: 'financeiro' }), null)), ['Alfa Serviços'])
   assert.deepEqual(nomes(filtrarClientesGeral(lista, f({ atividades: ['Serviço', 'Comércio'] }), null)), ['Comércio São José LTDA', 'Beta Indústria'])
 })
