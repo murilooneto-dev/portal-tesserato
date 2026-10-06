@@ -12,6 +12,7 @@ EMAIL_HOST                      = smtp.gmail.com
 EMAIL_PORT                      = 587
 EMAIL_USER                      = tesseratocontabilidade@gmail.com
 EMAIL_PASS                      = <senha de app Gmail>
+CRON_SECRET                     = <texto longo e aleatório; protege o envio agendado do aviso de vencimento do Financeiro>
 ```
 
 ## Supabase — configurações necessárias

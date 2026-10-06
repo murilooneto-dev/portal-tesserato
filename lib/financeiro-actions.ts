@@ -1,10 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getAuthenticatedAdmin, createClient } from './supabase/server'
+import { getAuthenticatedAdmin, createClient, createAdminClient } from './supabase/server'
 import { validarNomeEntidade, normalizarNome } from './config-entidades'
 import { datasRecorrentes } from './financeiro-movimentos'
 import { hojeISO } from './mes-atual'
+import { separarEmails } from './financeiro-aviso-vencimento'
+import { enviarAvisoVencimento } from './financeiro-aviso-vencimento-envio'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from './types'
 
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
@@ -225,6 +227,56 @@ export async function excluirFinanceiroCentroCusto(id: string): Promise<{ error:
 
   revalidatePath('/admin/configuracoes/financeiro')
   return { error: null }
+}
+
+// ---------- aviso de vencimento (financeiro_config) ----------
+
+export async function lerEmailAvisoVencimento(): Promise<{ email: string; error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { email: '', error }
+
+  const { data, error: queryError } = await supabase
+    .from('financeiro_config').select('email_aviso_vencimento').eq('id', 1).maybeSingle()
+  if (queryError) return { email: '', error: queryError.message }
+  return { email: data?.email_aviso_vencimento ?? '', error: null }
+}
+
+/** Grava o(s) destinatário(s) do aviso. Vazio desliga o aviso. */
+export async function salvarEmailAvisoVencimento(texto: string): Promise<{ email: string; error: string | null }> {
+  const { validos, invalidos } = separarEmails(texto)
+  if (invalidos.length > 0) return { email: texto, error: `E-mail inválido: ${invalidos.join(', ')}` }
+
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { email: texto, error }
+
+  const email = validos.join(', ')
+  const { error: upsertError } = await supabase
+    .from('financeiro_config').upsert({ id: 1, email_aviso_vencimento: email || null })
+  if (upsertError) return { email: texto, error: upsertError.message }
+
+  revalidatePath('/admin/configuracoes/financeiro')
+  return { email, error: null }
+}
+
+/**
+ * Manda agora, para o e-mail já salvo, o aviso dos pagamentos recorrentes que
+ * vencem amanhã. Não conta como o envio do dia.
+ */
+export async function enviarTesteAvisoVencimento(): Promise<{ mensagem: string | null; error: string | null }> {
+  const { error } = await exigirAdmin()
+  if (error) return { mensagem: null, error }
+
+  try {
+    const resultado = await enviarAvisoVencimento(createAdminClient(), { teste: true })
+    if (resultado.status === 'sem_destinatario') return { mensagem: null, error: 'Salve um e-mail antes de enviar o teste.' }
+    if (resultado.status !== 'enviado') return { mensagem: null, error: 'O teste não foi enviado.' }
+    const lista = resultado.quantidade === 0
+      ? 'sem pagamentos vencendo amanhã'
+      : resultado.quantidade === 1 ? 'com 1 pagamento' : `com ${resultado.quantidade} pagamentos`
+    return { mensagem: `Teste enviado para ${resultado.destinatarios.join(', ')} (${lista}).`, error: null }
+  } catch (e) {
+    return { mensagem: null, error: e instanceof Error ? e.message : 'Falha ao enviar o e-mail.' }
+  }
 }
 
 // ---------- financeiro_movimentos ----------
