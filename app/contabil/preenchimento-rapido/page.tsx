@@ -14,6 +14,7 @@ export const metadata = { title: 'Preenchimento rápido — Tesserato Contábil'
 interface ClienteRow {
   id: string
   nome: string
+  cnpj: string | null
   clientes_contabil: {
     regime: string | null
     atividade: string[]
@@ -36,7 +37,7 @@ export default async function PreenchimentoRapidoContabilPage() {
   const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_contabil!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
+      .select('id, nome, cnpj, clientes_contabil!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_contabil.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'contabil'),
@@ -51,6 +52,7 @@ export default async function PreenchimentoRapidoContabilPage() {
     return {
       id: r.id,
       nome: r.nome,
+      cnpj: r.cnpj,
       regime: r.clientes_contabil.regime,
       atividade: r.clientes_contabil.atividade,
       responsavel: r.clientes_contabil.responsavel,

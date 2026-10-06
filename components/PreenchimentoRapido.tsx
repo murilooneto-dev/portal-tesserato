@@ -242,7 +242,7 @@ export default function PreenchimentoRapido({
                 {linhas.map(cliente => (
                   <tr key={cliente.id}>
                     <Td className="sticky left-0 z-[1] min-w-[240px] bg-surface">
-                      <NomeCliente nome={cliente.nome} />
+                      <NomeCliente nome={cliente.nome} cnpj={cliente.cnpj ?? null} />
                     </Td>
                     {colunas.map(tipo => (
                       <Td key={tipo} alinhar="centro">

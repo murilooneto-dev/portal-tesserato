@@ -6,6 +6,7 @@ export type CampoFiltro = 'regime' | 'atividade'
 export interface ClienteFiltro {
   id: string
   nome: string
+  cnpj?: string | null
   regime?: string | null
   atividade?: string[] | null
   tarefas_personalizadas?: string[]

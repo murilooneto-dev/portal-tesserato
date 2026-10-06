@@ -14,6 +14,7 @@ export const metadata = { title: 'Preenchimento rápido — Tesserato Pessoal' }
 interface ClienteRow {
   id: string
   nome: string
+  cnpj: string | null
   clientes_pessoal: {
     regime: string | null
     atividade: string[]
@@ -36,7 +37,7 @@ export default async function PreenchimentoRapidoPessoalPage() {
   const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_pessoal!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
+      .select('id, nome, cnpj, clientes_pessoal!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_pessoal.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'pessoal'),
@@ -51,6 +52,7 @@ export default async function PreenchimentoRapidoPessoalPage() {
     return {
       id: r.id,
       nome: r.nome,
+      cnpj: r.cnpj,
       regime: r.clientes_pessoal.regime,
       atividade: r.clientes_pessoal.atividade,
       responsavel: r.clientes_pessoal.responsavel,

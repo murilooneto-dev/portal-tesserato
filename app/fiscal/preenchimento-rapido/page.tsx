@@ -14,6 +14,7 @@ export const metadata = { title: 'Preenchimento rápido — Tesserato Fiscal' }
 interface ClienteRow {
   id: string
   nome: string
+  cnpj: string | null
   clientes_fiscal: {
     regime: string | null
     atividade: string[]
@@ -36,7 +37,7 @@ export default async function PreenchimentoRapidoFiscalPage() {
   const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas] = await Promise.all([
     supabase
       .from('clientes')
-      .select('id, nome, clientes_fiscal!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
+      .select('id, nome, cnpj, clientes_fiscal!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'fiscal'),
@@ -51,6 +52,7 @@ export default async function PreenchimentoRapidoFiscalPage() {
     return {
       id: r.id,
       nome: r.nome,
+      cnpj: r.cnpj,
       regime: r.clientes_fiscal.regime,
       atividade: r.clientes_fiscal.atividade,
       responsavel: r.clientes_fiscal.responsavel,
