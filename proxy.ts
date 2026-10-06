@@ -35,7 +35,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/auth') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
-    pathname === '/logo.ico'
+    pathname === '/logo.ico' ||
+    // Envios agendados da Vercel: sem sessão, protegidos por CRON_SECRET na própria rota.
+    pathname.startsWith('/api/cron/')
   ) {
     return NextResponse.next()
   }
