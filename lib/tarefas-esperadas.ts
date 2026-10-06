@@ -11,6 +11,9 @@ export interface MapaVinculosSetor {
   // Só entram os tipos que têm a data: os anteriores à migration 063 ficam de
   // fora e continuam valendo para qualquer mês.
   inicioPorTarefa?: Record<string, string>
+  // Nome da tarefa → último mês em que ela conta (tarefa_tipos.vigente_ate,
+  // 'AAAA-MM-DD'). Só entram os tipos encerrados; os demais não têm fim.
+  fimPorTarefa?: Record<string, string>
   // Mês/ano que a tela está mostrando, quando buscarMapaVinculosSetor recebe
   // um. calcularTarefasEsperadas usa este período se não receber outro, então
   // quem monta a tela de UM mês só precisa informar o mês ao buscar o mapa.
@@ -23,13 +26,35 @@ export interface PeriodoTarefas { mes: number; ano: number }
  * Não-retroatividade: tarefa criada em out/2026 não vira pendência de
  * jan..set/2026. O mês em que foi criada já conta, não importa o dia. O mês
  * de criação é lido no fuso de São Paulo. Sem data (`undefined`) = sempre.
+ *
+ * Encerramento (`vigenteAte`, migration 064): tarefa encerrada em set/2026
+ * continua contando até setembro e some de outubro em diante, sem precisar
+ * sair da ficha do cliente (o que a apagaria também dos meses passados).
  */
-export function tarefaVigenteNoPeriodo(criadoEm: string | null | undefined, periodo: PeriodoTarefas): boolean {
-  if (!criadoEm) return true
+export function tarefaVigenteNoPeriodo(
+  criadoEm: string | null | undefined,
+  periodo: PeriodoTarefas,
+  vigenteAte?: string | null,
+): boolean {
+  return !antesDoInicio(criadoEm, periodo) && !depoisDoFim(vigenteAte, periodo)
+}
+
+function antesDoInicio(criadoEm: string | null | undefined, periodo: PeriodoTarefas): boolean {
+  if (!criadoEm) return false
   const criado = new Date(criadoEm)
-  if (Number.isNaN(criado.getTime())) return true
+  if (Number.isNaN(criado.getTime())) return false
   const [anoCriado, mesCriado] = criado.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).split('-').map(Number)
-  return periodo.ano > anoCriado || (periodo.ano === anoCriado && periodo.mes >= mesCriado)
+  return periodo.ano < anoCriado || (periodo.ano === anoCriado && periodo.mes < mesCriado)
+}
+
+// `vigente_ate` é coluna `date` (sem hora): lê ano e mês direto do texto, sem
+// passar por Date, pra não escorregar de mês por causa de fuso.
+function depoisDoFim(vigenteAte: string | null | undefined, periodo: PeriodoTarefas): boolean {
+  const m = /^(\d{4})-(\d{2})/.exec(vigenteAte ?? '')
+  if (!m) return false
+  const anoFim = Number(m[1])
+  const mesFim = Number(m[2])
+  return periodo.ano > anoFim || (periodo.ano === anoFim && periodo.mes > mesFim)
 }
 
 // Uma consulta em lote por carregamento de página (nunca por cliente) —
@@ -49,15 +74,18 @@ export async function buscarMapaVinculosSetor(
       .from('tarefa_tipo_vinculos')
       .select('entidade_tipo, entidade_id, regime_id, tarefa_tipos!inner(nome, setor)')
       .eq('tarefa_tipos.setor', setor),
-    supabase.from('tarefa_tipos').select('nome, criado_em').eq('setor', setor).not('criado_em', 'is', null),
+    supabase.from('tarefa_tipos').select('nome, criado_em, vigente_ate').eq('setor', setor).or('criado_em.not.is.null,vigente_ate.not.is.null'),
   ])
 
   const nomePorId: Record<string, string> = {}
   for (const r of regimes ?? []) nomePorId[r.id as string] = r.nome as string
   for (const a of atividades ?? []) nomePorId[a.id as string] = a.nome as string
 
-  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {}, inicioPorTarefa: {}, periodo }
-  for (const t of tiposComData ?? []) mapa.inicioPorTarefa![t.nome as string] = t.criado_em as string
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {}, inicioPorTarefa: {}, fimPorTarefa: {}, periodo }
+  for (const t of tiposComData ?? []) {
+    if (t.criado_em) mapa.inicioPorTarefa![t.nome as string] = t.criado_em as string
+    if (t.vigente_ate) mapa.fimPorTarefa![t.nome as string] = t.vigente_ate as string
+  }
 
   for (const v of vinculos ?? []) {
     const nomeEntidade = nomePorId[v.entidade_id as string]
@@ -111,7 +139,7 @@ function tarefasAutomaticas(cliente: ClienteVinculo, mapa: MapaVinculosSetor): s
 // manualmente algo excluído já faz ele voltar a aparecer, sem precisar
 // "desexcluir" antes.
 // Período (mês/ano que a tela está mostrando): tira as tarefas criadas depois
-// dele (ver tarefaVigenteNoPeriodo). Vale o `periodo` do argumento (telas que
+// dele e as encerradas antes dele (ver tarefaVigenteNoPeriodo). Vale o `periodo` do argumento (telas que
 // calculam vários meses, como a faixa do ano) ou, na falta, o do mapa. Sem
 // nenhum dos dois devolve tudo — é o que o cadastro do cliente usa, onde não
 // existe mês.
@@ -125,7 +153,7 @@ export function calcularTarefasEsperadas(
   const todas = Array.from(new Set([...automaticasAtivas, ...cliente.tarefas_personalizadas]))
   const p = periodo ?? mapa.periodo
   if (!p) return todas
-  return todas.filter(t => tarefaVigenteNoPeriodo(mapa.inicioPorTarefa?.[t], p))
+  return todas.filter(t => tarefaVigenteNoPeriodo(mapa.inicioPorTarefa?.[t], p, mapa.fimPorTarefa?.[t]))
 }
 
 // Pra UI do cadastro: as tarefas automáticas ainda ativas (não excluídas) e

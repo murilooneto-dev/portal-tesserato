@@ -39,6 +39,13 @@ function rotuloFormato(item: TarefaTipoResumo): string {
   return item.tipoResposta === 'texto' ? 'Texto e anexo' : 'Data'
 }
 
+// 'AAAA-MM-DD' (tarefa_tipos.vigente_ate) → "set/2026".
+function rotuloMesAno(data: string): string {
+  const [ano, mes] = data.split('-').map(Number)
+  const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+  return `${MESES[mes - 1] ?? '?'}/${ano}`
+}
+
 export default function TarefasTab({ setor }: Props) {
   const confirmar = useConfirmar()
   const avisar = useToast()
@@ -144,6 +151,11 @@ export default function TarefasTab({ setor }: Props) {
                       <span className={cn('block truncate font-semibold', item.ativo ? 'text-fg' : 'text-fg-3 line-through')} title={item.nome}>
                         {item.nome}
                       </span>
+                      {item.vigenteAte && (
+                        <span className="mt-1 block" title="Não aparece mais nos meses seguintes. Os meses anteriores continuam mostrando o que foi feito.">
+                          <Badge tom="warn">Encerrada em {rotuloMesAno(item.vigenteAte)}</Badge>
+                        </span>
+                      )}
                     </Td>
                     <Td><Badge tom="neu">{rotuloFormato(item)}</Badge></Td>
                     <Td>
