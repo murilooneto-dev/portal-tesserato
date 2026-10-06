@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buscarEmBlocos, datasRecorrentes, formatarValorComSinal, TAMANHO_BLOCO } from '../lib/financeiro-movimentos'
+import { buscarEmBlocos, datasRecorrentes, formatarValorComSinal, intervaloDoMes, situacaoPagamento, TAMANHO_BLOCO } from '../lib/financeiro-movimentos'
 
 const ler = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8')
 
@@ -59,6 +59,32 @@ test('datasRecorrentes: data inválida não gera nada', () => {
   assert.deepEqual(datasRecorrentes('2026-02-30'), [])
 })
 
+test('intervaloDoMes: primeiro e último dia do mês', () => {
+  assert.deepEqual(intervaloDoMes(10, 2026), { inicio: '2026-10-01', fim: '2026-10-31' })
+  assert.deepEqual(intervaloDoMes(2, 2026), { inicio: '2026-02-01', fim: '2026-02-28' })
+  assert.deepEqual(intervaloDoMes(2, 2028), { inicio: '2028-02-01', fim: '2028-02-29' })
+  assert.deepEqual(intervaloDoMes(12, 2026), { inicio: '2026-12-01', fim: '2026-12-31' })
+})
+
+test('situacaoPagamento: a pagar até o dia do vencimento, vencido depois', () => {
+  assert.equal(situacaoPagamento({ pago: true, data: '2026-01-01' }, '2026-10-05'), 'pago')
+  assert.equal(situacaoPagamento({ data: '2026-01-01' }, '2026-10-05'), 'pago')
+  assert.equal(situacaoPagamento({ pago: false, data: '2026-11-05' }, '2026-10-05'), 'a_pagar')
+  assert.equal(situacaoPagamento({ pago: false, data: '2026-10-05' }, '2026-10-05'), 'a_pagar')
+  assert.equal(situacaoPagamento({ pago: false, data: '2026-10-04' }, '2026-10-05'), 'vencido')
+})
+
+test('pagamento previsto: recorrente nasce a pagar, confirma na lista e fica fora do relatório', () => {
+  const actions = ler('lib/financeiro-actions.ts')
+  for (const t of ['pago: recorrenciaId === null', 'export async function definirPagamentoConfirmado(id: string, pago: boolean)',
+    'pago_em: pago ? hojeISO() : null', ".eq('natureza', 'saida')"]) assert.ok(actions.includes(t), t)
+  const lista = ler(LISTA)
+  for (const t of ['definirPagamentoConfirmado(id, pago)', "rotulo: 'Confirmar pagamento'", "rotulo: 'Desfazer confirmação'",
+    'situacaoPagamento(m, hoje)', '>Vencido</Badge>', '>A pagar</Badge>', '>Pago</Badge>', 'a pagar <b']) assert.ok(lista.includes(t), t)
+  assert.ok(ler(PAGINAS[1]).includes('pago: r.pago'))
+  assert.ok(ler('app/financeiro/relatorios/page.tsx').includes(".eq('pago', true)"))
+})
+
 test('páginas buscam tudo em blocos, sem o corte em 200', () => {
   for (const [arq, natureza] of [[PAGINAS[0], 'entrada'], [PAGINAS[1], 'saida']] as const) {
     const src = ler(arq)
@@ -66,7 +92,9 @@ test('páginas buscam tudo em blocos, sem o corte em 200', () => {
     assert.ok(src.includes('.range(inicio, fim)'), arq)
     assert.ok(!src.includes('.limit('), arq)
     assert.ok(src.includes(`.eq('natureza', '${natureza}')`), arq)
-    assert.ok(src.includes(`<MovimentoListClient natureza="${natureza}" movimentos={movimentos} />`), arq)
+    assert.ok(src.includes(`<MovimentoListClient natureza="${natureza}" movimentos={movimentos} mes={mes} ano={ano} hoje={hojeISO()} />`), arq)
+    // Só o mês escolhido no seletor do portal.
+    for (const t of ['await getMesAno()', 'intervaloDoMes(mes, ano)', ".gte('data', primeiroDia)", ".lte('data', ultimoDia)"]) assert.ok(src.includes(t), `${arq}: ${t}`)
     assert.ok(!src.includes('+ Novo'), arq)
   }
 })

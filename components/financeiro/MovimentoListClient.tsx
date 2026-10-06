@@ -1,13 +1,14 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import { Pencil, Plus, Receipt, Repeat, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
-import { excluirMovimento } from '@/lib/financeiro-actions'
+import { Check, Pencil, Plus, Receipt, Repeat, Search, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react'
+import { definirPagamentoConfirmado, excluirMovimento } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
 import { formatarDdMm } from '@/lib/formatar-data'
-import { formatarValor } from '@/lib/financeiro-movimentos'
+import { formatarValor, situacaoPagamento } from '@/lib/financeiro-movimentos'
 import type { FinanceiroNatureza } from '@/lib/types'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
+import { Aviso } from '@/components/ui/Aviso'
 import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { cn } from '@/components/ui/cn'
@@ -31,11 +32,18 @@ export interface MovimentoLinha {
   created_at: string
   /** Preenchido nos pagamentos lançados como recorrentes (mesma série = mesmo id). */
   recorrencia_id?: string | null
+  /** false = pagamento previsto, ainda não confirmado. Ausente = pago. */
+  pago?: boolean
 }
 
 interface Props {
   natureza: FinanceiroNatureza
   movimentos: MovimentoLinha[]
+  /** Mês e ano escolhidos no seletor do portal: a lista já vem só com eles. */
+  mes: number
+  ano: number
+  /** Hoje (YYYY-MM-DD, fuso de São Paulo), pra saber o que está vencido. */
+  hoje: string
 }
 
 type Ordenacao = 'lancamento' | 'data_desc' | 'data_asc' | 'valor_desc' | 'valor_asc'
@@ -54,20 +62,24 @@ const POR_PAGINA = 50
 // No cartão do celular o botão ⋯ fica com 36 px (mob-06).
 const MENU_36 = '[&_[aria-haspopup]]:h-9 [&_[aria-haspopup]]:w-9'
 
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+
 function plural(n: number) {
   return `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`
 }
 
-export default function MovimentoListClient({ natureza, movimentos }: Props) {
+export default function MovimentoListClient({ natureza, movimentos, mes, ano, hoje }: Props) {
   const ehEntrada = natureza === 'entrada'
   const titulo = ehEntrada ? 'Recebimentos' : 'Pagamentos'
   const botaoNovo = ehEntrada ? 'Novo recebimento' : 'Novo pagamento'
   const nomeItem = ehEntrada ? 'recebimento' : 'pagamento'
+  const periodo = `${MESES[mes - 1]} de ${ano}`
 
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState<MovimentoLinha | null>(null)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
   const [erroExcluir, setErroExcluir] = useState<string | null>(null)
+  const [erroConfirmar, setErroConfirmar] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [busca, setBusca] = useState('')
   const [ordenacao, setOrdenacao] = useState<Ordenacao>('lancamento')
@@ -90,6 +102,14 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
       const { error } = await excluirMovimento(id, natureza, escopo)
       if (error) { setErroExcluir(error); return }
       setExcluindoId(null)
+    })
+  }
+
+  function handleConfirmar(id: string, pago: boolean) {
+    setErroConfirmar(null)
+    startTransition(async () => {
+      const { error } = await definirPagamentoConfirmado(id, pago)
+      if (error) setErroConfirmar(error)
     })
   }
 
@@ -117,6 +137,7 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
   }, [movimentos, busca, ordenacao])
 
   const total = movimentosFiltrados.reduce((acc, m) => acc + m.valor, 0)
+  const aPagar = movimentosFiltrados.reduce((acc, m) => m.pago === false ? acc + m.valor : acc, 0)
   const n = movimentosFiltrados.length
   const totalPaginas = Math.max(1, Math.ceil(n / POR_PAGINA))
   const paginaAtual = Math.min(pagina, totalPaginas)
@@ -138,7 +159,15 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
   )
 
   function itensMenu(m: MovimentoLinha) {
+    // Pagamento previsto: confirmar quando for pago. Desfazer só existe nos
+    // recorrentes, que são os únicos que nascem "a pagar".
+    const confirmacao = ehEntrada ? [] : m.pago === false
+      ? [{ rotulo: 'Confirmar pagamento', icone: <Check size={16} aria-hidden="true" />, onSelecionar: () => handleConfirmar(m.id, true) }]
+      : m.recorrencia_id
+        ? [{ rotulo: 'Desfazer confirmação', icone: <Undo2 size={16} aria-hidden="true" />, onSelecionar: () => handleConfirmar(m.id, false) }]
+        : []
     return [
+      ...confirmacao,
       { rotulo: 'Editar', icone: <Pencil size={16} aria-hidden="true" />, onSelecionar: () => setEditando(m) },
       { rotulo: 'Excluir', icone: <Trash2 size={16} aria-hidden="true" />, perigo: true, onSelecionar: () => pedirExclusao(m.id) },
     ]
@@ -177,6 +206,15 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
 
   const seloRecorrente = <Badge tom="info" icone={<Repeat size={12} aria-hidden="true" />} className="flex-none">Recorrente</Badge>
 
+  function seloSituacao(m: MovimentoLinha) {
+    if (ehEntrada) return null
+    const situacao = situacaoPagamento(m, hoje)
+    if (situacao === 'vencido') return <Badge tom="dng" className="flex-none">Vencido</Badge>
+    if (situacao === 'a_pagar') return <Badge tom="warn" className="flex-none">A pagar</Badge>
+    // "Pago" só nos recorrentes: lançamento comum já nasce pago, não precisa de selo.
+    return m.recorrencia_id ? <Badge tom="ok" className="flex-none">Pago</Badge> : null
+  }
+
   const erroExclusao = erroExcluir && (
     <p role="alert" className="mt-2 text-[13px] text-danger">Não foi possível excluir: {erroExcluir}</p>
   )
@@ -185,7 +223,10 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
     <Pagina className="pb-24 sm:pb-24 lg:pb-7">
       <CabecalhoPagina
         titulo={titulo}
-        subtitulo={<>{plural(n)} · total <b className="font-semibold text-fg tabular-nums">{formatarValor(total)}</b></>}
+        subtitulo={<>
+          <span className="first-letter:uppercase inline-block">{periodo}</span> · {plural(n)} · total <b className="font-semibold text-fg tabular-nums">{formatarValor(total)}</b>
+          {aPagar > 0 && <> · a pagar <b className="font-semibold text-fg tabular-nums">{formatarValor(aPagar)}</b></>}
+        </>}
         acoes={
           <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalAberto(true)} className="hidden lg:inline-flex">
             {botaoNovo}
@@ -227,13 +268,15 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
         </Field>
       </div>
 
+      {erroConfirmar && <Aviso tom="dng">Não foi possível salvar a confirmação: {erroConfirmar}</Aviso>}
+
       {n === 0 ? (
         <Card>
           {movimentos.length === 0 ? (
             <EmptyState
               icone={<Receipt size={24} />}
               titulo="Nenhum lançamento ainda"
-              descricao="Os lançamentos aparecem aqui assim que forem registrados."
+              descricao={`Nada com data em ${periodo}. Para ver outro mês, troque o mês no topo da tela.`}
               acao={<Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalAberto(true)}>{botaoNovo}</Button>}
             />
           ) : (
@@ -269,8 +312,9 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
                     <span className="truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
                     {m.recorrencia_id && seloRecorrente}
                   </p>
-                  <p className="truncate text-[13px] text-fg-3">
-                    {formatarDdMm(m.data)}{m.observacao ? ` · ${m.observacao}` : ''}
+                  <p className="flex min-w-0 items-center gap-2 text-[13px] text-fg-3">
+                    {seloSituacao(m)}
+                    <span className="truncate">{formatarDdMm(m.data)}{m.observacao ? ` · ${m.observacao}` : ''}</span>
                   </p>
                 </div>
                 <b className="flex-none font-mono text-sm font-semibold tabular-nums text-fg">{formatarValor(m.valor)}</b>
@@ -317,7 +361,12 @@ export default function MovimentoListClient({ natureza, movimentos }: Props) {
                     </tr>
                   ) : (
                     <tr key={m.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
-                      <Td className="whitespace-nowrap font-mono text-[13px] tabular-nums text-fg-2">{formatarDdMm(m.data)}</Td>
+                      <Td className="whitespace-nowrap font-mono text-[13px] tabular-nums text-fg-2">
+                        <div className="flex flex-col items-start gap-1">
+                          {formatarDdMm(m.data)}
+                          {seloSituacao(m)}
+                        </div>
+                      </Td>
                       <Td>
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="block truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
