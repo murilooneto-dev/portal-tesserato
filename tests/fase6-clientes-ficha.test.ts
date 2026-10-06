@@ -56,7 +56,8 @@ for (const arq of FICHAS) {
     assert.ok(!src.includes('ClienteCard'))
     assert.ok(!src.includes('Razão Social'))
     assert.ok(!src.includes('←'))
-    assert.ok(!src.includes('acoes='))
+    // Único botão do cabeçalho: editar o cliente pela ficha.
+    assert.ok(src.includes('<ClienteSetorSimplesAcoes'))
   })
 }
 
