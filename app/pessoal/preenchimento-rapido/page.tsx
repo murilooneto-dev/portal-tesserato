@@ -40,7 +40,7 @@ export default async function PreenchimentoRapidoPessoalPage() {
       .select('id, nome, cnpj, clientes_pessoal!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_pessoal.ativo', true)
       .order('nome'),
-    buscarMapaVinculosSetor(supabase, 'pessoal'),
+    buscarMapaVinculosSetor(supabase, 'pessoal', { mes, ano }),
     supabase.from('tarefa_tipos').select('nome, tipo_resposta, etapas').eq('setor', 'pessoal'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'tipo' | 'concluida'>>(
       supabase, mes, ano, 'cliente_id, tipo, concluida', 'pessoal',

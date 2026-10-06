@@ -42,7 +42,7 @@ export default async function ClientesPage() {
   ])
   const clientes = (clientesRaw ?? []).map(flattenClienteFiscal)
 
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal', { mes, ano })
   const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
 
   const responsavelIdPorTipo = new Map(

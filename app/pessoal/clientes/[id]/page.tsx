@@ -83,7 +83,7 @@ export default async function ClientePessoalDetalhePage({ params, searchParams }
   const tiposDeParcelamento = Array.from(new Set(
     (tarefas ?? []).filter(t => t.parcelamento_id && parcelamentosAtivos.has(t.parcelamento_id)).map(t => t.tipo)
   ))
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal', { mes, ano })
   const tarefasPersonalizadasEfetivas = Array.from(new Set([...calcularTarefasEsperadas(cliente, mapaVinculos), ...tiposDeParcelamento]))
 
   const { data: eventosCalRaw } = await supabase
@@ -147,7 +147,7 @@ export default async function ClientePessoalDetalhePage({ params, searchParams }
       .filter(t => t.parcelamento_id && parcelamentosAtivosDoAno.has(t.parcelamento_id))
       .map(t => t.tipo)
     const esperados = new Set([
-      ...filtrarTarefasVisiveis(calcularTarefasEsperadas(cliente, mapaVinculos), mesesVisiveisPorTipo, m),
+      ...filtrarTarefasVisiveis(calcularTarefasEsperadas(cliente, mapaVinculos, { mes: m, ano }), mesesVisiveisPorTipo, m),
       ...tiposParcelamento,
     ])
     const concluidas = doMes.filter(t => t.concluida && esperados.has(t.tipo)).length

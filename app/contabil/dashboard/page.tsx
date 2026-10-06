@@ -60,7 +60,7 @@ export default async function DashboardContabilPage({ searchParams }: { searchPa
   const eventos = (eventosRaw ?? []) as CalendarioEvento[]
   const nomeUsuario = ps.find(p => p.id === user?.id)?.nome ?? null
 
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil', { mes, ano })
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
     tiposMap[c.id] = new Set(calcularTarefasEsperadas(c, mapaVinculos))

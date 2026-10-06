@@ -73,7 +73,7 @@ export default async function DashboardPessoalPage({ searchParams }: { searchPar
   ))
   const parcelamentosAtivos = await idsDeParcelamentosAtivos(supabase, parcelamentoIdsDoMes)
 
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal', { mes, ano })
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of cs) {
     tiposMap[c.id] = new Set(filtrarTarefasVisiveis(calcularTarefasEsperadas(c, mapaVinculos), mesesVisiveisPorTipo, mes))

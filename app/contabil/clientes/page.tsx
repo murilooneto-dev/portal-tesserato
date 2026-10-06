@@ -25,16 +25,22 @@ export default async function ClientesContabilPage() {
   const clientes = (clientesRaw ?? []).map(flattenClienteContabil)
   const tarefasPadrao = (tiposRaw ?? []).map(t => t.nome as string)
 
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
-  const progressoAnualMap: Record<string, { total: number; concluidasPorMes: Record<number, number> }> = {}
-  const tiposMap: Record<string, Set<string>> = {}
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil', { mes, ano })
+  // Esperadas de cada mês do ano: tarefa criada no meio do ano só entra na
+  // conta a partir do mês em que foi criada.
+  const progressoAnualMap: Record<string, { totalPorMes: Record<number, number>; concluidasPorMes: Record<number, number> }> = {}
+  const tiposMap: Record<string, Record<number, Set<string>>> = {}
   for (const c of clientes) {
-    const esperadas = calcularTarefasEsperadas(c, mapaVinculos)
-    progressoAnualMap[c.id] = { total: esperadas.length, concluidasPorMes: {} }
-    tiposMap[c.id] = new Set(esperadas)
+    progressoAnualMap[c.id] = { totalPorMes: {}, concluidasPorMes: {} }
+    tiposMap[c.id] = {}
+    for (let m = 1; m <= 12; m++) {
+      const esperadas = calcularTarefasEsperadas(c, mapaVinculos, { mes: m, ano })
+      progressoAnualMap[c.id].totalPorMes[m] = esperadas.length
+      tiposMap[c.id][m] = new Set(esperadas)
+    }
   }
   for (const t of tarefasDoAno) {
-    if (t.concluida && tiposMap[t.cliente_id]?.has(t.tipo)) {
+    if (t.concluida && tiposMap[t.cliente_id]?.[t.mes]?.has(t.tipo)) {
       const prog = progressoAnualMap[t.cliente_id]
       prog.concluidasPorMes[t.mes] = (prog.concluidasPorMes[t.mes] ?? 0) + 1
     }

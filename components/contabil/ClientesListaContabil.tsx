@@ -23,7 +23,7 @@ import { cn } from '@/components/ui/cn'
 
 interface Props {
   clientes: ClienteComContabil[]
-  progressoAnualMap: Record<string, { total: number; concluidasPorMes: Record<number, number> }>
+  progressoAnualMap: Record<string, { totalPorMes: Record<number, number>; concluidasPorMes: Record<number, number> }>
   mes: number
   ano: number
   tarefasPadrao: string[]
@@ -180,7 +180,6 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
         <Card semPadding className="overflow-hidden">
           {filtrados.map(cliente => {
             const prog = progressoAnualMap[cliente.id]
-            const total = prog?.total ?? 0
             const temObs = !!(cliente.obs?.trim())
             const vinculos = pendenciasVinculo[cliente.id] ?? []
             const temP1 = !!cliente.prioridade && cliente.prioridade > 0
@@ -228,6 +227,7 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
                     {MESES.map((nomeMes, i) => {
                       const mesNum = i + 1
                       const concluidas = prog?.concluidasPorMes[mesNum] ?? 0
+                      const total = prog?.totalPorMes[mesNum] ?? 0
                       const pct = total > 0 ? normalizarPercentual((concluidas / total) * 100) : null
                       const atual = mesNum === mes
                       const conteudo = (
