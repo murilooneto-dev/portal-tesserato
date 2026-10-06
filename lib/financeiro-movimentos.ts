@@ -54,6 +54,15 @@ export function datasRecorrentes(dataISO: string): string[] {
   return datas
 }
 
+/**
+ * Datas criadas quando um pagamento já lançado vira recorrente: o mesmo dia
+ * dos meses seguintes ao dele, até dezembro, só de `hoje` em diante (mês que
+ * já passou nasceria "Vencido" e normalmente já foi lançado à mão).
+ */
+export function datasSeguintesDaSerie(dataISO: string, hoje: string): string[] {
+  return datasRecorrentes(dataISO).slice(1).filter(d => d >= hoje)
+}
+
 /** Primeiro e último dia (YYYY-MM-DD) do mês escolhido no seletor do portal. */
 export function intervaloDoMes(mes: number, ano: number): { inicio: string; fim: string } {
   const mm = String(mes).padStart(2, '0')

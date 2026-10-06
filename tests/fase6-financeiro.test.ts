@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buscarEmBlocos, datasRecorrentes, formatarValorComSinal, intervaloDoMes, situacaoPagamento, TAMANHO_BLOCO } from '../lib/financeiro-movimentos'
+import { buscarEmBlocos, datasRecorrentes, datasSeguintesDaSerie, formatarValorComSinal, intervaloDoMes, situacaoPagamento, TAMANHO_BLOCO } from '../lib/financeiro-movimentos'
 
 const ler = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8')
 
@@ -122,9 +122,10 @@ test('lista: excluir confirma na linha e mostra o erro da action', () => {
     'variante="perigo-solido"', 'Excluir {nomeItem}', 'no valor de', 'role="alert"']) assert.ok(src.includes(t), t)
 })
 
-test('pagamento recorrente: caixa só em pagamento novo, selo e exclusão em série', () => {
+test('pagamento recorrente: caixa em pagamento novo ou ainda sem série, selo e exclusão em série', () => {
   const janela = ler(JANELA)
-  for (const t of ["const podeSerRecorrente = natureza === 'saida' && !movimento", 'rotulo="Pagamento recorrente"',
+  for (const t of ["const podeSerRecorrente = natureza === 'saida' && !movimento?.recorrente", 'rotulo="Pagamento recorrente"',
+    'tornarRecorrente: podeSerRecorrente && recorrente', 'datasSeguintesDaSerie(data, hojeISO())',
     'recorrente: podeSerRecorrente && recorrente', 'setRecorrente(false)', 'datasRecorrentes(data)', 'lançamentos salvos.']) assert.ok(janela.includes(t), t)
   const lista = ler(LISTA)
   for (const t of ['<Repeat', '>Recorrente</Badge>', "handleExcluir(m.id, 'este_e_proximos')", 'Este e os próximos', 'Só este']) assert.ok(lista.includes(t), t)
@@ -216,4 +217,23 @@ test('relatório: filtros continuam na URL e o Tipo depende da natureza', () => 
     "params.set('de', form.de)", "params.set('ate', form.ate)", 'router.push(`/financeiro/relatorios?${params.toString()}`)',
     "router.push('/financeiro/relatorios')", "natureza: e.target.value, tipoId: ''",
     "form.natureza === 'saida' ? tiposSaida : form.natureza === 'entrada' ? tiposEntrada : [...tiposEntrada, ...tiposSaida]"]) assert.ok(src.includes(t), t)
+})
+
+test('datasSeguintesDaSerie: meses depois do pagamento, só de hoje em diante', () => {
+  assert.deepEqual(datasSeguintesDaSerie('2026-10-05', '2026-10-06'), ['2026-11-05', '2026-12-05'])
+  // pagamento antigo: meses que já passaram não são criados; o que vence hoje entra
+  assert.deepEqual(datasSeguintesDaSerie('2026-03-20', '2026-10-06'), ['2026-10-20', '2026-11-20', '2026-12-20'])
+  assert.deepEqual(datasSeguintesDaSerie('2026-03-06', '2026-10-06'), ['2026-10-06', '2026-11-06', '2026-12-06'])
+  assert.deepEqual(datasSeguintesDaSerie('2026-03-05', '2026-10-06'), ['2026-11-05', '2026-12-05'])
+  // o próprio pagamento nunca entra; dezembro e data inválida não geram nada
+  assert.deepEqual(datasSeguintesDaSerie('2026-12-10', '2026-10-06'), [])
+  assert.deepEqual(datasSeguintesDaSerie('', '2026-10-06'), [])
+})
+
+test('tornar recorrente na edição: só pagamento sem série, meses novos a pagar, desfaz se falhar', () => {
+  const actions = ler('lib/financeiro-actions.ts')
+  const corpo = actions.slice(actions.indexOf('export async function atualizarMovimento'), actions.indexOf('export async function definirPagamentoConfirmado'))
+  for (const t of ["input.tornarRecorrente && input.natureza === 'saida'", 'datasSeguintesDaSerie(input.data, hojeISO())',
+    ".is('recorrencia_id', null)", 'pago: false', "update({ recorrencia_id: null }).eq('id', input.id)"]) assert.ok(corpo.includes(t), t)
+  assert.ok(ler(LISTA).includes('recorrente: Boolean(editando.recorrencia_id)'))
 })

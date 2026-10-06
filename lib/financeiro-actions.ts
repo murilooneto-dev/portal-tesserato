@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, createClient, createAdminClient } from './supabase/server'
 import { validarNomeEntidade, normalizarNome } from './config-entidades'
-import { datasRecorrentes } from './financeiro-movimentos'
+import { datasRecorrentes, datasSeguintesDaSerie } from './financeiro-movimentos'
 import { hojeISO } from './mes-atual'
 import { separarEmails } from './financeiro-aviso-vencimento'
 import { enviarAvisoVencimento } from './financeiro-aviso-vencimento-envio'
@@ -379,6 +379,12 @@ export async function atualizarMovimento(input: {
   valor: number
   data: string
   observacao: string | null
+  /**
+   * Só pagamentos que ainda não são recorrentes: este vira o primeiro de uma
+   * série e os meses seguintes (de hoje em diante, até dezembro) são criados
+   * "a pagar". Este lançamento não muda de situação.
+   */
+  tornarRecorrente?: boolean
 }): Promise<{ error: string | null }> {
   if (!input.tipoId) return { error: 'Selecione o tipo.' }
   if (!input.data) return { error: 'Selecione a data.' }
@@ -388,13 +394,51 @@ export async function atualizarMovimento(input: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  const { error } = await supabase.from('financeiro_movimentos').update({
+  const campos = {
     tipo_id: input.tipoId,
     centro_custo_id: input.centroCustoId,
     valor: input.valor,
     data: input.data,
     observacao: input.observacao,
-  }).eq('id', input.id)
+  }
+
+  // Sem mês seguinte a vencer não há série: salva como edição comum.
+  const datasNovas = input.tornarRecorrente && input.natureza === 'saida'
+    ? datasSeguintesDaSerie(input.data, hojeISO())
+    : []
+
+  if (datasNovas.length > 0) {
+    const recorrenciaId = crypto.randomUUID()
+    // `.is('recorrencia_id', null)`: quem já é de uma série não entra em outra.
+    const { data: alterados, error: erroSerie } = await supabase.from('financeiro_movimentos')
+      .update({ ...campos, recorrencia_id: recorrenciaId })
+      .eq('id', input.id)
+      .eq('natureza', 'saida')
+      .is('recorrencia_id', null)
+      .select('id')
+    if (erroSerie) return { error: erroSerie.message }
+    if (!alterados || alterados.length === 0) return { error: 'Este pagamento já é recorrente ou não foi encontrado.' }
+
+    const { error: erroNovos } = await supabase.from('financeiro_movimentos').insert(datasNovas.map(data => ({
+      natureza: 'saida',
+      ...campos,
+      data,
+      criado_por: user.id,
+      recorrencia_id: recorrenciaId,
+      pago: false,
+    })))
+    if (erroNovos) {
+      // Os meses seguintes não entraram: desfaz o vínculo pra não sobrar série de um lançamento só.
+      await supabase.from('financeiro_movimentos').update({ recorrencia_id: null }).eq('id', input.id)
+      return { error: erroNovos.message }
+    }
+
+    revalidatePath('/financeiro/pagamentos')
+    revalidatePath('/financeiro/relatorios')
+    return { error: null }
+  }
+
+  const { error } = await supabase.from('financeiro_movimentos').update(campos).eq('id', input.id)
 
   if (error) return { error: error.message }
 

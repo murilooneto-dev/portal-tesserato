@@ -439,6 +439,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano, ho
             valor: editando.valor,
             data: editando.data,
             observacao: editando.observacao,
+            recorrente: Boolean(editando.recorrencia_id),
           }}
         />
       )}
