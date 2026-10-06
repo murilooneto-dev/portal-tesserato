@@ -63,7 +63,7 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
     ? { mes: mesParam, ano: anoParam }
     : null
   const { mes, ano } = override ?? await getMesAno()
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil', { mes, ano })
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }, labelsParcelamento, { data: gruposRaw }] = await Promise.all([
@@ -115,11 +115,11 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
   // % por mês do cliente no ano: mesma regra da lista de clientes (tarefas esperadas concluídas / esperadas).
   const tarefasEsperadas = calcularTarefasEsperadas(cliente, mapaVinculos)
   const { data: tarefasDoAno } = await supabase.from('tarefas').select('mes, concluida, tipo').eq('cliente_id', id).eq('ano', ano).eq('setor', 'contabil')
-  const tiposEsperados = new Set(tarefasEsperadas)
   const progressoFicha: Record<number, number | null> = {}
   for (let m = 1; m <= 12; m++) {
+    const tiposEsperados = new Set(calcularTarefasEsperadas(cliente, mapaVinculos, { mes: m, ano }))
     const concluidas = (tarefasDoAno ?? []).filter(t => t.mes === m && t.concluida && tiposEsperados.has(t.tipo)).length
-    progressoFicha[m] = tarefasEsperadas.length > 0 ? Math.round((concluidas / tarefasEsperadas.length) * 100) : null
+    progressoFicha[m] = tiposEsperados.size > 0 ? Math.round((concluidas / tiposEsperados.size) * 100) : null
   }
 
   async function onToggleSimples(tipo: string, concluida: boolean, data?: string) {

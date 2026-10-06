@@ -134,7 +134,7 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
       .select('id, nome, clientes_fiscal!inner(regime, atividade, tarefas_personalizadas, tarefas_excluidas, ativo)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
-    buscarMapaVinculosSetor(supabase, 'fiscal'),
+    buscarMapaVinculosSetor(supabase, 'fiscal', { mes, ano }),
     supabase
       .from('clientes')
       .select('id, nome, cnpj, clientes_fiscal!inner(dossie_status, dossie_finalizado, ativo, faz_dossie)')

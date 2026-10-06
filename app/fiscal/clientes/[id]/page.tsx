@@ -60,7 +60,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
   const { data: gruposRaw } = await supabase
     .from('tarefa_grupos').select('id, cliente_id, setor, nome, tarefas').eq('cliente_id', id).eq('setor', 'fiscal')
 
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal', { mes, ano })
   const tarefasBaseFiscal = calcularTarefasEsperadas(cliente, mapaVinculos)
   const parcelamentoIdsDaFicha = Array.from(new Set(
     (tarefas ?? []).filter((t): t is typeof t & { parcelamento_id: string } => !!t.parcelamento_id).map(t => t.parcelamento_id)

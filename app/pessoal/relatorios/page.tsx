@@ -32,7 +32,7 @@ export default async function RelatoriosPessoalPage() {
   ])
 
   const clientes = (clientesRaw ?? []).map(flattenClientePessoal)
-  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal')
+  const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'pessoal', { mes, ano })
   const catalogo = await buscarCatalogoCliente(supabase, 'pessoal')
 
   const mesesVisiveisPorTipo: Record<string, number[] | null> = {}

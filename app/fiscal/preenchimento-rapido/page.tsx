@@ -40,7 +40,7 @@ export default async function PreenchimentoRapidoFiscalPage() {
       .select('id, nome, cnpj, clientes_fiscal!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
-    buscarMapaVinculosSetor(supabase, 'fiscal'),
+    buscarMapaVinculosSetor(supabase, 'fiscal', { mes, ano }),
     supabase.from('tarefa_tipos').select('nome, tipo_resposta, etapas').eq('setor', 'fiscal'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'tipo' | 'concluida'>>(
       supabase, mes, ano, 'cliente_id, tipo, concluida', 'fiscal',
