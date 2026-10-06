@@ -112,7 +112,7 @@ export async function salvarClienteGeral(
     if (setoresEfetivos.includes('contabil')) {
       const { data: existenteContabil } = await supabase.from('clientes_contabil').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
       if (!existenteContabil) {
-        const { data: tiposContabil } = await supabase.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).order('nome')
+        const { data: tiposContabil } = await supabase.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).is('vigente_ate', null).order('nome')
         const { error: errContabil } = await supabase.from('clientes_contabil').insert({
           cliente_id: clienteId,
           tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
@@ -130,7 +130,7 @@ export async function salvarClienteGeral(
     if (setoresEfetivos.includes('pessoal')) {
       const { data: existentePessoal } = await supabase.from('clientes_pessoal').select('cliente_id').eq('cliente_id', clienteId).maybeSingle()
       if (!existentePessoal) {
-        const { data: tiposPessoal } = await supabase.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).order('nome')
+        const { data: tiposPessoal } = await supabase.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).is('vigente_ate', null).order('nome')
         const { error: errPessoal } = await supabase.from('clientes_pessoal').insert({
           cliente_id: clienteId,
           tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome),
@@ -163,7 +163,7 @@ export async function salvarClienteGeral(
       }
     }
     if (setoresEfetivos.includes('contabil')) {
-      const { data: tiposContabil } = await supabase.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).order('nome')
+      const { data: tiposContabil } = await supabase.from('tarefa_tipos').select('nome').eq('setor', 'contabil').eq('padrao', true).is('vigente_ate', null).order('nome')
       const { error: errContabil } = await supabase.from('clientes_contabil').insert({
         cliente_id: novoId,
         tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome),
@@ -172,7 +172,7 @@ export async function salvarClienteGeral(
       tarefasSetoresNovos.push({ setor: 'contabil', cliente: { tarefas_personalizadas: (tiposContabil ?? []).map(t => t.nome) } })
     }
     if (setoresEfetivos.includes('pessoal')) {
-      const { data: tiposPessoal } = await supabase.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).order('nome')
+      const { data: tiposPessoal } = await supabase.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').eq('padrao', true).is('vigente_ate', null).order('nome')
       const { error: errPessoal } = await supabase.from('clientes_pessoal').insert({
         cliente_id: novoId,
         tarefas_personalizadas: (tiposPessoal ?? []).map(t => t.nome),

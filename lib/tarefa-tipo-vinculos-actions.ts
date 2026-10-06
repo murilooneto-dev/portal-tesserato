@@ -20,6 +20,8 @@ export interface TarefaTipoResumo {
   tipoResposta: TipoResposta
   etapas: string[] | null
   mesesVisiveis: number[] | null
+  // Último mês em que a tarefa conta ('AAAA-MM-DD'); null = sem fim.
+  vigenteAte: string | null
 }
 
 export interface UsuarioDoSetor {
@@ -59,7 +61,7 @@ export async function listarTarefaTiposDoSetor(
 
   const { data, error: queryError } = await supabase
     .from('tarefa_tipos')
-    .select('id, nome, ativo, responsavel_id, tipo_resposta, etapas, meses_visiveis')
+    .select('id, nome, ativo, responsavel_id, tipo_resposta, etapas, meses_visiveis, vigente_ate')
     .eq('setor', setor)
     .order('nome')
 
@@ -73,6 +75,7 @@ export async function listarTarefaTiposDoSetor(
       tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
       etapas: t.etapas as string[] | null,
       mesesVisiveis: t.meses_visiveis as number[] | null,
+      vigenteAte: t.vigente_ate as string | null,
     })),
     error: null,
   }
