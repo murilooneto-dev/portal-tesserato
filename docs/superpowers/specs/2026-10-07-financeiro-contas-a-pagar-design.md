@@ -1,8 +1,8 @@
 # Financeiro: Contas a Pagar + forma de pagamento no Tipo de Saída
 
-Data: 2026-10-07 · Desenho apresentado no chat em 2026-10-06; usuário escolheu começar por esta frente
-em 2026-10-07. **Aguardando revisão desta spec.** Os pontos marcados com **[CONFIRMAR]** foram decididos
-por mim e precisam do OK do usuário.
+Data: 2026-10-07 · Aprovado pelo usuário em 2026-10-07, incluindo os quatro pontos que estavam em
+aberto (mês do pagamento, acesso automático, aviso por e-mail e mês de início). A seção "Ajustes feitos
+na implementação", no fim, lista o que mudou em relação ao desenho.
 
 ## Objetivo
 Hoje uma conta que se repete é lançada à mão em Pagamentos, marcando a caixa "Pagamento recorrente", e
@@ -36,7 +36,7 @@ Regras dos campos:
 - valor maior que zero; dia de 1 a 31; quantidade de meses de 1 a 120;
 - dia que não existe no mês (29, 30, 31) vira o último dia daquele mês (regra que já existe em
   `datasRecorrentes`);
-- **mês de início não pode ser anterior ao mês atual** **[CONFIRMAR]**. Motivo: mês passado nasceria
+- **mês de início não pode ser anterior ao mês atual**. Motivo: mês passado nasceria
   "Vencido". Um financiamento que já começou entra com os meses que faltam.
 
 Antes de salvar, a tela mostra o que vai acontecer: "Serão criadas 12 contas de R$ 350,00, de
@@ -79,7 +79,7 @@ Nova página no menu do Financeiro, antes de Pagamentos.
 - Nova coluna **Pago em**: data e hora para o que foi pago pelo botão Pagar; só a data para
   pagamentos avulsos e para os confirmados antes desta mudança (não há hora guardada).
 - Uma conta paga mostra também o vencimento original.
-- **O pagamento aparece no mês em que foi pago, não no do vencimento** **[CONFIRMAR]**, em Pagamentos
+- **O pagamento aparece no mês em que foi pago, não no do vencimento**, em Pagamentos
   e em Relatórios. Conta de setembro paga em 3 de outubro aparece em outubro. A alternativa, mais
   simples, é manter pelo vencimento (como hoje); nesse caso a conta de setembro paga em outubro
   apareceria em setembro.
@@ -99,12 +99,12 @@ tipo Recorrente ativo. Ela guarda até que mês cada tipo já foi gerado, então
 Falha na renovação não impede o e-mail, e vice-versa.
 
 ### 6. Aviso por e-mail
-**Continua igual, valendo para toda conta a pagar que vence no dia seguinte** **[CONFIRMAR]**: as
+**Continua igual, valendo para toda conta a pagar que vence no dia seguinte**: as
 criadas pelo tipo e as séries antigas. O texto troca "pagamentos recorrentes" por "contas a pagar".
 
 ### 7. Permissão
 - Contas a Pagar entra no controle de acesso por página (`financeiro:contas-a-pagar`).
-- **Quem hoje tem acesso a Pagamentos recebe Contas a Pagar automaticamente** **[CONFIRMAR]**, pela
+- **Quem hoje tem acesso a Pagamentos recebe Contas a Pagar automaticamente**, pela
   migration. Depois disso as duas são marcadas separadamente em Parâmetros.
 - Pagar, editar e excluir conta: qualquer usuário do setor Financeiro (regra atual dos movimentos).
 - Definir a forma de pagamento do tipo: só admin (regra atual do cadastro de tipos).
@@ -180,6 +180,21 @@ RLS das duas tabelas não muda.
   por tipo, sem autor.
 - **Lixeira**: restaurar uma conta apagada quando o tipo já recriou a do mesmo mês falha com erro do
   índice único. Aceito: é caso raro e a mensagem aparece.
+
+## Ajustes feitos na implementação
+- **Prévia**: em vez de uma função separada `financeiro_previa_forma_pagamento`, a própria
+  `financeiro_definir_forma_pagamento` recebe `p_simular`. A prévia nunca diverge do que é gravado.
+- **RLS de `financeiro_tipos`**: a regra que deixa o setor Financeiro criar tipo (migration 046) passou
+  a aceitar só tipo Avulso para quem não é admin. Sem isso um não-admin criaria contas pela API,
+  contra o item 7. É a única mudança de RLS.
+- **Renovação**: devolve `{criadas, falhas}`; um tipo com erro não impede os outros e a falha aparece
+  no registro da rotina. Recorrente reativado depois de meses parado não ganha contas já vencidas.
+- **Pagamentos**: a opção "Este e os próximos" da exclusão ficou só em Contas a Pagar; no histórico
+  ela apagaria contas futuras. O selo "Recorrente" aparece só nas séries antigas.
+- **Contas a Pagar com o seletor num mês futuro**: mostra as contas daquele mês e as já vencidas, não
+  as dos meses intermediários que ainda vão vencer.
+- **Atalhos do celular**: a barra de três atalhos do Financeiro não mudou; Contas a Pagar está no menu
+  completo.
 
 ## Fora do escopo
 - Criar conta a pagar avulsa direto na página (conta nasce do tipo).
