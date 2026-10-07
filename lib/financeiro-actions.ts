@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, createClient, createAdminClient } from './supabase/server'
 import { validarNomeEntidade, normalizarNome } from './config-entidades'
-import { datasRecorrentes, datasSeguintesDaSerie, type ResultadoFormaPagamento } from './financeiro-movimentos'
+import type { ResultadoFormaPagamento } from './financeiro-movimentos'
 import { hojeISO } from './mes-atual'
 import { separarEmails } from './financeiro-aviso-vencimento'
 import { enviarAvisoVencimento } from './financeiro-aviso-vencimento-envio'
@@ -381,9 +381,7 @@ export async function criarMovimento(input: {
   valor: number
   data: string
   observacao: string | null
-  /** Só pagamentos: repete o lançamento no mesmo dia de cada mês até dezembro. */
-  recorrente?: boolean
-}): Promise<{ id: string; quantidade: number } | { error: string }> {
+}): Promise<{ id: string } | { error: string }> {
   if (!input.tipoId) return { error: 'Selecione o tipo.' }
   if (!input.data) return { error: 'Selecione a data.' }
   if (!Number.isFinite(input.valor) || input.valor <= 0) return { error: 'Informe um valor válido.' }
@@ -392,36 +390,24 @@ export async function criarMovimento(input: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  // Recorrente: um lançamento por mês, todos com o mesmo recorrencia_id, num
-  // único insert (ou entram todos, ou nenhum). Lançado em dezembro não há mês
-  // seguinte, então vira um lançamento comum, sem série.
-  // Os lançamentos da série nascem "a pagar" (pago = false): registram só que
-  // a conta vai existir naquela data; o usuário confirma cada um quando paga.
-  let datas = [input.data]
-  if (input.recorrente && input.natureza === 'saida') {
-    datas = datasRecorrentes(input.data)
-    if (datas.length === 0) return { error: 'Selecione a data.' }
-  }
-  const recorrenciaId = datas.length > 1 ? crypto.randomUUID() : null
-
-  const { data: novos, error } = await supabase.from('financeiro_movimentos').insert(datas.map(data => ({
+  // Lançamento avulso: já nasce pago (pago_em é preenchido pelo banco com a
+  // própria data). Conta a pagar nasce pelo Tipo de Saída, não aqui.
+  const { data: novo, error } = await supabase.from('financeiro_movimentos').insert({
     natureza: input.natureza,
     tipo_id: input.tipoId,
     centro_custo_id: input.centroCustoId,
     valor: input.valor,
-    data,
+    data: input.data,
     observacao: input.observacao,
     criado_por: user.id,
-    recorrencia_id: recorrenciaId,
-    pago: recorrenciaId === null,
-  }))).select('id, data')
+    pago: true,
+  }).select('id').single()
 
-  const novo = novos?.find(n => n.data === input.data) ?? novos?.[0]
   if (error || !novo) return { error: error?.message ?? 'Falha ao criar movimento.' }
 
   revalidatePath(input.natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')
   revalidatePath('/financeiro/relatorios')
-  return { id: novo.id, quantidade: novos?.length ?? 1 }
+  return { id: novo.id }
 }
 
 export async function atualizarMovimento(input: {
@@ -432,12 +418,6 @@ export async function atualizarMovimento(input: {
   valor: number
   data: string
   observacao: string | null
-  /**
-   * Só pagamentos que ainda não são recorrentes: este vira o primeiro de uma
-   * série e os meses seguintes (de hoje em diante, até dezembro) são criados
-   * "a pagar". Este lançamento não muda de situação.
-   */
-  tornarRecorrente?: boolean
 }): Promise<{ error: string | null }> {
   if (!input.tipoId) return { error: 'Selecione o tipo.' }
   if (!input.data) return { error: 'Selecione a data.' }
@@ -453,42 +433,6 @@ export async function atualizarMovimento(input: {
     valor: input.valor,
     data: input.data,
     observacao: input.observacao,
-  }
-
-  // Sem mês seguinte a vencer não há série: salva como edição comum.
-  const datasNovas = input.tornarRecorrente && input.natureza === 'saida'
-    ? datasSeguintesDaSerie(input.data, hojeISO())
-    : []
-
-  if (datasNovas.length > 0) {
-    const recorrenciaId = crypto.randomUUID()
-    // `.is('recorrencia_id', null)`: quem já é de uma série não entra em outra.
-    const { data: alterados, error: erroSerie } = await supabase.from('financeiro_movimentos')
-      .update({ ...campos, recorrencia_id: recorrenciaId })
-      .eq('id', input.id)
-      .eq('natureza', 'saida')
-      .is('recorrencia_id', null)
-      .select('id')
-    if (erroSerie) return { error: erroSerie.message }
-    if (!alterados || alterados.length === 0) return { error: 'Este pagamento já é recorrente ou não foi encontrado.' }
-
-    const { error: erroNovos } = await supabase.from('financeiro_movimentos').insert(datasNovas.map(data => ({
-      natureza: 'saida',
-      ...campos,
-      data,
-      criado_por: user.id,
-      recorrencia_id: recorrenciaId,
-      pago: false,
-    })))
-    if (erroNovos) {
-      // Os meses seguintes não entraram: desfaz o vínculo pra não sobrar série de um lançamento só.
-      await supabase.from('financeiro_movimentos').update({ recorrencia_id: null }).eq('id', input.id)
-      return { error: erroNovos.message }
-    }
-
-    revalidatePath('/financeiro/pagamentos')
-    revalidatePath('/financeiro/relatorios')
-    return { error: null }
   }
 
   const { error } = await supabase.from('financeiro_movimentos').update(campos).eq('id', input.id)
