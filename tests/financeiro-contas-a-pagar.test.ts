@@ -59,3 +59,25 @@ test('financeiro-actions: pagar/desfazer e forma de pagamento', () => {
     assert.ok(c.includes("rpc('financeiro_definir_forma_pagamento'"), nome)
   }
 })
+
+test('menu do Financeiro: contas-a-pagar logo antes de pagamentos', async () => {
+  const { PAGINAS_POR_SETOR } = await import('../lib/paginas-setor')
+  const slugs = PAGINAS_POR_SETOR.financeiro.map(p => p.slug)
+  const i = slugs.indexOf('contas-a-pagar')
+  assert.ok(i >= 0)
+  assert.equal(slugs[i + 1], 'pagamentos')
+})
+
+test('página Contas a Pagar: só em aberto, em blocos, sem limit', () => {
+  const src = ler('app/financeiro/contas-a-pagar/page.tsx')
+  assert.match(src, /\.eq\('pago', false\)/)
+  assert.match(src, /buscarEmBlocos/)
+  assert.doesNotMatch(src, /\.limit\(/)
+})
+
+test('janela de edição de conta usa atualizarConta e trava o tipo', () => {
+  const src = ler('components/financeiro/NovoMovimentoModal.tsx')
+  assert.match(src, /atualizarConta/)
+  assert.match(src, /Editar conta/)
+  assert.match(src, /Vencimento/)
+})

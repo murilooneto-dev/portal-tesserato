@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   criarMovimento, atualizarMovimento, listarFinanceiroTiposAtivos, listarFinanceiroCentrosCustoAtivos,
-  criarFinanceiroTipo, criarFinanceiroCentroCusto,
+  criarFinanceiroTipo, criarFinanceiroCentroCusto, atualizarConta,
 } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
 import { datasRecorrentes, datasSeguintesDaSerie } from '@/lib/financeiro-movimentos'
@@ -29,6 +29,8 @@ export interface MovimentoParaEditar {
   observacao: string | null
   /** Já faz parte de uma série recorrente. */
   recorrente?: boolean
+  /** Conta a pagar (Contas a Pagar): o tipo fica travado e salvar usa atualizarConta. */
+  conta?: boolean
 }
 
 interface Props {
@@ -162,7 +164,8 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
   // Recorrente: em pagamento novo cria a série inteira; em pagamento já
   // lançado (que ainda não é de uma série) cria só os meses seguintes, de hoje
   // em diante. Quem já é recorrente não ganha a caixa: a edição mexe em um mês só.
-  const podeSerRecorrente = natureza === 'saida' && !movimento?.recorrente
+  const ehEdicaoDeConta = movimento?.conta === true
+  const podeSerRecorrente = natureza === 'saida' && !movimento?.recorrente && !ehEdicaoDeConta
   const datasDaSerie = podeSerRecorrente && recorrente ? datasRecorrentes(data) : []
   const datasSeguintes = movimento && podeSerRecorrente && recorrente ? datasSeguintesDaSerie(data, hojeISO()) : []
   const ajudaRecorrente = movimento
@@ -193,7 +196,15 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     setErro(null)
     setSucesso(false)
 
-    const resultado = movimento
+    const resultado = movimento && ehEdicaoDeConta
+      ? await atualizarConta({
+          id: movimento.id,
+          centroCustoId: centroCustoId || null,
+          valor: valorNumerico,
+          data,
+          observacao: observacao.trim() || null,
+        })
+      : movimento
       ? await atualizarMovimento({
           id: movimento.id,
           natureza,
@@ -238,9 +249,11 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     setSucesso(true)
   }
 
-  const titulo = movimento
+  const titulo = ehEdicaoDeConta ? 'Editar conta' : movimento
     ? (natureza === 'entrada' ? 'Editar recebimento' : 'Editar pagamento')
     : (natureza === 'entrada' ? 'Novo recebimento' : 'Novo pagamento')
+
+  const campoData = (c: { id: string }) => <Input id={c.id} type="date" value={data} onChange={e => setData(e.target.value)} />
 
   const podeSalvar = !saving && !!tipoId && !!data && !!valor
 
@@ -281,9 +294,11 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
       )}
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        <Field rotulo="Data" obrigatorio>
-          {c => <Input id={c.id} type="date" value={data} onChange={e => setData(e.target.value)} />}
-        </Field>
+        {ehEdicaoDeConta ? (
+          <Field rotulo="Vencimento" obrigatorio>{campoData}</Field>
+        ) : (
+          <Field rotulo="Data" obrigatorio>{campoData}</Field>
+        )}
         <Field rotulo="Valor" obrigatorio>
           {c => (
             <Input
@@ -308,7 +323,9 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           erro={erroTipo}
           ajuda={!criandoTipo && !carregando && tipos.length === 0 ? 'Nenhum tipo cadastrado ainda.' : undefined}
         >
-          {c => criandoTipo ? (
+          {c => ehEdicaoDeConta ? (
+            <Input id={c.id} value={movimento?.tipoNome ?? ''} disabled readOnly />
+          ) : criandoTipo ? (
             <div className="flex gap-2">
               <Input
                 id={c.id}
@@ -338,9 +355,11 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
             />
           )}
         </Field>
-        <LinkDoRotulo onClick={() => { setCriandoTipo(v => !v); setErroTipo(null) }}>
-          {criandoTipo ? 'Cancelar' : 'Novo tipo'}
-        </LinkDoRotulo>
+        {!ehEdicaoDeConta && (
+          <LinkDoRotulo onClick={() => { setCriandoTipo(v => !v); setErroTipo(null) }}>
+            {criandoTipo ? 'Cancelar' : 'Novo tipo'}
+          </LinkDoRotulo>
+        )}
       </div>
 
       <div className="relative">
