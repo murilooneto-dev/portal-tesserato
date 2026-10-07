@@ -66,6 +66,9 @@ export interface FormaPagamentoInput {
 
 // Parâmetros da função do banco (migration 065). Com p_simular só devolve as
 // contagens do que mudaria; sem ele grava de verdade, numa transação só.
+// A função é chamada SEMPRE com o cliente da sessão (createClient), nunca com
+// o de serviço que exigirAdmin devolve: ela confere is_admin() pelo usuário
+// logado, e com a chave de serviço não há usuário (daria "Acesso negado.").
 function parametrosForma(input: FormaPagamentoInput, simular: boolean) {
   return {
     p_tipo_id: input.tipoId,
@@ -82,10 +85,11 @@ function parametrosForma(input: FormaPagamentoInput, simular: boolean) {
 export async function previaFormaPagamentoTipo(
   input: FormaPagamentoInput,
 ): Promise<{ data: ResultadoFormaPagamento | null; error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { data: null, error }
+  const { error } = await exigirAdmin()
+  if (error) return { data: null, error }
 
-  const { data, error: rpcError } = await supabase.rpc('financeiro_definir_forma_pagamento', parametrosForma(input, true))
+  const sessao = await createClient()
+  const { data, error: rpcError } = await sessao.rpc('financeiro_definir_forma_pagamento', parametrosForma(input, true))
   // A mensagem do `raise exception` do banco já vem em português.
   if (rpcError) return { data: null, error: rpcError.message }
   return { data: data as ResultadoFormaPagamento, error: null }
@@ -95,15 +99,68 @@ export async function previaFormaPagamentoTipo(
 export async function definirFormaPagamentoTipo(
   input: FormaPagamentoInput,
 ): Promise<{ data: ResultadoFormaPagamento | null; error: string | null }> {
-  const { error, supabase } = await exigirAdmin()
-  if (error || !supabase) return { data: null, error }
+  const { error } = await exigirAdmin()
+  if (error) return { data: null, error }
 
-  const { data, error: rpcError } = await supabase.rpc('financeiro_definir_forma_pagamento', parametrosForma(input, false))
+  const sessao = await createClient()
+  const { data, error: rpcError } = await sessao.rpc('financeiro_definir_forma_pagamento', parametrosForma(input, false))
   if (rpcError) return { data: null, error: rpcError.message }
 
   revalidatePath('/admin/configuracoes/financeiro')
   revalidatePath('/financeiro/contas-a-pagar')
   revalidatePath('/financeiro/pagamentos')
+  return { data: data as ResultadoFormaPagamento, error: null }
+}
+
+/**
+ * Botão "Nova conta" de Contas a Pagar: cria o Tipo de Saída e já define a
+ * forma de pagamento dele, que gera as contas. Se a forma for recusada pelo
+ * banco, o tipo recém-criado é apagado: não sobra tipo Avulso pela metade.
+ */
+export async function criarContaAPagar(input: {
+  nome: string
+  forma: 'recorrente' | 'prazo'
+  valor: number
+  dia: number
+  /** YYYY-MM-01 */
+  mesInicio: string
+  qtdMeses: number | null
+}): Promise<{ data: ResultadoFormaPagamento | null; error: string | null }> {
+  const erroNome = validarNomeEntidade(input.nome)
+  if (erroNome) return { data: null, error: erroNome }
+
+  const { error } = await exigirAdmin()
+  if (error) return { data: null, error }
+
+  const sessao = await createClient()
+  const nomeNormalizado = normalizarNome(input.nome)
+  const { data: existentes } = await sessao.from('financeiro_tipos').select('nome').eq('natureza', 'saida')
+  if ((existentes ?? []).some(e => normalizarNome(e.nome) === nomeNormalizado)) {
+    return { data: null, error: 'Já existe um tipo de saída com esse nome. Para mudar a forma de pagamento dele, use Configurações > Financeiro > Tipos de saída.' }
+  }
+
+  const { data: tipo, error: erroTipo } = await sessao.from('financeiro_tipos')
+    .insert({ natureza: 'saida', nome: input.nome.trim() }).select('id').single()
+  if (erroTipo || !tipo) {
+    if (erroTipo?.code === '23505') return { data: null, error: 'Já existe um tipo de saída com esse nome.' }
+    return { data: null, error: erroTipo?.message ?? 'Falha ao criar a conta.' }
+  }
+
+  const { data, error: rpcError } = await sessao.rpc('financeiro_definir_forma_pagamento', parametrosForma({
+    tipoId: tipo.id,
+    forma: input.forma,
+    valor: input.valor,
+    dia: input.dia,
+    mesInicio: input.mesInicio,
+    qtdMeses: input.forma === 'prazo' ? input.qtdMeses : null,
+  }, false))
+  if (rpcError) {
+    await sessao.from('financeiro_tipos').delete().eq('id', tipo.id)
+    return { data: null, error: rpcError.message }
+  }
+
+  revalidatePath('/admin/configuracoes/financeiro')
+  revalidatePath('/financeiro/contas-a-pagar')
   return { data: data as ResultadoFormaPagamento, error: null }
 }
 

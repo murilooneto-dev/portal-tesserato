@@ -193,6 +193,11 @@ RLS das duas tabelas não muda.
   ela apagaria contas futuras. O selo "Recorrente" aparece só nas séries antigas.
 - **Contas a Pagar com o seletor num mês futuro**: mostra as contas daquele mês e as já vencidas, não
   as dos meses intermediários que ainda vão vencer.
+- **Botão "Nova conta" em Contas a Pagar** (pedido do usuário depois da primeira entrega; muda o
+  "não há botão de criar" do item 3): só para admin, abre uma janela com nome, valor, dia, forma
+  (Recorrente ou Prazo determinado) e os campos de cada uma. Cria o Tipo de Saída e as contas de uma
+  vez. Alterar uma conta que já existe continua em Configurações.
+- **Conta já paga**: ao editar em Pagamentos dá para corrigir o dia do pagamento ("Pago em").
 - **Atalhos do celular**: a barra de três atalhos do Financeiro não mudou; Contas a Pagar está no menu
   completo.
 

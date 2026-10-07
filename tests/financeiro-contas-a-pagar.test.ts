@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ehConta, textoPreviaFormaPagamento, formatarPagoEm, contaApareceNoMes, compararPorPagamento } from '../lib/financeiro-movimentos'
+import { ehConta, textoPreviaFormaPagamento, formatarPagoEm, contaApareceNoMes, compararPorPagamento, normalizarMes, previaNovaConta } from '../lib/financeiro-movimentos'
 
 const ler = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8')
 // toLocaleString põe espaço sem quebra (U+00A0) depois de R$; os textos esperados usam espaço comum.
@@ -99,6 +99,51 @@ test('financeiro-actions: desfazer só em conta e atualizarConta só em conta n�
   const j = src.indexOf('export async function atualizarConta')
   assert.ok(j >= 0)
   assert.ok(src.slice(j, src.indexOf('export async function', j + 10)).includes(".eq('pago', false)"))
+})
+
+test('normalizarMes: aceita AAAA-MM e MM/AAAA, recusa mês que não existe', () => {
+  assert.equal(normalizarMes('2026-12'), '2026-12')
+  assert.equal(normalizarMes(' 3/2027 '), '2027-03')
+  assert.equal(normalizarMes('13/2026'), null)
+  assert.equal(normalizarMes('outubro'), null)
+})
+
+test('previaNovaConta: mesma conta do banco para Recorrente e Prazo', () => {
+  const outubro = { mes: 10, ano: 2026 }
+  // Recorrente: do mês de início até dezembro.
+  assert.deepEqual(previaNovaConta('recorrente', '2026-10', null, outubro),
+    { criadas: 3, alteradas: 0, apagadas: 0, primeira: '2026-10-01', ultima: '2026-12-01' })
+  // Início no ano seguinte: até dezembro daquele ano.
+  assert.deepEqual(previaNovaConta('recorrente', '2027-03', null, outubro),
+    { criadas: 10, alteradas: 0, apagadas: 0, primeira: '2027-03-01', ultima: '2027-12-01' })
+  // Em dezembro o banco já cria o ano seguinte inteiro.
+  assert.deepEqual(previaNovaConta('recorrente', '2026-12', null, { mes: 12, ano: 2026 }),
+    { criadas: 13, alteradas: 0, apagadas: 0, primeira: '2026-12-01', ultima: '2027-12-01' })
+  // Prazo atravessa o ano.
+  assert.deepEqual(previaNovaConta('prazo', '2026-10', 6, outubro),
+    { criadas: 6, alteradas: 0, apagadas: 0, primeira: '2026-10-01', ultima: '2027-03-01' })
+  assert.deepEqual(previaNovaConta('prazo', '2026-10', 1, outubro),
+    { criadas: 1, alteradas: 0, apagadas: 0, primeira: '2026-10-01', ultima: '2026-10-01' })
+})
+
+test('forma de pagamento e Nova conta chamam o banco com a sessão do usuário, não com a chave de serviço', () => {
+  const src = ler('lib/financeiro-actions.ts')
+  // A função do banco confere is_admin() pelo usuário logado: com o cliente
+  // de serviço não há usuário e ela responderia "Acesso negado.".
+  assert.ok(!src.includes("supabase.rpc('financeiro_definir_forma_pagamento'"))
+  assert.equal(src.split("sessao.rpc('financeiro_definir_forma_pagamento'").length - 1, 3)
+
+  const i = src.indexOf('export async function criarContaAPagar')
+  const corpo = src.slice(i, src.indexOf('export async function', i + 10))
+  assert.ok(corpo.includes('await exigirAdmin()'))
+  // Forma recusada: o tipo recém-criado não fica para trás.
+  assert.ok(corpo.includes("await sessao.from('financeiro_tipos').delete().eq('id', tipo.id)"))
+
+  const pagina = ler('app/financeiro/contas-a-pagar/page.tsx')
+  assert.ok(pagina.includes("podeCriar={profile?.role === 'admin'}"))
+  const tela = ler('components/financeiro/ContasAPagarClient.tsx')
+  assert.ok(tela.includes('podeCriar ? botaoNovaConta('))
+  assert.ok(tela.includes('{podeCriar && botaoNovaConta('))
 })
 
 test('compararPorPagamento: o dia manda; a hora só desempata no mesmo dia', () => {

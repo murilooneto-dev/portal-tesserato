@@ -87,6 +87,49 @@ export function compararPorPagamento(
     || b.created_at.localeCompare(a.created_at)
 }
 
+/**
+ * Mês digitado no formulário de forma de pagamento: aceita o valor nativo do
+ * campo (AAAA-MM) e o texto digitado (MM/AAAA). Devolve AAAA-MM ou null.
+ */
+export function normalizarMes(texto: string): string | null {
+  const t = texto.trim()
+  const iso = /^(\d{4})-(\d{2})$/.exec(t)
+  const br = /^(\d{1,2})\/(\d{4})$/.exec(t)
+  const [ano, mes] = iso ? [iso[1], iso[2]] : br ? [br[2], br[1]] : [null, null]
+  if (!ano || !mes) return null
+  const m = Number(mes)
+  if (m < 1 || m > 12) return null
+  return `${ano}-${String(m).padStart(2, '0')}`
+}
+
+/**
+ * Contas que uma conta NOVA vai criar, para mostrar antes de salvar. Mesma
+ * conta do banco (financeiro_fim_recorrente, migration 065): o Recorrente vai
+ * até dezembro do ano de início ou do ano corrente, o que for maior, e em
+ * dezembro já inclui o ano seguinte; o Prazo cria a quantidade pedida.
+ * `mesInicio` em AAAA-MM; `hoje` é o mês e o ano reais (fuso de São Paulo).
+ */
+export function previaNovaConta(
+  forma: 'recorrente' | 'prazo',
+  mesInicio: string,
+  qtdMeses: number | null,
+  hoje: { mes: number; ano: number },
+): ResultadoFormaPagamento {
+  const [ano, mes] = mesInicio.split('-').map(Number)
+  let criadas: number
+  if (forma === 'prazo') {
+    criadas = qtdMeses ?? 0
+  } else {
+    const anoFim = Math.max(ano, hoje.ano + (hoje.mes === 12 ? 1 : 0))
+    criadas = (anoFim - ano) * 12 + (12 - mes + 1)
+  }
+  if (criadas <= 0) return { criadas: 0, alteradas: 0, apagadas: 0, primeira: null, ultima: null }
+  // Último mês: início + (criadas - 1) meses, em meses corridos desde o ano zero.
+  const corrido = ano * 12 + (mes - 1) + (criadas - 1)
+  const ultima = `${Math.floor(corrido / 12)}-${String((corrido % 12) + 1).padStart(2, '0')}-01`
+  return { criadas, alteradas: 0, apagadas: 0, primeira: `${mesInicio}-01`, ultima }
+}
+
 /** O que a função do banco `financeiro_definir_forma_pagamento` devolve. */
 export interface ResultadoFormaPagamento {
   criadas: number

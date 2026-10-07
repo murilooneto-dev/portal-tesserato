@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { definirFormaPagamentoTipo, previaFormaPagamentoTipo } from '@/lib/financeiro-actions'
-import { textoPreviaFormaPagamento, type ResultadoFormaPagamento } from '@/lib/financeiro-movimentos'
+import { normalizarMes, textoPreviaFormaPagamento, type ResultadoFormaPagamento } from '@/lib/financeiro-movimentos'
 import { getMesAnoRealAgora } from '@/lib/mes-atual'
 import type { FinanceiroFormaPagamento, FinanceiroTipo } from '@/lib/types'
 import { Modal } from '@/components/ui/Modal'
@@ -32,18 +32,6 @@ const EXPLICACAO: Record<FinanceiroFormaPagamento, string> = {
 
 function mesComoTexto(mes: number, ano: number): string {
   return `${ano}-${String(mes).padStart(2, '0')}`
-}
-
-// Aceita o valor nativo do campo (AAAA-MM) e o texto digitado (MM/AAAA); devolve AAAA-MM ou null.
-function normalizarMes(texto: string): string | null {
-  const t = texto.trim()
-  const iso = /^(\d{4})-(\d{2})$/.exec(t)
-  const br = /^(\d{1,2})\/(\d{4})$/.exec(t)
-  const [ano, mes] = iso ? [iso[1], iso[2]] : br ? [br[2], br[1]] : [null, null]
-  if (!ano || !mes) return null
-  const m = Number(mes)
-  if (m < 1 || m > 12) return null
-  return `${ano}-${String(m).padStart(2, '0')}`
 }
 
 export default function FormaPagamentoModal({ tipo, onClose, onSalvo }: Props) {

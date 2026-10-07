@@ -47,5 +47,11 @@ export default async function ContasAPagarPage() {
     centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
   }))
 
-  return <ContasAPagarClient contas={contas} mes={mes} ano={ano} hoje={hoje} />
+  // "Nova conta" cria um Tipo de Saída já com forma de pagamento: só admin (a ação confere de novo).
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = user
+    ? await supabase.from('profiles').select('role').eq('id', user.id).single()
+    : { data: null }
+
+  return <ContasAPagarClient contas={contas} mes={mes} ano={ano} hoje={hoje} podeCriar={profile?.role === 'admin'} />
 }
