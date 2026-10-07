@@ -157,6 +157,14 @@ export interface TarefaGrupo {
   tarefas: string[]
 }
 
+// Grupo de tarefas de um setor (tarefa_grupos_setor, migration 066): vale para
+// todos os clientes do setor. `tarefas` guarda nomes de tarefa_tipos.
+export interface GrupoSetor {
+  id: string
+  nome: string
+  tarefas: string[]
+}
+
 export interface TarefaEtapa {
   id: string
   tarefa_id: string
