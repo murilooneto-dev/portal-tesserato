@@ -70,13 +70,13 @@ export function montarEmailAviso(
   const subject = `${prefixo}Pagamentos que vencem amanhã (${dia.slice(0, 5)})`
 
   if (pagamentos.length === 0) {
-    const frase = `Nenhum pagamento recorrente a pagar vence em ${dia}.`
+    const frase = `Nenhuma conta a pagar vence em ${dia}.`
     return { subject, text: frase, html: `<p style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937">${frase}</p>` }
   }
 
   const abertura = pagamentos.length === 1
-    ? `1 pagamento recorrente vence amanhã, ${dia}, e ainda não foi confirmado como pago:`
-    : `${pagamentos.length} pagamentos recorrentes vencem amanhã, ${dia}, e ainda não foram confirmados como pagos:`
+    ? `1 conta a pagar vence amanhã, ${dia}, e ainda não foi paga:`
+    : `${pagamentos.length} contas a pagar vencem amanhã, ${dia}, e ainda não foram pagas:`
 
   const text = [
     abertura,

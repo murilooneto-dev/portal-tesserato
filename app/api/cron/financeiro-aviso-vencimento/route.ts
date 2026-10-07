@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { enviarAvisoVencimento } from '@/lib/financeiro-aviso-vencimento-envio'
 
-// Envio agendado (vercel.json → crons): todo dia a Vercel chama esta rota com
+// Rotina diária (vercel.json → crons): a Vercel chama esta rota com
 // "Authorization: Bearer <CRON_SECRET>". Não há usuário logado aqui — por isso
 // o proxy.ts deixa /api/cron/ passar e a única proteção é esse segredo. Sem a
 // variável CRON_SECRET configurada, a rota recusa tudo.
+// Faz duas coisas, nesta ordem: renova as contas dos pagamentos recorrentes
+// (financeiro_renovar_recorrentes) e manda o aviso das contas a pagar que
+// vencem amanhã. Falha em uma não impede a outra.
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
@@ -14,9 +17,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
+  let renovadas: number | null = null
   try {
-    const resultado = await enviarAvisoVencimento(createAdminClient())
-    return NextResponse.json(resultado)
+    const { data, error } = await admin.rpc('financeiro_renovar_recorrentes')
+    if (error) throw new Error(error.message)
+    renovadas = Number(data)
+  } catch (e) {
+    console.error('Renovação das contas recorrentes falhou:', e)
+  }
+
+  try {
+    const resultado = await enviarAvisoVencimento(admin)
+    return NextResponse.json({ ...resultado, renovadas })
   } catch (e) {
     console.error('Aviso de vencimento do Financeiro falhou:', e)
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Falha no envio.' }, { status: 500 })
