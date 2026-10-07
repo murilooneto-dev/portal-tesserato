@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { buscarEmBlocos, intervaloDoMes } from '@/lib/financeiro-movimentos'
+import { buscarEmBlocos, contaApareceNoMes, intervaloDoMes } from '@/lib/financeiro-movimentos'
 import { hojeISO } from '@/lib/mes-atual'
 import { getMesAno } from '@/lib/mes-atual-server'
 import ContasAPagarClient, { type ContaLinha } from '@/components/financeiro/ContasAPagarClient'
@@ -15,10 +15,10 @@ interface LinhaBanco {
 export default async function ContasAPagarPage() {
   const supabase = await createClient()
 
-  // As contas em aberto que vencem até o fim do mês do seletor: pega o mês e
-  // também as vencidas de antes, que continuam a pagar.
+  // Contas em aberto do mês do seletor e as já vencidas de antes (que seguem a pagar).
   const { mes, ano } = await getMesAno()
-  const { fim: ultimoDia } = intervaloDoMes(mes, ano)
+  const { inicio: primeiroDia, fim: ultimoDia } = intervaloDoMes(mes, ano)
+  const hoje = hojeISO()
 
   const linhas = await buscarEmBlocos<LinhaBanco>((inicio, fim) => supabase
     .from('financeiro_movimentos')
@@ -31,7 +31,8 @@ export default async function ContasAPagarPage() {
     .range(inicio, fim)
     .overrideTypes<LinhaBanco[], { merge: false }>())
 
-  const contas: ContaLinha[] = linhas.map(r => ({
+  // Contas de meses entre hoje e o mês escolhido, ainda não vencidas, ficam de fora.
+  const contas: ContaLinha[] = linhas.filter(r => contaApareceNoMes(r.data, primeiroDia, hoje)).map(r => ({
     id: r.id,
     tipo_id: r.tipo_id,
     centro_custo_id: r.centro_custo_id,
@@ -46,5 +47,5 @@ export default async function ContasAPagarPage() {
     centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
   }))
 
-  return <ContasAPagarClient contas={contas} mes={mes} ano={ano} hoje={hojeISO()} />
+  return <ContasAPagarClient contas={contas} mes={mes} ano={ano} hoje={hoje} />
 }

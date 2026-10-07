@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { buscarEmBlocos, intervaloDoMes } from '@/lib/financeiro-movimentos'
-import { hojeISO } from '@/lib/mes-atual'
 import { getMesAno } from '@/lib/mes-atual-server'
 import MovimentoListClient, { type MovimentoLinha } from '@/components/financeiro/MovimentoListClient'
 
@@ -45,5 +44,5 @@ export default async function RecebimentosPage() {
     centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
   }))
 
-  return <MovimentoListClient natureza="entrada" movimentos={movimentos} mes={mes} ano={ano} hoje={hojeISO()} />
+  return <MovimentoListClient natureza="entrada" movimentos={movimentos} mes={mes} ano={ano} />
 }

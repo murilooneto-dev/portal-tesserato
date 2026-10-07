@@ -8,7 +8,6 @@
 // 1000 sem aviso, e o total mostrado ficava errado.
 
 import { formatarDdMm } from './formatar-data'
-import type { FinanceiroFormaPagamento } from './types'
 
 export const TAMANHO_BLOCO = 1000
 
@@ -55,11 +54,21 @@ export function situacaoPagamento(m: { pago?: boolean | null; data: string }, ho
 }
 
 /**
- * Conta a pagar é a saída que nasceu de uma série (recorrencia_id) ou de um
- * prazo (competencia). Lançamento avulso não tem nenhum dos dois.
+ * Conta a pagar é a saída que nasceu de uma série antiga (recorrencia_id) ou
+ * do Tipo de Saída (competencia, recorrente ou com prazo). Lançamento avulso
+ * não tem nenhum dos dois.
  */
 export function ehConta(m: { recorrencia_id?: string | null; competencia?: string | null }): boolean {
   return Boolean(m.recorrencia_id) || Boolean(m.competencia)
+}
+
+/**
+ * Conta a pagar aparece na lista do mês escolhido quando vence nele ou depois
+ * (a busca já corta o fim do mês), ou quando já venceu antes de hoje e segue
+ * em aberto. Conta de mês intermediário ainda não vencida fica de fora.
+ */
+export function contaApareceNoMes(data: string, primeiroDia: string, hoje: string): boolean {
+  return data >= primeiroDia || data < hoje
 }
 
 /** O que a função do banco `financeiro_definir_forma_pagamento` devolve. */
@@ -67,7 +76,7 @@ export interface ResultadoFormaPagamento {
   criadas: number
   alteradas: number
   apagadas: number
-  /** Primeiro e último mês das contas criadas, como YYYY-MM-01. */
+  /** Primeiro e último mês das contas criadas, como YYYY-MM-01 (nulos se nada é criado). */
   primeira: string | null
   ultima: string | null
 }
@@ -90,12 +99,9 @@ function periodo(primeira: string, ultima: string): string {
 /** Frase da prévia (simulação) mostrada antes de confirmar a forma de pagamento. */
 export function textoPreviaFormaPagamento(
   r: ResultadoFormaPagamento,
-  forma: FinanceiroFormaPagamento,
   valor: number | null,
   dia: number | null,
 ): string {
-  // `forma` fica na assinatura para a UI; o texto já sai dos efeitos do banco.
-  void forma
   const frases: string[] = []
   const venc = dia ? `, com vencimento no dia ${dia}` : ''
   const dinheiro = valor !== null ? ` de ${formatarValor(valor)}` : ''

@@ -20,19 +20,24 @@ export async function GET(request: Request) {
   const admin = createAdminClient()
 
   let renovadas: number | null = null
+  let renovacaoFalhas: number | null = null
   try {
     const { data, error } = await admin.rpc('financeiro_renovar_recorrentes')
     if (error) throw new Error(error.message)
-    renovadas = Number(data)
+    const resultado = data as { criadas: number; falhas: number }
+    renovadas = Number(resultado.criadas)
+    renovacaoFalhas = Number(resultado.falhas)
+    if (renovacaoFalhas > 0) console.error(`Renovação das contas recorrentes: ${renovacaoFalhas} tipo(s) falharam`)
   } catch (e) {
     console.error('Renovação das contas recorrentes falhou:', e)
   }
 
+  const falhas = renovacaoFalhas ? { renovacao_falhas: renovacaoFalhas } : {}
   try {
     const resultado = await enviarAvisoVencimento(admin)
-    return NextResponse.json({ ...resultado, renovadas })
+    return NextResponse.json({ ...resultado, renovadas, ...falhas })
   } catch (e) {
     console.error('Aviso de vencimento do Financeiro falhou:', e)
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Falha no envio.' }, { status: 500 })
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Falha no envio.', renovadas, ...falhas }, { status: 500 })
   }
 }

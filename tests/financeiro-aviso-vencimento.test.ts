@@ -72,6 +72,10 @@ test('rota agendada exige CRON_SECRET, passa pelo proxy sem sessão e está no v
   assert.ok(rota.includes('status: 401'))
   assert.ok(rota.includes("rpc('financeiro_renovar_recorrentes')"), 'renova as contas recorrentes antes do e-mail')
   assert.ok(rota.indexOf('financeiro_renovar_recorrentes') < rota.indexOf('enviarAvisoVencimento(admin)'))
+  assert.ok(rota.includes('renovadas = Number(resultado.criadas)'), 'renovadas = criadas')
+  assert.ok(rota.includes('renovacao_falhas'), 'falhas da renovação aparecem na resposta')
+  assert.ok(rota.includes('tipo(s) falharam'), 'falhas da renovação vão para o log')
+  assert.ok(rota.includes('renovadas, ...falhas }, { status: 500 }'), 'o 500 também leva renovadas')
   assert.ok(ler('proxy.ts').includes("pathname.startsWith('/api/cron/')"))
 
   const vercel = JSON.parse(ler('vercel.json'))

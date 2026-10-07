@@ -312,8 +312,8 @@ export async function salvarEmailAvisoVencimento(texto: string): Promise<{ email
 }
 
 /**
- * Manda agora, para o e-mail já salvo, o aviso dos pagamentos recorrentes que
- * vencem amanhã. Não conta como o envio do dia.
+ * Manda agora, para o e-mail já salvo, o aviso das contas a pagar que vencem
+ * amanhã. Não conta como o envio do dia.
  */
 export async function enviarTesteAvisoVencimento(): Promise<{ mensagem: string | null; error: string | null }> {
   const { error } = await exigirAdmin()
@@ -324,8 +324,8 @@ export async function enviarTesteAvisoVencimento(): Promise<{ mensagem: string |
     if (resultado.status === 'sem_destinatario') return { mensagem: null, error: 'Salve um e-mail antes de enviar o teste.' }
     if (resultado.status !== 'enviado') return { mensagem: null, error: 'O teste não foi enviado.' }
     const lista = resultado.quantidade === 0
-      ? 'sem pagamentos vencendo amanhã'
-      : resultado.quantidade === 1 ? 'com 1 pagamento' : `com ${resultado.quantidade} pagamentos`
+      ? 'sem contas vencendo amanhã'
+      : resultado.quantidade === 1 ? 'com 1 conta' : `com ${resultado.quantidade} contas`
     return { mensagem: `Teste enviado para ${resultado.destinatarios.join(', ')} (${lista}).`, error: null }
   } catch (e) {
     return { mensagem: null, error: e instanceof Error ? e.message : 'Falha ao enviar o e-mail.' }

@@ -84,6 +84,16 @@ begin
   assert (select min(competencia) from financeiro_movimentos where tipo_id = v_tipo) = v_m,
     'caso 3: a primeira conta deveria estar em M';
   assert (v_res->>'criadas')::integer = 6, 'caso 3: retorno criadas deveria ser 6';
+  assert (v_res->>'primeira')::date = v_m and (v_res->>'ultima')::date = (v_m + interval '5 months')::date,
+    'caso 3: na primeira criação primeira = mês de início e ultima = M + 5 meses';
+
+  -- ampliar o prazo de 6 para 12: a prévia fala só dos meses realmente criados (o 7o ao 12o)
+  v_res := financeiro_definir_forma_pagamento(v_tipo, 'prazo', 100, 10, v_m, 12);
+  assert (v_res->>'criadas')::integer = 6, 'caso 3: ampliar para 12 deveria criar 6 contas';
+  assert (v_res->>'primeira')::date = (v_m + interval '6 months')::date,
+    'caso 3: primeira deveria ser o 7o mês, não o início do período';
+  assert (v_res->>'ultima')::date = (v_m + interval '11 months')::date,
+    'caso 3: ultima deveria ser o 12o mês';
 end $$;
 
 -- Caso 4: simulação não grava e devolve as mesmas contagens
@@ -278,9 +288,10 @@ begin
   insert into financeiro_tipos (natureza, nome) values ('saida', '__smoke_065_c9') returning id into v_tipo;
   perform financeiro_definir_forma_pagamento(v_tipo, 'recorrente', 100, 31, v_m, null);
 
-  v_n := financeiro_renovar_recorrentes();  -- descarrega qualquer pendência de outros tipos
-  v_n := financeiro_renovar_recorrentes();
+  v_n := (financeiro_renovar_recorrentes()->>'criadas')::integer;  -- descarrega qualquer pendência de outros tipos
+  v_n := (financeiro_renovar_recorrentes()->>'criadas')::integer;
   assert v_n = 0, format('caso 9: a segunda renovação seguida deveria devolver 0, devolveu %s', v_n);
+  assert (financeiro_renovar_recorrentes()->>'falhas')::integer = 0, 'caso 9: renovação sem erro deveria devolver falhas = 0';
 
   select gerado_ate into v_gerado from financeiro_tipos where id = v_tipo;
   -- apaga à mão as duas últimas contas e recua gerado_ate dois meses
@@ -288,20 +299,24 @@ begin
   where tipo_id = v_tipo and competencia > (v_gerado - interval '2 months')::date;
   update financeiro_tipos set gerado_ate = (gerado_ate - interval '2 months')::date where id = v_tipo;
 
-  v_n := financeiro_renovar_recorrentes();
+  v_n := (financeiro_renovar_recorrentes()->>'criadas')::integer;
   assert v_n = 2, format('caso 9: deveria recriar só as 2 contas apagadas, recriou %s', v_n);
   assert (select count(*) from financeiro_movimentos
           where tipo_id = v_tipo and competencia > (v_gerado - interval '2 months')::date) = 2,
     'caso 9: as 2 contas recriadas não estão no lugar';
   assert (select gerado_ate from financeiro_tipos where id = v_tipo) = v_gerado,
     'caso 9: gerado_ate deveria voltar ao fim devido';
-  v_n := financeiro_renovar_recorrentes();
+  v_n := (financeiro_renovar_recorrentes()->>'criadas')::integer;
   assert v_n = 0, 'caso 9: renovação depois da recriação deveria devolver 0';
 
-  -- conta excluída à mão, sem mexer em gerado_ate, não volta pela renovação
-  delete from financeiro_movimentos where tipo_id = v_tipo and competencia = v_m;
-  v_n := financeiro_renovar_recorrentes();
-  assert v_n = 0, format('caso 9: renovação não deveria recriar conta excluída, criou %s', v_n);
+  -- conta excluída à mão não volta pela renovação: apaga a do mês atual (cedo) e a do
+  -- último mês, recua gerado_ate um mês; só a do último mês deve voltar
+  delete from financeiro_movimentos where tipo_id = v_tipo and competencia in (v_m, v_gerado);
+  update financeiro_tipos set gerado_ate = (v_gerado - interval '1 month')::date where id = v_tipo;
+  v_n := (financeiro_renovar_recorrentes()->>'criadas')::integer;
+  assert v_n = 1, format('caso 9: deveria voltar só a conta do último mês, voltaram %s', v_n);
+  assert exists (select 1 from financeiro_movimentos where tipo_id = v_tipo and competencia = v_gerado),
+    'caso 9: a conta do último mês deveria ter voltado';
   assert not exists (select 1 from financeiro_movimentos where tipo_id = v_tipo and competencia = v_m),
     'caso 9: a conta excluída à mão voltou pela renovação';
 end $$;
@@ -319,7 +334,7 @@ begin
       mes_inicio = (v_m - interval '8 months')::date, gerado_ate = (v_m - interval '6 months')::date
   where id = v_tipo;
 
-  v_n := financeiro_renovar_recorrentes();
+  v_n := (financeiro_renovar_recorrentes()->>'criadas')::integer;
   assert v_n >= 1, 'caso 9b: a renovação deveria criar pelo menos o mês atual';
   assert not exists (
     select 1 from financeiro_movimentos where tipo_id = v_tipo and competencia < v_m

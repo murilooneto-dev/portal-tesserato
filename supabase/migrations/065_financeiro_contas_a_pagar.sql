@@ -126,6 +126,7 @@ $$;
 
 -- Grava a forma de pagamento de um Tipo de Saída e acerta as contas dele.
 -- Conta paga nunca é tocada. p_simular = true só devolve as contagens.
+-- primeira/ultima = primeiro e último mês das contas criadas (nulos se nada é criado).
 create or replace function public.financeiro_definir_forma_pagamento(
   p_tipo_id uuid,
   p_forma text,
@@ -245,7 +246,7 @@ begin
 
   return jsonb_build_object(
     'criadas', v_criadas, 'alteradas', v_alteradas, 'apagadas', v_apagadas,
-    'primeira', v_inicio, 'ultima', v_fim);
+    'primeira', v_criar[1], 'ultima', v_criar[v_criadas]);
 end $$;
 
 -- Renovação do Recorrente, chamada pela rotina diária com a chave de serviço.
@@ -254,9 +255,12 @@ end $$;
 -- muito tempo não ganha meses já vencidos ao ser reativado (gerado_ate avança
 -- mesmo assim). Rodar de novo não duplica, e conta excluída pelo usuário não
 -- volta, porque gerado_ate avança junto. Cada tipo é tratado em seu próprio
--- bloco: se um falhar, vira aviso e os demais seguem.
+-- bloco: se um falhar, vira aviso e os demais seguem. Devolve
+-- {"criadas": n, "falhas": n}; falhas = tipos cujo bloco deu erro, para a
+-- rotina diária poder avisar em vez de só deixar um WARNING no log.
+drop function if exists public.financeiro_renovar_recorrentes();
 create or replace function public.financeiro_renovar_recorrentes()
-returns integer
+returns jsonb
 language plpgsql
 security invoker
 set search_path = public
@@ -266,6 +270,7 @@ declare
   v_tipo record;
   v_fim date;
   v_total integer := 0;
+  v_falhas integer := 0;
   v_n integer;
 begin
   for v_tipo in
@@ -290,9 +295,10 @@ begin
       end if;
     exception when others then
       raise warning 'Renovação do tipo % falhou: %', v_tipo.id, sqlerrm;
+      v_falhas := v_falhas + 1;
     end;
   end loop;
-  return v_total;
+  return jsonb_build_object('criadas', v_total, 'falhas', v_falhas);
 end $$;
 
 revoke all on function public.financeiro_renovar_recorrentes() from public, anon, authenticated;

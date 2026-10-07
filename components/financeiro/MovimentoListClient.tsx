@@ -38,7 +38,7 @@ export interface MovimentoLinha {
   pago_em?: string | null
   /** Hora do pagamento, só nas contas pagas pelo botão Pagar. */
   pago_em_hora?: string | null
-  /** Preenchido nas contas criadas pelo Tipo de Saída (com prazo). */
+  /** Preenchido nas contas criadas pelo Tipo de Saída (recorrente ou com prazo). */
   competencia?: string | null
 }
 
@@ -48,14 +48,13 @@ interface Props {
   /** Mês e ano escolhidos no seletor do portal: a lista já vem só com eles. */
   mes: number
   ano: number
-  /** Hoje (YYYY-MM-DD, fuso de São Paulo). A lista não usa mais: o que vence fica em Contas a pagar. */
-  hoje?: string
 }
 
-type Ordenacao = 'lancamento' | 'data_desc' | 'data_asc' | 'valor_desc' | 'valor_asc'
+type Ordenacao = 'lancamento' | 'pago_recente' | 'data_desc' | 'data_asc' | 'valor_desc' | 'valor_asc'
 
 const OPCOES_ORDENACAO: { value: Ordenacao; label: string }[] = [
   { value: 'lancamento', label: 'Mais recente lançado' },
+  { value: 'pago_recente', label: 'Pago mais recentemente' },
   { value: 'data_desc', label: 'Data (mais recente)' },
   { value: 'data_asc', label: 'Data (mais antiga)' },
   { value: 'valor_desc', label: 'Maior valor' },
@@ -79,11 +78,19 @@ function dataDaLista(m: MovimentoLinha, ehEntrada: boolean) {
   return ehEntrada ? m.data : (m.pago_em ?? m.data)
 }
 
+// Momento do pagamento: a hora quando há, senão o dia; a mais recente primeiro.
+function momentoDoPagamento(m: MovimentoLinha) {
+  return m.pago_em_hora ?? m.pago_em ?? m.data
+}
+
 export default function MovimentoListClient({ natureza, movimentos, mes, ano }: Props) {
   const ehEntrada = natureza === 'entrada'
   const titulo = ehEntrada ? 'Recebimentos' : 'Pagamentos'
   const botaoNovo = ehEntrada ? 'Novo recebimento' : 'Novo pagamento'
   const nomeItem = ehEntrada ? 'recebimento' : 'pagamento'
+  // Pagamentos abre pelo que foi pago por último; Recebimentos, pelo último lançado.
+  const ordenacaoPadrao: Ordenacao = ehEntrada ? 'lancamento' : 'pago_recente'
+  const opcoesOrdenacao = OPCOES_ORDENACAO.filter(o => o.value !== (ehEntrada ? 'pago_recente' : 'lancamento'))
   const periodo = `${MESES[mes - 1]} de ${ano}`
 
   const [modalAberto, setModalAberto] = useState(false)
@@ -94,7 +101,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
   const [avisoDesfeito, setAvisoDesfeito] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [busca, setBusca] = useState('')
-  const [ordenacao, setOrdenacao] = useState<Ordenacao>('lancamento')
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>(ordenacaoPadrao)
   const [pagina, setPagina] = useState(1)
   const [filtrosAbertos, setFiltrosAbertos] = useState(false)
 
@@ -108,10 +115,10 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
     setExcluindoId(null)
   }
 
-  function handleExcluir(id: string, escopo: 'este' | 'este_e_proximos' = 'este') {
+  function handleExcluir(id: string) {
     setErroExcluir(null)
     startTransition(async () => {
-      const { error } = await excluirMovimento(id, natureza, escopo)
+      const { error } = await excluirMovimento(id, natureza, 'este')
       if (error) { setErroExcluir(error); return }
       setExcluindoId(null)
     })
@@ -139,6 +146,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
     }
     lista = [...lista].sort((a, b) => {
       switch (ordenacao) {
+        case 'pago_recente': return momentoDoPagamento(b).localeCompare(momentoDoPagamento(a)) || b.created_at.localeCompare(a.created_at)
         case 'data_desc': return dataDaLista(b, ehEntrada).localeCompare(dataDaLista(a, ehEntrada)) || b.created_at.localeCompare(a.created_at)
         case 'data_asc': return dataDaLista(a, ehEntrada).localeCompare(dataDaLista(b, ehEntrada)) || a.created_at.localeCompare(b.created_at)
         case 'valor_desc': return b.valor - a.valor
@@ -187,8 +195,9 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
   function textoConfirmacao(m: MovimentoLinha) {
     return (
       <span className="min-w-0 text-sm text-fg-2 [&_b]:font-semibold [&_b]:text-fg">
-        Excluir o {nomeItem} <b>{m.tipo_nome}</b> de {formatarDdMm(m.data)}, no valor de <b className="tabular-nums">{formatarValor(m.valor)}</b>?
-        {m.recorrencia_id && <> É um pagamento recorrente: dá para excluir só este ou também os dos meses seguintes.</>}
+        {!ehEntrada && ehConta(m)
+          ? <>Excluir o pagamento <b>{m.tipo_nome}</b>, com vencimento em {formatarDdMm(m.data)}, no valor de <b className="tabular-nums">{formatarValor(m.valor)}</b>?</>
+          : <>Excluir o {nomeItem} <b>{m.tipo_nome}</b> de {formatarDdMm(m.data)}, no valor de <b className="tabular-nums">{formatarValor(m.valor)}</b>?</>}
       </span>
     )
   }
@@ -197,24 +206,14 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
     return (
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <Button variante="fantasma" tamanho="p" onClick={cancelarExclusao} disabled={isPending}>Cancelar</Button>
-        {m.recorrencia_id ? (
-          <>
-            <Button variante="perigo" tamanho="p" onClick={() => handleExcluir(m.id, 'este_e_proximos')} disabled={isPending}>
-              Este e os próximos
-            </Button>
-            <Button variante="perigo-solido" tamanho="p" onClick={() => handleExcluir(m.id)} carregando={isPending}>
-              Só este
-            </Button>
-          </>
-        ) : (
-          <Button variante="perigo-solido" tamanho="p" onClick={() => handleExcluir(m.id)} carregando={isPending}>
-            Excluir {nomeItem}
-          </Button>
-        )}
+        <Button variante="perigo-solido" tamanho="p" onClick={() => handleExcluir(m.id)} carregando={isPending}>
+          Excluir {nomeItem}
+        </Button>
       </div>
     )
   }
 
+  // Só a série antiga (recorrencia_id) leva o selo; a conta do Tipo de Saída já aparece pela coluna Vencimento.
   const seloRecorrente = <Badge tom="info" icone={<Repeat size={12} aria-hidden="true" />} className="flex-none">Recorrente</Badge>
 
   const erroExclusao = erroExcluir && (
@@ -257,20 +256,20 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
             aria-controls="filtros-movimentos"
             icone={<SlidersHorizontal size={18} aria-hidden="true" />}
             onClick={() => setFiltrosAbertos(a => !a)}
-            className={cn('h-11 w-11 sm:hidden', ordenacao !== 'lancamento' && 'border-acc text-acc-text')}
+            className={cn('h-11 w-11 sm:hidden', ordenacao !== ordenacaoPadrao && 'border-acc text-acc-text')}
           />
         </div>
         <Field rotulo="Ordenar por" className={cn('w-full sm:flex sm:w-[230px]', !filtrosAbertos && 'max-sm:hidden')}>
           {c => (
             <Select id={c.id} value={ordenacao} onChange={e => { setOrdenacao(e.target.value as Ordenacao); setPagina(1); setExcluindoId(null) }}>
-              {OPCOES_ORDENACAO.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {opcoesOrdenacao.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </Select>
           )}
         </Field>
       </div>
 
       {erroConfirmar && <Aviso tom="dng">Não foi possível desfazer o pagamento: {erroConfirmar}</Aviso>}
-      {avisoDesfeito && !erroConfirmar && <Aviso tom="ok">Voltou para Contas a pagar.</Aviso>}
+      {avisoDesfeito && !erroConfirmar && <div role="status"><Aviso tom="ok">Voltou para Contas a pagar.</Aviso></div>}
 
       {n === 0 ? (
         <Card>
@@ -314,7 +313,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
                 <div className="min-w-0 flex-1">
                   <p className="flex min-w-0 items-center gap-2">
                     <span className="truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
-                    {ehConta(m) && seloRecorrente}
+                    {m.recorrencia_id && seloRecorrente}
                   </p>
                   <p className="flex min-w-0 items-center gap-2 text-[13px] text-fg-3">
                     <span className="truncate">
@@ -384,7 +383,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
                       <Td>
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="block truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
-                          {ehConta(m) && seloRecorrente}
+                          {m.recorrencia_id && seloRecorrente}
                         </div>
                       </Td>
                       <Td>
@@ -453,6 +452,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
             valor: editando.valor,
             data: editando.data,
             observacao: editando.observacao,
+            contaPaga: !ehEntrada && ehConta(editando),
           }}
         />
       )}

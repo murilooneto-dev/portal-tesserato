@@ -26,6 +26,8 @@ export interface MovimentoParaEditar {
   observacao: string | null
   /** Conta a pagar (Contas a Pagar): o tipo fica travado e salvar usa atualizarConta. */
   conta?: boolean
+  /** Conta já paga (Pagamentos): a data é o vencimento e o tipo fica travado, mas salvar usa atualizarMovimento. */
+  contaPaga?: boolean
 }
 
 interface Props {
@@ -154,6 +156,8 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
   }
 
   const ehEdicaoDeConta = movimento?.conta === true
+  // Em conta (paga ou não) a data é o vencimento e o tipo não muda.
+  const ehConta = ehEdicaoDeConta || movimento?.contaPaga === true
 
   async function handleSave() {
     const valorNumerico = Number(valor.replace(',', '.'))
@@ -260,7 +264,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
       )}
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        {ehEdicaoDeConta ? (
+        {ehConta ? (
           <Field rotulo="Vencimento" obrigatorio>{campoData}</Field>
         ) : (
           <Field rotulo="Data" obrigatorio>{campoData}</Field>
@@ -289,7 +293,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           erro={erroTipo}
           ajuda={!criandoTipo && !carregando && tipos.length === 0 ? 'Nenhum tipo cadastrado ainda.' : undefined}
         >
-          {c => ehEdicaoDeConta ? (
+          {c => ehConta ? (
             <Input id={c.id} value={movimento?.tipoNome ?? ''} disabled readOnly />
           ) : criandoTipo ? (
             <div className="flex gap-2">
@@ -321,7 +325,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
             />
           )}
         </Field>
-        {!ehEdicaoDeConta && (
+        {!ehConta && (
           <LinkDoRotulo onClick={() => { setCriandoTipo(v => !v); setErroTipo(null) }}>
             {criandoTipo ? 'Cancelar' : 'Novo tipo'}
           </LinkDoRotulo>

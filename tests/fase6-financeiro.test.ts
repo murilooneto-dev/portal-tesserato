@@ -81,7 +81,7 @@ test('páginas buscam tudo em blocos, sem o corte em 200', () => {
     assert.ok(src.includes('.range(inicio, fim)'), arq)
     assert.ok(!src.includes('.limit('), arq)
     assert.ok(src.includes(`.eq('natureza', '${natureza}')`), arq)
-    assert.ok(src.includes(`<MovimentoListClient natureza="${natureza}" movimentos={movimentos} mes={mes} ano={ano} hoje={hojeISO()} />`), arq)
+    assert.ok(src.includes(`<MovimentoListClient natureza="${natureza}" movimentos={movimentos} mes={mes} ano={ano} />`), arq)
     // Só o mês escolhido no seletor do portal.
     const coluna = natureza === 'saida' ? 'pago_em' : 'data'
     for (const t of ['await getMesAno()', 'intervaloDoMes(mes, ano)', `.gte('${coluna}', primeiroDia)`, `.lte('${coluna}', ultimoDia)`]) assert.ok(src.includes(t), `${arq}: ${t}`)
@@ -94,7 +94,7 @@ test('lista: desenho fn-01 / fn-03', () => {
   for (const t of ['<Pagina className="pb-24 sm:pb-24 lg:pb-7">', '<CabecalhoPagina', "'Recebimentos' : 'Pagamentos'", "'Novo recebimento' : 'Novo pagamento'",
     'placeholder="Tipo, centro de custo ou observação"', 'sm:w-[360px]', 'sm:w-[230px]', 'rotulo="Ordenar por"',
     'Mais recente lançado', 'Data (mais recente)', 'Data (mais antiga)', 'Maior valor', 'Menor valor',
-    "useState<Ordenacao>('lancamento')", 'largura={140}', 'largura={220}', 'largura={ehEntrada ? 150 : 170}', 'largura={56}',
+    'useState<Ordenacao>(ordenacaoPadrao)', 'largura={140}', 'largura={220}', 'largura={ehEntrada ? 150 : 170}', 'largura={56}',
     'Centro de custo', 'Observação', 'rotulo="Editar ou excluir"', "rotulo: 'Editar'", "rotulo: 'Excluir'", 'perigo: true',
     'relative overflow-x-auto xl:overflow-visible', 'Nenhum lançamento ainda', 'Nenhum lançamento com essa busca',
     '<EmptyState', 'POR_PAGINA = 50', 'Mostrando ${inicio + 1}–${inicio + visiveis.length} de ${n} lançamentos',
@@ -108,13 +108,15 @@ test('lista: desenho fn-01 / fn-03', () => {
 
 test('lista: excluir confirma na linha e mostra o erro da action', () => {
   const src = ler(LISTA)
-  for (const t of ['excluirMovimento(id, natureza, escopo)', 'if (error) { setErroExcluir(error); return }', 'colSpan={ehEntrada ? 6 : 7} className="bg-danger-soft"',
+  for (const t of ["excluirMovimento(id, natureza, 'este')", 'if (error) { setErroExcluir(error); return }', 'colSpan={ehEntrada ? 6 : 7} className="bg-danger-soft"',
     'variante="perigo-solido"', 'Excluir {nomeItem}', 'no valor de', 'role="alert"']) assert.ok(src.includes(t), t)
 })
 
 test('pagamento recorrente antigo: selo e exclusão em série continuam', () => {
   const lista = ler(LISTA)
-  for (const t of ['<Repeat', '>Recorrente</Badge>', "handleExcluir(m.id, 'este_e_proximos')", 'Este e os próximos', 'Só este']) assert.ok(lista.includes(t), t)
+  for (const t of ['<Repeat', '>Recorrente</Badge>', '{m.recorrencia_id && seloRecorrente}']) assert.ok(lista.includes(t), t)
+  // Pagamentos é histórico: exclusão só de uma linha; a série antiga se apaga em Contas a pagar.
+  for (const t of ['Este e os próximos', 'este_e_proximos', 'Só este']) assert.ok(!lista.includes(t), t)
   assert.ok(ler(PAGINAS[1]).includes('recorrencia_id'))
   assert.ok(!ler(PAGINAS[0]).includes('recorrencia_id'))
   const actions = ler('lib/financeiro-actions.ts')

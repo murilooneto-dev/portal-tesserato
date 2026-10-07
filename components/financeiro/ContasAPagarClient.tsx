@@ -62,7 +62,9 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje }: Props) {
   const [erroExcluir, setErroExcluir] = useState<string | null>(null)
   const [erroPagar, setErroPagar] = useState<string | null>(null)
   // Última conta paga, com o botão Desfazer: o Toast do projeto não tem ação.
-  const [desfazer, setDesfazer] = useState<string | null>(null)
+  // Guarda o mês junto: o aviso só aparece enquanto o seletor está nele.
+  const [pagaAgora, setPagaAgora] = useState<{ id: string; tipo: string; vencimento: string; mes: number; ano: number } | null>(null)
+  const desfazer = pagaAgora && pagaAgora.mes === mes && pagaAgora.ano === ano ? pagaAgora : null
   const [isPending, startTransition] = useTransition()
   const [busca, setBusca] = useState('')
   const [ordenacao, setOrdenacao] = useState<Ordenacao>('data_asc')
@@ -89,13 +91,13 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje }: Props) {
     })
   }
 
-  function handlePagar(id: string) {
+  function handlePagar(m: ContaLinha) {
     setErroPagar(null)
-    setDesfazer(null)
+    setPagaAgora(null)
     startTransition(async () => {
-      const { error } = await definirPagamentoConfirmado(id, true)
+      const { error } = await definirPagamentoConfirmado(m.id, true)
       if (error) { setErroPagar(error); return }
-      setDesfazer(id)
+      setPagaAgora({ id: m.id, tipo: m.tipo_nome, vencimento: formatarDdMm(m.data).slice(0, 5), mes, ano })
       router.refresh()
     })
   }
@@ -105,7 +107,7 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje }: Props) {
     startTransition(async () => {
       const { error } = await definirPagamentoConfirmado(id, false)
       if (error) { setErroPagar(error); return }
-      setDesfazer(null)
+      setPagaAgora(null)
       router.refresh()
     })
   }
@@ -201,7 +203,14 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje }: Props) {
 
   function botaoPagar(m: ContaLinha) {
     return (
-      <Button variante="primario" tamanho="p" onClick={() => handlePagar(m.id)} disabled={isPending} className="flex-none">
+      <Button
+        variante="primario"
+        tamanho="p"
+        onClick={() => handlePagar(m)}
+        disabled={isPending}
+        aria-label={`Pagar ${m.tipo_nome}, vencimento ${formatarDdMm(m.data).slice(0, 5)}`}
+        className="flex-none"
+      >
         Pagar
       </Button>
     )
@@ -256,14 +265,16 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje }: Props) {
 
       {erroPagar && <div role="alert"><Aviso tom="dng">Não foi possível salvar o pagamento: {erroPagar}</Aviso></div>}
       {desfazer && (
-        <Aviso tom="ok">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <b>Pago. Foi para Pagamentos.</b>
-            <Button variante="fantasma" tamanho="p" icone={<Undo2 size={14} aria-hidden="true" />} onClick={() => handleDesfazer(desfazer)} disabled={isPending}>
-              Desfazer
-            </Button>
-          </div>
-        </Aviso>
+        <div role="status">
+          <Aviso tom="ok">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <b>Pago: {desfazer.tipo}, vencimento {desfazer.vencimento}. Foi para Pagamentos.</b>
+              <Button variante="fantasma" tamanho="p" icone={<Undo2 size={14} aria-hidden="true" />} onClick={() => handleDesfazer(desfazer.id)} disabled={isPending}>
+                Desfazer
+              </Button>
+            </div>
+          </Aviso>
+        </div>
       )}
 
       {n === 0 ? (

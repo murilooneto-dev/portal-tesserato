@@ -270,5 +270,9 @@ export interface FinanceiroMovimento {
   recorrencia_id: string | null
   pago: boolean
   pago_em: string | null
+  /** Data e hora do pagamento, só nas contas pagas pelo botão Pagar. */
+  pago_em_hora: string | null
+  /** Mês (YYYY-MM-01) da conta criada pelo Tipo de Saída; nulo nos demais. */
+  competencia: string | null
   created_at: string
 }
