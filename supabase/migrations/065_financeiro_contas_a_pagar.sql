@@ -29,12 +29,25 @@ alter table public.financeiro_tipos add constraint financeiro_tipos_forma_pagame
   or
   (forma_pagamento in ('recorrente', 'prazo')
     and natureza = 'saida'
-    and valor_padrao > 0
-    and dia_vencimento between 1 and 31
+    and valor_padrao is not null and valor_padrao > 0
+    and dia_vencimento is not null and dia_vencimento between 1 and 31
     and mes_inicio is not null and extract(day from mes_inicio) = 1
     and gerado_ate is not null
     and ((forma_pagamento = 'recorrente' and qtd_meses is null)
-      or (forma_pagamento = 'prazo' and qtd_meses between 1 and 120)))
+      or (forma_pagamento = 'prazo' and qtd_meses is not null and qtd_meses between 1 and 120)))
+);
+
+-- A forma de pagamento cria contas, então só admin a define (pela função
+-- financeiro_definir_forma_pagamento). O setor Financeiro continua podendo
+-- criar tipos (migration 046), mas só Avulso: a check constraint acima garante
+-- que Avulso tem todos os outros campos nulos.
+drop policy if exists "Setor financeiro cria financeiro_tipos" on public.financeiro_tipos;
+create policy "Setor financeiro cria financeiro_tipos" on public.financeiro_tipos for insert with check (
+  is_admin()
+  or (
+    forma_pagamento = 'avulso'
+    and exists (select 1 from profiles p where p.id = auth.uid() and 'financeiro' = any(p.setores))
+  )
 );
 
 -- ---------- financeiro_movimentos ----------
@@ -148,7 +161,7 @@ begin
   if v_tipo.natureza <> 'saida' then
     raise exception 'Forma de pagamento só existe em Tipo de Saída.';
   end if;
-  if p_forma not in ('avulso', 'recorrente', 'prazo') then
+  if p_forma is null or p_forma not in ('avulso', 'recorrente', 'prazo') then
     raise exception 'Forma de pagamento inválida.';
   end if;
 
@@ -237,8 +250,11 @@ end $$;
 
 -- Renovação do Recorrente, chamada pela rotina diária com a chave de serviço.
 -- Cria os meses entre gerado_ate e o fim devido (em dezembro, o ano seguinte
--- inteiro). Rodar de novo não duplica, e conta excluída pelo usuário não volta,
--- porque gerado_ate avança junto.
+-- inteiro), nunca antes do mês atual: um Recorrente que ficou inativo por
+-- muito tempo não ganha meses já vencidos ao ser reativado (gerado_ate avança
+-- mesmo assim). Rodar de novo não duplica, e conta excluída pelo usuário não
+-- volta, porque gerado_ate avança junto. Cada tipo é tratado em seu próprio
+-- bloco: se um falhar, vira aviso e os demais seguem.
 create or replace function public.financeiro_renovar_recorrentes()
 returns integer
 language plpgsql
@@ -258,17 +274,23 @@ begin
     where forma_pagamento = 'recorrente' and ativo
     for update
   loop
-    v_fim := financeiro_fim_recorrente(v_tipo.mes_inicio, v_hoje);
-    if v_tipo.gerado_ate < v_fim then
-      insert into financeiro_movimentos (natureza, tipo_id, valor, data, competencia, pago)
-      select 'saida', v_tipo.id, v_tipo.valor_padrao,
-             financeiro_vencimento(c::date, v_tipo.dia_vencimento), c::date, false
-      from generate_series((v_tipo.gerado_ate + interval '1 month')::timestamp, v_fim::timestamp, interval '1 month') c
-      on conflict (tipo_id, competencia) where competencia is not null do nothing;
-      get diagnostics v_n = row_count;
-      v_total := v_total + v_n;
-      update financeiro_tipos set gerado_ate = v_fim where id = v_tipo.id;
-    end if;
+    begin
+      v_fim := financeiro_fim_recorrente(v_tipo.mes_inicio, v_hoje);
+      if v_tipo.gerado_ate < v_fim then
+        insert into financeiro_movimentos (natureza, tipo_id, valor, data, competencia, pago)
+        select 'saida', v_tipo.id, v_tipo.valor_padrao,
+               financeiro_vencimento(c::date, v_tipo.dia_vencimento), c::date, false
+        from generate_series(
+          greatest((v_tipo.gerado_ate + interval '1 month')::timestamp, date_trunc('month', v_hoje::timestamp)),
+          v_fim::timestamp, interval '1 month') c
+        on conflict (tipo_id, competencia) where competencia is not null do nothing;
+        get diagnostics v_n = row_count;
+        update financeiro_tipos set gerado_ate = v_fim where id = v_tipo.id;
+        v_total := v_total + v_n;
+      end if;
+    exception when others then
+      raise warning 'Renovação do tipo % falhou: %', v_tipo.id, sqlerrm;
+    end;
   end loop;
   return v_total;
 end $$;

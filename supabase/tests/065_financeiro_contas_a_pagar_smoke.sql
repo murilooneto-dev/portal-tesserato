@@ -135,6 +135,13 @@ begin
   ), 'caso 5: a 5a conta paga deveria continuar lá e paga';
   assert (select count(*) from financeiro_movimentos where tipo_id = v_tipo) = 4,
     'caso 5: depois de reduzir deveriam sobrar 4 linhas (3 + a paga)';
+  -- o dia do pagamento (hoje) difere da data de vencimento (M+4 meses, dia 10) e é mantido
+  assert (select data from financeiro_movimentos
+          where tipo_id = v_tipo and competencia = (v_m + interval '4 months')::date) <> current_date,
+    'caso 5: preparo do teste: data da conta deveria diferir de hoje';
+  assert (select pago_em from financeiro_movimentos
+          where tipo_id = v_tipo and competencia = (v_m + interval '4 months')::date) = current_date,
+    'caso 5: a conta paga deveria manter pago_em = dia do pagamento, não a data de vencimento';
 
   v_res := financeiro_definir_forma_pagamento(v_tipo, 'prazo', 100, 10, v_m, 6);
   assert (v_res->>'criadas')::integer = 2,
@@ -152,6 +159,8 @@ declare
   v_m date := date_trunc('month', (now() at time zone 'America/Sao_Paulo'))::date;
   v_tipo uuid;
   v_res jsonb;
+  v_claims text;
+  v_erro text := null;
 begin
   insert into financeiro_tipos (natureza, nome) values ('saida', '__smoke_065_c6') returning id into v_tipo;
   perform financeiro_definir_forma_pagamento(v_tipo, 'prazo', 100, 10, v_m, 6);
@@ -176,6 +185,38 @@ begin
   assert (v_res->>'criadas')::integer = 0, 'caso 6: não deveria criar nada ao mudar só o valor';
   assert (v_res->>'alteradas')::integer = 4,
     format('caso 6: alteradas deveria ser 4 depois da exclusão, foi %s', v_res->>'alteradas');
+  assert (select count(*) from financeiro_movimentos where tipo_id = v_tipo and not pago and valor = 200) = 4,
+    'caso 6: as 4 não pagas restantes deveriam ter o valor 200';
+  assert (select valor from financeiro_movimentos where tipo_id = v_tipo and pago) = 100,
+    'caso 6: a paga deveria continuar com 100 depois da segunda mudança';
+
+  -- muda só o dia: data das não pagas recalculada, a paga intocada
+  v_res := financeiro_definir_forma_pagamento(v_tipo, 'prazo', 200, 15, v_m, 6);
+  assert (v_res->>'alteradas')::integer = 4,
+    format('caso 6: mudar só o dia deveria alterar 4, alterou %s', v_res->>'alteradas');
+  assert not exists (
+    select 1 from financeiro_movimentos
+    where tipo_id = v_tipo and not pago and data <> financeiro_vencimento(competencia, 15)
+  ), 'caso 6: toda conta não paga deveria ter data = vencimento do dia 15';
+  assert (select data from financeiro_movimentos where tipo_id = v_tipo and pago)
+         = financeiro_vencimento((v_m + interval '1 month')::date, 10),
+    'caso 6: a data da conta paga não deveria mudar';
+  assert (select valor from financeiro_movimentos where tipo_id = v_tipo and pago) = 100,
+    'caso 6: a paga deveria continuar com 100 depois de mudar o dia';
+
+  -- não admin é barrado
+  v_claims := current_setting('request.jwt.claims', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', gen_random_uuid(), 'role', 'authenticated')::text, true);
+  begin
+    perform financeiro_definir_forma_pagamento(v_tipo, 'prazo', 999, 15, v_m, 6);
+  exception when others then
+    v_erro := sqlerrm;
+  end;
+  perform set_config('request.jwt.claims', v_claims, true);
+  assert v_erro = 'Acesso negado.', format('caso 6: não admin deveria receber "Acesso negado.", recebeu %s', v_erro);
+  assert (select count(*) from financeiro_movimentos where tipo_id = v_tipo and valor = 999) = 0,
+    'caso 6: a chamada de não admin não deveria gravar nada';
 end $$;
 
 -- Caso 7: voltar para Avulso (continua do tipo do caso 6)
@@ -256,6 +297,123 @@ begin
     'caso 9: gerado_ate deveria voltar ao fim devido';
   v_n := financeiro_renovar_recorrentes();
   assert v_n = 0, 'caso 9: renovação depois da recriação deveria devolver 0';
+
+  -- conta excluída à mão, sem mexer em gerado_ate, não volta pela renovação
+  delete from financeiro_movimentos where tipo_id = v_tipo and competencia = v_m;
+  v_n := financeiro_renovar_recorrentes();
+  assert v_n = 0, format('caso 9: renovação não deveria recriar conta excluída, criou %s', v_n);
+  assert not exists (select 1 from financeiro_movimentos where tipo_id = v_tipo and competencia = v_m),
+    'caso 9: a conta excluída à mão voltou pela renovação';
+end $$;
+
+-- Caso 9b: Recorrente parado há muito tempo não ganha meses já vencidos
+do $$
+declare
+  v_m date := date_trunc('month', (now() at time zone 'America/Sao_Paulo'))::date;
+  v_tipo uuid;
+  v_n integer;
+begin
+  insert into financeiro_tipos (natureza, nome) values ('saida', '__smoke_065_c9b') returning id into v_tipo;
+  update financeiro_tipos
+  set forma_pagamento = 'recorrente', valor_padrao = 100, dia_vencimento = 10,
+      mes_inicio = (v_m - interval '8 months')::date, gerado_ate = (v_m - interval '6 months')::date
+  where id = v_tipo;
+
+  v_n := financeiro_renovar_recorrentes();
+  assert v_n >= 1, 'caso 9b: a renovação deveria criar pelo menos o mês atual';
+  assert not exists (
+    select 1 from financeiro_movimentos where tipo_id = v_tipo and competencia < v_m
+  ), 'caso 9b: a renovação criou conta de mês anterior ao atual';
+  assert exists (
+    select 1 from financeiro_movimentos where tipo_id = v_tipo and competencia = v_m
+  ), 'caso 9b: faltou a conta do mês atual';
+  assert (select gerado_ate from financeiro_tipos where id = v_tipo)
+         = financeiro_fim_recorrente((v_m - interval '8 months')::date, (now() at time zone 'America/Sao_Paulo')::date),
+    'caso 9b: gerado_ate deveria avançar até o fim devido';
+end $$;
+
+-- Caso 12: a check constraint do tipo não aceita campos nulos em Recorrente/Prazo
+do $$
+declare
+  v_m date := date_trunc('month', (now() at time zone 'America/Sao_Paulo'))::date;
+  v_tipo uuid;
+  v_ok boolean := false;
+begin
+  insert into financeiro_tipos (natureza, nome) values ('saida', '__smoke_065_c12') returning id into v_tipo;
+  begin
+    update financeiro_tipos
+    set forma_pagamento = 'recorrente', dia_vencimento = 10, mes_inicio = v_m, gerado_ate = v_m
+    where id = v_tipo;  -- valor_padrao nulo
+  exception when check_violation then
+    v_ok := true;
+  end;
+  assert v_ok, 'caso 12: recorrente com valor_padrao nulo deveria violar a check constraint';
+
+  v_ok := false;
+  begin
+    update financeiro_tipos
+    set forma_pagamento = 'prazo', valor_padrao = 100, dia_vencimento = 10, mes_inicio = v_m, gerado_ate = v_m
+    where id = v_tipo;  -- qtd_meses nulo
+  exception when check_violation then
+    v_ok := true;
+  end;
+  assert v_ok, 'caso 12: prazo com qtd_meses nulo deveria violar a check constraint';
+
+  v_ok := false;
+  begin
+    update financeiro_tipos
+    set forma_pagamento = 'recorrente', valor_padrao = 100, mes_inicio = v_m, gerado_ate = v_m
+    where id = v_tipo;  -- dia_vencimento nulo
+  exception when check_violation then
+    v_ok := true;
+  end;
+  assert v_ok, 'caso 12: recorrente com dia_vencimento nulo deveria violar a check constraint';
+end $$;
+
+-- Caso 13: só admin cria tipo com forma de pagamento (RLS de financeiro_tipos)
+create temp table _smoke_user_fin (id uuid) on commit drop;
+grant select on _smoke_user_fin to authenticated;
+insert into _smoke_user_fin
+  select id from profiles where role <> 'admin' and 'financeiro' = any (setores) limit 1;
+
+set local role authenticated;
+do $$
+declare
+  v_m date := date_trunc('month', (now() at time zone 'America/Sao_Paulo'))::date;
+  v_user uuid;
+  v_claims text;
+  v_ok boolean := false;
+begin
+  select id into v_user from _smoke_user_fin;
+  if v_user is null then
+    raise notice 'caso 13 PULADO: não há perfil não admin com setor financeiro';
+    return;
+  end if;
+  v_claims := current_setting('request.jwt.claims', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_user, 'role', 'authenticated')::text, true);
+
+  begin
+    insert into financeiro_tipos (natureza, nome, forma_pagamento, valor_padrao, dia_vencimento, mes_inicio, gerado_ate)
+    values ('saida', '__smoke_065_c13_rec', 'recorrente', 100, 10, v_m, v_m);
+  exception when insufficient_privilege then
+    v_ok := true;
+  end;
+  assert v_ok, 'caso 13: não admin não deveria criar tipo Recorrente (RLS)';
+
+  insert into financeiro_tipos (natureza, nome) values ('saida', '__smoke_065_c13_avulso');
+
+  perform set_config('request.jwt.claims', v_claims, true);
+end $$;
+reset role;
+
+do $$
+begin
+  assert not exists (select 1 from financeiro_tipos where nome = '__smoke_065_c13_rec'),
+    'caso 13: o tipo Recorrente do não admin foi gravado';
+  assert exists (select 1 from financeiro_tipos where nome = '__smoke_065_c13_avulso')
+    or not exists (select 1 from _smoke_user_fin),
+    'caso 13: o tipo Avulso do não admin deveria ter sido criado';
 end $$;
 
 -- Caso 10: Tipo de Entrada não aceita forma de pagamento
@@ -273,6 +431,16 @@ begin
   end;
   assert v_erro is not null, 'caso 10: Tipo de Entrada deveria dar exceção';
   assert v_erro like '%só existe em Tipo de Saída%', format('caso 10: mensagem inesperada: %s', v_erro);
+
+  -- forma nula também é recusada, com mensagem amigável
+  v_erro := null;
+  insert into financeiro_tipos (natureza, nome) values ('saida', '__smoke_065_c10b') returning id into v_tipo;
+  begin
+    perform financeiro_definir_forma_pagamento(v_tipo, null, 100, 10, v_m, null);
+  exception when others then
+    v_erro := sqlerrm;
+  end;
+  assert v_erro = 'Forma de pagamento inválida.', format('caso 10: forma nula deveria dar "Forma de pagamento inválida.", deu %s', v_erro);
 end $$;
 
 -- Caso 11: compatibilidade com o código anterior
@@ -292,8 +460,19 @@ begin
   assert (select pago_em from financeiro_movimentos where id = v_id) = v_data + 1,
     'caso 11: editar a data deveria levar o pago_em junto';
 
-  assert not exists (select 1 from financeiro_movimentos where pago and pago_em is null),
-    'caso 11: existe movimento pago sem pago_em';
+  -- código antigo: linha de série nasce não paga, é confirmada com pago_em próprio e desfeita
+  insert into financeiro_movimentos (natureza, tipo_id, valor, data, recorrencia_id, pago)
+  values ('entrada', v_tipo, 10, v_data, gen_random_uuid(), false) returning id into v_id;
+  assert (select pago_em from financeiro_movimentos where id = v_id) is null,
+    'caso 11: linha de série não paga deveria nascer sem pago_em';
+
+  update financeiro_movimentos set pago = true, pago_em = v_data + 3 where id = v_id;
+  assert (select pago_em from financeiro_movimentos where id = v_id) = v_data + 3,
+    'caso 11: confirmar linha de série com pago_em próprio deveria manter esse dia, não a data';
+
+  update financeiro_movimentos set pago = false, pago_em = null where id = v_id;
+  assert (select not pago and pago_em is null from financeiro_movimentos where id = v_id),
+    'caso 11: desfazer a confirmação da linha de série deveria passar pela check constraint';
 end $$;
 
 do $$ begin raise notice '065 OK'; end $$;

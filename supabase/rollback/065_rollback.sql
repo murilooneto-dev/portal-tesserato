@@ -6,6 +6,13 @@
 begin;
 set local lock_timeout = '5s';
 
+-- Política de criação de tipos volta ao texto da migration 046 (antes de
+-- remover a coluna forma_pagamento, de que a política nova depende).
+drop policy if exists "Setor financeiro cria financeiro_tipos" on public.financeiro_tipos;
+create policy "Setor financeiro cria financeiro_tipos" on public.financeiro_tipos for insert with check (
+  is_admin() or exists (select 1 from profiles p where p.id = auth.uid() and 'financeiro' = any(p.setores))
+);
+
 drop function if exists public.financeiro_definir_forma_pagamento(uuid, text, numeric, integer, date, integer, boolean);
 drop function if exists public.financeiro_renovar_recorrentes();
 drop function if exists public.financeiro_fim_recorrente(date, date);
