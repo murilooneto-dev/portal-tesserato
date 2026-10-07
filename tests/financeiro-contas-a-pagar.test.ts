@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ehConta, textoPreviaFormaPagamento, formatarPagoEm, contaApareceNoMes } from '../lib/financeiro-movimentos'
+import { ehConta, textoPreviaFormaPagamento, formatarPagoEm, contaApareceNoMes, compararPorPagamento } from '../lib/financeiro-movimentos'
 
 const ler = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8')
 // toLocaleString põe espaço sem quebra (U+00A0) depois de R$; os textos esperados usam espaço comum.
@@ -99,4 +99,31 @@ test('financeiro-actions: desfazer só em conta e atualizarConta só em conta n�
   const j = src.indexOf('export async function atualizarConta')
   assert.ok(j >= 0)
   assert.ok(src.slice(j, src.indexOf('export async function', j + 10)).includes(".eq('pago', false)"))
+})
+
+test('compararPorPagamento: o dia manda; a hora só desempata no mesmo dia', () => {
+  // Paga às 22h de 06/10 em São Paulo: em UTC a hora já é do dia 07.
+  const noite = { id: 'noite', data: '2026-10-05', pago_em: '2026-10-06', pago_em_hora: '2026-10-07T01:00:00+00:00', created_at: '2026-09-01T00:00:00Z' }
+  const semHora = { id: 'semHora', data: '2026-10-07', pago_em: '2026-10-07', pago_em_hora: null, created_at: '2026-10-07T12:00:00Z' }
+  const manha = { id: 'manha', data: '2026-10-01', pago_em: '2026-10-06', pago_em_hora: '2026-10-06T12:00:00+00:00', created_at: '2026-09-01T00:00:00Z' }
+  const avulsoDoDia6 = { id: 'avulso', data: '2026-10-06', created_at: '2026-10-06T15:00:00Z' }
+  const ordem = [manha, noite, avulsoDoDia6, semHora].sort(compararPorPagamento).map(m => m.id)
+  assert.deepEqual(ordem, ['semHora', 'noite', 'manha', 'avulso'])
+})
+
+test('conta paga: dá para corrigir o dia do pagamento, e o aviso de Contas a Pagar some ao trocar o mês', () => {
+  const acoes = ler('lib/financeiro-actions.ts')
+  const i = acoes.indexOf('export async function atualizarMovimento')
+  const corpo = acoes.slice(i, acoes.indexOf('export async function', i + 10))
+  // Só em conta já paga, e só quando o dia muda (aí a hora guardada sai).
+  assert.ok(corpo.includes('atual?.pago && ehConta(atual) && atual.pago_em !== input.pagoEm'))
+  assert.ok(corpo.includes('pago_em_hora: null'))
+  assert.ok(corpo.includes('input.pagoEm > hojeISO()'))
+
+  const modal = ler('components/financeiro/NovoMovimentoModal.tsx')
+  assert.ok(modal.includes('rotulo="Pago em"'))
+  assert.ok(modal.includes('pagoEm: ehContaPaga ? pagoEm : undefined'))
+
+  const contas = ler('components/financeiro/ContasAPagarClient.tsx')
+  assert.ok(contas.includes('if (mesVisto !== mesDoSeletor)'))
 })

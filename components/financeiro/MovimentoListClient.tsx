@@ -5,7 +5,7 @@ import { Pencil, Plus, Receipt, Repeat, Search, SlidersHorizontal, Trash2, Undo2
 import { definirPagamentoConfirmado, excluirMovimento } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
 import { formatarDdMm } from '@/lib/formatar-data'
-import { ehConta, formatarPagoEm, formatarValor } from '@/lib/financeiro-movimentos'
+import { compararPorPagamento, ehConta, formatarPagoEm, formatarValor } from '@/lib/financeiro-movimentos'
 import type { FinanceiroNatureza } from '@/lib/types'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
 import { Aviso } from '@/components/ui/Aviso'
@@ -78,10 +78,6 @@ function dataDaLista(m: MovimentoLinha, ehEntrada: boolean) {
   return ehEntrada ? m.data : (m.pago_em ?? m.data)
 }
 
-// Momento do pagamento: a hora quando há, senão o dia; a mais recente primeiro.
-function momentoDoPagamento(m: MovimentoLinha) {
-  return m.pago_em_hora ?? m.pago_em ?? m.data
-}
 
 export default function MovimentoListClient({ natureza, movimentos, mes, ano }: Props) {
   const ehEntrada = natureza === 'entrada'
@@ -146,7 +142,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
     }
     lista = [...lista].sort((a, b) => {
       switch (ordenacao) {
-        case 'pago_recente': return momentoDoPagamento(b).localeCompare(momentoDoPagamento(a)) || b.created_at.localeCompare(a.created_at)
+        case 'pago_recente': return compararPorPagamento(a, b)
         case 'data_desc': return dataDaLista(b, ehEntrada).localeCompare(dataDaLista(a, ehEntrada)) || b.created_at.localeCompare(a.created_at)
         case 'data_asc': return dataDaLista(a, ehEntrada).localeCompare(dataDaLista(b, ehEntrada)) || a.created_at.localeCompare(b.created_at)
         case 'valor_desc': return b.valor - a.valor
@@ -453,6 +449,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
             data: editando.data,
             observacao: editando.observacao,
             contaPaga: !ehEntrada && ehConta(editando),
+            pagoEm: editando.pago_em ?? null,
           }}
         />
       )}

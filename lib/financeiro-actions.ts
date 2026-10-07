@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, createClient, createAdminClient } from './supabase/server'
 import { validarNomeEntidade, normalizarNome } from './config-entidades'
-import type { ResultadoFormaPagamento } from './financeiro-movimentos'
+import { ehConta, type ResultadoFormaPagamento } from './financeiro-movimentos'
 import { hojeISO } from './mes-atual'
 import { separarEmails } from './financeiro-aviso-vencimento'
 import { enviarAvisoVencimento } from './financeiro-aviso-vencimento-envio'
@@ -418,14 +418,36 @@ export async function atualizarMovimento(input: {
   valor: number
   data: string
   observacao: string | null
+  /**
+   * Só conta já paga: corrige o dia do pagamento (a `data` dela é o
+   * vencimento). Em lançamento avulso é ignorado: lá o dia do pagamento é a
+   * própria data.
+   */
+  pagoEm?: string
 }): Promise<{ error: string | null }> {
   if (!input.tipoId) return { error: 'Selecione o tipo.' }
   if (!input.data) return { error: 'Selecione a data.' }
   if (!Number.isFinite(input.valor) || input.valor <= 0) return { error: 'Informe um valor válido.' }
+  if (input.pagoEm !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.pagoEm)) return { error: 'Informe o dia do pagamento.' }
+    if (input.pagoEm > hojeISO()) return { error: 'O dia do pagamento não pode ser depois de hoje.' }
+  }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
+
+  // A hora guardada é a do clique em Pagar: com outro dia ela deixa de valer.
+  // Mesmo dia: não toca em nada, a hora continua.
+  let pagamento: { pago_em: string; pago_em_hora: null } | null = null
+  if (input.pagoEm !== undefined) {
+    const { data: atual, error: erroAtual } = await supabase.from('financeiro_movimentos')
+      .select('pago, pago_em, recorrencia_id, competencia').eq('id', input.id).maybeSingle()
+    if (erroAtual) return { error: erroAtual.message }
+    if (atual?.pago && ehConta(atual) && atual.pago_em !== input.pagoEm) {
+      pagamento = { pago_em: input.pagoEm, pago_em_hora: null }
+    }
+  }
 
   const campos = {
     tipo_id: input.tipoId,
@@ -433,6 +455,7 @@ export async function atualizarMovimento(input: {
     valor: input.valor,
     data: input.data,
     observacao: input.observacao,
+    ...pagamento,
   }
 
   const { error } = await supabase.from('financeiro_movimentos').update(campos).eq('id', input.id)

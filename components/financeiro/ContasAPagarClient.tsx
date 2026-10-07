@@ -62,9 +62,15 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje }: Props) {
   const [erroExcluir, setErroExcluir] = useState<string | null>(null)
   const [erroPagar, setErroPagar] = useState<string | null>(null)
   // Última conta paga, com o botão Desfazer: o Toast do projeto não tem ação.
-  // Guarda o mês junto: o aviso só aparece enquanto o seletor está nele.
-  const [pagaAgora, setPagaAgora] = useState<{ id: string; tipo: string; vencimento: string; mes: number; ano: number } | null>(null)
-  const desfazer = pagaAgora && pagaAgora.mes === mes && pagaAgora.ano === ano ? pagaAgora : null
+  const [desfazer, setPagaAgora] = useState<{ id: string; tipo: string; vencimento: string } | null>(null)
+  // Trocou o mês no seletor: o aviso some de vez (não volta ao retornar ao
+  // mês). Ajuste de estado durante a renderização, sem effect.
+  const mesDoSeletor = `${ano}-${mes}`
+  const [mesVisto, setMesVisto] = useState(mesDoSeletor)
+  if (mesVisto !== mesDoSeletor) {
+    setMesVisto(mesDoSeletor)
+    setPagaAgora(null)
+  }
   const [isPending, startTransition] = useTransition()
   const [busca, setBusca] = useState('')
   const [ordenacao, setOrdenacao] = useState<Ordenacao>('data_asc')
@@ -97,7 +103,7 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje }: Props) {
     startTransition(async () => {
       const { error } = await definirPagamentoConfirmado(m.id, true)
       if (error) { setErroPagar(error); return }
-      setPagaAgora({ id: m.id, tipo: m.tipo_nome, vencimento: formatarDdMm(m.data).slice(0, 5), mes, ano })
+      setPagaAgora({ id: m.id, tipo: m.tipo_nome, vencimento: formatarDdMm(m.data).slice(0, 5) })
       router.refresh()
     })
   }

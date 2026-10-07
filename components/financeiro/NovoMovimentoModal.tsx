@@ -7,6 +7,7 @@ import {
   criarFinanceiroTipo, criarFinanceiroCentroCusto, atualizarConta,
 } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
+import { hojeISO } from '@/lib/mes-atual'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from '@/lib/types'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -28,6 +29,8 @@ export interface MovimentoParaEditar {
   conta?: boolean
   /** Conta já paga (Pagamentos): a data é o vencimento e o tipo fica travado, mas salvar usa atualizarMovimento. */
   contaPaga?: boolean
+  /** Dia em que a conta foi paga (só em conta já paga): dá para corrigir. */
+  pagoEm?: string | null
 }
 
 interface Props {
@@ -59,6 +62,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
   const [tipoId, setTipoId] = useState(movimento?.tipoId ?? '')
   const [valor, setValor] = useState(movimento ? String(movimento.valor) : '')
   const [data, setData] = useState(movimento?.data ?? '')
+  const [pagoEm, setPagoEm] = useState(movimento?.pagoEm ?? '')
   const [centroCustoId, setCentroCustoId] = useState(movimento?.centroCustoId ?? '')
   const [observacao, setObservacao] = useState(movimento?.observacao ?? '')
 
@@ -157,13 +161,15 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
 
   const ehEdicaoDeConta = movimento?.conta === true
   // Em conta (paga ou não) a data é o vencimento e o tipo não muda.
-  const ehConta = ehEdicaoDeConta || movimento?.contaPaga === true
+  const ehContaPaga = movimento?.contaPaga === true
+  const ehConta = ehEdicaoDeConta || ehContaPaga
 
   async function handleSave() {
     const valorNumerico = Number(valor.replace(',', '.'))
     if (!tipoId) { setErro('Selecione o tipo.'); return }
     if (!data) { setErro('Selecione a data.'); return }
     if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) { setErro('Informe um valor válido.'); return }
+    if (ehContaPaga && !pagoEm) { setErro('Informe o dia do pagamento.'); return }
 
     setSaving(true)
     setErro(null)
@@ -186,6 +192,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           valor: valorNumerico,
           data,
           observacao: observacao.trim() || null,
+          pagoEm: ehContaPaga ? pagoEm : undefined,
         })
       : await criarMovimento({
           natureza,
@@ -284,6 +291,11 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
             />
           )}
         </Field>
+        {ehContaPaga && (
+          <Field rotulo="Pago em" obrigatorio ajuda="Dia em que o pagamento foi feito. Ao mudar o dia, a hora registrada deixa de aparecer.">
+            {c => <Input id={c.id} type="date" value={pagoEm} max={hojeISO()} onChange={e => setPagoEm(e.target.value)} />}
+          </Field>
+        )}
       </div>
 
       <div className="relative">

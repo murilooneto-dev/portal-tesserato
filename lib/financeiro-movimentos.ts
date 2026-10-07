@@ -71,6 +71,22 @@ export function contaApareceNoMes(data: string, primeiroDia: string, hoje: strin
   return data >= primeiroDia || data < hoje
 }
 
+/**
+ * Ordena Pagamentos pelo que foi pago mais recentemente. Compara o dia
+ * (pago_em já é o dia em São Paulo, com ou sem hora guardada) e só usa a hora
+ * para desempatar dentro do mesmo dia: comparar a hora direto com o dia
+ * misturaria UTC com data local e poria um pagamento das 22h acima dos do dia
+ * seguinte que não têm hora.
+ */
+export function compararPorPagamento(
+  a: { data: string; pago_em?: string | null; pago_em_hora?: string | null; created_at: string },
+  b: { data: string; pago_em?: string | null; pago_em_hora?: string | null; created_at: string },
+): number {
+  return (b.pago_em ?? b.data).localeCompare(a.pago_em ?? a.data)
+    || (b.pago_em_hora ?? '').localeCompare(a.pago_em_hora ?? '')
+    || b.created_at.localeCompare(a.created_at)
+}
+
 /** O que a função do banco `financeiro_definir_forma_pagamento` devolve. */
 export interface ResultadoFormaPagamento {
   criadas: number
