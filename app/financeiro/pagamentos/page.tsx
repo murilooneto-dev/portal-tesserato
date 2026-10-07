@@ -1,33 +1,36 @@
 import { createClient } from '@/lib/supabase/server'
 import { buscarEmBlocos, intervaloDoMes } from '@/lib/financeiro-movimentos'
-import { hojeISO } from '@/lib/mes-atual'
 import { getMesAno } from '@/lib/mes-atual-server'
+import type { FinanceiroFormaPagamento } from '@/lib/types'
 import MovimentoListClient, { type MovimentoLinha } from '@/components/financeiro/MovimentoListClient'
 
 export const metadata = { title: 'Pagamentos — Tesserato Financeiro' }
 
 interface LinhaBanco {
   id: string; tipo_id: string; centro_custo_id: string | null; valor: number; data: string; observacao: string | null; created_at: string; recorrencia_id: string | null; pago: boolean
-  financeiro_tipos: { nome: string } | null
+  pago_em: string | null; pago_em_hora: string | null; competencia: string | null
+  financeiro_tipos: { nome: string; forma_pagamento: FinanceiroFormaPagamento } | null
   financeiro_centros_custo: { nome: string } | null
 }
 
 export default async function PagamentosPage() {
   const supabase = await createClient()
 
-  // Só o mês escolhido no seletor do portal (por padrão, o mês atual): um
-  // lançamento com data em novembro não aparece na lista de outubro.
+  // Histórico do que foi pago: só o mês escolhido no seletor do portal (por
+  // padrão, o mês atual), pelo dia em que o pagamento aconteceu (pago_em). Conta
+  // ainda não paga fica em Contas a pagar, não aqui.
   const { mes, ano } = await getMesAno()
   const { inicio: primeiroDia, fim: ultimoDia } = intervaloDoMes(mes, ano)
 
-  // Todos os lançamentos do mês, em blocos de 1000: a busca, a ordenação e o
-  // total da tela valem para o mês inteiro (antes parava em 200 sem aviso).
+  // Todos os pagamentos do mês, em blocos de 1000: a busca, a ordenação e o
+  // total da tela valem para o mês inteiro.
   const linhas = await buscarEmBlocos<LinhaBanco>((inicio, fim) => supabase
     .from('financeiro_movimentos')
-    .select('id, tipo_id, centro_custo_id, valor, data, observacao, created_at, recorrencia_id, pago, financeiro_tipos(nome), financeiro_centros_custo(nome)')
+    .select('id, tipo_id, centro_custo_id, valor, data, observacao, created_at, recorrencia_id, pago, pago_em, pago_em_hora, competencia, financeiro_tipos(nome, forma_pagamento), financeiro_centros_custo(nome)')
     .eq('natureza', 'saida')
-    .gte('data', primeiroDia)
-    .lte('data', ultimoDia)
+    .eq('pago', true)
+    .gte('pago_em', primeiroDia)
+    .lte('pago_em', ultimoDia)
     .order('created_at', { ascending: false })
     .order('id', { ascending: true })
     .range(inicio, fim)
@@ -43,9 +46,13 @@ export default async function PagamentosPage() {
     created_at: r.created_at,
     recorrencia_id: r.recorrencia_id,
     pago: r.pago,
+    pago_em: r.pago_em,
+    pago_em_hora: r.pago_em_hora,
+    competencia: r.competencia,
     tipo_nome: r.financeiro_tipos?.nome ?? '—',
+    tipo_forma: r.financeiro_tipos?.forma_pagamento ?? null,
     centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
   }))
 
-  return <MovimentoListClient natureza="saida" movimentos={movimentos} mes={mes} ano={ano} hoje={hojeISO()} />
+  return <MovimentoListClient natureza="saida" movimentos={movimentos} mes={mes} ano={ano} />
 }

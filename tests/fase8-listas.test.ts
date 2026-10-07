@@ -150,7 +150,7 @@ test('botões flutuantes sem barra inferior no tablet e abaixo do aviso no celul
 
 test('movimentos e procedimentos: Filtros no celular, vazios com Limpar e esqueleto', () => {
   const mov = ler(MOVIMENTOS)
-  tem(mov, ['aria-controls="filtros-movimentos"', "ordenacao !== 'lancamento' && 'border-acc text-acc-text'", "!filtrosAbertos && 'max-sm:hidden'",
+  tem(mov, ['aria-controls="filtros-movimentos"', "ordenacao !== ordenacaoPadrao && 'border-acc text-acc-text'", "!filtrosAbertos && 'max-sm:hidden'",
     'Nenhum lançamento com essa busca', 'Limpar busca'])
   const proc = ler(PROCEDIMENTOS)
   tem(proc, ["statusFiltro !== 'TODOS' && 'border-acc text-acc-text'", 'Nenhum procedimento com esses filtros', 'Limpar filtros',

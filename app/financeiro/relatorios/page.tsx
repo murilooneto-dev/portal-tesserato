@@ -9,7 +9,7 @@ interface Props {
 }
 
 interface LinhaBanco {
-  id: string; natureza: 'entrada' | 'saida'; valor: number; data: string; observacao: string | null
+  id: string; natureza: 'entrada' | 'saida'; valor: number; pago_em: string; observacao: string | null
   financeiro_tipos: { nome: string } | null
   financeiro_centros_custo: { nome: string } | null
 }
@@ -32,18 +32,19 @@ export default async function RelatoriosFinanceiroPage({ searchParams }: Props) 
   const linhas = await buscarEmBlocos<LinhaBanco>((inicio, fim) => {
     let query = supabase
       .from('financeiro_movimentos')
-      .select('id, natureza, valor, data, observacao, financeiro_tipos(nome), financeiro_centros_custo(nome)')
-      // Só o que aconteceu de fato: pagamento previsto (recorrente ainda não
-      // confirmado) não entra no relatório nem nos totais.
+      .select('id, natureza, valor, pago_em, observacao, financeiro_tipos(nome), financeiro_centros_custo(nome)')
+      // Só o que aconteceu de fato: conta ainda não paga não entra no relatório
+      // nem nos totais. O período vale para o dia do pagamento (pago_em), não
+      // para o vencimento.
       .eq('pago', true)
-      .order('data', { ascending: false })
+      .order('pago_em', { ascending: false })
       .order('id', { ascending: true })
 
     if (natureza) query = query.eq('natureza', natureza)
     if (tipoId) query = query.eq('tipo_id', tipoId)
     if (centroCustoId) query = query.eq('centro_custo_id', centroCustoId)
-    if (de) query = query.gte('data', de)
-    if (ate) query = query.lte('data', ate)
+    if (de) query = query.gte('pago_em', de)
+    if (ate) query = query.lte('pago_em', ate)
 
     return query.range(inicio, fim).overrideTypes<LinhaBanco[], { merge: false }>()
   })
@@ -52,7 +53,7 @@ export default async function RelatoriosFinanceiroPage({ searchParams }: Props) 
     id: r.id,
     natureza: r.natureza,
     valor: r.valor,
-    data: r.data,
+    data: r.pago_em,
     observacao: r.observacao,
     tipo_nome: r.financeiro_tipos?.nome ?? '—',
     centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,

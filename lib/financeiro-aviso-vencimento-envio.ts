@@ -1,7 +1,7 @@
 // lib/financeiro-aviso-vencimento-envio.ts
 //
-// Aviso de vencimento do Financeiro: consulta os pagamentos recorrentes que
-// vencem amanhã e ainda não foram confirmados, e manda o e-mail. Usado pelo
+// Aviso de vencimento do Financeiro: consulta as contas a pagar (saídas não
+// pagas) que vencem amanhã e manda o e-mail. Usado pelo
 // envio agendado (app/api/cron/financeiro-aviso-vencimento) e pelo botão
 // "Enviar teste agora" de Configurações do Financeiro. Só no servidor.
 
@@ -31,7 +31,6 @@ async function buscarPagamentosQueVencem(admin: Admin, vencimento: string): Prom
     .select('valor, data, observacao, financeiro_tipos(nome)')
     .eq('natureza', 'saida')
     .eq('pago', false)
-    .not('recorrencia_id', 'is', null)
     .eq('data', vencimento)
   if (error) throw new Error(error.message)
 
@@ -62,7 +61,7 @@ async function enviarEmail(destinatarios: string[], email: { subject: string; te
 }
 
 /**
- * Manda o aviso dos pagamentos recorrentes que vencem amanhã.
+ * Manda o aviso das contas a pagar que vencem amanhã.
  * - Envio agendado (`teste: false`): só manda se houver o que avisar e se
  *   ainda não mandou hoje. O dia é reservado no banco ANTES do envio (duas
  *   chamadas simultâneas não mandam em dobro) e devolvido se o envio falhar.

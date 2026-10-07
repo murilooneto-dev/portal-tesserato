@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { List, Pencil, Plus, Power, Trash2 } from 'lucide-react'
-import type { FinanceiroNatureza } from '@/lib/types'
+import { CalendarClock, List, Pencil, Plus, Power, Trash2 } from 'lucide-react'
+import type { FinanceiroNatureza, FinanceiroTipo } from '@/lib/types'
 import {
   listarFinanceiroTipos, criarFinanceiroTipo, renomearFinanceiroTipo, alternarAtivoFinanceiroTipo, excluirFinanceiroTipo,
   listarFinanceiroCentrosCusto, criarFinanceiroCentroCusto, renomearFinanceiroCentroCusto, alternarAtivoFinanceiroCentroCusto, excluirFinanceiroCentroCusto,
 } from '@/lib/financeiro-actions'
 import { ordenarPorNome } from '@/lib/config-entidades'
+import { formatarValor } from '@/lib/financeiro-movimentos'
+import FormaPagamentoModal from './FormaPagamentoModal'
 import MenuMaisAcoes from '@/components/geral/MenuMaisAcoes'
 import { Card } from '@/components/ui/Card'
 import { Tabela, Th, Td } from '@/components/ui/Tabela'
@@ -22,7 +24,26 @@ import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/components/ui/cn'
 
-interface Item { id: string; nome: string; ativo: boolean; natureza?: FinanceiroNatureza | null }
+interface Item {
+  id: string; nome: string; ativo: boolean; natureza?: FinanceiroNatureza | null
+  // Só o tipo de saída tem forma de pagamento.
+  forma_pagamento?: FinanceiroTipo['forma_pagamento']
+  valor_padrao?: FinanceiroTipo['valor_padrao']
+  dia_vencimento?: FinanceiroTipo['dia_vencimento']
+  mes_inicio?: FinanceiroTipo['mes_inicio']
+  qtd_meses?: FinanceiroTipo['qtd_meses']
+}
+
+function textoForma(item: Item): string {
+  const valor = item.valor_padrao != null ? formatarValor(item.valor_padrao) : null
+  const dia = item.dia_vencimento != null ? `dia ${item.dia_vencimento}` : null
+  if (item.forma_pagamento === 'recorrente') return ['Recorrente', valor, dia].filter(Boolean).join(' · ')
+  if (item.forma_pagamento === 'prazo') {
+    const meses = item.qtd_meses != null ? `${item.qtd_meses} ${item.qtd_meses === 1 ? 'mês' : 'meses'}` : null
+    return ['Prazo determinado', meses, valor, dia].filter(Boolean).join(' · ')
+  }
+  return 'Avulso'
+}
 
 interface Props {
   tipo: 'tipos' | 'centro_custo'
@@ -43,8 +64,10 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label, mostrada 
   const [salvandoNovo, setSalvandoNovo] = useState(false)
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [nomeEditado, setNomeEditado] = useState('')
+  const [formaDe, setFormaDe] = useState<Item | null>(null)
 
   const ehCentro = tipo === 'centro_custo'
+  const comForma = tipo === 'tipos' && natureza === 'saida'
   const tituloColuna = ehCentro ? 'Centro de custo' : label.charAt(0).toUpperCase() + label.slice(1)
 
   // O estado já começa em "carregando": só grava estado depois que a consulta
@@ -142,10 +165,11 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label, mostrada 
           <EmptyState compacto icone={<List size={24} />} titulo={`Nenhum ${label} cadastrado ainda`} descricao="Crie pelo campo acima." />
         ) : (
           <div className="relative overflow-x-auto xl:overflow-visible">
-            <Tabela className="min-w-[480px]">
+            <Tabela className={comForma ? 'min-w-[720px]' : 'min-w-[480px]'}>
               <thead>
                 <tr>
                   <Th>{tituloColuna}</Th>
+                  {comForma && <Th largura={260}>Forma de pagamento</Th>}
                   <Th largura={160}>Situação</Th>
                   <Th largura={56}><span className="sr-only">Mais ações</span></Th>
                 </tr>
@@ -180,12 +204,20 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label, mostrada 
                         </span>
                       )}
                     </Td>
+                    {comForma && (
+                      <Td>
+                        <span className={item.forma_pagamento && item.forma_pagamento !== 'avulso' ? 'text-sm text-fg' : 'text-sm text-fg-3'}>
+                          {textoForma(item)}
+                        </span>
+                      </Td>
+                    )}
                     <Td>{item.ativo ? <Badge tom="ok">Ativo</Badge> : <Badge tom="neu">Desativado</Badge>}</Td>
                     <Td alinhar="dir" className="px-2">
                       <div className="flex justify-end">
                         <MenuMaisAcoes
-                          rotulo={`Renomear, desativar ou excluir ${item.nome}`}
+                          rotulo={comForma ? `Forma de pagamento, renomear, desativar ou excluir ${item.nome}` : `Renomear, desativar ou excluir ${item.nome}`}
                           itens={[
+                            ...(comForma ? [{ rotulo: 'Forma de pagamento', icone: <CalendarClock size={16} aria-hidden="true" />, onSelecionar: () => setFormaDe(item) }] : []),
                             { rotulo: 'Renomear', icone: <Pencil size={16} aria-hidden="true" />, onSelecionar: () => { setEditandoId(item.id); setNomeEditado(item.nome) } },
                             { rotulo: item.ativo ? 'Desativar' : 'Ativar', icone: <Power size={16} aria-hidden="true" />, onSelecionar: () => handleAlternarAtivo(item) },
                             { rotulo: 'Excluir', icone: <Trash2 size={16} aria-hidden="true" />, perigo: true, onSelecionar: () => handleExcluir(item) },
@@ -200,6 +232,14 @@ export default function FinanceiroCatalogoTab({ tipo, natureza, label, mostrada 
           </div>
         )}
       </Card>
+
+      {formaDe && (
+        <FormaPagamentoModal
+          tipo={{ ...formaDe, natureza }}
+          onClose={() => setFormaDe(null)}
+          onSalvo={async () => { setFormaDe(null); avisar('Forma de pagamento salva.', 'ok'); await recarregar() }}
+        />
+      )}
     </div>
   )
 }

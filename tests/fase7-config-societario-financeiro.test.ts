@@ -159,7 +159,7 @@ test('catálogos do Financeiro: desenho a-05 e mesmas actions', () => {
     'placeholder={`Nome do novo ${label}`}', "ehCentro ? 'Criar centro de custo' : 'Criar tipo'", "if (e.key === 'Enter') handleCriar()",
     'relative overflow-x-auto xl:overflow-visible', '<Th>{tituloColuna}</Th>', "ehCentro ? 'Centro de custo'",
     '<Th largura={160}>Situação</Th>', '<Th largura={56}>', '<Badge tom="ok">Ativo</Badge>', '<Badge tom="neu">Desativado</Badge>',
-    "'text-fg-3 line-through'", 'rotulo={`Renomear, desativar ou excluir ${item.nome}`}', "rotulo: 'Renomear'",
+    "'text-fg-3 line-through'", '`Renomear, desativar ou excluir ${item.nome}`', 'Forma de pagamento, renomear, desativar ou excluir ${item.nome}', "rotulo: 'Renomear'",
     "rotulo: item.ativo ? 'Desativar' : 'Ativar'", "rotulo: 'Excluir'", 'perigo: true',
     "if (e.key === 'Enter') handleRenomear(item.id)", '(sem categoria — item antigo)', 'ehCentro && !item.natureza',
     '<EmptyState', '<Aviso tom="dng">{erro}</Aviso>', 'Excluir "${item.nome}"?',

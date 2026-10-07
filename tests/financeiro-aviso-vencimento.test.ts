@@ -1,4 +1,4 @@
-// tests/financeiro-aviso-vencimento.test.ts — aviso por e-mail dos pagamentos recorrentes que vencem amanhã.
+// tests/financeiro-aviso-vencimento.test.ts — aviso por e-mail das contas a pagar que vencem amanhã.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -37,7 +37,7 @@ test('montarEmailAviso lista Pagamento, Data de vencimento e Valor, com o total'
   ], '2026-10-07')
 
   assert.equal(subject, 'Pagamentos que vencem amanhã (07/10)')
-  assert.match(text, /2 pagamentos recorrentes vencem amanhã, 07\/10\/2026/)
+  assert.match(text, /2 contas a pagar vencem amanhã, 07\/10\/2026, e ainda não foram pagas:/)
   assert.match(text, /- Aluguel · Sala 2 \| 07\/10\/2026 \| R\$\s1\.750,00/)
   assert.match(text, /Total: R\$\s1\.949,90/)
   for (const coluna of ['Pagamento', 'Data de vencimento', 'Valor']) assert.ok(html.includes(`>${coluna}</th>`))
@@ -48,18 +48,18 @@ test('montarEmailAviso lista Pagamento, Data de vencimento e Valor, com o total'
 
 test('montarEmailAviso: um só pagamento no singular; teste marca o assunto e aceita lista vazia', () => {
   const um = montarEmailAviso([{ tipo: 'Aluguel', observacao: null, data: '2026-10-07', valor: 10 }], '2026-10-07')
-  assert.match(um.text, /^1 pagamento recorrente vence amanhã/)
+  assert.match(um.text, /^1 conta a pagar vence amanhã, 07\/10\/2026, e ainda não foi paga:/)
 
   const vazio = montarEmailAviso([], '2026-10-07', { teste: true })
   assert.equal(vazio.subject, '[Teste] Pagamentos que vencem amanhã (07/10)')
-  assert.match(vazio.text, /Nenhum pagamento recorrente a pagar vence em 07\/10\/2026/)
+  assert.match(vazio.text, /Nenhuma conta a pagar vence em 07\/10\/2026\./)
 })
 
-test('envio: só recorrente de saída não confirmado, reserva o dia antes de mandar e devolve se falhar', () => {
+test('envio: toda saída não paga (não só recorrente), reserva o dia antes de mandar e devolve se falhar', () => {
   const src = ler('lib/financeiro-aviso-vencimento-envio.ts')
   assert.ok(src.includes(".eq('natureza', 'saida')"))
   assert.ok(src.includes(".eq('pago', false)"))
-  assert.ok(src.includes(".not('recorrencia_id', 'is', null)"))
+  assert.ok(!src.includes('recorrencia_id'), 'não filtra mais só o recorrente')
   assert.ok(src.includes(".eq('data', vencimento)"))
   assert.ok(src.indexOf('aviso_vencimento_ultimo_envio.lt.') < src.lastIndexOf('await enviarEmail('), 'reserva vem antes do envio')
   assert.ok(src.includes('update({ aviso_vencimento_ultimo_envio: anterior })'))
@@ -70,6 +70,12 @@ test('rota agendada exige CRON_SECRET, passa pelo proxy sem sessão e está no v
   assert.ok(rota.includes('process.env.CRON_SECRET'))
   assert.ok(rota.includes('!segredo ||'), 'sem a variável configurada, recusa tudo')
   assert.ok(rota.includes('status: 401'))
+  assert.ok(rota.includes("rpc('financeiro_renovar_recorrentes')"), 'renova as contas recorrentes antes do e-mail')
+  assert.ok(rota.indexOf('financeiro_renovar_recorrentes') < rota.indexOf('enviarAvisoVencimento(admin)'))
+  assert.ok(rota.includes('renovadas = Number(resultado.criadas)'), 'renovadas = criadas')
+  assert.ok(rota.includes('renovacao_falhas'), 'falhas da renovação aparecem na resposta')
+  assert.ok(rota.includes('tipo(s) falharam'), 'falhas da renovação vão para o log')
+  assert.ok(rota.includes('renovadas, ...falhas }, { status: 500 }'), 'o 500 também leva renovadas')
   assert.ok(ler('proxy.ts').includes("pathname.startsWith('/api/cron/')"))
 
   const vercel = JSON.parse(ler('vercel.json'))
