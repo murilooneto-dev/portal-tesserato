@@ -3,11 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, createClient, createAdminClient } from './supabase/server'
 import { validarNomeEntidade, normalizarNome } from './config-entidades'
-import { datasRecorrentes, datasSeguintesDaSerie } from './financeiro-movimentos'
+import { datasRecorrentes, datasSeguintesDaSerie, type ResultadoFormaPagamento } from './financeiro-movimentos'
 import { hojeISO } from './mes-atual'
 import { separarEmails } from './financeiro-aviso-vencimento'
 import { enviarAvisoVencimento } from './financeiro-aviso-vencimento-envio'
-import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from './types'
+import type { FinanceiroNatureza, FinanceiroFormaPagamento, FinanceiroTipo,FinanceiroCentroCusto } from './types'
 
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
 
@@ -46,12 +46,65 @@ export async function listarFinanceiroTipos(
 
   const { data, error: queryError } = await supabase
     .from('financeiro_tipos')
-    .select('id, natureza, nome, ativo')
+    .select('id, natureza, nome, ativo, forma_pagamento, valor_padrao, dia_vencimento, mes_inicio, qtd_meses')
     .eq('natureza', natureza)
     .order('nome')
 
   if (queryError) return { data: [], error: queryError.message }
   return { data: (data ?? []) as FinanceiroTipo[], error: null }
+}
+
+export interface FormaPagamentoInput {
+  tipoId: string
+  forma: FinanceiroFormaPagamento
+  valor: number | null
+  dia: number | null
+  /** YYYY-MM-01 */
+  mesInicio: string | null
+  qtdMeses: number | null
+}
+
+// Parâmetros da função do banco (migration 065). Com p_simular só devolve as
+// contagens do que mudaria; sem ele grava de verdade, numa transação só.
+function parametrosForma(input: FormaPagamentoInput, simular: boolean) {
+  return {
+    p_tipo_id: input.tipoId,
+    p_forma: input.forma,
+    p_valor: input.valor,
+    p_dia: input.dia,
+    p_mes_inicio: input.mesInicio,
+    p_qtd_meses: input.qtdMeses,
+    p_simular: simular,
+  }
+}
+
+/** Simula a troca de forma de pagamento do tipo: não grava nada. */
+export async function previaFormaPagamentoTipo(
+  input: FormaPagamentoInput,
+): Promise<{ data: ResultadoFormaPagamento | null; error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { data: null, error }
+
+  const { data, error: rpcError } = await supabase.rpc('financeiro_definir_forma_pagamento', parametrosForma(input, true))
+  // A mensagem do `raise exception` do banco já vem em português.
+  if (rpcError) return { data: null, error: rpcError.message }
+  return { data: data as ResultadoFormaPagamento, error: null }
+}
+
+/** Grava a forma de pagamento do tipo e cria/ajusta/apaga as contas não pagas. */
+export async function definirFormaPagamentoTipo(
+  input: FormaPagamentoInput,
+): Promise<{ data: ResultadoFormaPagamento | null; error: string | null }> {
+  const { error, supabase } = await exigirAdmin()
+  if (error || !supabase) return { data: null, error }
+
+  const { data, error: rpcError } = await supabase.rpc('financeiro_definir_forma_pagamento', parametrosForma(input, false))
+  if (rpcError) return { data: null, error: rpcError.message }
+
+  revalidatePath('/admin/configuracoes/financeiro')
+  revalidatePath('/financeiro/contas-a-pagar')
+  revalidatePath('/financeiro/pagamentos')
+  return { data: data as ResultadoFormaPagamento, error: null }
 }
 
 export async function criarFinanceiroTipo(
@@ -456,15 +509,56 @@ export async function definirPagamentoConfirmado(id: string, pago: boolean): Pro
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  const { data: alterados, error } = await supabase.from('financeiro_movimentos')
-    .update({ pago, pago_em: pago ? hojeISO() : null })
+  // `.eq('pago', !pago)`: só muda quem está no estado oposto. Um segundo clique
+  // (ou outra aba) não acha linha e não troca a hora do primeiro pagamento.
+  let consulta = supabase.from('financeiro_movimentos')
+    .update(pago
+      ? { pago: true, pago_em: hojeISO(), pago_em_hora: new Date().toISOString() }
+      : { pago: false, pago_em: null, pago_em_hora: null })
     .eq('id', id)
     .eq('natureza', 'saida')
+    .eq('pago', !pago)
+  // Desfazer só vale para conta a pagar; lançamento avulso nasce pago e fica assim.
+  if (!pago) consulta = consulta.or('recorrencia_id.not.is.null,competencia.not.is.null')
+  const { data: alterados, error } = await consulta.select('id')
+
+  if (error) return { error: error.message }
+  if (!alterados || alterados.length === 0) {
+    return { error: pago ? 'Esta conta já foi paga ou não existe mais.' : 'Só dá para desfazer o pagamento de uma conta a pagar.' }
+  }
+
+  revalidatePath('/financeiro/pagamentos')
+  revalidatePath('/financeiro/contas-a-pagar')
+  revalidatePath('/financeiro/relatorios')
+  return { error: null }
+}
+
+/** Edita uma conta ainda não paga (valor, data, centro de custo, observação) sem mexer no tipo. */
+export async function atualizarConta(input: {
+  id: string
+  centroCustoId: string | null
+  valor: number
+  data: string
+  observacao: string | null
+}): Promise<{ error: string | null }> {
+  if (!input.data) return { error: 'Selecione a data.' }
+  if (!Number.isFinite(input.valor) || input.valor <= 0) return { error: 'Informe um valor válido.' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const { data: alterados, error } = await supabase.from('financeiro_movimentos')
+    .update({ centro_custo_id: input.centroCustoId, valor: input.valor, data: input.data, observacao: input.observacao })
+    .eq('id', input.id)
+    .eq('natureza', 'saida')
+    .eq('pago', false)
     .select('id')
 
   if (error) return { error: error.message }
-  if (!alterados || alterados.length === 0) return { error: 'Pagamento não encontrado.' }
+  if (!alterados || alterados.length === 0) return { error: 'Conta não encontrada ou já paga.' }
 
+  revalidatePath('/financeiro/contas-a-pagar')
   revalidatePath('/financeiro/pagamentos')
   revalidatePath('/financeiro/relatorios')
   return { error: null }
@@ -495,6 +589,7 @@ export async function excluirMovimento(
   if (error) return { error: error.message }
 
   revalidatePath(natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')
+  if (natureza === 'saida') revalidatePath('/financeiro/contas-a-pagar')
   revalidatePath('/financeiro/relatorios')
   return { error: null }
 }

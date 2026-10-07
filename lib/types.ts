@@ -235,11 +235,20 @@ export interface ProcedimentoArquivo {
 
 export type FinanceiroNatureza = 'entrada' | 'saida'
 
+export type FinanceiroFormaPagamento = 'avulso' | 'recorrente' | 'prazo'
+
 export interface FinanceiroTipo {
   id: string
   natureza: FinanceiroNatureza
   nome: string
   ativo: boolean
+  // Só tipos de saída usam: como a conta daquele tipo é gerada (migration 065).
+  forma_pagamento?: FinanceiroFormaPagamento
+  valor_padrao?: number | null
+  dia_vencimento?: number | null
+  /** Primeiro mês da série, sempre YYYY-MM-01. */
+  mes_inicio?: string | null
+  qtd_meses?: number | null
 }
 
 export interface FinanceiroCentroCusto {

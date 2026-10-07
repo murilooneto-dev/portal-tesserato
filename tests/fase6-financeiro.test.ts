@@ -77,7 +77,7 @@ test('situacaoPagamento: a pagar até o dia do vencimento, vencido depois', () =
 test('pagamento previsto: recorrente nasce a pagar, confirma na lista e fica fora do relatório', () => {
   const actions = ler('lib/financeiro-actions.ts')
   for (const t of ['pago: recorrenciaId === null', 'export async function definirPagamentoConfirmado(id: string, pago: boolean)',
-    'pago_em: pago ? hojeISO() : null', ".eq('natureza', 'saida')"]) assert.ok(actions.includes(t), t)
+    'pago_em: hojeISO()', ".eq('natureza', 'saida')"]) assert.ok(actions.includes(t), t)
   const lista = ler(LISTA)
   for (const t of ['definirPagamentoConfirmado(id, pago)', "rotulo: 'Confirmar pagamento'", "rotulo: 'Desfazer confirmação'",
     'situacaoPagamento(m, hoje)', '>Vencido</Badge>', '>A pagar</Badge>', '>Pago</Badge>', 'a pagar <b']) assert.ok(lista.includes(t), t)
