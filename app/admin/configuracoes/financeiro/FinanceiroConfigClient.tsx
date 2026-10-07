@@ -6,6 +6,7 @@ import { Caminho } from '@/components/ui/Caminho'
 import { Abas } from '@/components/ui/Abas'
 import FinanceiroCatalogoTab from './FinanceiroCatalogoTab'
 import TarefasFinanceiroTab from './TarefasFinanceiroTab'
+import GruposTarefasFinanceiroTab from './GruposTarefasFinanceiroTab'
 import AvisoVencimentoTab from './AvisoVencimentoTab'
 
 export default function FinanceiroConfigClient() {
@@ -23,6 +24,7 @@ export default function FinanceiroConfigClient() {
           { id: 'centro_custo_recebimento', rotulo: 'Centros de custo · recebimento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="entrada" label="centro de custo de recebimento" mostrada={trocas} /> },
           { id: 'centro_custo_pagamento', rotulo: 'Centros de custo · pagamento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="saida" label="centro de custo de pagamento" mostrada={trocas} /> },
           { id: 'tarefas', rotulo: 'Tarefas', conteudo: <TarefasFinanceiroTab /> },
+          { id: 'grupos_tarefas', rotulo: 'Grupos de tarefas', conteudo: <GruposTarefasFinanceiroTab mostrada={trocas} /> },
           { id: 'aviso_vencimento', rotulo: 'Aviso de vencimento', conteudo: <AvisoVencimentoTab /> },
         ]}
       />
