@@ -157,6 +157,14 @@ export interface TarefaGrupo {
   tarefas: string[]
 }
 
+// Grupo de tarefas de um setor (tarefa_grupos_setor, migration 066): vale para
+// todos os clientes do setor. `tarefas` guarda nomes de tarefa_tipos.
+export interface GrupoSetor {
+  id: string
+  nome: string
+  tarefas: string[]
+}
+
 export interface TarefaEtapa {
   id: string
   tarefa_id: string
@@ -235,11 +243,20 @@ export interface ProcedimentoArquivo {
 
 export type FinanceiroNatureza = 'entrada' | 'saida'
 
+export type FinanceiroFormaPagamento = 'avulso' | 'recorrente' | 'prazo'
+
 export interface FinanceiroTipo {
   id: string
   natureza: FinanceiroNatureza
   nome: string
   ativo: boolean
+  // Só tipos de saída usam: como a conta daquele tipo é gerada (migration 065).
+  forma_pagamento?: FinanceiroFormaPagamento
+  valor_padrao?: number | null
+  dia_vencimento?: number | null
+  /** Primeiro mês da série, sempre YYYY-MM-01. */
+  mes_inicio?: string | null
+  qtd_meses?: number | null
 }
 
 export interface FinanceiroCentroCusto {
@@ -261,5 +278,9 @@ export interface FinanceiroMovimento {
   recorrencia_id: string | null
   pago: boolean
   pago_em: string | null
+  /** Data e hora do pagamento, só nas contas pagas pelo botão Pagar. */
+  pago_em_hora: string | null
+  /** Mês (YYYY-MM-01) da conta criada pelo Tipo de Saída; nulo nos demais. */
+  competencia: string | null
   created_at: string
 }

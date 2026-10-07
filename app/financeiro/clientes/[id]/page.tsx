@@ -11,6 +11,7 @@ import {
   salvarRespostaTextoFinanceiro,
 } from '../tarefas-actions'
 import TarefasSetorChecklist from '@/components/geral/TarefasSetorChecklist'
+import { listarGruposDoSetorFinanceiro } from '@/lib/tarefa-grupos-setor-actions'
 import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
 import ClienteSetorSimplesAcoes from '@/components/geral/ClienteSetorSimplesAcoes'
 import type { TarefaEtapa } from '@/lib/types'
@@ -51,6 +52,8 @@ export default async function ClienteFinanceiroDetalhePage({ params }: Props) {
 
   const { mes, ano } = await getMesAno()
   const { data: tarefasFinanceiroTodas } = await listarTarefasFinanceiroDoCliente(id, mes, ano)
+  // Grupos de Configurações > Financeiro: valem para todos os clientes do setor.
+  const { data: grupos } = await listarGruposDoSetorFinanceiro()
   // Uma tarefa com responsável exclusivo some da ficha (não só desabilitada)
   // pra quem não é o dono nem admin — mesmo comportamento do Fiscal.
   const tarefasFinanceiro = user
@@ -109,6 +112,7 @@ export default async function ClienteFinanceiroDetalhePage({ params }: Props) {
         podeEditar={true}
         mes={mes}
         className="w-full max-w-[820px]"
+        grupos={grupos}
         onToggle={onToggle}
         onAtualizarEtapa={onAtualizarEtapa}
         onSalvarTexto={onSalvarTexto}

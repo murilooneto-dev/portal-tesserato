@@ -62,8 +62,8 @@ export default function AvisoVencimentoTab() {
     <Card titulo="Aviso de vencimento">
       <form onSubmit={salvar} className="flex max-w-xl flex-col gap-4">
         <p className="text-[13px] leading-relaxed text-fg-2">
-          Todo dia de manhã o sistema envia um e-mail com os pagamentos recorrentes que vencem no dia seguinte
-          e ainda não foram confirmados como pagos. Se não houver nenhum, nada é enviado.
+          Todo dia de manhã o sistema envia um e-mail com as contas a pagar que vencem no dia seguinte
+          e ainda não foram pagas. Se não houver nenhum, nada é enviado.
         </p>
         <Field
           rotulo="E-mail que recebe o aviso"

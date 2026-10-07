@@ -4,18 +4,16 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   criarMovimento, atualizarMovimento, listarFinanceiroTiposAtivos, listarFinanceiroCentrosCustoAtivos,
-  criarFinanceiroTipo, criarFinanceiroCentroCusto,
+  criarFinanceiroTipo, criarFinanceiroCentroCusto, atualizarConta,
 } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
-import { datasRecorrentes, datasSeguintesDaSerie } from '@/lib/financeiro-movimentos'
 import { hojeISO } from '@/lib/mes-atual'
-import { formatarDdMm } from '@/lib/formatar-data'
 import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from '@/lib/types'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Aviso } from '@/components/ui/Aviso'
 import { Field } from '@/components/ui/Field'
-import { Checkbox, Input, Textarea } from '@/components/ui/Input'
+import { Input, Textarea } from '@/components/ui/Input'
 import SeletorComBusca from './SeletorComBusca'
 
 export interface MovimentoParaEditar {
@@ -27,8 +25,12 @@ export interface MovimentoParaEditar {
   valor: number
   data: string
   observacao: string | null
-  /** Já faz parte de uma série recorrente. */
-  recorrente?: boolean
+  /** Conta a pagar (Contas a Pagar): o tipo fica travado e salvar usa atualizarConta. */
+  conta?: boolean
+  /** Conta já paga (Pagamentos): a data é o vencimento e o tipo fica travado, mas salvar usa atualizarMovimento. */
+  contaPaga?: boolean
+  /** Dia em que a conta foi paga (só em conta já paga): dá para corrigir. */
+  pagoEm?: string | null
 }
 
 interface Props {
@@ -60,14 +62,13 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
   const [tipoId, setTipoId] = useState(movimento?.tipoId ?? '')
   const [valor, setValor] = useState(movimento ? String(movimento.valor) : '')
   const [data, setData] = useState(movimento?.data ?? '')
+  const [pagoEm, setPagoEm] = useState(movimento?.pagoEm ?? '')
   const [centroCustoId, setCentroCustoId] = useState(movimento?.centroCustoId ?? '')
   const [observacao, setObservacao] = useState(movimento?.observacao ?? '')
-  const [recorrente, setRecorrente] = useState(false)
 
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState(false)
-  const [quantidadeSalva, setQuantidadeSalva] = useState(1)
 
   const [criandoTipo, setCriandoTipo] = useState(false)
   const [novoTipoNome, setNovoTipoNome] = useState('')
@@ -156,44 +157,33 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     setValor('')
     setCentroCustoId('')
     setObservacao('')
-    setRecorrente(false)
   }
 
-  // Recorrente: em pagamento novo cria a série inteira; em pagamento já
-  // lançado (que ainda não é de uma série) cria só os meses seguintes, de hoje
-  // em diante. Quem já é recorrente não ganha a caixa: a edição mexe em um mês só.
-  const podeSerRecorrente = natureza === 'saida' && !movimento?.recorrente
-  const datasDaSerie = podeSerRecorrente && recorrente ? datasRecorrentes(data) : []
-  const datasSeguintes = movimento && podeSerRecorrente && recorrente ? datasSeguintesDaSerie(data, hojeISO()) : []
-  const ajudaRecorrente = movimento
-    ? !recorrente
-      ? 'Transforma este pagamento em recorrente: repete a conta no mesmo dia dos meses seguintes, até dezembro. Os meses criados ficam "A pagar" até você confirmar o pagamento.'
-      : !data
-        ? 'Escolha a data para ver os meses que serão lançados.'
-        : datasSeguintes.length === 0
-          ? 'Não há meses seguintes a vencer neste ano: nenhum lançamento será criado.'
-          : datasSeguintes.length === 1
-            ? `Será criado 1 lançamento "A pagar", em ${formatarDdMm(datasSeguintes[0])}. Este pagamento continua como está.`
-            : `Serão criados ${datasSeguintes.length} lançamentos "A pagar", um por mês: de ${formatarDdMm(datasSeguintes[0])} a ${formatarDdMm(datasSeguintes[datasSeguintes.length - 1])}. Este pagamento continua como está.`
-    : !recorrente
-      ? 'Repete esta conta no mesmo dia de cada mês, até dezembro. Cada mês fica "A pagar" até você confirmar o pagamento.'
-      : !data
-        ? 'Escolha a data para ver os meses que serão lançados.'
-        : datasDaSerie.length <= 1
-          ? 'Não há outros meses neste ano: será lançado só este pagamento.'
-          : `Serão ${datasDaSerie.length} lançamentos, um por mês até dezembro: de ${formatarDdMm(datasDaSerie[0])} a ${formatarDdMm(datasDaSerie[datasDaSerie.length - 1])}. Todos ficam "A pagar" até você confirmar cada pagamento.`
+  const ehEdicaoDeConta = movimento?.conta === true
+  // Em conta (paga ou não) a data é o vencimento e o tipo não muda.
+  const ehContaPaga = movimento?.contaPaga === true
+  const ehConta = ehEdicaoDeConta || ehContaPaga
 
   async function handleSave() {
     const valorNumerico = Number(valor.replace(',', '.'))
     if (!tipoId) { setErro('Selecione o tipo.'); return }
     if (!data) { setErro('Selecione a data.'); return }
     if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) { setErro('Informe um valor válido.'); return }
+    if (ehContaPaga && !pagoEm) { setErro('Informe o dia do pagamento.'); return }
 
     setSaving(true)
     setErro(null)
     setSucesso(false)
 
-    const resultado = movimento
+    const resultado = movimento && ehEdicaoDeConta
+      ? await atualizarConta({
+          id: movimento.id,
+          centroCustoId: centroCustoId || null,
+          valor: valorNumerico,
+          data,
+          observacao: observacao.trim() || null,
+        })
+      : movimento
       ? await atualizarMovimento({
           id: movimento.id,
           natureza,
@@ -202,7 +192,7 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           valor: valorNumerico,
           data,
           observacao: observacao.trim() || null,
-          tornarRecorrente: podeSerRecorrente && recorrente,
+          pagoEm: ehContaPaga ? pagoEm : undefined,
         })
       : await criarMovimento({
           natureza,
@@ -211,7 +201,6 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           valor: valorNumerico,
           data,
           observacao: observacao.trim() || null,
-          recorrente: podeSerRecorrente && recorrente,
         })
 
     if ('error' in resultado && resultado.error) {
@@ -233,14 +222,15 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     // Criando: a janela fica aberta pra lançar o próximo em sequência, só
     // limpa os campos (mantém a data — normalmente vários lançamentos do
     // mesmo dia). Fechar ou o X do canto encerram.
-    setQuantidadeSalva('quantidade' in resultado ? resultado.quantidade : 1)
     limparParaProximo()
     setSucesso(true)
   }
 
-  const titulo = movimento
+  const titulo = ehEdicaoDeConta ? 'Editar conta' : movimento
     ? (natureza === 'entrada' ? 'Editar recebimento' : 'Editar pagamento')
     : (natureza === 'entrada' ? 'Novo recebimento' : 'Novo pagamento')
+
+  const campoData = (c: { id: string }) => <Input id={c.id} type="date" value={data} onChange={e => setData(e.target.value)} />
 
   const podeSalvar = !saving && !!tipoId && !!data && !!valor
 
@@ -276,14 +266,16 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
     >
       {sucesso && !erro && (
         <Aviso tom="ok">
-          {quantidadeSalva > 1 ? <b>{quantidadeSalva} lançamentos salvos.</b> : <b>Lançamento salvo.</b>} Os campos foram limpos para o próximo; a data foi mantida.{quantidadeSalva > 1 && ' Cada mês fica como a pagar até você confirmar o pagamento.'} A lista mostra só os lançamentos do mês escolhido no topo.
+          <b>Lançamento salvo.</b> Os campos foram limpos para o próximo; a data foi mantida. A lista mostra só os lançamentos do mês escolhido no topo.
         </Aviso>
       )}
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        <Field rotulo="Data" obrigatorio>
-          {c => <Input id={c.id} type="date" value={data} onChange={e => setData(e.target.value)} />}
-        </Field>
+        {ehConta ? (
+          <Field rotulo="Vencimento" obrigatorio>{campoData}</Field>
+        ) : (
+          <Field rotulo="Data" obrigatorio>{campoData}</Field>
+        )}
         <Field rotulo="Valor" obrigatorio>
           {c => (
             <Input
@@ -299,6 +291,11 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
             />
           )}
         </Field>
+        {ehContaPaga && (
+          <Field rotulo="Pago em" obrigatorio ajuda="Dia em que o pagamento foi feito. Ao mudar o dia, a hora registrada deixa de aparecer.">
+            {c => <Input id={c.id} type="date" value={pagoEm} max={hojeISO()} onChange={e => setPagoEm(e.target.value)} />}
+          </Field>
+        )}
       </div>
 
       <div className="relative">
@@ -308,7 +305,9 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           erro={erroTipo}
           ajuda={!criandoTipo && !carregando && tipos.length === 0 ? 'Nenhum tipo cadastrado ainda.' : undefined}
         >
-          {c => criandoTipo ? (
+          {c => ehConta ? (
+            <Input id={c.id} value={movimento?.tipoNome ?? ''} disabled readOnly />
+          ) : criandoTipo ? (
             <div className="flex gap-2">
               <Input
                 id={c.id}
@@ -338,9 +337,11 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
             />
           )}
         </Field>
-        <LinkDoRotulo onClick={() => { setCriandoTipo(v => !v); setErroTipo(null) }}>
-          {criandoTipo ? 'Cancelar' : 'Novo tipo'}
-        </LinkDoRotulo>
+        {!ehConta && (
+          <LinkDoRotulo onClick={() => { setCriandoTipo(v => !v); setErroTipo(null) }}>
+            {criandoTipo ? 'Cancelar' : 'Novo tipo'}
+          </LinkDoRotulo>
+        )}
       </div>
 
       <div className="relative">
@@ -386,13 +387,6 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           <Textarea id={c.id} rows={2} value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Opcional" className="min-h-[56px]" />
         )}
       </Field>
-
-      {podeSerRecorrente && (
-        <div>
-          <Checkbox rotulo="Pagamento recorrente" checked={recorrente} onChange={e => setRecorrente(e.target.checked)} disabled={saving} />
-          <p className="mt-1 pl-7 text-[13px] text-fg-3">{ajudaRecorrente}</p>
-        </div>
-      )}
 
       {erro && <Aviso tom="dng">{erro}</Aviso>}
     </Modal>

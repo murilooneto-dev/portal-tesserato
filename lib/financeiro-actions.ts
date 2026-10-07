@@ -3,11 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthenticatedAdmin, createClient, createAdminClient } from './supabase/server'
 import { validarNomeEntidade, normalizarNome } from './config-entidades'
-import { datasRecorrentes, datasSeguintesDaSerie } from './financeiro-movimentos'
+import { ehConta, type ResultadoFormaPagamento } from './financeiro-movimentos'
 import { hojeISO } from './mes-atual'
 import { separarEmails } from './financeiro-aviso-vencimento'
 import { enviarAvisoVencimento } from './financeiro-aviso-vencimento-envio'
-import type { FinanceiroNatureza, FinanceiroTipo, FinanceiroCentroCusto } from './types'
+import type { FinanceiroNatureza, FinanceiroFormaPagamento, FinanceiroTipo,FinanceiroCentroCusto } from './types'
 
 type SupabaseAdmin = NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>
 
@@ -46,12 +46,122 @@ export async function listarFinanceiroTipos(
 
   const { data, error: queryError } = await supabase
     .from('financeiro_tipos')
-    .select('id, natureza, nome, ativo')
+    .select('id, natureza, nome, ativo, forma_pagamento, valor_padrao, dia_vencimento, mes_inicio, qtd_meses')
     .eq('natureza', natureza)
     .order('nome')
 
   if (queryError) return { data: [], error: queryError.message }
   return { data: (data ?? []) as FinanceiroTipo[], error: null }
+}
+
+export interface FormaPagamentoInput {
+  tipoId: string
+  forma: FinanceiroFormaPagamento
+  valor: number | null
+  dia: number | null
+  /** YYYY-MM-01 */
+  mesInicio: string | null
+  qtdMeses: number | null
+}
+
+// Parâmetros da função do banco (migration 065). Com p_simular só devolve as
+// contagens do que mudaria; sem ele grava de verdade, numa transação só.
+// A função é chamada SEMPRE com o cliente da sessão (createClient), nunca com
+// o de serviço que exigirAdmin devolve: ela confere is_admin() pelo usuário
+// logado, e com a chave de serviço não há usuário (daria "Acesso negado.").
+function parametrosForma(input: FormaPagamentoInput, simular: boolean) {
+  return {
+    p_tipo_id: input.tipoId,
+    p_forma: input.forma,
+    p_valor: input.valor,
+    p_dia: input.dia,
+    p_mes_inicio: input.mesInicio,
+    p_qtd_meses: input.qtdMeses,
+    p_simular: simular,
+  }
+}
+
+/** Simula a troca de forma de pagamento do tipo: não grava nada. */
+export async function previaFormaPagamentoTipo(
+  input: FormaPagamentoInput,
+): Promise<{ data: ResultadoFormaPagamento | null; error: string | null }> {
+  const { error } = await exigirAdmin()
+  if (error) return { data: null, error }
+
+  const sessao = await createClient()
+  const { data, error: rpcError } = await sessao.rpc('financeiro_definir_forma_pagamento', parametrosForma(input, true))
+  // A mensagem do `raise exception` do banco já vem em português.
+  if (rpcError) return { data: null, error: rpcError.message }
+  return { data: data as ResultadoFormaPagamento, error: null }
+}
+
+/** Grava a forma de pagamento do tipo e cria/ajusta/apaga as contas não pagas. */
+export async function definirFormaPagamentoTipo(
+  input: FormaPagamentoInput,
+): Promise<{ data: ResultadoFormaPagamento | null; error: string | null }> {
+  const { error } = await exigirAdmin()
+  if (error) return { data: null, error }
+
+  const sessao = await createClient()
+  const { data, error: rpcError } = await sessao.rpc('financeiro_definir_forma_pagamento', parametrosForma(input, false))
+  if (rpcError) return { data: null, error: rpcError.message }
+
+  revalidatePath('/admin/configuracoes/financeiro')
+  revalidatePath('/financeiro/contas-a-pagar')
+  revalidatePath('/financeiro/pagamentos')
+  return { data: data as ResultadoFormaPagamento, error: null }
+}
+
+/**
+ * Botão "Nova conta" de Contas a Pagar: cria o Tipo de Saída e já define a
+ * forma de pagamento dele, que gera as contas. Se a forma for recusada pelo
+ * banco, o tipo recém-criado é apagado: não sobra tipo Avulso pela metade.
+ */
+export async function criarContaAPagar(input: {
+  nome: string
+  forma: 'recorrente' | 'prazo'
+  valor: number
+  dia: number
+  /** YYYY-MM-01 */
+  mesInicio: string
+  qtdMeses: number | null
+}): Promise<{ data: ResultadoFormaPagamento | null; error: string | null }> {
+  const erroNome = validarNomeEntidade(input.nome)
+  if (erroNome) return { data: null, error: erroNome }
+
+  const { error } = await exigirAdmin()
+  if (error) return { data: null, error }
+
+  const sessao = await createClient()
+  const nomeNormalizado = normalizarNome(input.nome)
+  const { data: existentes } = await sessao.from('financeiro_tipos').select('nome').eq('natureza', 'saida')
+  if ((existentes ?? []).some(e => normalizarNome(e.nome) === nomeNormalizado)) {
+    return { data: null, error: 'Já existe um tipo de saída com esse nome. Para mudar a forma de pagamento dele, use Configurações > Financeiro > Tipos de saída.' }
+  }
+
+  const { data: tipo, error: erroTipo } = await sessao.from('financeiro_tipos')
+    .insert({ natureza: 'saida', nome: input.nome.trim() }).select('id').single()
+  if (erroTipo || !tipo) {
+    if (erroTipo?.code === '23505') return { data: null, error: 'Já existe um tipo de saída com esse nome.' }
+    return { data: null, error: erroTipo?.message ?? 'Falha ao criar a conta.' }
+  }
+
+  const { data, error: rpcError } = await sessao.rpc('financeiro_definir_forma_pagamento', parametrosForma({
+    tipoId: tipo.id,
+    forma: input.forma,
+    valor: input.valor,
+    dia: input.dia,
+    mesInicio: input.mesInicio,
+    qtdMeses: input.forma === 'prazo' ? input.qtdMeses : null,
+  }, false))
+  if (rpcError) {
+    await sessao.from('financeiro_tipos').delete().eq('id', tipo.id)
+    return { data: null, error: rpcError.message }
+  }
+
+  revalidatePath('/admin/configuracoes/financeiro')
+  revalidatePath('/financeiro/contas-a-pagar')
+  return { data: data as ResultadoFormaPagamento, error: null }
 }
 
 export async function criarFinanceiroTipo(
@@ -259,8 +369,8 @@ export async function salvarEmailAvisoVencimento(texto: string): Promise<{ email
 }
 
 /**
- * Manda agora, para o e-mail já salvo, o aviso dos pagamentos recorrentes que
- * vencem amanhã. Não conta como o envio do dia.
+ * Manda agora, para o e-mail já salvo, o aviso das contas a pagar que vencem
+ * amanhã. Não conta como o envio do dia.
  */
 export async function enviarTesteAvisoVencimento(): Promise<{ mensagem: string | null; error: string | null }> {
   const { error } = await exigirAdmin()
@@ -271,8 +381,8 @@ export async function enviarTesteAvisoVencimento(): Promise<{ mensagem: string |
     if (resultado.status === 'sem_destinatario') return { mensagem: null, error: 'Salve um e-mail antes de enviar o teste.' }
     if (resultado.status !== 'enviado') return { mensagem: null, error: 'O teste não foi enviado.' }
     const lista = resultado.quantidade === 0
-      ? 'sem pagamentos vencendo amanhã'
-      : resultado.quantidade === 1 ? 'com 1 pagamento' : `com ${resultado.quantidade} pagamentos`
+      ? 'sem contas vencendo amanhã'
+      : resultado.quantidade === 1 ? 'com 1 conta' : `com ${resultado.quantidade} contas`
     return { mensagem: `Teste enviado para ${resultado.destinatarios.join(', ')} (${lista}).`, error: null }
   } catch (e) {
     return { mensagem: null, error: e instanceof Error ? e.message : 'Falha ao enviar o e-mail.' }
@@ -328,9 +438,7 @@ export async function criarMovimento(input: {
   valor: number
   data: string
   observacao: string | null
-  /** Só pagamentos: repete o lançamento no mesmo dia de cada mês até dezembro. */
-  recorrente?: boolean
-}): Promise<{ id: string; quantidade: number } | { error: string }> {
+}): Promise<{ id: string } | { error: string }> {
   if (!input.tipoId) return { error: 'Selecione o tipo.' }
   if (!input.data) return { error: 'Selecione a data.' }
   if (!Number.isFinite(input.valor) || input.valor <= 0) return { error: 'Informe um valor válido.' }
@@ -339,36 +447,24 @@ export async function criarMovimento(input: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  // Recorrente: um lançamento por mês, todos com o mesmo recorrencia_id, num
-  // único insert (ou entram todos, ou nenhum). Lançado em dezembro não há mês
-  // seguinte, então vira um lançamento comum, sem série.
-  // Os lançamentos da série nascem "a pagar" (pago = false): registram só que
-  // a conta vai existir naquela data; o usuário confirma cada um quando paga.
-  let datas = [input.data]
-  if (input.recorrente && input.natureza === 'saida') {
-    datas = datasRecorrentes(input.data)
-    if (datas.length === 0) return { error: 'Selecione a data.' }
-  }
-  const recorrenciaId = datas.length > 1 ? crypto.randomUUID() : null
-
-  const { data: novos, error } = await supabase.from('financeiro_movimentos').insert(datas.map(data => ({
+  // Lançamento avulso: já nasce pago (pago_em é preenchido pelo banco com a
+  // própria data). Conta a pagar nasce pelo Tipo de Saída, não aqui.
+  const { data: novo, error } = await supabase.from('financeiro_movimentos').insert({
     natureza: input.natureza,
     tipo_id: input.tipoId,
     centro_custo_id: input.centroCustoId,
     valor: input.valor,
-    data,
+    data: input.data,
     observacao: input.observacao,
     criado_por: user.id,
-    recorrencia_id: recorrenciaId,
-    pago: recorrenciaId === null,
-  }))).select('id, data')
+    pago: true,
+  }).select('id').single()
 
-  const novo = novos?.find(n => n.data === input.data) ?? novos?.[0]
   if (error || !novo) return { error: error?.message ?? 'Falha ao criar movimento.' }
 
   revalidatePath(input.natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')
   revalidatePath('/financeiro/relatorios')
-  return { id: novo.id, quantidade: novos?.length ?? 1 }
+  return { id: novo.id }
 }
 
 export async function atualizarMovimento(input: {
@@ -380,19 +476,35 @@ export async function atualizarMovimento(input: {
   data: string
   observacao: string | null
   /**
-   * Só pagamentos que ainda não são recorrentes: este vira o primeiro de uma
-   * série e os meses seguintes (de hoje em diante, até dezembro) são criados
-   * "a pagar". Este lançamento não muda de situação.
+   * Só conta já paga: corrige o dia do pagamento (a `data` dela é o
+   * vencimento). Em lançamento avulso é ignorado: lá o dia do pagamento é a
+   * própria data.
    */
-  tornarRecorrente?: boolean
+  pagoEm?: string
 }): Promise<{ error: string | null }> {
   if (!input.tipoId) return { error: 'Selecione o tipo.' }
   if (!input.data) return { error: 'Selecione a data.' }
   if (!Number.isFinite(input.valor) || input.valor <= 0) return { error: 'Informe um valor válido.' }
+  if (input.pagoEm !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.pagoEm)) return { error: 'Informe o dia do pagamento.' }
+    if (input.pagoEm > hojeISO()) return { error: 'O dia do pagamento não pode ser depois de hoje.' }
+  }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
+
+  // A hora guardada é a do clique em Pagar: com outro dia ela deixa de valer.
+  // Mesmo dia: não toca em nada, a hora continua.
+  let pagamento: { pago_em: string; pago_em_hora: null } | null = null
+  if (input.pagoEm !== undefined) {
+    const { data: atual, error: erroAtual } = await supabase.from('financeiro_movimentos')
+      .select('pago, pago_em, recorrencia_id, competencia').eq('id', input.id).maybeSingle()
+    if (erroAtual) return { error: erroAtual.message }
+    if (atual?.pago && ehConta(atual) && atual.pago_em !== input.pagoEm) {
+      pagamento = { pago_em: input.pagoEm, pago_em_hora: null }
+    }
+  }
 
   const campos = {
     tipo_id: input.tipoId,
@@ -400,42 +512,7 @@ export async function atualizarMovimento(input: {
     valor: input.valor,
     data: input.data,
     observacao: input.observacao,
-  }
-
-  // Sem mês seguinte a vencer não há série: salva como edição comum.
-  const datasNovas = input.tornarRecorrente && input.natureza === 'saida'
-    ? datasSeguintesDaSerie(input.data, hojeISO())
-    : []
-
-  if (datasNovas.length > 0) {
-    const recorrenciaId = crypto.randomUUID()
-    // `.is('recorrencia_id', null)`: quem já é de uma série não entra em outra.
-    const { data: alterados, error: erroSerie } = await supabase.from('financeiro_movimentos')
-      .update({ ...campos, recorrencia_id: recorrenciaId })
-      .eq('id', input.id)
-      .eq('natureza', 'saida')
-      .is('recorrencia_id', null)
-      .select('id')
-    if (erroSerie) return { error: erroSerie.message }
-    if (!alterados || alterados.length === 0) return { error: 'Este pagamento já é recorrente ou não foi encontrado.' }
-
-    const { error: erroNovos } = await supabase.from('financeiro_movimentos').insert(datasNovas.map(data => ({
-      natureza: 'saida',
-      ...campos,
-      data,
-      criado_por: user.id,
-      recorrencia_id: recorrenciaId,
-      pago: false,
-    })))
-    if (erroNovos) {
-      // Os meses seguintes não entraram: desfaz o vínculo pra não sobrar série de um lançamento só.
-      await supabase.from('financeiro_movimentos').update({ recorrencia_id: null }).eq('id', input.id)
-      return { error: erroNovos.message }
-    }
-
-    revalidatePath('/financeiro/pagamentos')
-    revalidatePath('/financeiro/relatorios')
-    return { error: null }
+    ...pagamento,
   }
 
   const { error } = await supabase.from('financeiro_movimentos').update(campos).eq('id', input.id)
@@ -456,15 +533,56 @@ export async function definirPagamentoConfirmado(id: string, pago: boolean): Pro
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  const { data: alterados, error } = await supabase.from('financeiro_movimentos')
-    .update({ pago, pago_em: pago ? hojeISO() : null })
+  // `.eq('pago', !pago)`: só muda quem está no estado oposto. Um segundo clique
+  // (ou outra aba) não acha linha e não troca a hora do primeiro pagamento.
+  let consulta = supabase.from('financeiro_movimentos')
+    .update(pago
+      ? { pago: true, pago_em: hojeISO(), pago_em_hora: new Date().toISOString() }
+      : { pago: false, pago_em: null, pago_em_hora: null })
     .eq('id', id)
     .eq('natureza', 'saida')
+    .eq('pago', !pago)
+  // Desfazer só vale para conta a pagar; lançamento avulso nasce pago e fica assim.
+  if (!pago) consulta = consulta.or('recorrencia_id.not.is.null,competencia.not.is.null')
+  const { data: alterados, error } = await consulta.select('id')
+
+  if (error) return { error: error.message }
+  if (!alterados || alterados.length === 0) {
+    return { error: pago ? 'Esta conta já foi paga ou não existe mais.' : 'Só dá para desfazer o pagamento de uma conta a pagar.' }
+  }
+
+  revalidatePath('/financeiro/pagamentos')
+  revalidatePath('/financeiro/contas-a-pagar')
+  revalidatePath('/financeiro/relatorios')
+  return { error: null }
+}
+
+/** Edita uma conta ainda não paga (valor, data, centro de custo, observação) sem mexer no tipo. */
+export async function atualizarConta(input: {
+  id: string
+  centroCustoId: string | null
+  valor: number
+  data: string
+  observacao: string | null
+}): Promise<{ error: string | null }> {
+  if (!input.data) return { error: 'Selecione a data.' }
+  if (!Number.isFinite(input.valor) || input.valor <= 0) return { error: 'Informe um valor válido.' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const { data: alterados, error } = await supabase.from('financeiro_movimentos')
+    .update({ centro_custo_id: input.centroCustoId, valor: input.valor, data: input.data, observacao: input.observacao })
+    .eq('id', input.id)
+    .eq('natureza', 'saida')
+    .eq('pago', false)
     .select('id')
 
   if (error) return { error: error.message }
-  if (!alterados || alterados.length === 0) return { error: 'Pagamento não encontrado.' }
+  if (!alterados || alterados.length === 0) return { error: 'Conta não encontrada ou já paga.' }
 
+  revalidatePath('/financeiro/contas-a-pagar')
   revalidatePath('/financeiro/pagamentos')
   revalidatePath('/financeiro/relatorios')
   return { error: null }
@@ -495,6 +613,7 @@ export async function excluirMovimento(
   if (error) return { error: error.message }
 
   revalidatePath(natureza === 'entrada' ? '/financeiro/recebimentos' : '/financeiro/pagamentos')
+  if (natureza === 'saida') revalidatePath('/financeiro/contas-a-pagar')
   revalidatePath('/financeiro/relatorios')
   return { error: null }
 }

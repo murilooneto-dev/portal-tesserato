@@ -1,6 +1,6 @@
 import {
   Home, Users, Wrench, LayoutGrid, Calendar, FileText, CreditCard, ListChecks, UserCheck,
-  Building2, ArrowDownLeft, ArrowUpRight, SlidersHorizontal, Link2, Settings, Trash2, Construction,
+  Building2, ArrowDownLeft, ArrowUpRight, CalendarClock, SlidersHorizontal, Link2, Settings, Trash2, Construction,
   type LucideIcon,
 } from 'lucide-react'
 import type { IconeMenu } from '@/lib/navegacao'
@@ -18,6 +18,7 @@ export const ICONE: Record<IconeMenu, LucideIcon> = {
   'minhas-tarefas': UserCheck,
   procedimentos: Building2,
   recebimentos: ArrowDownLeft,
+  'contas-a-pagar': CalendarClock,
   pagamentos: ArrowUpRight,
   configuracoes: SlidersHorizontal,
   vinculos: Link2,
