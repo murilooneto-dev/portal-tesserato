@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ehConta, textoPreviaFormaPagamento, formatarPagoEm, contaApareceNoMes, compararPorPagamento, normalizarMes, previaNovaConta } from '../lib/financeiro-movimentos'
+import { ehConta, textoPreviaFormaPagamento, formatarPagoEm, contaApareceNoMes, compararPorPagamento, normalizarMes, previaNovaConta, rotuloSeloConta } from '../lib/financeiro-movimentos'
 
 const ler = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8')
 // toLocaleString põe espaço sem quebra (U+00A0) depois de R$; os textos esperados usam espaço comum.
@@ -99,6 +99,25 @@ test('financeiro-actions: desfazer só em conta e atualizarConta só em conta n�
   const j = src.indexOf('export async function atualizarConta')
   assert.ok(j >= 0)
   assert.ok(src.slice(j, src.indexOf('export async function', j + 10)).includes(".eq('pago', false)"))
+})
+
+test('rotuloSeloConta: conta criada pelo tipo leva o selo da forma dele', () => {
+  // Criada pelo botão Nova conta ou por Configurações: não tem recorrencia_id.
+  assert.equal(rotuloSeloConta({ competencia: '2026-10-01', tipo_forma: 'recorrente' }), 'Recorrente')
+  assert.equal(rotuloSeloConta({ competencia: '2026-10-01', tipo_forma: 'prazo' }), 'Prazo determinado')
+  // Série antiga, da caixa "Pagamento recorrente".
+  assert.equal(rotuloSeloConta({ recorrencia_id: 'x', tipo_forma: 'avulso' }), 'Recorrente')
+  // Avulso, e conta cujo tipo voltou para Avulso.
+  assert.equal(rotuloSeloConta({ tipo_forma: 'recorrente' }), null)
+  assert.equal(rotuloSeloConta({ competencia: '2026-10-01', tipo_forma: 'avulso' }), null)
+
+  // As duas telas buscam a forma do tipo e usam o mesmo selo.
+  for (const arq of ['app/financeiro/contas-a-pagar/page.tsx', 'app/financeiro/pagamentos/page.tsx']) {
+    assert.ok(ler(arq).includes('financeiro_tipos(nome, forma_pagamento)'), arq)
+  }
+  for (const arq of ['components/financeiro/ContasAPagarClient.tsx', 'components/financeiro/MovimentoListClient.tsx']) {
+    assert.equal(ler(arq).split('<SeloConta conta={m} />').length - 1, 2, arq)
+  }
 })
 
 test('normalizarMes: aceita AAAA-MM e MM/AAAA, recusa mês que não existe', () => {

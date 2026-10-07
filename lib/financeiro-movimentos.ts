@@ -8,6 +8,7 @@
 // 1000 sem aviso, e o total mostrado ficava errado.
 
 import { formatarDdMm } from './formatar-data'
+import type { FinanceiroFormaPagamento } from './types'
 
 export const TAMANHO_BLOCO = 1000
 
@@ -69,6 +70,24 @@ export function ehConta(m: { recorrencia_id?: string | null; competencia?: strin
  */
 export function contaApareceNoMes(data: string, primeiroDia: string, hoje: string): boolean {
   return data >= primeiroDia || data < hoje
+}
+
+/**
+ * Selo ao lado do nome da conta, em Contas a Pagar e em Pagamentos: como ela
+ * se repete. Série antiga (recorrencia_id) é sempre recorrente; conta criada
+ * pelo Tipo de Saída segue a forma atual do tipo. Avulso não tem selo, nem a
+ * conta cujo tipo voltou para Avulso.
+ */
+export function rotuloSeloConta(m: {
+  recorrencia_id?: string | null
+  competencia?: string | null
+  tipo_forma?: FinanceiroFormaPagamento | null
+}): 'Recorrente' | 'Prazo determinado' | null {
+  if (m.recorrencia_id) return 'Recorrente'
+  if (!m.competencia) return null
+  if (m.tipo_forma === 'recorrente') return 'Recorrente'
+  if (m.tipo_forma === 'prazo') return 'Prazo determinado'
+  return null
 }
 
 /**

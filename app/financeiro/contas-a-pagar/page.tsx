@@ -2,13 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import { buscarEmBlocos, contaApareceNoMes, intervaloDoMes } from '@/lib/financeiro-movimentos'
 import { hojeISO } from '@/lib/mes-atual'
 import { getMesAno } from '@/lib/mes-atual-server'
+import type { FinanceiroFormaPagamento } from '@/lib/types'
 import ContasAPagarClient, { type ContaLinha } from '@/components/financeiro/ContasAPagarClient'
 
 export const metadata = { title: 'Contas a pagar — Tesserato Financeiro' }
 
 interface LinhaBanco {
   id: string; tipo_id: string; centro_custo_id: string | null; valor: number; data: string; observacao: string | null; created_at: string; recorrencia_id: string | null; competencia: string | null; pago: boolean
-  financeiro_tipos: { nome: string } | null
+  financeiro_tipos: { nome: string; forma_pagamento: FinanceiroFormaPagamento } | null
   financeiro_centros_custo: { nome: string } | null
 }
 
@@ -22,7 +23,7 @@ export default async function ContasAPagarPage() {
 
   const linhas = await buscarEmBlocos<LinhaBanco>((inicio, fim) => supabase
     .from('financeiro_movimentos')
-    .select('id, tipo_id, centro_custo_id, valor, data, observacao, created_at, recorrencia_id, competencia, pago, financeiro_tipos(nome), financeiro_centros_custo(nome)')
+    .select('id, tipo_id, centro_custo_id, valor, data, observacao, created_at, recorrencia_id, competencia, pago, financeiro_tipos(nome, forma_pagamento), financeiro_centros_custo(nome)')
     .eq('natureza', 'saida')
     .eq('pago', false)
     .lte('data', ultimoDia)
@@ -44,6 +45,7 @@ export default async function ContasAPagarPage() {
     competencia: r.competencia,
     pago: r.pago,
     tipo_nome: r.financeiro_tipos?.nome ?? '—',
+    tipo_forma: r.financeiro_tipos?.forma_pagamento ?? null,
     centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
   }))
 

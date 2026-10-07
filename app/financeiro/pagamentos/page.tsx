@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { buscarEmBlocos, intervaloDoMes } from '@/lib/financeiro-movimentos'
 import { getMesAno } from '@/lib/mes-atual-server'
+import type { FinanceiroFormaPagamento } from '@/lib/types'
 import MovimentoListClient, { type MovimentoLinha } from '@/components/financeiro/MovimentoListClient'
 
 export const metadata = { title: 'Pagamentos — Tesserato Financeiro' }
@@ -8,7 +9,7 @@ export const metadata = { title: 'Pagamentos — Tesserato Financeiro' }
 interface LinhaBanco {
   id: string; tipo_id: string; centro_custo_id: string | null; valor: number; data: string; observacao: string | null; created_at: string; recorrencia_id: string | null; pago: boolean
   pago_em: string | null; pago_em_hora: string | null; competencia: string | null
-  financeiro_tipos: { nome: string } | null
+  financeiro_tipos: { nome: string; forma_pagamento: FinanceiroFormaPagamento } | null
   financeiro_centros_custo: { nome: string } | null
 }
 
@@ -25,7 +26,7 @@ export default async function PagamentosPage() {
   // total da tela valem para o mês inteiro.
   const linhas = await buscarEmBlocos<LinhaBanco>((inicio, fim) => supabase
     .from('financeiro_movimentos')
-    .select('id, tipo_id, centro_custo_id, valor, data, observacao, created_at, recorrencia_id, pago, pago_em, pago_em_hora, competencia, financeiro_tipos(nome), financeiro_centros_custo(nome)')
+    .select('id, tipo_id, centro_custo_id, valor, data, observacao, created_at, recorrencia_id, pago, pago_em, pago_em_hora, competencia, financeiro_tipos(nome, forma_pagamento), financeiro_centros_custo(nome)')
     .eq('natureza', 'saida')
     .eq('pago', true)
     .gte('pago_em', primeiroDia)
@@ -49,6 +50,7 @@ export default async function PagamentosPage() {
     pago_em_hora: r.pago_em_hora,
     competencia: r.competencia,
     tipo_nome: r.financeiro_tipos?.nome ?? '—',
+    tipo_forma: r.financeiro_tipos?.forma_pagamento ?? null,
     centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
   }))
 

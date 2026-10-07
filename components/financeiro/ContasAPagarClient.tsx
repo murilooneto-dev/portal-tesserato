@@ -20,6 +20,7 @@ import { Tabela, Th, Td } from '@/components/ui/Tabela'
 import MenuMaisAcoes from '@/components/geral/MenuMaisAcoes'
 import NovoMovimentoModal from './NovoMovimentoModal'
 import NovaContaModal from './NovaContaModal'
+import SeloConta from './SeloConta'
 import type { MovimentoLinha } from './MovimentoListClient'
 
 export type ContaLinha = MovimentoLinha & { competencia: string | null }
@@ -351,7 +352,10 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
               <div key={m.id} className="flex min-w-0 flex-col gap-3 rounded-xl border border-line-soft bg-surface px-4 py-3.5">
                 <div className="flex min-w-0 items-start gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</p>
+                    <p className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
+                      <SeloConta conta={m} />
+                    </p>
                     <p className="flex min-w-0 items-center gap-2 text-[13px] text-fg-3">
                       {seloSituacao(m)}
                       <span className="truncate">{formatarDdMm(m.data)}{m.observacao ? ` · ${m.observacao}` : ''}</span>
@@ -404,7 +408,10 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
                     <tr key={m.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
                       <Td className="whitespace-nowrap font-mono text-[13px] tabular-nums text-fg-2">{formatarDdMm(m.data)}</Td>
                       <Td>
-                        <span className="block truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="block truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
+                          <SeloConta conta={m} />
+                        </div>
                       </Td>
                       <Td>
                         {m.centro_custo_nome

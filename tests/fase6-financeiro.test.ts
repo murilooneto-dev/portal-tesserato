@@ -114,7 +114,11 @@ test('lista: excluir confirma na linha e mostra o erro da action', () => {
 
 test('pagamento recorrente antigo: selo e exclusão em série continuam', () => {
   const lista = ler(LISTA)
-  for (const t of ['<Repeat', '>Recorrente</Badge>', '{m.recorrencia_id && seloRecorrente}']) assert.ok(lista.includes(t), t)
+  // O selo virou componente próprio (SeloConta), usado também em Contas a pagar.
+  assert.ok(lista.includes('<SeloConta conta={m} />'))
+  const selo = ler('components/financeiro/SeloConta.tsx')
+  for (const t of ['Repeat', 'rotuloSeloConta(conta)', '<Badge tom="info"']) assert.ok(selo.includes(t), t)
+  assert.ok(ler('lib/financeiro-movimentos.ts').includes("if (m.recorrencia_id) return 'Recorrente'"))
   // Pagamentos é histórico: exclusão só de uma linha; a série antiga se apaga em Contas a pagar.
   for (const t of ['Este e os próximos', 'este_e_proximos', 'Só este']) assert.ok(!lista.includes(t), t)
   assert.ok(ler(PAGINAS[1]).includes('recorrencia_id'))

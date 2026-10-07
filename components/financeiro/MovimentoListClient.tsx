@@ -1,15 +1,14 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import { Pencil, Plus, Receipt, Repeat, Search, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react'
+import { Pencil, Plus, Receipt, Search, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react'
 import { definirPagamentoConfirmado, excluirMovimento } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
 import { formatarDdMm } from '@/lib/formatar-data'
 import { compararPorPagamento, ehConta, formatarPagoEm, formatarValor } from '@/lib/financeiro-movimentos'
-import type { FinanceiroNatureza } from '@/lib/types'
+import type { FinanceiroFormaPagamento, FinanceiroNatureza } from '@/lib/types'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
 import { Aviso } from '@/components/ui/Aviso'
-import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { cn } from '@/components/ui/cn'
 import { Card } from '@/components/ui/Card'
@@ -19,6 +18,7 @@ import { Input, Select } from '@/components/ui/Input'
 import { Tabela, Th, Td } from '@/components/ui/Tabela'
 import MenuMaisAcoes from '@/components/geral/MenuMaisAcoes'
 import NovoMovimentoModal from './NovoMovimentoModal'
+import SeloConta from './SeloConta'
 
 export interface MovimentoLinha {
   id: string
@@ -40,6 +40,8 @@ export interface MovimentoLinha {
   pago_em_hora?: string | null
   /** Preenchido nas contas criadas pelo Tipo de Saída (recorrente ou com prazo). */
   competencia?: string | null
+  /** Forma de pagamento atual do tipo: decide o selo da conta (Recorrente ou Prazo determinado). */
+  tipo_forma?: FinanceiroFormaPagamento | null
 }
 
 interface Props {
@@ -210,7 +212,6 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
   }
 
   // Só a série antiga (recorrencia_id) leva o selo; a conta do Tipo de Saída já aparece pela coluna Vencimento.
-  const seloRecorrente = <Badge tom="info" icone={<Repeat size={12} aria-hidden="true" />} className="flex-none">Recorrente</Badge>
 
   const erroExclusao = erroExcluir && (
     <p role="alert" className="mt-2 text-[13px] text-danger">Não foi possível excluir: {erroExcluir}</p>
@@ -309,7 +310,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
                 <div className="min-w-0 flex-1">
                   <p className="flex min-w-0 items-center gap-2">
                     <span className="truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
-                    {m.recorrencia_id && seloRecorrente}
+                    <SeloConta conta={m} />
                   </p>
                   <p className="flex min-w-0 items-center gap-2 text-[13px] text-fg-3">
                     <span className="truncate">
@@ -379,7 +380,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
                       <Td>
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="block truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
-                          {m.recorrencia_id && seloRecorrente}
+                          <SeloConta conta={m} />
                         </div>
                       </Td>
                       <Td>
