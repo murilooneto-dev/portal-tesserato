@@ -5,7 +5,7 @@ import { getAuthenticatedAdmin, podeEditarClienteContabil } from '@/lib/supabase
 import { removerClienteDoSetor } from '@/lib/remover-cliente-do-setor'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { registrarEvento, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
-import { tarefasRemovidasDoCliente, apagarTarefasDoCliente } from '@/lib/tarefas-do-cliente'
+import { tarefasRemovidasDoCliente, apagarTarefasDoCliente, apagarTiposSemUso } from '@/lib/tarefas-do-cliente'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
 interface ClientePayload {
@@ -52,7 +52,8 @@ export async function salvarClienteContabil(
 
     // Tarefa personalizada removida deste cliente perde o histórico dele (as linhas
     // de `tarefas` casam por nome e voltariam ao recriar o mesmo nome). Só este
-    // cliente: o catálogo e os outros clientes não são tocados.
+    // cliente: os outros clientes não são tocados. O tipo só sai do catálogo se
+    // ninguém mais o usa (apagarTiposSemUso).
     const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
     const removidas = tarefasRemovidasDoCliente(
       antes?.tarefas_personalizadas,
@@ -60,6 +61,8 @@ export async function salvarClienteContabil(
     )
     const { error: errLimpeza } = await apagarTarefasDoCliente(supabase, clienteId, 'contabil', removidas)
     if (errLimpeza) return { error: errLimpeza }
+    const { error: errCatalogo } = await apagarTiposSemUso(supabase, 'contabil', removidas)
+    if (errCatalogo) return { error: errCatalogo }
 
     await registrarMudancaTarefas(supabase, {
       setor: 'contabil', clienteId, clienteNome: clientePayload.nome,

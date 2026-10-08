@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_PESSOAL, flattenClientePessoal } from '@/lib/clientes-pessoal'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
+import { listarNomesDeTiposSemUso } from '@/lib/tarefa-tipos-actions'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import SeletorAtividades from '@/components/geral/SeletorAtividades'
 import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
@@ -102,8 +103,9 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
   }, [clienteId])
 
   useEffect(() => {
-    sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal').then(({ data }) => {
-      setCatalogoNomes((data ?? []).map(t => t.nome as string))
+    // Tipo que ninguém usa não conta como existente: digitar o nome dele abre a criação.
+    Promise.all([sb.from('tarefa_tipos').select('nome').eq('setor', 'pessoal'), listarNomesDeTiposSemUso('pessoal')]).then(([{ data }, semUso]) => {
+      setCatalogoNomes((data ?? []).map(t => t.nome as string).filter(n => !semUso.includes(n)))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
