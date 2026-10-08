@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarClock, Pencil, Plus, Search, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react'
+import { CalendarClock, ListChecks, Pencil, Plus, Search, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react'
 import { definirPagamentoConfirmado, excluirMovimento } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
 import { formatarDdMm } from '@/lib/formatar-data'
@@ -20,6 +20,7 @@ import { Tabela, Th, Td } from '@/components/ui/Tabela'
 import MenuMaisAcoes from '@/components/geral/MenuMaisAcoes'
 import NovoMovimentoModal from './NovoMovimentoModal'
 import NovaContaModal from './NovaContaModal'
+import GerenciarContasModal from './GerenciarContasModal'
 import SeloConta from './SeloConta'
 import type { MovimentoLinha } from './MovimentoListClient'
 
@@ -32,7 +33,7 @@ interface Props {
   ano: number
   /** Hoje (YYYY-MM-DD, fuso de São Paulo), pra saber o que está vencido. */
   hoje: string
-  /** Só admin cria conta nova (é quem define a forma de pagamento de um tipo). */
+  /** Só admin cria conta nova e gerencia as recorrentes (é quem define a forma de pagamento). */
   podeCriar: boolean
 }
 
@@ -62,6 +63,7 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
   const periodo = `${MESES[mes - 1]} de ${ano}`
 
   const [criando, setCriando] = useState(false)
+  const [gerenciando, setGerenciando] = useState(false)
   // Conta recém-criada: diz quantas contas nasceram (elas podem estar em outro mês).
   const [criada, setCriada] = useState<{ nome: string; quantidade: number } | null>(null)
   const [editando, setEditando] = useState<ContaLinha | null>(null)
@@ -89,6 +91,11 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
   const botaoNovaConta = (classe?: string) => (
     <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setCriando(true)} className={classe}>
       Nova conta
+    </Button>
+  )
+  const botaoGerenciar = (
+    <Button variante="fantasma" icone={<ListChecks size={16} aria-hidden="true" />} onClick={() => setGerenciando(true)}>
+      Gerenciar contas
     </Button>
   )
   const [isPending, startTransition] = useTransition()
@@ -194,7 +201,7 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
         Excluir a conta <b>{m.tipo_nome}</b> com vencimento em {formatarDdMm(m.data)}, no valor de <b className="tabular-nums">{formatarValor(m.valor)}</b>?
         {m.recorrencia_id
           ? <> É uma conta recorrente: dá para excluir só esta ou também as dos meses seguintes.</>
-          : m.competencia && <> Para parar de criar esta conta, mude a forma de pagamento do tipo em Configurações.</>}
+          : m.tipo_id && m.competencia && <> Para parar de criar esta conta, use Gerenciar contas.</>}
       </span>
     )
   }
@@ -254,7 +261,12 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
           <span className="first-letter:uppercase inline-block">{periodo}</span> · {plural(n)} · total <b className="font-semibold text-fg tabular-nums">{formatarValor(total)}</b>
           {vencido > 0 && <> · vencido <b className="font-semibold text-fg tabular-nums">{formatarValor(vencido)}</b></>}
         </>}
-        acoes={podeCriar ? botaoNovaConta('hidden lg:inline-flex') : undefined}
+        acoes={podeCriar ? (
+          <div className="flex items-center gap-2">
+            {botaoGerenciar}
+            {botaoNovaConta('hidden lg:inline-flex')}
+          </div>
+        ) : undefined}
       />
 
       <div className="flex flex-wrap items-end gap-3">
@@ -266,7 +278,7 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
                 type="search"
                 value={busca}
                 onChange={e => { setBusca(e.target.value); setPagina(1); setExcluindoId(null) }}
-                placeholder="Tipo, centro de custo ou observação"
+                placeholder="Conta, centro de custo ou observação"
                 iconeEsquerda={<Search size={16} />}
               />
             )}
@@ -293,7 +305,7 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
       {criada && (
         <div role="status">
           <Aviso tom="ok">
-            <b>Conta criada: {criada.nome}.</b> {criada.quantidade === 1 ? 'Foi gerada 1 conta a pagar' : `Foram geradas ${criada.quantidade} contas a pagar`}; cada uma aparece no mês do seu vencimento. Para mudar valor, dia ou prazo depois, use Configurações &gt; Financeiro &gt; Tipos de saída.
+            <b>Conta criada: {criada.nome}.</b> {criada.quantidade === 1 ? 'Foi gerada 1 conta a pagar' : `Foram geradas ${criada.quantidade} contas a pagar`}; cada uma aparece no mês do seu vencimento. Para mudar valor, dia ou prazo depois, use Gerenciar contas.
           </Aviso>
         </div>
       )}
@@ -318,7 +330,7 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
               icone={<CalendarClock size={24} />}
               titulo="Nenhuma conta a pagar"
               descricao={podeCriar
-                ? `Nada vence em ${periodo} e não há contas vencidas. Crie uma conta recorrente ou de prazo determinado em "Nova conta".`
+                ? `Nada vence em ${periodo} e não há contas vencidas. Crie uma conta em "Nova conta".`
                 : `Nada vence em ${periodo} e não há contas vencidas. Quem cria as contas é um administrador.`}
               acao={podeCriar ? botaoNovaConta() : undefined}
             />
@@ -384,7 +396,7 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
                 <thead>
                   <tr>
                     <Th largura={140}>Vencimento</Th>
-                    <Th largura={200}>Tipo</Th>
+                    <Th largura={200}>Conta</Th>
                     <Th largura={200}>Centro de custo</Th>
                     <Th>Observação</Th>
                     <Th largura={150} alinhar="dir">Valor</Th>
@@ -459,6 +471,8 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
       {podeCriar && botaoNovaConta('fixed right-4 bottom-[84px] md:bottom-6 z-30 h-[52px] rounded-[26px] px-5 shadow-lg lg:hidden')}
 
       {criando && <NovaContaModal onClose={() => setCriando(false)} onCriada={handleCriada} />}
+
+      {gerenciando && <GerenciarContasModal onClose={() => setGerenciando(false)} onMudou={() => router.refresh()} />}
 
       {editando && (
         <NovoMovimentoModal

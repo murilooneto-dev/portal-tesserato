@@ -18,16 +18,17 @@ import SeletorComBusca from './SeletorComBusca'
 
 export interface MovimentoParaEditar {
   id: string
-  tipoId: string
+  /** Nulo na conta Única (sem cadastro): aí o `tipoNome` é a descrição, editável. */
+  tipoId: string | null
   tipoNome: string
   centroCustoId: string | null
   centroCustoNome: string | null
   valor: number
   data: string
   observacao: string | null
-  /** Conta a pagar (Contas a Pagar): o tipo fica travado e salvar usa atualizarConta. */
+  /** Conta a pagar (Contas a Pagar): o nome fica travado (menos na Única) e salvar usa atualizarConta. */
   conta?: boolean
-  /** Conta já paga (Pagamentos): a data é o vencimento e o tipo fica travado, mas salvar usa atualizarMovimento. */
+  /** Conta já paga (Pagamentos): a data é o vencimento e o nome fica travado (menos na Única), mas salvar usa atualizarMovimento. */
   contaPaga?: boolean
   /** Dia em que a conta foi paga (só em conta já paga): dá para corrigir. */
   pagoEm?: string | null
@@ -53,13 +54,19 @@ function LinkDoRotulo({ onClick, children }: { onClick: () => void; children: Re
   )
 }
 
+// Recebimento: cria e edita. Pagamento (saída): só edita; toda despesa nasce
+// em Contas a Pagar (NovaContaModal).
 export default function NovoMovimentoModal({ natureza, onClose, movimento }: Props) {
   const router = useRouter()
   const [tipos, setTipos] = useState<FinanceiroTipo[]>([])
   const [centrosCusto, setCentrosCusto] = useState<FinanceiroCentroCusto[]>([])
   const [carregando, setCarregando] = useState(true)
 
+  const ehSaida = natureza === 'saida'
   const [tipoId, setTipoId] = useState(movimento?.tipoId ?? '')
+  // Conta Única: o nome é uma descrição livre.
+  const ehUnica = ehSaida && movimento !== undefined && movimento.tipoId === null
+  const [descricao, setDescricao] = useState(movimento?.tipoNome ?? '')
   const [valor, setValor] = useState(movimento ? String(movimento.valor) : '')
   const [data, setData] = useState(movimento?.data ?? '')
   const [pagoEm, setPagoEm] = useState(movimento?.pagoEm ?? '')
@@ -81,17 +88,19 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
   const [erroCentro, setErroCentro] = useState<string | null>(null)
 
   const recarregarTipos = useCallback(async () => {
+    // Só recebimento escolhe tipo; em pagamento o nome da conta é fixo.
+    if (ehSaida) return []
     const resultado = await listarFinanceiroTiposAtivos(natureza)
     let lista = resultado.data
     // Editando um lançamento cujo tipo foi desativado depois de criado: o
     // seletor precisa continuar mostrando o nome atual mesmo fora da lista
     // de ativos, senão o campo aparece vazio ao abrir pra editar.
-    if (movimento && !lista.some(t => t.id === movimento.tipoId)) {
+    if (movimento?.tipoId && !lista.some(t => t.id === movimento.tipoId)) {
       lista = [...lista, { id: movimento.tipoId, natureza, nome: movimento.tipoNome, ativo: false }]
     }
     setTipos(lista)
     return lista
-  }, [natureza, movimento])
+  }, [natureza, movimento, ehSaida])
 
   const recarregarCentros = useCallback(async () => {
     const resultado = await listarFinanceiroCentrosCustoAtivos(natureza)
@@ -166,7 +175,8 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
 
   async function handleSave() {
     const valorNumerico = Number(valor.replace(',', '.'))
-    if (!tipoId) { setErro('Selecione o tipo.'); return }
+    if (!ehSaida && !tipoId) { setErro('Selecione o tipo.'); return }
+    if (ehUnica && !descricao.trim()) { setErro('Informe a descrição da conta.'); return }
     if (!data) { setErro('Selecione a data.'); return }
     if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) { setErro('Informe um valor válido.'); return }
     if (ehContaPaga && !pagoEm) { setErro('Informe o dia do pagamento.'); return }
@@ -182,16 +192,18 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
           valor: valorNumerico,
           data,
           observacao: observacao.trim() || null,
+          descricao: ehUnica ? descricao : undefined,
         })
       : movimento
       ? await atualizarMovimento({
           id: movimento.id,
           natureza,
-          tipoId,
+          tipoId: ehSaida ? movimento.tipoId : tipoId,
           centroCustoId: centroCustoId || null,
           valor: valorNumerico,
           data,
           observacao: observacao.trim() || null,
+          descricao: ehUnica ? descricao : undefined,
           pagoEm: ehContaPaga ? pagoEm : undefined,
         })
       : await criarMovimento({
@@ -228,11 +240,11 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
 
   const titulo = ehEdicaoDeConta ? 'Editar conta' : movimento
     ? (natureza === 'entrada' ? 'Editar recebimento' : 'Editar pagamento')
-    : (natureza === 'entrada' ? 'Novo recebimento' : 'Novo pagamento')
+    : 'Novo recebimento'
 
   const campoData = (c: { id: string }) => <Input id={c.id} type="date" value={data} onChange={e => setData(e.target.value)} />
 
-  const podeSalvar = !saving && !!tipoId && !!data && !!valor
+  const podeSalvar = !saving && (ehSaida || !!tipoId) && (!ehUnica || !!descricao.trim()) && !!data && !!valor
 
   const rodape = movimento ? (
     <>
@@ -298,51 +310,65 @@ export default function NovoMovimentoModal({ natureza, onClose, movimento }: Pro
         )}
       </div>
 
-      <div className="relative">
-        <Field
-          rotulo="Tipo"
-          obrigatorio
-          erro={erroTipo}
-          ajuda={!criandoTipo && !carregando && tipos.length === 0 ? 'Nenhum tipo cadastrado ainda.' : undefined}
-        >
-          {c => ehConta ? (
-            <Input id={c.id} value={movimento?.tipoNome ?? ''} disabled readOnly />
-          ) : criandoTipo ? (
-            <div className="flex gap-2">
-              <Input
+      {ehSaida ? (
+        // Pagamento: conta com cadastro tem o nome travado; a Única edita a descrição.
+        ehUnica ? (
+          <Field rotulo="Descrição" obrigatorio>
+            {c => <Input id={c.id} value={descricao} onChange={e => setDescricao(e.target.value)} maxLength={120} />}
+          </Field>
+        ) : (
+          <Field rotulo="Conta">
+            {c => <Input id={c.id} value={movimento?.tipoNome ?? ''} disabled readOnly />}
+          </Field>
+        )
+      ) : (
+        <div className="relative">
+          <Field
+            rotulo="Tipo"
+            obrigatorio
+            erro={erroTipo}
+            ajuda={!criandoTipo && !carregando && tipos.length === 0 ? 'Nenhum tipo cadastrado ainda.' : undefined}
+          >
+            {c => ehConta ? (
+              <Input id={c.id} value={movimento?.tipoNome ?? ''} disabled readOnly />
+            ) : criandoTipo ? (
+              <div className="flex gap-2">
+                <Input
+                  id={c.id}
+                  aria-describedby={c.describedBy}
+                  invalido={c.invalido}
+                  value={novoTipoNome}
+                  onChange={e => setNovoTipoNome(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleCriarTipo() }}
+                  placeholder="Nome do novo tipo"
+                  autoFocus
+                />
+                <Button onClick={handleCriarTipo} disabled={!novoTipoNome.trim()} carregando={salvandoTipo} className="flex-none">
+                  Criar
+                </Button>
+              </div>
+            ) : (
+              <SeletorComBusca
+                key={`tipo-${rodada}`}
                 id={c.id}
-                aria-describedby={c.describedBy}
+                describedBy={c.describedBy}
                 invalido={c.invalido}
-                value={novoTipoNome}
-                onChange={e => setNovoTipoNome(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleCriarTipo() }}
-                placeholder="Nome do novo tipo"
-                autoFocus
+                value={tipoId}
+                onChange={setTipoId}
+                opcoes={tipos}
+                placeholder="Buscar ou escolher"
+                disabled={carregando}
               />
-              <Button onClick={handleCriarTipo} disabled={!novoTipoNome.trim()} carregando={salvandoTipo} className="flex-none">
-                Criar
-              </Button>
-            </div>
-          ) : (
-            <SeletorComBusca
-              key={`tipo-${rodada}`}
-              id={c.id}
-              describedBy={c.describedBy}
-              invalido={c.invalido}
-              value={tipoId}
-              onChange={setTipoId}
-              opcoes={tipos}
-              placeholder="Buscar ou escolher"
-              disabled={carregando}
-            />
+            )}
+          </Field>
+          {!ehConta && (
+            <LinkDoRotulo onClick={() => { setCriandoTipo(v => !v); setErroTipo(null) }}>
+              {criandoTipo ? 'Cancelar' : 'Novo tipo'}
+            </LinkDoRotulo>
           )}
-        </Field>
-        {!ehConta && (
-          <LinkDoRotulo onClick={() => { setCriandoTipo(v => !v); setErroTipo(null) }}>
-            {criandoTipo ? 'Cancelar' : 'Novo tipo'}
-          </LinkDoRotulo>
-        )}
-      </div>
+        </div>
+
+      )}
 
       <div className="relative">
         <Field rotulo="Centro de custo" erro={erroCentro}>

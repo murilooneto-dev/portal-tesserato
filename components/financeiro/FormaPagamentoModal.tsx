@@ -9,8 +9,13 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Aviso } from '@/components/ui/Aviso'
 import { Field } from '@/components/ui/Field'
-import { Input } from '@/components/ui/Input'
+import { Checkbox, Input } from '@/components/ui/Input'
 import { Segmentado, type OpcaoSegmentada } from '@/components/ui/Segmentado'
+
+// Encerrar a conta (forma Avulso) é uma ação à parte em Gerenciar contas.
+type FormaEditavel = Extract<FinanceiroFormaPagamento, 'recorrente' | 'prazo'>
+
+const EXPLICACAO_INDETERMINADO = 'Cria uma conta por mês para os próximos 4 anos e segue criando, sem data para acabar.'
 
 interface Props {
   tipo: FinanceiroTipo
@@ -18,14 +23,12 @@ interface Props {
   onSalvo: () => void
 }
 
-const OPCOES: OpcaoSegmentada<FinanceiroFormaPagamento>[] = [
-  { valor: 'avulso', rotulo: 'Avulso' },
+const OPCOES: OpcaoSegmentada<FormaEditavel>[] = [
   { valor: 'recorrente', rotulo: 'Recorrente' },
   { valor: 'prazo', rotulo: 'Prazo determinado' },
 ]
 
-const EXPLICACAO: Record<FinanceiroFormaPagamento, string> = {
-  avulso: 'Não cria contas.',
+const EXPLICACAO: Record<FormaEditavel, string> = {
   recorrente: 'Cria uma conta por mês, até dezembro, e renova todo ano.',
   prazo: 'Cria uma conta por mês, pela quantidade de meses informada.',
 }
@@ -40,20 +43,21 @@ export default function FormaPagamentoModal({ tipo, onClose, onSalvo }: Props) {
     const { mes, ano } = getMesAnoRealAgora()
     return mesComoTexto(mes, ano)
   })
-  const formaInicial: FinanceiroFormaPagamento = tipo.forma_pagamento ?? 'avulso'
+  const formaInicial: FormaEditavel = tipo.forma_pagamento === 'prazo' ? 'prazo' : 'recorrente'
   const mesInicialDoTipo = tipo.mes_inicio ? tipo.mes_inicio.slice(0, 7) : null
 
-  const [forma, setForma] = useState<FinanceiroFormaPagamento>(formaInicial)
+  const [forma, setForma] = useState<FormaEditavel>(formaInicial)
   const [valor, setValor] = useState(tipo.valor_padrao != null ? String(tipo.valor_padrao) : '')
   const [dia, setDia] = useState(tipo.dia_vencimento != null ? String(tipo.dia_vencimento) : '')
   const [mesInicio, setMesInicio] = useState(mesInicialDoTipo ?? mesAtual)
   const [qtdMeses, setQtdMeses] = useState(tipo.qtd_meses != null ? String(tipo.qtd_meses) : '')
 
+  const [indeterminado, setIndeterminado] = useState(tipo.indeterminado === true)
+
   const [previa, setPrevia] = useState<ResultadoFormaPagamento | null>(null)
   const [trabalhando, setTrabalhando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
-  const usaSerie = forma !== 'avulso'
   const diaNumero = Number(dia)
   const mesNormalizado = normalizarMes(mesInicio)
 
@@ -64,7 +68,6 @@ export default function FormaPagamentoModal({ tipo, onClose, onSalvo }: Props) {
 
   // Mesmas regras do banco; ele continua sendo quem decide.
   function validar(): string | null {
-    if (!usaSerie) return null
     const valorNumerico = Number(valor.replace(',', '.'))
     if (!valor || !Number.isFinite(valorNumerico) || valorNumerico <= 0) return 'Informe um valor maior que zero.'
     if (!Number.isInteger(diaNumero) || diaNumero < 1 || diaNumero > 31) return 'O dia do vencimento deve ficar entre 1 e 31.'
@@ -82,10 +85,11 @@ export default function FormaPagamentoModal({ tipo, onClose, onSalvo }: Props) {
     return {
       tipoId: tipo.id,
       forma,
-      valor: usaSerie ? Number(valor.replace(',', '.')) : null,
-      dia: usaSerie ? diaNumero : null,
-      mesInicio: usaSerie ? `${mesNormalizado}-01` : null,
+      valor: Number(valor.replace(',', '.')),
+      dia: diaNumero,
+      mesInicio: `${mesNormalizado}-01`,
       qtdMeses: forma === 'prazo' ? Number(qtdMeses) : null,
+      indeterminado: forma === 'recorrente' && indeterminado,
     }
   }
 
@@ -102,6 +106,7 @@ export default function FormaPagamentoModal({ tipo, onClose, onSalvo }: Props) {
       return
     }
     const nadaMuda = data.criadas === 0 && data.alteradas === 0 && data.apagadas === 0
+    // Sem contas a criar, mudar ou apagar, salva direto (inclui trocar só o Indeterminado).
     if (nadaMuda && forma === formaInicial) {
       await confirmar()
       return
@@ -145,7 +150,7 @@ export default function FormaPagamentoModal({ tipo, onClose, onSalvo }: Props) {
     <Modal
       aberto
       onFechar={onClose}
-      titulo={`Forma de pagamento · ${tipo.nome}`}
+      titulo={`Editar conta · ${tipo.nome}`}
       subtitulo="Financeiro"
       largura="p"
       fecharAoClicarFora={false}
@@ -153,104 +158,99 @@ export default function FormaPagamentoModal({ tipo, onClose, onSalvo }: Props) {
       rodape={rodape}
     >
       <div className="flex flex-col gap-1.5">
-        <Segmentado rotulo="Forma de pagamento" opcoes={OPCOES} valor={forma} onMudar={alterar(setForma)} disabled={trabalhando} className="max-sm:hidden" />
-        {/* No celular as três opções não cabem lado a lado: lista vertical. */}
-        <div role="radiogroup" aria-label="Forma de pagamento" className="flex flex-col gap-2 sm:hidden">
-          {OPCOES.map(o => (
-            <label key={o.valor} className="flex min-h-11 items-center gap-2.5 rounded-[9px] border border-line bg-inset px-3.5 text-sm text-fg">
-              <input
-                type="radio"
-                name="forma-pagamento"
-                value={o.valor}
-                checked={forma === o.valor}
-                disabled={trabalhando}
-                onChange={() => alterar(setForma)(o.valor)}
-                className="h-4 w-4 accent-[var(--acc)]"
-              />
-              {o.rotulo}
-            </label>
-          ))}
-        </div>
-        <p className="text-[13px] text-fg-3">{EXPLICACAO[forma]}</p>
+        <Segmentado rotulo="Forma de pagamento" opcoes={OPCOES} valor={forma} onMudar={alterar(setForma)} disabled={trabalhando} />
+        <p className="text-[13px] text-fg-3">
+          {forma === 'recorrente' && indeterminado ? EXPLICACAO_INDETERMINADO : EXPLICACAO[forma]}
+        </p>
       </div>
 
-      {usaSerie && (
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-          <Field rotulo="Valor" obrigatorio>
+      {forma === 'recorrente' && (
+        <div className="flex flex-col gap-1">
+          <Checkbox
+            rotulo="Indeterminado"
+            checked={indeterminado}
+            onChange={e => alterar(setIndeterminado)(e.target.checked)}
+            disabled={trabalhando}
+          />
+          <p className="pl-7 text-[13px] text-fg-3">Não para em dezembro: mantém sempre 4 anos de contas à frente.</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+        <Field rotulo="Valor" obrigatorio>
+          {c => (
+            <Input
+              id={c.id}
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0.01"
+              value={valor}
+              onChange={e => alterar(setValor)(e.target.value)}
+              placeholder="R$ 0,00"
+              disabled={trabalhando}
+              className="tabular-nums"
+            />
+          )}
+        </Field>
+        <Field
+          rotulo="Dia do vencimento"
+          obrigatorio
+          ajuda={diaNumero >= 29 && diaNumero <= 31 ? 'Nos meses mais curtos, vence no último dia.' : undefined}
+        >
+          {c => (
+            <Input
+              id={c.id}
+              aria-describedby={c.describedBy}
+              type="number"
+              inputMode="numeric"
+              step="1"
+              min="1"
+              max="31"
+              value={dia}
+              onChange={e => alterar(setDia)(e.target.value)}
+              disabled={trabalhando}
+              className="tabular-nums"
+            />
+          )}
+        </Field>
+        <Field rotulo="Mês de início" obrigatorio ajuda="mês e ano (MM/AAAA)">
+          {c => (
+            <Input
+              id={c.id}
+              aria-describedby={c.describedBy}
+              type="month"
+              min={mesInicialDoTipo ? undefined : mesAtual}
+              value={mesInicio}
+              onChange={e => alterar(setMesInicio)(e.target.value)}
+              disabled={trabalhando}
+            />
+          )}
+        </Field>
+        {forma === 'prazo' && (
+          <Field rotulo="Quantidade de meses" obrigatorio>
             {c => (
               <Input
                 id={c.id}
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0.01"
-                value={valor}
-                onChange={e => alterar(setValor)(e.target.value)}
-                placeholder="R$ 0,00"
-                disabled={trabalhando}
-                className="tabular-nums"
-              />
-            )}
-          </Field>
-          <Field
-            rotulo="Dia do vencimento"
-            obrigatorio
-            ajuda={diaNumero >= 29 && diaNumero <= 31 ? 'Nos meses mais curtos, vence no último dia.' : undefined}
-          >
-            {c => (
-              <Input
-                id={c.id}
-                aria-describedby={c.describedBy}
                 type="number"
                 inputMode="numeric"
                 step="1"
                 min="1"
-                max="31"
-                value={dia}
-                onChange={e => alterar(setDia)(e.target.value)}
+                max="120"
+                value={qtdMeses}
+                onChange={e => alterar(setQtdMeses)(e.target.value)}
                 disabled={trabalhando}
                 className="tabular-nums"
               />
             )}
           </Field>
-          <Field rotulo="Mês de início" obrigatorio ajuda="mês e ano (MM/AAAA)">
-            {c => (
-              <Input
-                id={c.id}
-                aria-describedby={c.describedBy}
-                type="month"
-                min={mesInicialDoTipo ? undefined : mesAtual}
-                value={mesInicio}
-                onChange={e => alterar(setMesInicio)(e.target.value)}
-                disabled={trabalhando}
-              />
-            )}
-          </Field>
-          {forma === 'prazo' && (
-            <Field rotulo="Quantidade de meses" obrigatorio>
-              {c => (
-                <Input
-                  id={c.id}
-                  type="number"
-                  inputMode="numeric"
-                  step="1"
-                  min="1"
-                  max="120"
-                  value={qtdMeses}
-                  onChange={e => alterar(setQtdMeses)(e.target.value)}
-                  disabled={trabalhando}
-                  className="tabular-nums"
-                />
-              )}
-            </Field>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {previa && (
         <div role="status">
           <Aviso tom={previa.apagadas > 0 ? 'dng' : 'info'}>
-            {textoPreviaFormaPagamento(previa, usaSerie ? Number(valor.replace(',', '.')) : null, usaSerie ? diaNumero : null)}
+            {textoPreviaFormaPagamento(previa, Number(valor.replace(',', '.')), diaNumero)}
           </Aviso>
         </div>
       )}

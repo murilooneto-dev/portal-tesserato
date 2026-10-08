@@ -52,12 +52,13 @@ test('cascas: caminho, título, subtítulo e abas', () => {
   contem(fin, ['<Pagina>', "{ rotulo: 'Configurações', href: '/admin/configuracoes' }, { rotulo: 'Financeiro' }",
     'titulo="Configurações do Financeiro"', 'subtitulo="Tipos, centros de custo e tarefas do Financeiro"', '<Abas',
     `rotulo: 'Tipos de entrada', conteudo: <FinanceiroCatalogoTab tipo="tipos" natureza="entrada" label="tipo de entrada" />`,
-    `rotulo: 'Tipos de saída', conteudo: <FinanceiroCatalogoTab tipo="tipos" natureza="saida" label="tipo de saída" />`,
     `rotulo: 'Centros de custo · recebimento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="entrada" label="centro de custo de recebimento" mostrada={trocas} />`,
     `rotulo: 'Centros de custo · pagamento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="saida" label="centro de custo de pagamento" mostrada={trocas} />`,
     "rotulo: 'Tarefas', conteudo: <TarefasFinanceiroTab />"])
-  // As cinco abas aparecem nessa ordem.
-  const ordem = ["'Tipos de entrada'", "'Tipos de saída'", "'Centros de custo · recebimento'", "'Centros de custo · pagamento'", "'Tarefas'"].map(t => fin.indexOf(t))
+  // Toda despesa nasce em Contas a Pagar: não há mais a aba de tipos de saída.
+  assert.ok(!fin.includes('Tipos de saída'))
+  // As quatro abas aparecem nessa ordem.
+  const ordem = ["'Tipos de entrada'", "'Centros de custo · recebimento'", "'Centros de custo · pagamento'", "'Tarefas'"].map(t => fin.indexOf(t))
   assert.deepEqual([...ordem].sort((a, b) => a - b), ordem)
 })
 
@@ -159,7 +160,7 @@ test('catálogos do Financeiro: desenho a-05 e mesmas actions', () => {
     'placeholder={`Nome do novo ${label}`}', "ehCentro ? 'Criar centro de custo' : 'Criar tipo'", "if (e.key === 'Enter') handleCriar()",
     'relative overflow-x-auto xl:overflow-visible', '<Th>{tituloColuna}</Th>', "ehCentro ? 'Centro de custo'",
     '<Th largura={160}>Situação</Th>', '<Th largura={56}>', '<Badge tom="ok">Ativo</Badge>', '<Badge tom="neu">Desativado</Badge>',
-    "'text-fg-3 line-through'", '`Renomear, desativar ou excluir ${item.nome}`', 'Forma de pagamento, renomear, desativar ou excluir ${item.nome}', "rotulo: 'Renomear'",
+    "'text-fg-3 line-through'", '`Renomear, desativar ou excluir ${item.nome}`', "rotulo: 'Renomear'",
     "rotulo: item.ativo ? 'Desativar' : 'Ativar'", "rotulo: 'Excluir'", 'perigo: true',
     "if (e.key === 'Enter') handleRenomear(item.id)", '(sem categoria — item antigo)', 'ehCentro && !item.natureza',
     '<EmptyState', '<Aviso tom="dng">{erro}</Aviso>', 'Excluir "${item.nome}"?',
@@ -171,4 +172,6 @@ test('catálogos do Financeiro: desenho a-05 e mesmas actions', () => {
   assert.match(src, /<Card semPadding className="[^"]*overflow-hidden[^"]*">/)
   // Aqui não existe "Vincular tarefas".
   assert.ok(!src.includes('Vincular'))
+  // A forma de pagamento saiu daqui: agora é Gerenciar contas, em Contas a Pagar.
+  assert.ok(!src.includes('FormaPagamentoModal') && !src.includes('comForma'))
 })

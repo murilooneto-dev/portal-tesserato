@@ -257,6 +257,8 @@ export interface FinanceiroTipo {
   /** Primeiro mês da série, sempre YYYY-MM-01. */
   mes_inicio?: string | null
   qtd_meses?: number | null
+  /** Recorrente que não para em dezembro: tem sempre 48 meses à frente (migration 068). */
+  indeterminado?: boolean
 }
 
 export interface FinanceiroCentroCusto {
@@ -269,7 +271,10 @@ export interface FinanceiroCentroCusto {
 export interface FinanceiroMovimento {
   id: string
   natureza: FinanceiroNatureza
-  tipo_id: string
+  /** Nulo só na conta Única, que tem `descricao` no lugar (migration 068). */
+  tipo_id: string | null
+  /** Nome da conta Única, digitado em Nova conta. */
+  descricao: string | null
   centro_custo_id: string | null
   valor: number
   data: string
@@ -280,7 +285,7 @@ export interface FinanceiroMovimento {
   pago_em: string | null
   /** Data e hora do pagamento, só nas contas pagas pelo botão Pagar. */
   pago_em_hora: string | null
-  /** Mês (YYYY-MM-01) da conta criada pelo Tipo de Saída; nulo nos demais. */
+  /** Mês (YYYY-MM-01) da conta a pagar; nulo no lançamento comum. */
   competencia: string | null
   created_at: string
 }

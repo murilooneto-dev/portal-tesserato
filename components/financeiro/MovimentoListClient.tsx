@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { Pencil, Plus, Receipt, Search, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react'
 import { definirPagamentoConfirmado, excluirMovimento } from '@/lib/financeiro-actions'
 import { normalizarNome } from '@/lib/config-entidades'
@@ -9,7 +10,7 @@ import { compararPorPagamento, ehConta, formatarPagoEm, formatarValor } from '@/
 import type { FinanceiroFormaPagamento, FinanceiroNatureza } from '@/lib/types'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
 import { Aviso } from '@/components/ui/Aviso'
-import { Button, IconButton } from '@/components/ui/Button'
+import { Button, IconButton, buttonClassName } from '@/components/ui/Button'
 import { cn } from '@/components/ui/cn'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -22,7 +23,9 @@ import SeloConta from './SeloConta'
 
 export interface MovimentoLinha {
   id: string
-  tipo_id: string
+  /** Nulo na conta Única (sem cadastro): o nome vem da descrição. */
+  tipo_id: string | null
+  descricao?: string | null
   centro_custo_id: string | null
   valor: number
   data: string
@@ -38,7 +41,7 @@ export interface MovimentoLinha {
   pago_em?: string | null
   /** Hora do pagamento, só nas contas pagas pelo botão Pagar. */
   pago_em_hora?: string | null
-  /** Preenchido nas contas criadas pelo Tipo de Saída (recorrente ou com prazo). */
+  /** Preenchido nas contas criadas em Contas a Pagar (Única, Recorrente ou com prazo). */
   competencia?: string | null
   /** Forma de pagamento atual do tipo: decide o selo da conta (Recorrente ou Prazo determinado). */
   tipo_forma?: FinanceiroFormaPagamento | null
@@ -84,7 +87,8 @@ function dataDaLista(m: MovimentoLinha, ehEntrada: boolean) {
 export default function MovimentoListClient({ natureza, movimentos, mes, ano }: Props) {
   const ehEntrada = natureza === 'entrada'
   const titulo = ehEntrada ? 'Recebimentos' : 'Pagamentos'
-  const botaoNovo = ehEntrada ? 'Novo recebimento' : 'Novo pagamento'
+  // Pagamentos é só o histórico: toda despesa nasce em Contas a Pagar.
+  const botaoNovo = 'Novo recebimento'
   const nomeItem = ehEntrada ? 'recebimento' : 'pagamento'
   // Pagamentos abre pelo que foi pago por último; Recebimentos, pelo último lançado.
   const ordenacaoPadrao: Ordenacao = ehEntrada ? 'lancamento' : 'pago_recente'
@@ -211,8 +215,6 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
     )
   }
 
-  // Só a série antiga (recorrencia_id) leva o selo; a conta do Tipo de Saída já aparece pela coluna Vencimento.
-
   const erroExclusao = erroExcluir && (
     <p role="alert" className="mt-2 text-[13px] text-danger">Não foi possível excluir: {erroExcluir}</p>
   )
@@ -224,11 +226,11 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
         subtitulo={<>
           <span className="first-letter:uppercase inline-block">{periodo}</span> · {plural(n)} · total <b className="font-semibold text-fg tabular-nums">{formatarValor(total)}</b>
         </>}
-        acoes={
+        acoes={ehEntrada ? (
           <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalAberto(true)} className="hidden lg:inline-flex">
             {botaoNovo}
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="flex flex-wrap items-end gap-3">
@@ -240,7 +242,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
                 type="search"
                 value={busca}
                 onChange={e => { setBusca(e.target.value); setPagina(1); setExcluindoId(null) }}
-                placeholder="Tipo, centro de custo ou observação"
+                placeholder={ehEntrada ? 'Tipo, centro de custo ou observação' : 'Conta, centro de custo ou observação'}
                 iconeEsquerda={<Search size={16} />}
               />
             )}
@@ -276,8 +278,10 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
               titulo={ehEntrada ? 'Nenhum lançamento ainda' : 'Nenhum pagamento ainda'}
               descricao={ehEntrada
                 ? `Nada com data em ${periodo}. Para ver outro mês, troque o mês no topo da tela.`
-                : `Nenhum pagamento em ${periodo}. As contas ainda não pagas ficam em Contas a pagar.`}
-              acao={<Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalAberto(true)}>{botaoNovo}</Button>}
+                : `Nenhum pagamento em ${periodo}. Os pagamentos aparecem aqui depois de pagos em Contas a pagar.`}
+              acao={ehEntrada
+                ? <Button variante="primario" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setModalAberto(true)}>{botaoNovo}</Button>
+                : <Link href="/financeiro/contas-a-pagar" className={buttonClassName({ variante: 'primario' })}>Ir para Contas a pagar</Link>}
             />
           ) : (
             <EmptyState
@@ -348,7 +352,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
                           <Th largura={150}>Pago em</Th>
                           <Th largura={120}>Vencimento</Th>
                         </>}
-                    <Th largura={220}>Tipo</Th>
+                    <Th largura={220}>{ehEntrada ? 'Tipo' : 'Conta'}</Th>
                     <Th largura={220}>Centro de custo</Th>
                     <Th>Observação</Th>
                     <Th largura={ehEntrada ? 150 : 170} alinhar="dir">Valor</Th>
@@ -423,16 +427,18 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
         </>
       )}
 
-      <Button
-        variante="primario"
-        icone={<Plus size={18} aria-hidden="true" />}
-        onClick={() => setModalAberto(true)}
-        className="fixed right-4 bottom-[84px] md:bottom-6 z-30 h-[52px] rounded-[26px] px-5 shadow-lg lg:hidden"
-      >
-        {botaoNovo}
-      </Button>
+      {ehEntrada && (
+        <Button
+          variante="primario"
+          icone={<Plus size={18} aria-hidden="true" />}
+          onClick={() => setModalAberto(true)}
+          className="fixed right-4 bottom-[84px] md:bottom-6 z-30 h-[52px] rounded-[26px] px-5 shadow-lg lg:hidden"
+        >
+          {botaoNovo}
+        </Button>
+      )}
 
-      {modalAberto && (
+      {ehEntrada && modalAberto && (
         <NovoMovimentoModal natureza={natureza} onClose={() => setModalAberto(false)} />
       )}
 

@@ -56,8 +56,8 @@ export function situacaoPagamento(m: { pago?: boolean | null; data: string }, ho
 
 /**
  * Conta a pagar é a saída que nasceu de uma série antiga (recorrencia_id) ou
- * do Tipo de Saída (competencia, recorrente ou com prazo). Lançamento avulso
- * não tem nenhum dos dois.
+ * de Contas a Pagar (competencia: Única, Recorrente ou com prazo). Lançamento
+ * comum, como os pagamentos antigos e os recebimentos, não tem nenhum dos dois.
  */
 export function ehConta(m: { recorrencia_id?: string | null; competencia?: string | null }): boolean {
   return Boolean(m.recorrencia_id) || Boolean(m.competencia)
@@ -73,18 +73,28 @@ export function contaApareceNoMes(data: string, primeiroDia: string, hoje: strin
 }
 
 /**
+ * Nome mostrado para um movimento: o da conta (ou do tipo antigo) e, na conta
+ * Única, a descrição digitada.
+ */
+export function nomeDaConta(tipoNome: string | null | undefined, descricao: string | null | undefined): string {
+  return tipoNome || descricao?.trim() || '—'
+}
+
+/**
  * Selo ao lado do nome da conta, em Contas a Pagar e em Pagamentos: como ela
- * se repete. Série antiga (recorrencia_id) é sempre recorrente; conta criada
- * pelo Tipo de Saída segue a forma atual do tipo. Avulso não tem selo, nem a
- * conta cujo tipo voltou para Avulso.
+ * se repete. Série antiga (recorrencia_id) é sempre recorrente; conta com
+ * cadastro segue a forma atual dele; conta sem cadastro (tipo_id nulo) é
+ * Única. Pagamento antigo não tem selo, nem a conta que foi encerrada.
  */
 export function rotuloSeloConta(m: {
   recorrencia_id?: string | null
   competencia?: string | null
+  tipo_id?: string | null
   tipo_forma?: FinanceiroFormaPagamento | null
-}): 'Recorrente' | 'Prazo determinado' | null {
+}): 'Recorrente' | 'Prazo determinado' | 'Única' | null {
   if (m.recorrencia_id) return 'Recorrente'
   if (!m.competencia) return null
+  if (m.tipo_id === null) return 'Única'
   if (m.tipo_forma === 'recorrente') return 'Recorrente'
   if (m.tipo_forma === 'prazo') return 'Prazo determinado'
   return null
@@ -121,11 +131,16 @@ export function normalizarMes(texto: string): string | null {
   return `${ano}-${String(m).padStart(2, '0')}`
 }
 
+/** Meses que o Recorrente indeterminado mantém à frente (4 anos). Igual ao banco (migration 068). */
+export const MESES_INDETERMINADO = 48
+
 /**
  * Contas que uma conta NOVA vai criar, para mostrar antes de salvar. Mesma
- * conta do banco (financeiro_fim_recorrente, migration 065): o Recorrente vai
- * até dezembro do ano de início ou do ano corrente, o que for maior, e em
- * dezembro já inclui o ano seguinte; o Prazo cria a quantidade pedida.
+ * conta do banco (financeiro_fim_recorrente, migrations 065 e 068): o
+ * Recorrente vai até dezembro do ano de início ou do ano corrente, o que for
+ * maior, e em dezembro já inclui o ano seguinte; o Recorrente indeterminado
+ * cria 48 meses (a tela não deixa começar antes do mês atual); o Prazo cria a
+ * quantidade pedida.
  * `mesInicio` em AAAA-MM; `hoje` é o mês e o ano reais (fuso de São Paulo).
  */
 export function previaNovaConta(
@@ -133,11 +148,14 @@ export function previaNovaConta(
   mesInicio: string,
   qtdMeses: number | null,
   hoje: { mes: number; ano: number },
+  indeterminado = false,
 ): ResultadoFormaPagamento {
   const [ano, mes] = mesInicio.split('-').map(Number)
   let criadas: number
   if (forma === 'prazo') {
     criadas = qtdMeses ?? 0
+  } else if (indeterminado) {
+    criadas = MESES_INDETERMINADO
   } else {
     const anoFim = Math.max(ano, hoje.ano + (hoje.mes === 12 ? 1 : 0))
     criadas = (anoFim - ano) * 12 + (12 - mes + 1)
@@ -198,6 +216,26 @@ export function textoPreviaFormaPagamento(
     frases.push(r.apagadas === 1 ? '1 conta não paga será apagada.' : `${r.apagadas} contas não pagas serão apagadas.`)
   }
   return frases.length > 0 ? frases.join(' ') : 'Nenhuma conta muda.'
+}
+
+/** Resumo de como a conta se repete: "Recorrente · indeterminado · R$ 350,00 · dia 10". */
+export function textoFormaConta(c: {
+  forma_pagamento?: FinanceiroFormaPagamento
+  valor_padrao?: number | null
+  dia_vencimento?: number | null
+  qtd_meses?: number | null
+  indeterminado?: boolean
+}): string {
+  const valor = c.valor_padrao != null ? formatarValor(c.valor_padrao) : null
+  const dia = c.dia_vencimento != null ? `dia ${c.dia_vencimento}` : null
+  if (c.forma_pagamento === 'recorrente') {
+    return ['Recorrente', c.indeterminado ? 'indeterminado' : null, valor, dia].filter(Boolean).join(' · ')
+  }
+  if (c.forma_pagamento === 'prazo') {
+    const meses = c.qtd_meses != null ? `${c.qtd_meses} ${c.qtd_meses === 1 ? 'mês' : 'meses'}` : null
+    return ['Prazo determinado', meses, valor, dia].filter(Boolean).join(' · ')
+  }
+  return 'Encerrada'
 }
 
 /** Quando a conta foi paga: "07/10 às 14:32" (horário de Brasília), "07/10" sem hora, "—" sem nada. */

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ehConta, textoPreviaFormaPagamento, formatarPagoEm, contaApareceNoMes, compararPorPagamento, normalizarMes, previaNovaConta, rotuloSeloConta } from '../lib/financeiro-movimentos'
+import { nomeDaConta, textoFormaConta, ehConta, textoPreviaFormaPagamento, formatarPagoEm, contaApareceNoMes, compararPorPagamento, normalizarMes, previaNovaConta, rotuloSeloConta } from '../lib/financeiro-movimentos'
 
 const ler = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8')
 // toLocaleString põe espaço sem quebra (U+00A0) depois de R$; os textos esperados usam espaço comum.
@@ -156,12 +156,14 @@ test('forma de pagamento e Nova conta chamam o banco com a sessão do usuário, 
   const corpo = src.slice(i, src.indexOf('export async function', i + 10))
   assert.ok(corpo.includes('await exigirAdmin()'))
   // Forma recusada: o tipo recém-criado não fica para trás.
-  assert.ok(corpo.includes("await sessao.from('financeiro_tipos').delete().eq('id', tipo.id)"))
+  assert.ok(corpo.includes("await sessao.from('financeiro_tipos').delete().eq('id', tipoId)"))
 
   const pagina = ler('app/financeiro/contas-a-pagar/page.tsx')
   assert.ok(pagina.includes("podeCriar={profile?.role === 'admin'}"))
   const tela = ler('components/financeiro/ContasAPagarClient.tsx')
-  assert.ok(tela.includes('podeCriar ? botaoNovaConta('))
+  assert.ok(tela.includes('podeCriar ? ('))
+  assert.ok(tela.includes('{botaoGerenciar}'))
+  assert.ok(tela.includes('GerenciarContasModal'))
   assert.ok(tela.includes('{podeCriar && botaoNovaConta('))
 })
 
@@ -190,4 +192,52 @@ test('conta paga: dá para corrigir o dia do pagamento, e o aviso de Contas a Pa
 
   const contas = ler('components/financeiro/ContasAPagarClient.tsx')
   assert.ok(contas.includes('if (mesVisto !== mesDoSeletor)'))
+})
+
+test('previaNovaConta indeterminado: sempre 48 contas, a partir do mês de início', () => {
+  assert.deepEqual(previaNovaConta('recorrente', '2026-10', null, { mes: 10, ano: 2026 }, true),
+    { criadas: 48, alteradas: 0, apagadas: 0, primeira: '2026-10-01', ultima: '2030-09-01' })
+  assert.deepEqual(previaNovaConta('recorrente', '2027-03', null, { mes: 10, ano: 2026 }, true),
+    { criadas: 48, alteradas: 0, apagadas: 0, primeira: '2027-03-01', ultima: '2031-02-01' })
+  assert.deepEqual(previaNovaConta('recorrente', '2026-12', null, { mes: 12, ano: 2026 }, true),
+    { criadas: 48, alteradas: 0, apagadas: 0, primeira: '2026-12-01', ultima: '2030-11-01' })
+})
+
+test('nomeDaConta: o cadastro vence; sem ele vale a descrição; sem nada, traço', () => {
+  assert.equal(nomeDaConta('Aluguel', 'outra coisa'), 'Aluguel')
+  assert.equal(nomeDaConta(null, '  Material de escritório  '), 'Material de escritório')
+  assert.equal(nomeDaConta(undefined, null), '—')
+  assert.equal(nomeDaConta(null, '   '), '—')
+})
+
+test('rotuloSeloConta: Única é a conta com competência e sem cadastro', () => {
+  assert.equal(rotuloSeloConta({ competencia: '2026-10-01', tipo_id: null }), 'Única')
+  // Pagamento antigo: tem tipo e não tem competência.
+  assert.equal(rotuloSeloConta({ tipo_id: 'x' }), null)
+  assert.equal(rotuloSeloConta({ competencia: '2026-10-01', tipo_id: 'x', tipo_forma: 'prazo' }), 'Prazo determinado')
+})
+
+test('textoFormaConta: recorrente indeterminado, recorrente comum e prazo', () => {
+  assert.equal(sp(textoFormaConta({ forma_pagamento: 'recorrente', indeterminado: true, valor_padrao: 350, dia_vencimento: 10 })),
+    'Recorrente · indeterminado · R$ 350,00 · dia 10')
+  assert.equal(sp(textoFormaConta({ forma_pagamento: 'recorrente', valor_padrao: 350, dia_vencimento: 10 })),
+    'Recorrente · R$ 350,00 · dia 10')
+  assert.equal(sp(textoFormaConta({ forma_pagamento: 'prazo', qtd_meses: 6, valor_padrao: 350, dia_vencimento: 10 })),
+    'Prazo determinado · 6 meses · R$ 350,00 · dia 10')
+})
+
+test('despesa só nasce em Contas a Pagar', () => {
+  const acoes = ler('lib/financeiro-actions.ts')
+  const i = acoes.indexOf('export async function criarMovimento')
+  const criar = acoes.slice(i, acoes.indexOf('export async function', i + 10))
+  assert.ok(criar.includes("input.natureza !== 'entrada'"), 'criarMovimento recusa saída')
+
+  const j = acoes.indexOf('export async function criarContaUnica')
+  const unica = acoes.slice(j, acoes.indexOf('export async function', j + 10))
+  assert.ok(unica.includes('await exigirAdmin()'))
+  assert.ok(unica.includes('tipo_id: null'))
+  assert.ok(unica.includes('competencia:'))
+
+  assert.ok(!ler('components/financeiro/MovimentoListClient.tsx').includes('Novo pagamento'))
+  assert.ok(!ler('app/admin/configuracoes/financeiro/FinanceiroConfigClient.tsx').includes('Tipos de saída'))
 })
