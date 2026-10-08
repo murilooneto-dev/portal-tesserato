@@ -19,3 +19,17 @@ test('três cartões fechados, com contagem e sem emojis', () => {
   assert.match(html, /O TessHub abre em uma nova aba/)
   assert.doesNotMatch(html, /text-\[(9|10|11)px\]/)
 })
+
+test('cartão DET só aparece para quem é do Pessoal (ou admin), com os clientes do Pessoal', () => {
+  const det = [{ id: 'p1', nome: 'EMPRESA DO PESSOAL', cnpj: '11111111000111', responsavel: 'Pessoal' }, { id: 'p2', nome: 'OUTRA', cnpj: null, responsavel: 'Pessoal' }]
+  const com = renderToStaticMarkup(h(FerramentasClient, { clientes: [cli({})], clientesDet: det, mostrarDet: true, isAdmin: false, userNome: 'Pessoal' }))
+  assert.equal((com.match(/aria-expanded="false"/g) ?? []).length, 4)
+  assert.match(com, />DET</)
+  assert.match(com, /Domicílio Eletrônico Trabalhista/)
+  assert.match(com, /2 clientes</)
+
+  const sem = renderToStaticMarkup(h(FerramentasClient, { clientes: [cli({})], clientesDet: det, isAdmin: false, userNome: 'Fiscal' }))
+  assert.equal((sem.match(/aria-expanded="false"/g) ?? []).length, 3)
+  assert.doesNotMatch(sem, />DET</)
+  assert.doesNotMatch(sem, /Domicílio Eletrônico Trabalhista/)
+})

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import type { ClienteComFiscal } from '@/lib/clientes-fiscal'
 import { bucketDoRegime } from '@/lib/regime-bucket'
-import { ChevronDown, ChevronUp, Download, ExternalLink, Eye, EyeOff, FileText, Search, Store } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, ExternalLink, Eye, EyeOff, FileText, Mailbox, Search, Store } from 'lucide-react'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
 import { Button, IconButton, buttonClassName } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -13,31 +13,40 @@ import { NomeCliente } from '@/components/ui/NomeCliente'
 import { Aviso } from '@/components/ui/Aviso'
 import { EmptyState } from '@/components/ui/EmptyState'
 
+// O que a lista e a planilha usam de um cliente, seja qual for o setor de origem.
+type ClienteFerramenta = Pick<ClienteComFiscal, 'id' | 'nome' | 'cnpj' | 'responsavel'>
+  & Partial<Pick<ClienteComFiscal, 'municipio' | 'mit' | 'uf' | 'login_iss' | 'senha_iss'>>
+
 interface Props {
   clientes: ClienteComFiscal[]
+  // Clientes do setor Pessoal (já filtrados pelo responsável no servidor).
+  clientesDet?: ClienteFerramenta[]
+  mostrarDet?: boolean
   isAdmin: boolean
   userNome: string
 }
 
-type Ferramenta = 'SIGA' | 'ISS' | 'MEI'
+type Ferramenta = 'SIGA' | 'ISS' | 'MEI' | 'DET'
 
 const CARD_META: Record<Ferramenta, { titulo: string; descricao: string; cor: string; Icone: typeof Search }> = {
   SIGA: { titulo: 'SIGA', descricao: 'Clientes com conferência SIGA habilitada', cor: '#8B93F8', Icone: Search },
   ISS: { titulo: 'ISS', descricao: 'Clientes com envio de ISS habilitado', cor: 'var(--acc)', Icone: FileText },
   MEI: { titulo: 'MEI', descricao: 'Clientes do grupo MEI', cor: 'var(--warn)', Icone: Store },
+  DET: { titulo: 'DET', descricao: 'Caixa postal e notificações do Domicílio Eletrônico Trabalhista', cor: 'var(--ok)', Icone: Mailbox },
 }
 // Texto na cor da ferramenta com contraste nos dois temas (mistura com a cor do texto).
 const corDeTexto = (cor: string) => `color-mix(in srgb, ${cor} 72%, var(--fg))`
 
-function filtrarClientes(clientes: ClienteComFiscal[], tipo: Ferramenta): ClienteComFiscal[] {
+function filtrarClientes(clientes: ClienteComFiscal[], clientesDet: ClienteFerramenta[], tipo: Ferramenta): ClienteFerramenta[] {
   switch (tipo) {
+    case 'DET':  return clientesDet
     case 'SIGA': return clientes.filter(c => c.confere_siga)
     case 'ISS':  return clientes.filter(c => c.envia_iss)
     case 'MEI':  return clientes.filter(c => bucketDoRegime(c.regime) === 'mei')
   }
 }
 
-function exportarPlanilha(clientes: ClienteComFiscal[], tipo: Ferramenta) {
+function exportarPlanilha(clientes: ClienteFerramenta[], tipo: Ferramenta) {
 
   let headers: string[]
   let rows: (string | number)[][]
@@ -59,6 +68,7 @@ function exportarPlanilha(clientes: ClienteComFiscal[], tipo: Ferramenta) {
       ])
       break
     case 'MEI':
+    case 'DET':
       headers = ['CNPJ', 'Razão Social']
       rows = clientes.map(c => [c.cnpj ?? '', c.nome])
       break
@@ -73,6 +83,7 @@ function exportarPlanilha(clientes: ClienteComFiscal[], tipo: Ferramenta) {
     SIGA: [20, 45],
     ISS:  [20, 45, 30, 8, 25, 25],
     MEI:  [20, 45],
+    DET:  [20, 45],
   }
   ws['!cols'] = colWidths[tipo].map(w => ({ wch: w }))
 
@@ -115,11 +126,11 @@ function exportarPlanilha(clientes: ClienteComFiscal[], tipo: Ferramenta) {
   XLSX.writeFile(wb, `${tipo}_${data}.xlsx`, { bookType: 'xlsx', cellStyles: true })
 }
 
-export default function FerramentasClient({ clientes, isAdmin, userNome }: Props) {
+export default function FerramentasClient({ clientes, clientesDet = [], mostrarDet = false, isAdmin, userNome }: Props) {
   const [aberto, setAberto] = useState<Ferramenta | null>(null)
   const [search, setSearch] = useState('')
 
-  const ferramentas: Ferramenta[] = ['SIGA', 'ISS', 'MEI']
+  const ferramentas: Ferramenta[] = mostrarDet ? ['SIGA', 'ISS', 'MEI', 'DET'] : ['SIGA', 'ISS', 'MEI']
 
   function toggleCard(tipo: Ferramenta) {
     setAberto(prev => prev === tipo ? null : tipo)
@@ -127,7 +138,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
   }
 
   const listaFiltrada = aberto
-    ? filtrarClientes(clientes, aberto).filter(c =>
+    ? filtrarClientes(clientes, clientesDet, aberto).filter(c =>
         !search || c.nome.toLowerCase().includes(search.toLowerCase()) ||
         (c.cnpj ?? '').includes(search)
       )
@@ -138,7 +149,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
     <Pagina>
       <CabecalhoPagina
         titulo="Ferramentas"
-        subtitulo={<>Acesso rápido às ferramentas do setor fiscal{!isAdmin && userNome && <span> · {userNome}</span>}</>}
+        subtitulo={<>Acesso rápido às ferramentas dos setores{!isAdmin && userNome && <span> · {userNome}</span>}</>}
         acoes={
           <a href="https://tesshub.com.br/login" target="_blank" rel="noopener noreferrer"
             className={buttonClassName({ variante: 'primario' })}>
@@ -148,10 +159,10 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className={`grid grid-cols-1 gap-4 ${mostrarDet ? 'sm:grid-cols-2 xl:grid-cols-4' : 'md:grid-cols-3'}`}>
         {ferramentas.map(tipo => {
           const meta = CARD_META[tipo]
-          const total = filtrarClientes(clientes, tipo).length
+          const total = filtrarClientes(clientes, clientesDet, tipo).length
           const ativo = aberto === tipo
           const Icone = meta.Icone
           return (
@@ -222,7 +233,7 @@ export default function FerramentasClient({ clientes, isAdmin, userNome }: Props
                       <>
                         <Td className="text-fg-2">{c.municipio ?? c.mit ?? '—'}{c.uf ? <span className="text-fg-3"> / {c.uf}</span> : ''}</Td>
                         <Td className="font-mono text-[13px] text-fg-2">{c.login_iss ?? '—'}</Td>
-                        <Td><SenhaCell senha={c.senha_iss} /></Td>
+                        <Td><SenhaCell senha={c.senha_iss ?? null} /></Td>
                       </>
                     )}
                     {isAdmin && <Td className="text-fg-2">{c.responsavel ?? '—'}</Td>}
