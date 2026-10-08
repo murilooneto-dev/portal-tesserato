@@ -7,6 +7,7 @@ import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import CamposFiscais, { Secao, type CamposFiscaisData } from './CamposFiscais'
 import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
+import { listarNomesDeTiposSemUso } from '@/lib/tarefa-tipos-actions'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
 import { salvarCliente } from '@/app/fiscal/clientes/actions'
@@ -116,8 +117,9 @@ export default function EmpresaModal({ clienteId, responsaveis, onClose, readOnl
   }, [clienteId])
 
   useEffect(() => {
-    sb.from('tarefa_tipos').select('nome').eq('setor', 'fiscal').then(({ data }) => {
-      setCatalogoNomes((data ?? []).map(t => t.nome as string))
+    // Tipo que ninguém usa não conta como existente: digitar o nome dele abre a criação.
+    Promise.all([sb.from('tarefa_tipos').select('nome').eq('setor', 'fiscal'), listarNomesDeTiposSemUso('fiscal')]).then(([{ data }, semUso]) => {
+      setCatalogoNomes((data ?? []).map(t => t.nome as string).filter(n => !semUso.includes(n)))
     })
   }, [])
 
