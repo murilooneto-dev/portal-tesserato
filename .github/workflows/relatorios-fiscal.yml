@@ -1,0 +1,40 @@
+# Envio agendado dos relatórios do Fiscal por e-mail.
+#
+# A cada 10 minutos chama a rota do portal, que confere o dia e o horário das
+# rotinas gravadas em Parâmetros e só manda quando alguma está na hora (nas
+# outras chamadas responde "nada_agora"). Fica aqui, e não no cron da Vercel,
+# porque o plano gratuito da Vercel só roda cron uma vez por dia.
+#
+# Precisa do segredo CRON_SECRET do repositório, com o mesmo valor da variável
+# CRON_SECRET de Production na Vercel. O GitHub só agenda o que está na branch
+# padrão (main) e pode atrasar alguns minutos; a rota tolera o atraso.
+name: Relatórios do Fiscal (envio agendado)
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: relatorios-fiscal
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  chamar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chamar o envio agendado
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Falta o segredo CRON_SECRET no repositório (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            --retry 2 --retry-delay 15 --retry-connrefused \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://app.tesseratocontabilidade.com/api/cron/fiscal-relatorios

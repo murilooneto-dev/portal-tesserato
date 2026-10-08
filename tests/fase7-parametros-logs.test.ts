@@ -61,22 +61,23 @@ test('Parâmetros: cabeçalho a-06, um só link de logs e duas abas', () => {
   const page = ler(PAGE)
   assert.ok(!page.includes('taskLogs'))
   assert.ok(!page.includes('task_unlock_log'))
-  tem(page, ["if (profile?.role !== 'admin') redirect('/intranet')", "'email_ativo','gmail_remetente','gmail_senha','email_destinatario','usar_senha_app'"])
+  tem(page, ["if (profile?.role !== 'admin') redirect('/intranet')", "'email_ativo','email_destinatario',"])
+  // A senha de app do Gmail não vai mais para o navegador.
+  assert.ok(!page.includes('gmail_'))
 })
 
 test('aba Comunicado e e-mails: desenho a-06', () => {
   const src = ler(ABA_EMAILS)
   tem(src, ['lg:grid-cols-[380px_minmax(0,1fr)]', 'titulo="Comunicado no Início"', 'rotulo="Mensagem para todos os usuários"',
     'ajuda="Aparece no topo da página Início. Deixe em branco para esconder."', 'min-h-[140px]', 'Salvar comunicado', "toast('Salvo')",
-    'titulo="Relatórios automáticos por e-mail"', 'rotulo="Envio ligado"', 'rotulo="Gmail remetente"', 'placeholder="email@gmail.com"',
-    'rotulo="Senha de app do Gmail"', 'ajuda="Recomendado para contas com verificação em duas etapas"', "'Esconder senha' : 'Mostrar senha'",
+    'titulo="Relatórios automáticos por e-mail"', 'rotulo="Envio ligado"',
     'rotulo="E-mail destinatário"', 'placeholder="destino@email.com"', "label: 'Rotina 1'", "label: 'Rotina 2'", 'rotulo="Ativa"',
     'rotulo="Dia do mês"', 'min={1} max={31}', 'placeholder="Ex.: 5"', 'rotulo="Horário"', 'type="time"',
     'rounded-[10px] border border-line-soft bg-page px-4 py-3.5', 'border-t border-line-soft', 'Enviar relatórios agora', 'Salvar configuração'])
   // Um único botão primário na aba.
   assert.equal(src.split('variante="primario"').length - 1, 1)
-  // usar_senha_app não tem controle na tela.
-  assert.ok(!src.includes('setUsarSenhaApp'))
+  // Gmail remetente e senha de app saíram: o envio usa a conta da Vercel.
+  for (const t of ['Gmail', 'gmail_', 'usar_senha_app', 'Mostrar senha']) assert.ok(!src.includes(t), t)
   assert.ok(!src.includes('type="checkbox"'))
 })
 
@@ -84,15 +85,11 @@ test('aba Comunicado e e-mails: actions com os mesmos argumentos', () => {
   const src = ler(ABA_EMAILS)
   tem(src, ["fd.set('dashboard_announcement', announcement)", 'await salvarComunicado(fd)',
     "await fetch('/api/relatorios/fiscal', { method: 'POST' })",
-    "`${data.enviados} relatório(s) enviado(s): ${data.responsaveis.join(', ')}`", "`Erro: ${data.error ?? 'falha ao enviar'}`",
-    "const usarSenhaApp = emailSettings.usar_senha_app === 'true'"])
+    "`${data.enviados} relatório(s) enviado(s): ${data.responsaveis.join(', ')}`", "`Erro: ${data.error ?? 'falha ao enviar'}`"])
   assert.ok(src.includes([
     'await salvarConfiguracoes({',
     '      email_ativo: String(emailAtivo),',
-    '      gmail_remetente: gmailRemetente,',
-    '      gmail_senha: gmailSenha,',
     '      email_destinatario: emailDest,',
-    '      usar_senha_app: String(usarSenhaApp),',
     '      rotina1_ativo: String(rotina1Ativo),',
     '      rotina1_dia: rotina1Dia,',
     '      rotina1_hora: rotina1Hora,',
