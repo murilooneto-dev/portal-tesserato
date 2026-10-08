@@ -66,9 +66,12 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
 
   const opcoesTipo = form.natureza === 'saida' ? tiposSaida : form.natureza === 'entrada' ? tiposEntrada : [...tiposEntrada, ...tiposSaida]
 
+  // Em saída o cadastro é a conta; em entrada é o tipo.
+  const rotuloTipo = form.natureza === 'saida' ? 'Conta' : form.natureza === 'entrada' ? 'Tipo' : 'Tipo ou conta'
+
   const filtrosAplicados = [
     form.natureza && `Natureza: ${NATUREZA_LABEL[form.natureza] ?? form.natureza}`,
-    form.tipoId && `Tipo: ${opcoesTipo.find(t => t.id === form.tipoId)?.nome ?? form.tipoId}`,
+    form.tipoId && `${rotuloTipo}: ${opcoesTipo.find(t => t.id === form.tipoId)?.nome ?? form.tipoId}`,
     form.centroCustoId && `Centro de custo: ${centrosCusto.find(c => c.id === form.centroCustoId)?.nome ?? form.centroCustoId}`,
     form.de && `De: ${formatarDdMm(form.de)}`,
     form.ate && `Até: ${formatarDdMm(form.ate)}`,
@@ -126,7 +129,7 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
               </Select>
             )}
           </Field>
-          <Field rotulo="Tipo" className="col-span-2 sm:w-[160px]">
+          <Field rotulo={rotuloTipo} className="col-span-2 sm:w-[160px]">
             {c => (
               <Select id={c.id} value={form.tipoId} onChange={e => setForm(p => ({ ...p, tipoId: e.target.value }))}>
                 <option value="">Todos</option>
@@ -200,7 +203,7 @@ export default function RelatoriosFinanceiroClient({ movimentos, tiposEntrada, t
                   <tr>
                     <Th className="w-[130px] print:w-[11%]">Data</Th>
                     <Th className="w-[130px] print:w-[11%]">Natureza</Th>
-                    <Th className="w-[200px] print:w-[18%]">Tipo</Th>
+                    <Th className="w-[200px] print:w-[18%]">{rotuloTipo}</Th>
                     <Th className="w-[180px] print:w-[16%]">Centro de custo</Th>
                     <Th>Observação</Th>
                     <Th alinhar="dir" className="w-[190px] print:w-[18%]">Valor</Th>

@@ -8,6 +8,7 @@
 import nodemailer from 'nodemailer'
 import type { createAdminClient } from './supabase/server'
 import { hojeISO } from './mes-atual'
+import { nomeDaConta } from './financeiro-movimentos'
 import { diaSeguinte, montarEmailAviso, separarEmails, type PagamentoAVencer } from './financeiro-aviso-vencimento'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -22,13 +23,14 @@ interface LinhaMovimento {
   valor: number
   data: string
   observacao: string | null
+  descricao: string | null
   financeiro_tipos: { nome: string } | { nome: string }[] | null
 }
 
 async function buscarPagamentosQueVencem(admin: Admin, vencimento: string): Promise<PagamentoAVencer[]> {
   const { data, error } = await admin
     .from('financeiro_movimentos')
-    .select('valor, data, observacao, financeiro_tipos(nome)')
+    .select('valor, data, observacao, descricao, financeiro_tipos(nome)')
     .eq('natureza', 'saida')
     .eq('pago', false)
     .eq('data', vencimento)
@@ -37,7 +39,9 @@ async function buscarPagamentosQueVencem(admin: Admin, vencimento: string): Prom
   return ((data ?? []) as unknown as LinhaMovimento[])
     .map(m => {
       const tipo = Array.isArray(m.financeiro_tipos) ? m.financeiro_tipos[0] : m.financeiro_tipos
-      return { tipo: tipo?.nome ?? 'Pagamento', observacao: m.observacao, data: m.data, valor: Number(m.valor) }
+      // Conta Única não tem cadastro: o nome é a descrição.
+      const nome = nomeDaConta(tipo?.nome, m.descricao)
+      return { tipo: nome === '—' ? 'Pagamento' : nome, observacao: m.observacao, data: m.data, valor: Number(m.valor) }
     })
     .sort((a, b) => a.tipo.localeCompare(b.tipo, 'pt-BR'))
 }

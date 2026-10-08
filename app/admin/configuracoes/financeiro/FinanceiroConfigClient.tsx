@@ -20,7 +20,6 @@ export default function FinanceiroConfigClient() {
         onTrocar={() => setTrocas(n => n + 1)}
         abas={[
           { id: 'entrada', rotulo: 'Tipos de entrada', conteudo: <FinanceiroCatalogoTab tipo="tipos" natureza="entrada" label="tipo de entrada" /> },
-          { id: 'saida', rotulo: 'Tipos de saída', conteudo: <FinanceiroCatalogoTab tipo="tipos" natureza="saida" label="tipo de saída" /> },
           { id: 'centro_custo_recebimento', rotulo: 'Centros de custo · recebimento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="entrada" label="centro de custo de recebimento" mostrada={trocas} /> },
           { id: 'centro_custo_pagamento', rotulo: 'Centros de custo · pagamento', conteudo: <FinanceiroCatalogoTab tipo="centro_custo" natureza="saida" label="centro de custo de pagamento" mostrada={trocas} /> },
           { id: 'tarefas', rotulo: 'Tarefas', conteudo: <TarefasFinanceiroTab /> },
