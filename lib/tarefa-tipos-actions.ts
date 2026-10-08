@@ -2,6 +2,7 @@
 
 import { getAuthenticatedAdmin } from './supabase/server'
 import { podeAcessarPagina } from './route-permissions'
+import { buscarTiposSemUso } from './tarefas-do-cliente'
 import type { UserSetor, TipoResposta } from './types'
 
 // ENTRADA/SAIDAS são reconhecidas por nome literal (case-sensitive) em
@@ -66,7 +67,7 @@ export async function criarTipoTarefa(
   // impõe sozinho. O catálogo global de admin (app/admin/configuracoes)
   // passa padrao=true explicitamente, pois lá a expectativa é justamente
   // criar um tipo padrão.
-  const { error } = await supabase.from('tarefa_tipos').insert({
+  const inserir = () => supabase.from('tarefa_tipos').insert({
     setor,
     nome: nomeTrim,
     tipo_resposta: tipoResposta,
@@ -74,6 +75,7 @@ export async function criarTipoTarefa(
     padrao,
     meses_visiveis: mesesVisiveis,
   })
+  const { error } = await inserir()
 
   if (error) {
     if (error.code === '23505') {
@@ -85,6 +87,18 @@ export async function criarTipoTarefa(
       // com o que o usuário escolheu, é a corrida (sucesso silencioso). Se
       // diverge, precisamos avisar em vez de reaproveitar sem o usuário
       // saber que o formato é outro.
+      // Antes disso: se o registro existente é um tipo que ninguém usa
+      // (sobrou de uma tarefa removida, ou de um cadastro cancelado antes de
+      // salvar), ele não vale como "já existe". Sai o antigo e entra o novo,
+      // com o formato escolhido agora e criado_em de hoje.
+      const { tipos: semUso } = await buscarTiposSemUso(supabase, setor, [nomeTrim])
+      if (semUso.length > 0) {
+        const { error: errApagar } = await supabase.from('tarefa_tipos').delete().in('id', semUso.map(t => t.id))
+        if (errApagar) return { error: errApagar.message }
+        const { error: errRecriar } = await inserir()
+        return { error: errRecriar ? errRecriar.message : null }
+      }
+
       const { data: existente } = await supabase
         .from('tarefa_tipos')
         .select('tipo_resposta, etapas, meses_visiveis')
@@ -109,4 +123,15 @@ export async function criarTipoTarefa(
   }
 
   return { error: null }
+}
+
+// Nomes do catálogo do setor que ninguém usa. O cadastro do cliente tira
+// esses nomes da lista de "já existe": digitar um deles abre a criação (que
+// substitui o registro antigo, ver criarTipoTarefa) em vez de reaproveitar o
+// tipo antigo em silêncio.
+export async function listarNomesDeTiposSemUso(setor: UserSetor): Promise<string[]> {
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!user || !supabase) return []
+  const { tipos } = await buscarTiposSemUso(supabase, setor)
+  return tipos.map(t => t.nome)
 }

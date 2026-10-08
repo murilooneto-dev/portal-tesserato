@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Eye, EyeOff, Send } from 'lucide-react'
-import { Button, Card, Field, IconButton, Input, Switch, Textarea, useToast } from '@/components/ui'
+import { Check, Send } from 'lucide-react'
+import { Button, Card, Field, Input, Switch, Textarea, useToast } from '@/components/ui'
+import { formatarChaveEnvio } from '@/lib/relatorio-fiscal-agenda'
 import { salvarComunicado, salvarConfiguracoes } from './actions'
 
 interface Props {
@@ -19,12 +20,7 @@ export default function AbaComunicadoEmails({ dashboardAnnouncement, emailSettin
 
   // Relatórios por e-mail
   const [emailAtivo, setEmailAtivo] = useState(emailSettings.email_ativo === 'true')
-  const [gmailRemetente, setGmailRemetente] = useState(emailSettings.gmail_remetente ?? '')
-  const [gmailSenha, setGmailSenha] = useState(emailSettings.gmail_senha ?? '')
-  const [senhaVisivel, setSenhaVisivel] = useState(false)
   const [emailDest, setEmailDest] = useState(emailSettings.email_destinatario ?? '')
-  // Sem controle na tela: o valor que já está gravado segue sendo enviado ao salvar.
-  const usarSenhaApp = emailSettings.usar_senha_app === 'true'
   const [rotina1Ativo, setRotina1Ativo] = useState(emailSettings.rotina1_ativo === 'true')
   const [rotina1Dia, setRotina1Dia] = useState(emailSettings.rotina1_dia ?? '')
   const [rotina1Hora, setRotina1Hora] = useState(emailSettings.rotina1_hora ?? '')
@@ -51,10 +47,7 @@ export default function AbaComunicadoEmails({ dashboardAnnouncement, emailSettin
     setSavingEmail(true)
     const result = await salvarConfiguracoes({
       email_ativo: String(emailAtivo),
-      gmail_remetente: gmailRemetente,
-      gmail_senha: gmailSenha,
       email_destinatario: emailDest,
-      usar_senha_app: String(usarSenhaApp),
       rotina1_ativo: String(rotina1Ativo),
       rotina1_dia: rotina1Dia,
       rotina1_hora: rotina1Hora,
@@ -81,8 +74,8 @@ export default function AbaComunicadoEmails({ dashboardAnnouncement, emailSettin
   }
 
   const rotinas = [
-    { label: 'Rotina 1', ativo: rotina1Ativo, setAtivo: setRotina1Ativo, dia: rotina1Dia, setDia: setRotina1Dia, hora: rotina1Hora, setHora: setRotina1Hora },
-    { label: 'Rotina 2', ativo: rotina2Ativo, setAtivo: setRotina2Ativo, dia: rotina2Dia, setDia: setRotina2Dia, hora: rotina2Hora, setHora: setRotina2Hora },
+    { label: 'Rotina 1', ativo: rotina1Ativo, setAtivo: setRotina1Ativo, dia: rotina1Dia, setDia: setRotina1Dia, hora: rotina1Hora, setHora: setRotina1Hora, ultimoEnvio: formatarChaveEnvio(emailSettings.rotina1_ultimo_envio) },
+    { label: 'Rotina 2', ativo: rotina2Ativo, setAtivo: setRotina2Ativo, dia: rotina2Dia, setDia: setRotina2Dia, hora: rotina2Hora, setHora: setRotina2Hora, ultimoEnvio: formatarChaveEnvio(emailSettings.rotina2_ultimo_envio) },
   ]
 
   return (
@@ -113,36 +106,12 @@ export default function AbaComunicadoEmails({ dashboardAnnouncement, emailSettin
         acoes={<Switch ligado={emailAtivo} onMudar={setEmailAtivo} rotulo="Envio ligado" />}
       >
         <div className="flex flex-col gap-[18px]">
-          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
-            <Field rotulo="Gmail remetente">
-              {c => <Input id={c.id} type="email" autoComplete="off" value={gmailRemetente} onChange={e => setGmailRemetente(e.target.value)} placeholder="email@gmail.com" />}
-            </Field>
-            <Field rotulo="Senha de app do Gmail" ajuda="Recomendado para contas com verificação em duas etapas">
-              {c => (
-                <div className="relative min-w-0">
-                  <Input
-                    id={c.id}
-                    aria-describedby={c.describedBy}
-                    type={senhaVisivel ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    value={gmailSenha}
-                    onChange={e => setGmailSenha(e.target.value)}
-                    className="pr-10"
-                  />
-                  <IconButton
-                    rotulo={senhaVisivel ? 'Esconder senha' : 'Mostrar senha'}
-                    icone={senhaVisivel ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
-                    aria-pressed={senhaVisivel}
-                    onClick={() => setSenhaVisivel(v => !v)}
-                    className="absolute right-px top-px"
-                  />
-                </div>
-              )}
-            </Field>
-            <Field rotulo="E-mail destinatário">
-              {c => <Input id={c.id} type="email" autoComplete="off" value={emailDest} onChange={e => setEmailDest(e.target.value)} placeholder="destino@email.com" />}
-            </Field>
-          </div>
+          <Field
+            rotulo="E-mail destinatário"
+            ajuda="Recebe um PDF por responsável, com as tarefas do mês. O envio sai no dia e no horário de cada rotina ativa, com até uns 15 minutos de atraso."
+          >
+            {c => <Input id={c.id} aria-describedby={c.describedBy} type="email" autoComplete="off" value={emailDest} onChange={e => setEmailDest(e.target.value)} placeholder="destino@email.com" className="md:max-w-[360px]" />}
+          </Field>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {rotinas.map(r => (
@@ -159,6 +128,7 @@ export default function AbaComunicadoEmails({ dashboardAnnouncement, emailSettin
                     {c => <Input id={c.id} type="time" value={r.hora} onChange={e => r.setHora(e.target.value)} />}
                   </Field>
                 </div>
+                {r.ultimoEnvio && <p className="text-xs text-fg-3">Último envio automático: {r.ultimoEnvio}</p>}
               </div>
             ))}
           </div>

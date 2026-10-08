@@ -27,9 +27,9 @@ export default async function ParametrosPage() {
 
   const s = (appSettings as Record<string, unknown> | null) ?? {}
   const emailKeys = [
-    'email_ativo','gmail_remetente','gmail_senha','email_destinatario','usar_senha_app',
-    'rotina1_ativo','rotina1_dia','rotina1_hora',
-    'rotina2_ativo','rotina2_dia','rotina2_hora',
+    'email_ativo','email_destinatario',
+    'rotina1_ativo','rotina1_dia','rotina1_hora','rotina1_ultimo_envio',
+    'rotina2_ativo','rotina2_dia','rotina2_hora','rotina2_ultimo_envio',
   ]
   const emailSettings: Record<string, string> = {}
   for (const k of emailKeys) { if (s[k] != null) emailSettings[k] = String(s[k]) }

@@ -47,7 +47,7 @@ test('calcularTarefasEsperadas: sem período devolve tudo (cadastro); período d
 const TELAS_DE_UM_MES: [string, string][] = [
   ['app/fiscal/clientes/page.tsx', 'fiscal'], ['app/fiscal/clientes/[id]/page.tsx', 'fiscal'], ['app/fiscal/dashboard/page.tsx', 'fiscal'],
   ['app/fiscal/minhas-tarefas/page.tsx', 'fiscal'], ['app/fiscal/preenchimento-rapido/page.tsx', 'fiscal'], ['app/fiscal/relatorios/page.tsx', 'fiscal'],
-  ['app/api/relatorios/fiscal/route.ts', 'fiscal'],
+  ['lib/relatorio-fiscal-envio.ts', 'fiscal'],
   ['app/contabil/clientes/page.tsx', 'contabil'], ['app/contabil/clientes/[id]/page.tsx', 'contabil'], ['app/contabil/dashboard/page.tsx', 'contabil'],
   ['app/contabil/preenchimento-rapido/page.tsx', 'contabil'], ['app/contabil/relatorios/page.tsx', 'contabil'],
   ['app/pessoal/clientes/page.tsx', 'pessoal'], ['app/pessoal/clientes/[id]/page.tsx', 'pessoal'], ['app/pessoal/dashboard/page.tsx', 'pessoal'],

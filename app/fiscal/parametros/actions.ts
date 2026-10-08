@@ -145,6 +145,12 @@ export async function deletarUsuario(id: string): Promise<{ error?: string }> {
   return {}
 }
 
+const CONFIGURACOES_EDITAVEIS = [
+  'email_ativo', 'email_destinatario',
+  'rotina1_ativo', 'rotina1_dia', 'rotina1_hora',
+  'rotina2_ativo', 'rotina2_dia', 'rotina2_hora',
+]
+
 export async function salvarConfiguracoes(settings: Record<string, unknown>): Promise<{ error?: string }> {
   // SECURITY_REPORT.md ALTA-2: mesma lacuna de salvarComunicado — faltava
   // o check de `role='admin'`, e getAuthenticatedAdmin() sozinho devolve
@@ -154,7 +160,12 @@ export async function salvarConfiguracoes(settings: Record<string, unknown>): Pr
   const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
 
-  const { error } = await supabase.from('app_settings').update(settings).eq('id', 1)
+  // Só o que a tela edita: o controle do envio agendado (rotinaN_ultimo_envio)
+  // e qualquer outra coluna de app_settings ficam fora do alcance desta action.
+  const permitidos = Object.fromEntries(Object.entries(settings).filter(([chave]) => CONFIGURACOES_EDITAVEIS.includes(chave)))
+  if (Object.keys(permitidos).length === 0) return {}
+
+  const { error } = await supabase.from('app_settings').update(permitidos).eq('id', 1)
   if (error) return { error: error.message }
   revalidatePath('/fiscal/parametros')
   return {}
