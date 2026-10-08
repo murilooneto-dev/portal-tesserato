@@ -277,6 +277,26 @@ begin
   end if;
 end $$;
 
+-- ---------- Lixeira ----------
+-- A lista da Lixeira (migration 055) só devolve alguns campos da linha
+-- apagada. Entra a `descricao`, para a conta Única excluída aparecer com o
+-- nome. Mesma troca de texto do bloco acima; sem a 055, nada acontece.
+do $$
+declare
+  v_def text;
+  v_antigo text := '''natureza'', l.dados->>''natureza'',';
+  v_novo text := '''natureza'', l.dados->>''natureza'', ''descricao'', l.dados->>''descricao'',';
+begin
+  select pg_get_functiondef(p.oid) into v_def
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.proname = 'lixeira_listar';
+
+  if v_def is not null and position('l.dados->>''descricao''' in v_def) = 0 and position(v_antigo in v_def) > 0 then
+    execute replace(v_def, v_antigo, v_novo);
+  end if;
+end $$;
+
 -- ---------- limpeza dos Tipos de Saída ----------
 -- Sai o que nunca foi usado: tipo de saída Avulso sem nenhum movimento, nem
 -- na Lixeira (um movimento excluído há menos de 60 dias ainda pode ser

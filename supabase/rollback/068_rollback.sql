@@ -57,6 +57,23 @@ begin
   end if;
 end $$;
 
+-- Lixeira: a lista volta a não devolver a descrição.
+do $$
+declare
+  v_def text;
+  v_novo text := '''natureza'', l.dados->>''natureza'', ''descricao'', l.dados->>''descricao'',';
+  v_antigo text := '''natureza'', l.dados->>''natureza'',';
+begin
+  select pg_get_functiondef(p.oid) into v_def
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.proname = 'lixeira_listar';
+
+  if v_def is not null and position(v_novo in v_def) > 0 then
+    execute replace(v_def, v_novo, v_antigo);
+  end if;
+end $$;
+
 -- Funções voltam ao texto da 065.
 drop function if exists public.financeiro_definir_forma_pagamento(uuid, text, numeric, integer, date, integer, boolean, boolean);
 drop function if exists public.financeiro_fim_recorrente(date, date, boolean);

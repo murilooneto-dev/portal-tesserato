@@ -186,7 +186,7 @@ begin
   assert v_falhou, 'caso 6: a tabela aceitou Avulso indeterminado';
 end $$;
 
--- Caso 7: o log de eventos (se existir) descreve a conta Única pela descrição.
+-- Caso 7: o log de eventos e a Lixeira (se existirem) mostram a descrição da conta Única.
 do $$
 declare
   v_def text;
@@ -196,6 +196,12 @@ begin
   where n.nspname = 'public' and p.proname = 'evento_log_registrar_item';
   assert v_def is null or position('r->>''descricao''' in v_def) > 0,
     'caso 7: evento_log_registrar_item não foi atualizada';
+
+  select pg_get_functiondef(p.oid) into v_def
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.proname = 'lixeira_listar';
+  assert v_def is null or position('l.dados->>''descricao''' in v_def) > 0,
+    'caso 7: lixeira_listar não devolve a descrição';
 end $$;
 
 -- Caso 8: não sobrou Tipo de Saída Avulso sem uso (fora os deste teste).

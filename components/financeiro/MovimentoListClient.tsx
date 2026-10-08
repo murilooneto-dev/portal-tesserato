@@ -215,7 +215,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
     )
   }
 
-    const erroExclusao = erroExcluir && (
+  const erroExclusao = erroExcluir && (
     <p role="alert" className="mt-2 text-[13px] text-danger">Não foi possível excluir: {erroExcluir}</p>
   )
 
