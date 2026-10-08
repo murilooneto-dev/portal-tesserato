@@ -115,7 +115,7 @@ export function tituloDaLinha(tabela: string, campos: Record<string, string>): s
       if (c.titulo) return c.titulo
       break
     case 'financeiro_movimentos':
-      if (c.natureza) return partes(capitalizar(c.natureza), c.valor ? `· R$ ${c.valor}` : undefined)
+      if (c.natureza) return partes(capitalizar(c.natureza), c.descricao ? `· ${c.descricao}` : undefined, c.valor ? `· R$ ${c.valor}` : undefined)
       break
     case 'procedimentos_societario':
       if (c.empresa) return c.empresa

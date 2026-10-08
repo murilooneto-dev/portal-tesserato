@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { buscarEmBlocos } from '@/lib/financeiro-movimentos'
+import { buscarEmBlocos, nomeDaConta } from '@/lib/financeiro-movimentos'
 import RelatoriosFinanceiroClient, { type MovimentoRelatorio } from './RelatoriosFinanceiroClient'
 
 export const metadata = { title: 'Relatórios — Tesserato Financeiro' }
@@ -9,7 +9,7 @@ interface Props {
 }
 
 interface LinhaBanco {
-  id: string; natureza: 'entrada' | 'saida'; valor: number; pago_em: string; observacao: string | null
+  id: string; natureza: 'entrada' | 'saida'; valor: number; pago_em: string; observacao: string | null; descricao: string | null
   financeiro_tipos: { nome: string } | null
   financeiro_centros_custo: { nome: string } | null
 }
@@ -32,7 +32,7 @@ export default async function RelatoriosFinanceiroPage({ searchParams }: Props) 
   const linhas = await buscarEmBlocos<LinhaBanco>((inicio, fim) => {
     let query = supabase
       .from('financeiro_movimentos')
-      .select('id, natureza, valor, pago_em, observacao, financeiro_tipos(nome), financeiro_centros_custo(nome)')
+      .select('id, natureza, valor, pago_em, observacao, descricao, financeiro_tipos(nome), financeiro_centros_custo(nome)')
       // Só o que aconteceu de fato: conta ainda não paga não entra no relatório
       // nem nos totais. O período vale para o dia do pagamento (pago_em), não
       // para o vencimento.
@@ -55,7 +55,7 @@ export default async function RelatoriosFinanceiroPage({ searchParams }: Props) 
     valor: r.valor,
     data: r.pago_em,
     observacao: r.observacao,
-    tipo_nome: r.financeiro_tipos?.nome ?? '—',
+    tipo_nome: nomeDaConta(r.financeiro_tipos?.nome, r.descricao),
     centro_custo_nome: r.financeiro_centros_custo?.nome ?? null,
   }))
 

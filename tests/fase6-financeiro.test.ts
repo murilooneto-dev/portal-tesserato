@@ -91,8 +91,8 @@ test('páginas buscam tudo em blocos, sem o corte em 200', () => {
 
 test('lista: desenho fn-01 / fn-03', () => {
   const src = ler(LISTA)
-  for (const t of ['<Pagina className="pb-24 sm:pb-24 lg:pb-7">', '<CabecalhoPagina', "'Recebimentos' : 'Pagamentos'", "'Novo recebimento' : 'Novo pagamento'",
-    'placeholder="Tipo, centro de custo ou observação"', 'sm:w-[360px]', 'sm:w-[230px]', 'rotulo="Ordenar por"',
+  for (const t of ['<Pagina className="pb-24 sm:pb-24 lg:pb-7">', '<CabecalhoPagina', "'Recebimentos' : 'Pagamentos'", "const botaoNovo = 'Novo recebimento'",
+    "placeholder={ehEntrada ? 'Tipo, centro de custo ou observação' : 'Conta, centro de custo ou observação'}", 'sm:w-[360px]', 'sm:w-[230px]', 'rotulo="Ordenar por"',
     'Mais recente lançado', 'Data (mais recente)', 'Data (mais antiga)', 'Maior valor', 'Menor valor',
     'useState<Ordenacao>(ordenacaoPadrao)', 'largura={140}', 'largura={220}', 'largura={ehEntrada ? 150 : 170}', 'largura={56}',
     'Centro de custo', 'Observação', 'rotulo="Editar ou excluir"', "rotulo: 'Editar'", "rotulo: 'Excluir'", 'perigo: true',
@@ -142,7 +142,7 @@ test('janela m-16: desenho e textos', () => {
     'placeholder="R$ 0,00"', "'Novo tipo'", "'Novo centro'", 'placeholder="Buscar ou escolher"', 'placeholder="Nenhum"',
     'placeholder="Opcional"', 'Nenhum tipo cadastrado ainda.', '>Limpar<', '>Fechar<', "'Salvar e lançar outro'", '>Cancelar<',
     '<Aviso tom="dng">{erro}</Aviso>', 'erro={erroTipo}', 'erro={erroCentro}',
-    "'Editar recebimento' : 'Editar pagamento'", "'Novo recebimento' : 'Novo pagamento'"]) assert.ok(src.includes(t), t)
+    "'Editar recebimento' : 'Editar pagamento'", "'Novo recebimento'"]) assert.ok(src.includes(t), t)
   // Data e Valor vêm antes de Tipo, que vem antes de Centro de custo e Observação.
   const ordem = ['rotulo="Data"', 'rotulo="Valor"', 'rotulo="Tipo"', 'rotulo="Centro de custo"', 'rotulo="Observação"'].map(t => src.indexOf(t))
   assert.deepEqual([...ordem].sort((a, b) => a - b), ordem)
@@ -153,10 +153,11 @@ test('janela: actions com os mesmos argumentos e o mesmo fluxo', () => {
   for (const t of ['listarFinanceiroTiposAtivos(natureza)', 'listarFinanceiroCentrosCustoAtivos(natureza)',
     'criarFinanceiroTipo(natureza, novoTipoNome)', 'criarFinanceiroCentroCusto(natureza, novoCentroNome)',
     "Number(valor.replace(',', '.'))", 'ativo: false', 'router.refresh()', 'limparParaProximo()', 'setSucesso(true)']) assert.ok(src.includes(t), t)
-  const corpo = 'natureza,\n          tipoId,\n          centroCustoId: centroCustoId || null,\n          valor: valorNumerico,\n          data,\n          observacao: observacao.trim() || null,'
+  const resto = 'centroCustoId: centroCustoId || null,\n          valor: valorNumerico,\n          data,\n          observacao: observacao.trim() || null,'
   const semCr = src.replace(/\r/g, '')
-  assert.ok(semCr.includes(`atualizarMovimento({\n          id: movimento.id,\n          ${corpo}`))
-  assert.ok(semCr.includes(`criarMovimento({\n          ${corpo}`))
+  // Pagamento (saída) não troca de conta ao editar; recebimento troca de tipo.
+  assert.ok(semCr.includes(`atualizarMovimento({\n          id: movimento.id,\n          natureza,\n          tipoId: ehSaida ? movimento.tipoId : tipoId,\n          ${resto}`))
+  assert.ok(semCr.includes(`criarMovimento({\n          natureza,\n          tipoId,\n          ${resto}`))
 })
 
 test('seletor com busca: lupa, seta, linhas de 44px e escolhido em destaque', () => {
@@ -191,7 +192,7 @@ test('relatório: busca em blocos com os mesmos filtros, sem o corte em 1000', (
 test('relatório: desenho fn-02', () => {
   const src = ler(REL_CLIENTE)
   for (const t of ['titulo="Relatórios"', 'subtitulo="Entradas e saídas no período escolhido"', '<Printer', 'Imprimir ou salvar PDF',
-    'window.print()', 'hidden print:block', 'rotulo="Natureza"', 'rotulo="Tipo"', 'rotulo="Centro de custo"', 'rotulo="De"', 'rotulo="Até"',
+    'window.print()', 'hidden print:block', 'rotulo="Natureza"', 'rotulo={rotuloTipo}', 'rotulo="Centro de custo"', 'rotulo="De"', 'rotulo="Até"',
     'sm:w-[130px]', 'sm:w-[160px]', 'sm:w-[150px]', '<Filter', 'Aplicar filtros', '>Limpar<',
     "label: 'Entradas'", "label: 'Saídas'", "label: 'Saldo'", 'saldo < 0 ? COR_SAIDA : COR_ENTRADA', 'formatarValorComSinal(saldo)',
     'sm:grid-cols-3', "const COR_ENTRADA = 'text-ok'", "const COR_SAIDA = 'text-danger'",
