@@ -58,22 +58,21 @@ create table minhas_tarefas_regimes (
 
 ## Função central
 
-Em `lib/tarefa-tipo-visibilidade.ts`, função pura:
+Em `lib/tarefa-tipo-visibilidade.ts`, duas funções puras:
 
 ```ts
-donoEfetivoDoTipo(
-  responsavelId: string | null | undefined,
-  regimesDoDono: string[] | undefined,
-  regimeCliente: string | null | undefined,
-): string | null
+donoAtendeRegime(regimesDoDono, regimeCliente): boolean
+donosNoRegime(donoPorTipo, regimesPorTipo, regimeCliente): Record<string, T>
 ```
 
-Devolve `responsavelId` ou `null` conforme a tabela da regra. Todo ponto que hoje
-lê `responsavel_id` (ou o nome do dono) para decidir visibilidade, permissão ou
-progresso passa a usar o resultado dela para aquele cliente.
+`donoAtendeRegime` aplica a tabela da regra. `donosNoRegime` recorta um mapa
+tipo -> dono (id ou nome) para um cliente, tirando os tipos cujo dono não atende
+o regime dele. Todo ponto que hoje lê `responsavel_id` (ou o nome do dono) para
+decidir visibilidade, permissão ou progresso passa o mapa por ela antes de usar.
 
-Leitura dos regimes: `buscarRegimesPorDono(supabase, 'fiscal')` devolvendo
-`Record<userId, string[]>`, uma consulta por página.
+Leitura dos regimes: `buscarRegimesPorTipo(supabase, 'fiscal')` devolvendo
+`Record<nomeDoTipo, string[]>` (regimes marcados pelo dono daquele tipo), uma
+consulta por página.
 
 ## Pontos que mudam
 
