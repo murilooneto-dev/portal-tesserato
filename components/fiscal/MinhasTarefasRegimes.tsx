@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Chip } from '@/components/ui/Chip'
 import { Aviso } from '@/components/ui/Aviso'
 import { opcoesDeRegime } from '@/lib/minhas-tarefas-regimes'
@@ -16,7 +15,6 @@ interface Props {
 // Regimes que o dono dos tipos atende. Nada marcado = todos. Fora dos
 // marcados, a tarefa volta para o responsável de cada empresa.
 export default function MinhasTarefasRegimes({ userId, catalogo, marcados }: Props) {
-  const router = useRouter()
   const [selecionados, setSelecionados] = useState(marcados)
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, iniciar] = useTransition()
@@ -31,13 +29,17 @@ export default function MinhasTarefasRegimes({ userId, catalogo, marcados }: Pro
     setSelecionados(proximo)
     setErro(null)
     iniciar(async () => {
-      const { error } = await salvarRegimesMinhasTarefas(userId, proximo)
-      if (error) {
+      try {
+        // A action revalida /fiscal (layout); a página atual atualiza sozinha.
+        const { error } = await salvarRegimesMinhasTarefas(userId, proximo)
+        if (error) {
+          setSelecionados(anterior)
+          setErro(error)
+        }
+      } catch {
         setSelecionados(anterior)
-        setErro(error)
-        return
+        setErro('Falha de conexão. Tente de novo.')
       }
-      router.refresh()
     })
   }
 
@@ -58,7 +60,7 @@ export default function MinhasTarefasRegimes({ userId, catalogo, marcados }: Pro
           </Chip>
         ))}
       </div>
-      {erro && <Aviso tom="dng">Não foi possível salvar: {erro}</Aviso>}
+      {erro && <Aviso tom="dng">{erro}</Aviso>}
     </section>
   )
 }

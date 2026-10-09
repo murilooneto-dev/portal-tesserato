@@ -10,7 +10,7 @@ import MinhasTarefasFiltro from '@/components/fiscal/MinhasTarefasFiltro'
 import MinhasTarefasTabs from '@/components/fiscal/MinhasTarefasTabs'
 import MinhasTarefasSeletorUsuario from '@/components/fiscal/MinhasTarefasSeletorUsuario'
 import MinhasTarefasRegimes from '@/components/fiscal/MinhasTarefasRegimes'
-import { donoAtendeRegime } from '@/lib/tarefa-tipo-visibilidade'
+import { clientesDaSecao } from '@/lib/minhas-tarefas-regimes'
 import DossieSecao from '@/components/fiscal/DossieSecao'
 import EventosConsolidados from '@/components/fiscal/EventosConsolidados'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
@@ -250,7 +250,7 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
               tipo: tipoInfo.nome,
               tipoResposta: tipoInfo.tipo_resposta,
               etapasDefinidas: tipoInfo.etapas,
-              clientes: clientesTodos.filter(c => c.esperadas.includes(tipoInfo.nome) && donoAtendeRegime(regimesAlvo, c.regime)),
+              clientes: clientesDaSecao(clientesTodos, tipoInfo.nome, regimesAlvo),
               tarefas: tarefas.filter(t => t.tipo === tipoInfo.nome),
             }))}
             atividadesCatalogo={catalogo.atividades}
