@@ -2,8 +2,11 @@
 #
 # A cada 10 minutos chama a rota do portal, que confere o dia e o horário das
 # rotinas gravadas em Parâmetros e só manda quando alguma está na hora (nas
-# outras chamadas responde "nada_agora"). Fica aqui, e não no cron da Vercel,
-# porque o plano gratuito da Vercel só roda cron uma vez por dia.
+# outras chamadas responde "nada_agora"). O cron da Vercel (vercel.json) chama a
+# mesma rota uma vez por dia, entre 08:00 e 08:59 de São Paulo, e garante a
+# rotina das 08:00; este workflow cobre os outros horários, porque o plano
+# gratuito da Vercel só roda cron uma vez por dia. O GitHub costuma espaçar as
+# rodadas em horas, então fora das 08:00 o envio pode atrasar.
 #
 # Precisa do segredo CRON_SECRET do repositório, com o mesmo valor da variável
 # CRON_SECRET de Production na Vercel. O GitHub só agenda o que está na branch
