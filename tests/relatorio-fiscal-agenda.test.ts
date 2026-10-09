@@ -94,13 +94,27 @@ test('Parâmetros só grava o que a tela edita', () => {
   for (const t of ['gmail_', 'ultimo_envio', 'dashboard_announcement']) assert.ok(!lista.includes(t), t)
 })
 
-test('agendador: GitHub Actions a cada 10 minutos; cron da Vercel não mudou', () => {
+test('agendador: cron diário da Vercel às 08h de São Paulo e GitHub Actions de reserva', () => {
   const wf = ler('.github/workflows/relatorios-fiscal.yml')
   assert.ok(wf.includes("- cron: '*/10 * * * *'"))
   assert.ok(wf.includes('https://app.tesseratocontabilidade.com/api/cron/fiscal-relatorios'))
   assert.ok(wf.includes('-H "Authorization: Bearer $CRON_SECRET"'))
-  // Plano gratuito da Vercel: um cron por dia. Outro agendamento lá quebraria o deploy.
-  assert.equal(JSON.parse(ler('vercel.json')).crons.length, 1)
+  // Plano gratuito da Vercel: cada cron roda no máximo uma vez por dia (expressão
+  // mais frequente quebra o deploy) e dispara em algum minuto da hora marcada.
+  const crons: { path: string; schedule: string }[] = JSON.parse(ler('vercel.json')).crons
+  assert.deepEqual(crons.filter(c => c.path === '/api/cron/fiscal-relatorios'), [
+    { path: '/api/cron/fiscal-relatorios', schedule: '0 11 * * *' }, // 11h UTC = 08h em São Paulo
+  ])
+  for (const c of crons) assert.match(c.schedule, /^\d+ \d+ \* \* \*$/, `${c.path}: só uma vez por dia`)
+})
+
+test('rotina das 08:00 sai em qualquer minuto da janela do cron da Vercel (08:00 a 08:59)', () => {
+  const rotina = { ativo: true, dia: '14', hora: '08:00', ultimoEnvio: null }
+  for (const minuto of [0, 30, 59]) {
+    assert.deepEqual(envioDevido(rotina, { ano: 2026, mes: 10, dia: 14, hora: 8, minuto }), { chave: '202610140800', mes: 10, ano: 2026 })
+  }
+  // Depois de enviado, a rodada de reserva do GitHub não repete.
+  assert.equal(envioDevido({ ...rotina, ultimoEnvio: '202610140800' }, { ano: 2026, mes: 10, dia: 14, hora: 12, minuto: 5 }), null)
 })
 
 test('migration 067: controle do envio e limpeza da senha do Gmail', () => {

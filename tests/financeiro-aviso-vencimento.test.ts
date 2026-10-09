@@ -79,7 +79,10 @@ test('rota agendada exige CRON_SECRET, passa pelo proxy sem sessão e está no v
   assert.ok(ler('proxy.ts').includes("pathname.startsWith('/api/cron/')"))
 
   const vercel = JSON.parse(ler('vercel.json'))
-  assert.deepEqual(vercel.crons, [{ path: '/api/cron/financeiro-aviso-vencimento', schedule: '0 11 * * *' }])
+  assert.deepEqual(
+    vercel.crons.filter((c: { path: string }) => c.path === '/api/cron/financeiro-aviso-vencimento'),
+    [{ path: '/api/cron/financeiro-aviso-vencimento', schedule: '0 11 * * *' }],
+  )
 })
 
 test('configuração: só admin lê, grava e testa; aba ligada na tela do Financeiro', () => {
