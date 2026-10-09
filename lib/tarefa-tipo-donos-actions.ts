@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { buscarDonoNomePorTipo } from '@/lib/tarefa-tipo-donos'
+import { buscarDonoNomePorTipo, buscarRegimesPorTipo } from '@/lib/tarefa-tipo-donos'
 
 // A RLS de profiles só deixa o usuário comum ler o próprio perfil, então com o
 // client dele o nome do dono de cada tipo volta vazio e nenhum tipo é filtrado
@@ -12,4 +12,11 @@ export async function buscarDonoNomePorTipoFiscal(): Promise<Record<string, stri
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return {}
   return buscarDonoNomePorTipo(createAdminClient(), 'fiscal')
+}
+
+export async function buscarRegimesPorTipoFiscal(): Promise<Record<string, string[]>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return {}
+  return buscarRegimesPorTipo(supabase, 'fiscal')
 }

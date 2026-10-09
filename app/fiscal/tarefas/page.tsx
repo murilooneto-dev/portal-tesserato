@@ -10,7 +10,8 @@ import { Tabela, Th, Td } from '@/components/ui/Tabela'
 import { createClient } from '@/lib/supabase/server'
 import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
-import { tipoVisivelParaUsuario, tipoContaNoProgressoDoCliente } from '@/lib/tarefa-tipo-visibilidade'
+import { tipoVisivelParaUsuario, tipoContaNoProgressoDoCliente, donoAtendeRegime } from '@/lib/tarefa-tipo-visibilidade'
+import { buscarRegimesPorTipo } from '@/lib/tarefa-tipo-donos'
 import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
 import type { Tarefa } from '@/lib/types'
 
@@ -39,14 +40,18 @@ export default async function TarefasPage() {
   )
   // Tarefa de tipo com responsável exclusivo não conta na % de quem não é
   // o dono nem admin — ver lib/supabase/server.ts:podeEditarTarefaTipo.
-  const tipoVisivel = (tipo: string) =>
-    tipoVisivelParaUsuario(responsavelIdPorTipo.get(tipo), user.id, profile?.role)
-
-  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
+  const [donoNomePorTipo, regimesPorTipo] = await Promise.all([
+    buscarDonoNomePorTipoFiscal(),
+    buscarRegimesPorTipo(supabase, 'fiscal'),
+  ])
+  // Dono só vale nos clientes dos regimes que ele marcou (Minhas Tarefas).
+  const donoVale = (tipo: string, regime: string | null) => donoAtendeRegime(regimesPorTipo[tipo], regime)
+  const tipoVisivel = (tipo: string, regime: string | null) =>
+    tipoVisivelParaUsuario(donoVale(tipo, regime) ? responsavelIdPorTipo.get(tipo) : null, user.id, profile?.role)
 
   const { data: clientes } = await supabase
     .from('clientes')
-    .select('id, nome, clientes_fiscal!inner(cod, responsavel)')
+    .select('id, nome, clientes_fiscal!inner(cod, responsavel, regime)')
     .eq('clientes_fiscal.ativo', true)
     .order('nome')
 
@@ -54,7 +59,7 @@ export default async function TarefasPage() {
     const c = row as unknown as {
       id: string
       nome: string
-      clientes_fiscal: { cod: string | null; responsavel: string | null }
+      clientes_fiscal: { cod: string | null; responsavel: string | null; regime: string | null }
     }
     return { id: c.id, nome: c.nome, ...c.clientes_fiscal }
   })
@@ -74,7 +79,9 @@ export default async function TarefasPage() {
       )
 
   const linhas = clientesFiltrados.map(cliente => {
-    const ts = (tarefasPorCliente.get(cliente.id) ?? []).filter(t => tipoVisivel(t.tipo) && tipoContaNoProgressoDoCliente(donoNomePorTipo[t.tipo], cliente.responsavel))
+    const ts = (tarefasPorCliente.get(cliente.id) ?? []).filter(t =>
+      tipoVisivel(t.tipo, cliente.regime)
+      && tipoContaNoProgressoDoCliente(donoVale(t.tipo, cliente.regime) ? donoNomePorTipo[t.tipo] : null, cliente.responsavel))
     const concluidas = ts.filter(t => t.concluida).length
     const total = ts.length
     const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0

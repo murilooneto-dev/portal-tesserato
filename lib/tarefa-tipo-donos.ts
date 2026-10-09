@@ -22,3 +22,35 @@ export async function buscarDonoNomePorTipo(
   }
   return mapa
 }
+
+export function montarRegimesPorTipo(
+  tipos: { nome: string; responsavel_id: string | null }[],
+  linhas: { user_id: string; regimes: string[] | null }[],
+): Record<string, string[]> {
+  const porDono = new Map(linhas.map(l => [l.user_id, l.regimes ?? []]))
+  const mapa: Record<string, string[]> = {}
+  for (const t of tipos) {
+    const regimes = t.responsavel_id ? porDono.get(t.responsavel_id) : undefined
+    if (regimes && regimes.length > 0) mapa[t.nome] = regimes
+  }
+  return mapa
+}
+
+// tipo de tarefa do setor -> regimes que o dono daquele tipo marcou em
+// Parâmetros. Só entram tipos cujo dono marcou algum regime; usado com
+// donosNoRegime (lib/tarefa-tipo-visibilidade.ts). A RLS deixa qualquer
+// autenticado ler, então serve o client de sessão. Se a consulta falhar o mapa
+// sai vazio e tudo se comporta como antes dos regimes existirem.
+export async function buscarRegimesPorTipo(
+  supabase: SupabaseClient,
+  setor: string,
+): Promise<Record<string, string[]>> {
+  const [{ data: tipos }, { data: linhas }] = await Promise.all([
+    supabase.from('tarefa_tipos').select('nome, responsavel_id').eq('setor', setor).not('responsavel_id', 'is', null),
+    supabase.from('minhas_tarefas_regimes').select('user_id, regimes').eq('setor', setor),
+  ])
+  return montarRegimesPorTipo(
+    (tipos ?? []) as { nome: string; responsavel_id: string | null }[],
+    (linhas ?? []) as { user_id: string; regimes: string[] | null }[],
+  )
+}
