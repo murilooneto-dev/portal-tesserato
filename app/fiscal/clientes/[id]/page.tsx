@@ -23,7 +23,8 @@ import EventosAvulsosSecao from '@/components/geral/EventosAvulsosSecao'
 import { buscarTarefasAvulsasDoMes } from '@/lib/tarefas-avulsas'
 import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/parcelamento-tarefas'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
-import { tipoVisivelParaUsuario } from '@/lib/tarefa-tipo-visibilidade'
+import { tipoVisivelParaUsuario, donosNoRegime } from '@/lib/tarefa-tipo-visibilidade'
+import { buscarRegimesPorTipo } from '@/lib/tarefa-tipo-donos'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { bucketDoRegime } from '@/lib/regime-bucket'
 import HistoricoResponsavel from '@/components/HistoricoResponsavel'
@@ -84,18 +85,22 @@ export default async function ClienteDetalhePage({ params }: Props) {
     responsavelIdPorTipo[t.nome as string] = t.responsavel_id as string | null
   }
 
+  // Dono do tipo NESTE cliente: sai o tipo cujo dono não atende o regime dele.
+  const regimesPorTipo = await buscarRegimesPorTipo(supabase, 'fiscal')
+  const donoIdNoCliente = donosNoRegime(responsavelIdPorTipo, regimesPorTipo, cliente.regime)
+
   // Um tipo com responsável exclusivo some da ficha (e da % de progresso)
   // pra quem não é o dono nem admin — ver lib/supabase/server.ts:podeEditarTarefaTipo,
   // que faz a mesma checagem no servidor pra cada escrita.
   const ehDonoOuAdmin = (tipo: string) =>
-    tipoVisivelParaUsuario(responsavelIdPorTipo[tipo], user.id, profile?.role)
+    tipoVisivelParaUsuario(donoIdNoCliente[tipo], user.id, profile?.role)
 
   const tarefasPersonalizadasVisiveis = tarefasPersonalizadasEfetivas.filter(ehDonoOuAdmin)
 
   const podeEditarPorTipo: Record<string, boolean> = {}
   for (const tipo of tarefasPersonalizadasVisiveis) {
-    podeEditarPorTipo[tipo] = responsavelIdPorTipo[tipo]
-      ? (profile?.role === 'admin' || responsavelIdPorTipo[tipo] === user.id)
+    podeEditarPorTipo[tipo] = donoIdNoCliente[tipo]
+      ? (profile?.role === 'admin' || donoIdNoCliente[tipo] === user.id)
       : podeEditar
   }
 
