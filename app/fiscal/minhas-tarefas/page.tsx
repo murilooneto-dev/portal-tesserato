@@ -9,6 +9,8 @@ import { buscarTarefasAvulsasDoMesParaClientes } from '@/lib/tarefas-avulsas'
 import MinhasTarefasFiltro from '@/components/fiscal/MinhasTarefasFiltro'
 import MinhasTarefasTabs from '@/components/fiscal/MinhasTarefasTabs'
 import MinhasTarefasSeletorUsuario from '@/components/fiscal/MinhasTarefasSeletorUsuario'
+import MinhasTarefasRegimes from '@/components/fiscal/MinhasTarefasRegimes'
+import { donoAtendeRegime } from '@/lib/tarefa-tipo-visibilidade'
 import DossieSecao from '@/components/fiscal/DossieSecao'
 import EventosConsolidados from '@/components/fiscal/EventosConsolidados'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
@@ -128,7 +130,7 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
     )
   }
 
-  const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }, catalogo] = await Promise.all([
+  const [{ data: clientesRaw }, mapaVinculos, { data: dossieRaw }, catalogo, { data: marcacaoRaw }] = await Promise.all([
     supabase
       .from('clientes')
       .select('id, nome, clientes_fiscal!inner(regime, atividade, tarefas_personalizadas, tarefas_excluidas, ativo)')
@@ -142,7 +144,11 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
       .eq('clientes_fiscal.faz_dossie', true)
       .order('nome'),
     buscarCatalogoCliente(supabase, 'fiscal'),
+    supabase.from('minhas_tarefas_regimes').select('regimes')
+      .eq('user_id', targetUserId).eq('setor', 'fiscal').maybeSingle(),
   ])
+
+  const regimesAlvo = ((marcacaoRaw?.regimes ?? []) as string[])
 
   const clientesTodos = (clientesRaw ?? []).map(row => {
     const r = row as unknown as ClienteRow
@@ -155,7 +161,7 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
       },
       mapaVinculos,
     )
-    return { id: r.id, nome: r.nome, atividade: r.clientes_fiscal.atividade ?? [], esperadas }
+    return { id: r.id, nome: r.nome, atividade: r.clientes_fiscal.atividade ?? [], regime: r.clientes_fiscal.regime, esperadas }
   })
 
   const nomesMeusTipos = meusTipos.map(t => t.nome)
@@ -229,6 +235,13 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
         </Aviso>
       )}
 
+      <MinhasTarefasRegimes
+        key={targetUserId}
+        userId={targetUserId}
+        catalogo={catalogo.regimes}
+        marcados={regimesAlvo}
+      />
+
       <MinhasTarefasTabs
         contagens={{ eventos: eventosConsolidados.length, dossie: clientesDossie.length }}
         tarefasContent={
@@ -237,7 +250,7 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
               tipo: tipoInfo.nome,
               tipoResposta: tipoInfo.tipo_resposta,
               etapasDefinidas: tipoInfo.etapas,
-              clientes: clientesTodos.filter(c => c.esperadas.includes(tipoInfo.nome)),
+              clientes: clientesTodos.filter(c => c.esperadas.includes(tipoInfo.nome) && donoAtendeRegime(regimesAlvo, c.regime)),
               tarefas: tarefas.filter(t => t.tipo === tipoInfo.nome),
             }))}
             atividadesCatalogo={catalogo.atividades}
