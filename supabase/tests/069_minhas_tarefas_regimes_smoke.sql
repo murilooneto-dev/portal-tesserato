@@ -2,7 +2,7 @@
 --
 -- Teste de fumaça da migration 069 (rodar no dev e, depois, em produção;
 -- não altera nada, termina em rollback). Confere a tabela, as policies e que
--- cada usuário só grava a própria linha. Sucesso = "069 OK".
+-- só o admin grava (usuário comum só lê). Sucesso = "069 OK".
 begin;
 
 do $$
@@ -14,7 +14,7 @@ begin
   perform 1 from pg_tables where schemaname = 'public' and tablename = 'minhas_tarefas_regimes';
   assert found, 'falta a tabela minhas_tarefas_regimes';
   select count(*) into v_qtd from pg_policies where tablename = 'minhas_tarefas_regimes';
-  assert v_qtd = 3, format('esperadas 3 policies em minhas_tarefas_regimes, achei %s', v_qtd);
+  assert v_qtd = 2, format('esperadas 2 policies em minhas_tarefas_regimes, achei %s', v_qtd);
   perform 1 from pg_class where relname = 'minhas_tarefas_regimes' and relrowsecurity;
   assert found, 'RLS desligada em minhas_tarefas_regimes';
 
@@ -31,25 +31,29 @@ begin
     perform set_config('request.jwt.claims', json_build_object('sub', v_comum, 'role', 'authenticated')::text, true);
     set local role authenticated;
 
-    -- Grava a própria linha.
-    insert into minhas_tarefas_regimes (user_id, setor, regimes) values (v_comum, '__teste_069__', array['Lucro Real']);
-
     -- Lê a linha dos outros (as telas do Fiscal precisam).
-    assert (select count(*) from minhas_tarefas_regimes where setor = '__teste_069__') = 2,
+    assert (select count(*) from minhas_tarefas_regimes where setor = '__teste_069__') = 1,
       'autenticado não consegue ler os regimes dos outros';
 
-    -- Não altera a linha de outra pessoa.
-    update minhas_tarefas_regimes set regimes = array['X'] where user_id = v_outro and setor = '__teste_069__';
-    get diagnostics v_qtd = row_count;
-    assert v_qtd = 0, 'usuário comum alterou os regimes de outra pessoa';
+    -- Não cria linha, nem a própria.
+    begin
+      insert into minhas_tarefas_regimes (user_id, setor, regimes) values (v_comum, '__teste_069__', array['Lucro Real']);
+      assert false, 'usuário comum criou a própria linha';
+    exception when insufficient_privilege then
+      null;
+    end;
 
-    -- Não cria linha em nome de outra pessoa.
     begin
       insert into minhas_tarefas_regimes (user_id, setor, regimes) values (v_outro, '__teste_069_b__', array['X']);
       assert false, 'usuário comum criou linha em nome de outra pessoa';
     exception when insufficient_privilege then
       null;
     end;
+
+    -- Não altera linha nenhuma (0 linhas afetadas).
+    update minhas_tarefas_regimes set regimes = array['X'] where user_id = v_outro and setor = '__teste_069__';
+    get diagnostics v_qtd = row_count;
+    assert v_qtd = 0, 'usuário comum alterou os regimes de outra pessoa';
 
     reset role;
   end if;

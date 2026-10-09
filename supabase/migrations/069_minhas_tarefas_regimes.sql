@@ -6,6 +6,7 @@
 -- Com regimes marcados, nos clientes de outros regimes o tipo se comporta como
 -- tipo sem dono (ver lib/tarefa-tipo-visibilidade.ts:donoAtendeRegime).
 -- Regime é guardado pelo nome, igual a clientes_fiscal.regime (sem FK).
+-- Quem grava é só o admin, na ficha do usuário em Parâmetros.
 begin;
 set local lock_timeout = '5s';
 
@@ -25,9 +26,8 @@ drop policy if exists "Autenticados leem minhas_tarefas_regimes" on public.minha
 create policy "Autenticados leem minhas_tarefas_regimes" on public.minhas_tarefas_regimes
   for select using (auth.uid() is not null);
 
+-- Limpa o banco de dev, onde uma versão anterior chegou a criar esta policy.
 drop policy if exists "Usuario grava os proprios regimes" on public.minhas_tarefas_regimes;
-create policy "Usuario grava os proprios regimes" on public.minhas_tarefas_regimes
-  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 drop policy if exists "Admin gerencia minhas_tarefas_regimes" on public.minhas_tarefas_regimes;
 create policy "Admin gerencia minhas_tarefas_regimes" on public.minhas_tarefas_regimes
