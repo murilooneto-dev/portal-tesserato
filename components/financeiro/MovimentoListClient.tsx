@@ -343,7 +343,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
           {/* Tela larga (fn-01 / fn-03): tabela */}
           <Card semPadding className="hidden overflow-hidden lg:block">
             <div className="relative overflow-x-auto xl:overflow-visible">
-              <Tabela className={ehEntrada ? 'min-w-[940px]' : 'min-w-[1060px]'}>
+              <Tabela className={ehEntrada ? 'min-w-[1040px]' : 'min-w-[1160px]'}>
                 <thead>
                   <tr>
                     {ehEntrada
@@ -352,7 +352,7 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
                           <Th largura={150}>Pago em</Th>
                           <Th largura={120}>Vencimento</Th>
                         </>}
-                    <Th largura={220}>{ehEntrada ? 'Tipo' : 'Conta'}</Th>
+                    <Th largura={320}>{ehEntrada ? 'Tipo' : 'Conta'}</Th>
                     <Th largura={220}>Centro de custo</Th>
                     <Th>Observação</Th>
                     <Th largura={ehEntrada ? 150 : 170} alinhar="dir">Valor</Th>
@@ -382,8 +382,8 @@ export default function MovimentoListClient({ natureza, movimentos, mes, ano }: 
                         </>
                       )}
                       <Td>
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span className="block truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="min-w-0 break-words font-semibold text-fg">{m.tipo_nome}</span>
                           <SeloConta conta={m} />
                         </div>
                       </Td>
