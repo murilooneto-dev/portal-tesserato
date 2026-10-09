@@ -113,7 +113,8 @@ export async function podeEditarCliente(clienteId: string): Promise<boolean> {
 // responsável exclusivo (tarefa_tipos.responsavel_id) — quando tem, só essa
 // pessoa (ou admin) pode editar essa tarefa em qualquer cliente do Fiscal,
 // mesmo que ela não seja a responsável geral do cliente. Sem responsável
-// exclusivo no tipo, cai no comportamento de sempre (podeEditarCliente). Se o dono marcou regimes e o cliente é de outro, o tipo
+// exclusivo no tipo, cai no comportamento de sempre (podeEditarCliente).
+// Se o dono marcou regimes e o cliente é de outro, o tipo
 // volta a ser tarefa comum naquele cliente.
 export async function podeEditarTarefaTipo(clienteId: string, tipo: string): Promise<boolean> {
   const supabase = await createClient()

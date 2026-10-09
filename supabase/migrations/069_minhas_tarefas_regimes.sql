@@ -21,12 +21,15 @@ alter table public.minhas_tarefas_regimes enable row level security;
 
 -- Leitura por qualquer autenticado: toda tela do Fiscal precisa saber os
 -- regimes do dono de cada tipo para decidir o que mostrar a cada usuário.
+drop policy if exists "Autenticados leem minhas_tarefas_regimes" on public.minhas_tarefas_regimes;
 create policy "Autenticados leem minhas_tarefas_regimes" on public.minhas_tarefas_regimes
   for select using (auth.uid() is not null);
 
+drop policy if exists "Usuario grava os proprios regimes" on public.minhas_tarefas_regimes;
 create policy "Usuario grava os proprios regimes" on public.minhas_tarefas_regimes
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+drop policy if exists "Admin gerencia minhas_tarefas_regimes" on public.minhas_tarefas_regimes;
 create policy "Admin gerencia minhas_tarefas_regimes" on public.minhas_tarefas_regimes
   for all using (is_admin()) with check (is_admin());
 
