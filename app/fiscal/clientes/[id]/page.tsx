@@ -72,8 +72,10 @@ export default async function ClienteDetalhePage({ params }: Props) {
   ))
   const tarefasPersonalizadasEfetivas = Array.from(new Set([...tarefasBaseFiscal, ...tiposDeParcelamento]))
 
-  const { data: tiposRaw } = await supabase
-    .from('tarefa_tipos').select('nome, etapas, tipo_resposta, responsavel_id').eq('setor', 'fiscal')
+  const [{ data: tiposRaw }, regimesPorTipo] = await Promise.all([
+    supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta, responsavel_id').eq('setor', 'fiscal'),
+    buscarRegimesPorTipo(supabase, 'fiscal'),
+  ])
 
   const tarefaTipos: Record<string, { etapas: string[] | null; tipoResposta: TipoResposta }> = {}
   const responsavelIdPorTipo: Record<string, string | null> = {}
@@ -86,7 +88,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
   }
 
   // Dono do tipo NESTE cliente: sai o tipo cujo dono não atende o regime dele.
-  const regimesPorTipo = await buscarRegimesPorTipo(supabase, 'fiscal')
   const donoIdNoCliente = donosNoRegime(responsavelIdPorTipo, regimesPorTipo, cliente.regime)
 
   // Um tipo com responsável exclusivo some da ficha (e da % de progresso)

@@ -93,8 +93,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % do cliente.
   // Cópia rasa antes do filtro: o modo Meu precisa dos tipos completos.
   const tiposBrutos = { ...tiposMap }
-  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
-  const regimesPorTipo = await buscarRegimesPorTipo(supabase, 'fiscal')
+  const [donoNomePorTipo, regimesPorTipo] = await Promise.all([
+    buscarDonoNomePorTipoFiscal(),
+    buscarRegimesPorTipo(supabase, 'fiscal'),
+  ])
   for (const c of cs) {
     tiposMap[c.id] = new Set(filtrarTiposDoProgresso(tiposMap[c.id], c.responsavel, donosNoRegime(donoNomePorTipo, regimesPorTipo, c.regime)))
   }

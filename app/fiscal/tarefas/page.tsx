@@ -40,13 +40,14 @@ export default async function TarefasPage() {
   )
   // Tarefa de tipo com responsável exclusivo não conta na % de quem não é
   // o dono nem admin — ver lib/supabase/server.ts:podeEditarTarefaTipo.
-  const regimesPorTipo = await buscarRegimesPorTipo(supabase, 'fiscal')
+  const [donoNomePorTipo, regimesPorTipo] = await Promise.all([
+    buscarDonoNomePorTipoFiscal(),
+    buscarRegimesPorTipo(supabase, 'fiscal'),
+  ])
   // Dono só vale nos clientes dos regimes que ele marcou (Minhas Tarefas).
   const donoVale = (tipo: string, regime: string | null) => donoAtendeRegime(regimesPorTipo[tipo], regime)
   const tipoVisivel = (tipo: string, regime: string | null) =>
     tipoVisivelParaUsuario(donoVale(tipo, regime) ? responsavelIdPorTipo.get(tipo) : null, user.id, profile?.role)
-
-  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
 
   const { data: clientes } = await supabase
     .from('clientes')
