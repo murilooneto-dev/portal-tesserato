@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { buscarEmBlocos, nomeDaConta } from '@/lib/financeiro-movimentos'
+import { periodoDoRelatorio } from '@/lib/financeiro-relatorio-periodo'
 import RelatoriosFinanceiroClient, { type MovimentoRelatorio } from './RelatoriosFinanceiroClient'
 
 export const metadata = { title: 'Relatórios — Tesserato Financeiro' }
@@ -23,8 +24,10 @@ export default async function RelatoriosFinanceiroPage({ searchParams }: Props) 
   const natureza = bruto.natureza === 'entrada' || bruto.natureza === 'saida' ? bruto.natureza : undefined
   const tipoId = bruto.tipoId && UUID.test(bruto.tipoId) ? bruto.tipoId : undefined
   const centroCustoId = bruto.centroCustoId && UUID.test(bruto.centroCustoId) ? bruto.centroCustoId : undefined
-  const de = bruto.de && DATA_ISO.test(bruto.de) ? bruto.de : undefined
-  const ate = bruto.ate && DATA_ISO.test(bruto.ate) ? bruto.ate : undefined
+  // Sem filtro nenhum na URL (tela recém-aberta ou "Limpar"), abre no mês corrente.
+  const periodo = periodoDoRelatorio(bruto)
+  const de = periodo.de && DATA_ISO.test(periodo.de) ? periodo.de : undefined
+  const ate = periodo.ate && DATA_ISO.test(periodo.ate) ? periodo.ate : undefined
   const supabase = await createClient()
 
   // Todos os lançamentos do filtro, em blocos de 1000: os totais de entradas,
