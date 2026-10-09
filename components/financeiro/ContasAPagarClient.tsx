@@ -392,11 +392,11 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
           {/* Tela larga: tabela */}
           <Card semPadding className="hidden overflow-hidden lg:block">
             <div className="relative overflow-x-auto xl:overflow-visible">
-              <Tabela className="min-w-[1040px]">
+              <Tabela className="min-w-[1160px]">
                 <thead>
                   <tr>
                     <Th largura={140}>Vencimento</Th>
-                    <Th largura={200}>Conta</Th>
+                    <Th largura={320}>Conta</Th>
                     <Th largura={200}>Centro de custo</Th>
                     <Th>Observação</Th>
                     <Th largura={150} alinhar="dir">Valor</Th>
@@ -420,8 +420,8 @@ export default function ContasAPagarClient({ contas, mes, ano, hoje, podeCriar }
                     <tr key={m.id} className="transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_3%,transparent)]">
                       <Td className="whitespace-nowrap font-mono text-[13px] tabular-nums text-fg-2">{formatarDdMm(m.data)}</Td>
                       <Td>
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span className="block truncate font-semibold text-fg" title={m.tipo_nome}>{m.tipo_nome}</span>
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="min-w-0 break-words font-semibold text-fg">{m.tipo_nome}</span>
                           <SeloConta conta={m} />
                         </div>
                       </Td>
