@@ -37,3 +37,32 @@ export function filtrarTiposDoProgresso(
     tipoContaNoProgressoDoCliente(donoNomePorTipo[tipo], clienteResponsavel)
   )
 }
+
+// O dono de tipos de tarefa pode marcar os regimes que atende (Minhas Tarefas,
+// tabela minhas_tarefas_regimes). Sem nada marcado ele atende todos os
+// clientes, como sempre foi. Com regimes marcados, só os clientes desses
+// regimes; nos demais (e nos sem regime) o tipo se comporta como tipo sem dono.
+export function donoAtendeRegime(
+  regimesDoDono: readonly string[] | null | undefined,
+  regimeCliente: string | null | undefined,
+): boolean {
+  const marcados = (regimesDoDono ?? []).map(normalizarNome).filter(Boolean)
+  if (marcados.length === 0) return true
+  const regime = normalizarNome(regimeCliente)
+  return regime !== '' && marcados.includes(regime)
+}
+
+// Recorta um mapa tipo -> dono (id ou nome) para UM cliente: sai o tipo cujo
+// dono não atende o regime daquele cliente. `regimesPorTipo` é tipo -> regimes
+// marcados pelo dono do tipo; tipo ausente = dono atende todos.
+export function donosNoRegime<T>(
+  donoPorTipo: Record<string, T>,
+  regimesPorTipo: Record<string, readonly string[] | undefined>,
+  regimeCliente: string | null | undefined,
+): Record<string, T> {
+  const saida: Record<string, T> = {}
+  for (const [tipo, dono] of Object.entries(donoPorTipo)) {
+    if (donoAtendeRegime(regimesPorTipo[tipo], regimeCliente)) saida[tipo] = dono
+  }
+  return saida
+}
