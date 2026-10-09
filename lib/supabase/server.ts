@@ -129,7 +129,7 @@ export async function podeEditarTarefaTipo(clienteId: string, tipo: string): Pro
     .eq('setor', 'fiscal').eq('nome', tipo).maybeSingle()
 
   if (tarefaTipo?.responsavel_id) {
-    // O dono pode ter marcado os regimes que atende (Minhas Tarefas). Fora
+    // O dono pode ter marcado os regimes que atende (o admin marca em Parâmetros). Fora
     // deles o tipo é tarefa comum naquele cliente: vale podeEditarCliente.
     const [{ data: marcacao }, { data: clienteFiscal }] = await Promise.all([
       supabase.from('minhas_tarefas_regimes').select('regimes')

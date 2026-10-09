@@ -1,6 +1,6 @@
 import { normalizarNome, donoAtendeRegime } from './tarefa-tipo-visibilidade'
 
-// Regimes que o usuário marcou em Minhas Tarefas (tabela minhas_tarefas_regimes).
+// Regimes que o admin marcou em Parâmetros para o usuário (tabela minhas_tarefas_regimes).
 // Entrada vem de Server Action, então não confia no tipo: fica só texto não
 // vazio, sem espaços nas pontas e sem repetição (comparando sem caixa); textos
 // com mais de 100 caracteres são descartados e a lista para em 50 regimes.
@@ -24,7 +24,7 @@ export function limparRegimes(regimes: unknown): string[] {
 
 export interface OpcaoRegime { nome: string; marcado: boolean; foraDoCatalogo: boolean }
 
-// Opções do campo "Regimes que atendo": o catálogo do setor na ordem dele e,
+// Opções do campo "Regimes que atende" (ficha do usuário): o catálogo do setor na ordem dele e,
 // depois, o que está marcado mas saiu do catálogo (renomeado ou desativado),
 // para o usuário conseguir desmarcar.
 export function opcoesDeRegime(catalogo: string[], marcados: string[]): OpcaoRegime[] {
@@ -40,8 +40,8 @@ export function opcoesDeRegime(catalogo: string[], marcados: string[]): OpcaoReg
 
 export interface ClienteDaSecao { regime?: string | null; esperadas: string[] }
 
-// Clientes de uma seção de Minhas Tarefas: os que têm o tipo e, se o usuário
-// marcou regimes, só os desses regimes (sem regime fica fora; sem marcação,
+// Clientes de uma seção de Minhas Tarefas: os que têm o tipo e, se o admin
+// marcou regimes para o usuário regimes, só os desses regimes (sem regime fica fora; sem marcação,
 // todos).
 export function clientesDaSecao<C extends ClienteDaSecao>(
   clientes: readonly C[],

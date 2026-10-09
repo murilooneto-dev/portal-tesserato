@@ -38,8 +38,8 @@ export function filtrarTiposDoProgresso(
   )
 }
 
-// O dono de tipos de tarefa pode marcar os regimes que atende (Minhas Tarefas,
-// tabela minhas_tarefas_regimes). Sem nada marcado ele atende todos os
+// O dono de tipos de tarefa pode marcar os regimes que atende (o admin marca em
+// Parâmetros, tabela minhas_tarefas_regimes). Sem nada marcado ele atende todos os
 // clientes, como sempre foi. Com regimes marcados, só os clientes desses
 // regimes; nos demais (e nos sem regime) o tipo se comporta como tipo sem dono.
 export function donoAtendeRegime(

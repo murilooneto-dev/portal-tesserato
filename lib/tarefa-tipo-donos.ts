@@ -36,8 +36,8 @@ export function montarRegimesPorTipo(
   return mapa
 }
 
-// tipo de tarefa do setor -> regimes que o dono daquele tipo marcou em Minhas
-// Tarefas. Só entram tipos cujo dono marcou algum regime; usado com
+// tipo de tarefa do setor -> regimes que o dono daquele tipo marcou em
+// Parâmetros. Só entram tipos cujo dono marcou algum regime; usado com
 // donosNoRegime (lib/tarefa-tipo-visibilidade.ts). A RLS deixa qualquer
 // autenticado ler, então serve o client de sessão. Se a consulta falhar o mapa
 // sai vazio e tudo se comporta como antes dos regimes existirem.
