@@ -2,7 +2,7 @@
 // calculou (tipos do progresso, tarefas do mês, donos dos tipos). Nenhuma
 // consulta nova e nenhum número do setor muda.
 
-import { normalizarNome } from './tarefa-tipo-visibilidade'
+import { normalizarNome, donoAtendeRegime } from './tarefa-tipo-visibilidade'
 
 export type VisaoDashboard = 'setor' | 'meu'
 
@@ -19,7 +19,7 @@ export function mesmoResponsavel(a: string | null | undefined, b: string | null 
   return na !== '' && na === normalizarNome(b)
 }
 
-interface ClienteMin { id: string; responsavel: string | null }
+interface ClienteMin { id: string; responsavel: string | null; regime?: string | null }
 interface TarefaMin { cliente_id: string; tipo: string; concluida: boolean }
 
 export interface EntradaMeu<C extends ClienteMin, T extends TarefaMin> {
@@ -31,6 +31,8 @@ export interface EntradaMeu<C extends ClienteMin, T extends TarefaMin> {
   /** Tipos esperados de cada cliente, antes de tirar os encaminhados. */
   tiposBrutos: Record<string, Set<string>>
   donoNomePorTipo: Record<string, string | null | undefined>
+  /** Regimes marcados pelo dono de cada tipo; tipo ausente = dono atende todos. */
+  regimesPorTipo?: Record<string, string[]>
 }
 
 export interface PendenciaMeu<C> { cliente: C; tipos: string[] }
@@ -61,7 +63,8 @@ export function calcularMeu<C extends ClienteMin, T extends TarefaMin>(e: Entrad
   for (const c of e.clientes) {
     if (ids.has(c.id)) continue
     const tipos = Array.from(e.tiposBrutos[c.id] ?? [])
-      .filter(tipo => mesmoResponsavel(e.donoNomePorTipo[tipo], e.nomeUsuario))
+      .filter(tipo => mesmoResponsavel(e.donoNomePorTipo[tipo], e.nomeUsuario)
+        && donoAtendeRegime(e.regimesPorTipo?.[tipo], c.regime))
       .sort((a, b) => a.localeCompare(b))
     for (const tipo of tipos) {
       const concluida = feita(c.id, tipo)

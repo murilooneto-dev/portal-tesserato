@@ -11,7 +11,7 @@ import { buscarTodasTarefasDoMes } from './tarefas-paginacao'
 import { montarLinhasRelatorio } from './relatorio-fiscal'
 import { gerarRelatorioFiscalPDF } from './relatorio-fiscal-pdf'
 import { buscarMapaVinculosSetor } from './tarefas-esperadas'
-import { buscarDonoNomePorTipo } from './tarefa-tipo-donos'
+import { buscarDonoNomePorTipo, buscarRegimesPorTipo } from './tarefa-tipo-donos'
 import type { Tarefa } from './types'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal, type ClienteComFiscal } from './clientes-fiscal'
 import { agoraSP, envioDevido, type EnvioDevido, type RotinaConfig } from './relatorio-fiscal-agenda'
@@ -32,11 +32,12 @@ export async function enviarRelatoriosFiscal(admin: Admin, { mes, ano }: { mes: 
     return { ok: false, status: 400, error: 'Nenhum e-mail destinatário configurado em Parâmetros.' }
   }
 
-  const [{ data: clientesRows, error: clientesErr }, tarefas, mapaVinculos, donoNomePorTipo] = await Promise.all([
+  const [{ data: clientesRows, error: clientesErr }, tarefas, mapaVinculos, donoNomePorTipo, regimesPorTipo] = await Promise.all([
     admin.from('clientes').select(SELECT_CLIENTE_FISCAL).eq('clientes_fiscal.ativo', true).order('nome'),
     buscarTodasTarefasDoMes<Tarefa>(admin, mes, ano),
     buscarMapaVinculosSetor(admin, 'fiscal', { mes, ano }),
     buscarDonoNomePorTipo(admin, 'fiscal'),
+    buscarRegimesPorTipo(admin, 'fiscal'),
   ])
   if (clientesErr) return { ok: false, status: 500, error: clientesErr.message }
 
@@ -49,7 +50,7 @@ export async function enviarRelatoriosFiscal(admin: Admin, { mes, ano }: { mes: 
 
   const mesNome = MESES_NOME[mes - 1]
   const anexos = await Promise.all(responsaveis.map(async responsavel => {
-    const linhas = montarLinhasRelatorio(clientes.filter(c => c.responsavel === responsavel), tarefas, mapaVinculos, donoNomePorTipo)
+    const linhas = montarLinhasRelatorio(clientes.filter(c => c.responsavel === responsavel), tarefas, mapaVinculos, donoNomePorTipo, regimesPorTipo)
     const pdf = await gerarRelatorioFiscalPDF({ responsavel, mesNome, ano, linhas })
     return { filename: `relatorio-fiscal-${responsavel}-${mes}-${ano}.pdf`.replace(/\s+/g, '-'), content: pdf }
   }))
