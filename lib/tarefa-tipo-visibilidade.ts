@@ -66,3 +66,31 @@ export function donosNoRegime<T>(
   }
   return saida
 }
+
+// O tipo aparece para este usuário NESTE cliente? O dono só vale se atende o
+// regime do cliente (donoAtendeRegime); fora disso o tipo vale como sem dono.
+// Admin vê tudo. Mesmo critério da ficha do cliente do Fiscal.
+export function tipoVisivelNoCliente(
+  donoId: string | null | undefined,
+  regimesDoDono: readonly string[] | null | undefined,
+  regimeCliente: string | null | undefined,
+  userId: string,
+  role: string | null | undefined,
+): boolean {
+  const donoNoCliente = donoAtendeRegime(regimesDoDono, regimeCliente) ? donoId : null
+  return tipoVisivelParaUsuario(donoNoCliente, userId, role)
+}
+
+// Tipos que o usuário NÃO vê neste cliente. `donoIdPorTipo` é tipo -> dono (só
+// tipos com dono) e `regimesPorTipo` é tipo -> regimes marcados pelo dono.
+export function tiposOcultosNoCliente(
+  donoIdPorTipo: Record<string, string | null | undefined>,
+  regimesPorTipo: Record<string, readonly string[] | undefined>,
+  regimeCliente: string | null | undefined,
+  userId: string,
+  role: string | null | undefined,
+): string[] {
+  return Object.keys(donoIdPorTipo).filter(
+    tipo => !tipoVisivelNoCliente(donoIdPorTipo[tipo], regimesPorTipo[tipo], regimeCliente, userId, role),
+  )
+}

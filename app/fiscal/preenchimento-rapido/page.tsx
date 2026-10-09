@@ -4,6 +4,8 @@ import { getMesAno } from '@/lib/mes-atual-server'
 import { buscarMapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { nomesTarefaTipoData, nomesTarefaTipoNaoData, type ClienteFiltro } from '@/lib/preenchimento-rapido'
+import { buscarRegimesPorTipo } from '@/lib/tarefa-tipo-donos'
+import { tiposOcultosNoCliente } from '@/lib/tarefa-tipo-visibilidade'
 import { toggleTarefaFiscal } from '@/app/fiscal/clientes/actions'
 import PreenchimentoRapido from '@/components/PreenchimentoRapido'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
@@ -34,17 +36,18 @@ export default async function PreenchimentoRapidoFiscalPage() {
   const { data: profile } = await supabase
     .from('profiles').select('role, nome').eq('id', user.id).single()
 
-  const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas] = await Promise.all([
+  const [{ data: clientesRaw }, mapaVinculos, { data: tiposRaw }, tarefas, regimesPorTipo] = await Promise.all([
     supabase
       .from('clientes')
       .select('id, nome, cnpj, clientes_fiscal!inner(regime, atividade, responsavel, ativo, tarefas_personalizadas, tarefas_excluidas)')
       .eq('clientes_fiscal.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'fiscal', { mes, ano }),
-    supabase.from('tarefa_tipos').select('nome, tipo_resposta, etapas').eq('setor', 'fiscal'),
+    supabase.from('tarefa_tipos').select('nome, tipo_resposta, etapas, responsavel_id').eq('setor', 'fiscal'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'tipo' | 'concluida'>>(
       supabase, mes, ano, 'cliente_id, tipo, concluida', 'fiscal',
     ),
+    buscarRegimesPorTipo(supabase, 'fiscal'),
   ])
 
   const clientesTodos: (ClienteFiltro & { responsavel: string | null })[] = (clientesRaw ?? []).map(row => {
@@ -61,9 +64,27 @@ export default async function PreenchimentoRapidoFiscalPage() {
     }
   })
 
-  const clientes = profile?.role === 'admin'
+  const clientesDoUsuario = profile?.role === 'admin'
     ? clientesTodos
     : clientesTodos.filter(c => c.responsavel?.toUpperCase() === profile?.nome?.toUpperCase())
+
+  // Tipo com dono só aparece aqui para o dono (ou admin) nos clientes de regime
+  // que ele atende; o servidor recusa a marcação dos demais (podeEditarTarefaTipo).
+  // Sai da grade tirando o tipo das tarefas do cliente, sem mexer na regra de
+  // aplicabilidade (calcularTarefasEsperadas).
+  const donoIdPorTipo: Record<string, string> = {}
+  for (const t of tiposRaw ?? []) {
+    if (t.responsavel_id) donoIdPorTipo[t.nome as string] = t.responsavel_id as string
+  }
+  const clientes = clientesDoUsuario.map(c => {
+    const ocultos = tiposOcultosNoCliente(donoIdPorTipo, regimesPorTipo, c.regime, user.id, profile?.role)
+    if (ocultos.length === 0) return c
+    return {
+      ...c,
+      tarefas_personalizadas: (c.tarefas_personalizadas ?? []).filter(t => !ocultos.includes(t)),
+      tarefas_excluidas: [...(c.tarefas_excluidas ?? []), ...ocultos],
+    }
+  })
 
   const tiposData = nomesTarefaTipoData(tiposRaw ?? [])
   const tiposNaoData = nomesTarefaTipoNaoData(tiposRaw ?? [])
