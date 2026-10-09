@@ -9,7 +9,6 @@ import { buscarTarefasAvulsasDoMesParaClientes } from '@/lib/tarefas-avulsas'
 import MinhasTarefasFiltro from '@/components/fiscal/MinhasTarefasFiltro'
 import MinhasTarefasTabs from '@/components/fiscal/MinhasTarefasTabs'
 import MinhasTarefasSeletorUsuario from '@/components/fiscal/MinhasTarefasSeletorUsuario'
-import MinhasTarefasRegimes from '@/components/fiscal/MinhasTarefasRegimes'
 import { clientesDaSecao } from '@/lib/minhas-tarefas-regimes'
 import DossieSecao from '@/components/fiscal/DossieSecao'
 import EventosConsolidados from '@/components/fiscal/EventosConsolidados'
@@ -234,13 +233,6 @@ export default async function MinhasTarefasPage({ searchParams }: Props) {
           Você está vendo as tarefas de <b>{nomeAlvo}</b> em <b>somente leitura</b>.
         </Aviso>
       )}
-
-      <MinhasTarefasRegimes
-        key={targetUserId}
-        userId={targetUserId}
-        catalogo={catalogo.regimes}
-        marcados={regimesAlvo}
-      />
 
       <MinhasTarefasTabs
         contagens={{ eventos: eventosConsolidados.length, dossie: clientesDossie.length }}

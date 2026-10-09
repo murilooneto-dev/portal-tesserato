@@ -1,34 +1,31 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedAdmin } from '@/lib/supabase/server'
 import { limparRegimes } from '@/lib/minhas-tarefas-regimes'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-// Grava os regimes que o usuário atende em Minhas Tarefas do Fiscal. Cada um
-// grava a própria linha; admin grava a de qualquer usuário (a RLS da tabela
-// repete a mesma regra). Lista vazia = atende todos os regimes.
-export async function salvarRegimesMinhasTarefas(
+// Grava os regimes que um usuário atende em Minhas Tarefas do Fiscal. Só o
+// admin define, na ficha do usuário em Parâmetros; usuário comum é recusado
+// mesmo para o próprio id (a RLS da tabela repete a regra). Lista vazia =
+// atende todos os regimes.
+export async function salvarRegimesDoUsuario(
   userId: string,
   regimes: string[],
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Sessão expirada. Entre de novo.' }
+  const { user, supabase } = await getAuthenticatedAdmin()
+  if (!supabase || !user) return { error: 'Sessão expirada. Entre de novo.' }
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'admin') return { error: 'Acesso negado.' }
   if (typeof userId !== 'string' || !UUID.test(userId)) return { error: 'Usuário inválido.' }
-
-  if (userId !== user.id) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'admin') return { error: 'Sem permissão para alterar os regimes de outro usuário.' }
-  }
 
   const { error } = await supabase.from('minhas_tarefas_regimes').upsert(
     { user_id: userId, setor: 'fiscal', regimes: limparRegimes(regimes), updated_at: new Date().toISOString() },
     { onConflict: 'user_id,setor' },
   )
   if (error) {
-    console.error('salvarRegimesMinhasTarefas:', error)
+    console.error('salvarRegimesDoUsuario:', error)
     return { error: 'Não foi possível salvar os regimes. Tente de novo.' }
   }
 
