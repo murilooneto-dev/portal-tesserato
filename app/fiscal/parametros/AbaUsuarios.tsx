@@ -14,7 +14,14 @@ import UsuarioDrawer, { PERFIL_LABEL } from './UsuarioDrawer'
 
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-export default function AbaUsuarios({ profiles, currentUserId }: { profiles: Profile[]; currentUserId: string }) {
+interface Props {
+  profiles: Profile[]
+  currentUserId: string
+  regimesCatalogo: string[]
+  regimesPorUsuario: Record<string, string[]>
+}
+
+export default function AbaUsuarios({ profiles, currentUserId, regimesCatalogo, regimesPorUsuario }: Props) {
   const router = useRouter()
   const confirmar = useConfirmar()
   const toast = useToast()
@@ -160,6 +167,8 @@ export default function AbaUsuarios({ profiles, currentUserId }: { profiles: Pro
           key={gaveta}
           perfil={emEdicao}
           currentUserId={currentUserId}
+          regimesCatalogo={regimesCatalogo}
+          regimesAtuais={emEdicao ? regimesPorUsuario[emEdicao.id] ?? [] : []}
           onFechar={() => setGaveta(null)}
           onSalvo={aoSalvar}
           onExcluir={p => { void excluir(p) }}

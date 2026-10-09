@@ -6,6 +6,8 @@ import type { Profile, UserSetor } from '@/lib/types'
 import { SETORES, SETOR_LABEL } from '@/lib/types'
 import { PAGINAS_POR_SETOR } from '@/lib/paginas-setor'
 import { Aviso, Button, Checkbox, Chip, Drawer, Field, Input, Segmentado, cn } from '@/components/ui'
+import { opcoesDeRegime } from '@/lib/minhas-tarefas-regimes'
+import { salvarRegimesDoUsuario } from '@/lib/minhas-tarefas-regimes-actions'
 import { atualizarPerfil, criarUsuario } from './actions'
 
 export const PERFIL_LABEL: Record<Profile['role'], string> = { admin: 'Administrador', operador: 'Operador' }
@@ -42,6 +44,9 @@ interface Props {
   // null = usuário novo
   perfil: Profile | null
   currentUserId: string
+  // Catálogo de regimes do Fiscal e os que este usuário atende hoje.
+  regimesCatalogo: string[]
+  regimesAtuais: string[]
   onFechar: () => void
   onSalvo: (mensagem: string) => void
   onExcluir: (perfil: Profile) => void
@@ -50,7 +55,7 @@ interface Props {
 // Gaveta de cadastro e edição de usuário. Na edição não há Login nem Senha:
 // trocar e-mail ou senha de outra pessoa não é função do portal. Monte com
 // `key` por usuário para o formulário começar limpo a cada abertura.
-export default function UsuarioDrawer({ perfil, currentUserId, onFechar, onSalvo, onExcluir }: Props) {
+export default function UsuarioDrawer({ perfil, currentUserId, regimesCatalogo, regimesAtuais, onFechar, onSalvo, onExcluir }: Props) {
   const novo = perfil === null
   const [nome, setNome] = useState(perfil?.nome ?? '')
   const [login, setLogin] = useState('')
@@ -59,6 +64,7 @@ export default function UsuarioDrawer({ perfil, currentUserId, onFechar, onSalvo
   const [cor, setCor] = useState(perfil?.cor || COR_PADRAO)
   const [setores, setSetores] = useState<UserSetor[]>(perfil ? perfil.setores : ['fiscal'])
   const [paginas, setPaginas] = useState<string[]>(perfil ? (perfil.paginas_acesso ?? []) : paginasIniciais())
+  const [regimes, setRegimes] = useState<string[]>(regimesAtuais)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
 
@@ -75,6 +81,11 @@ export default function UsuarioDrawer({ perfil, currentUserId, onFechar, onSalvo
 
   function togglePagina(chave: string) {
     setPaginas(prev => prev.includes(chave) ? prev.filter(c => c !== chave) : [...prev, chave])
+  }
+
+  function toggleRegime(nome: string, marcado: boolean) {
+    const chave = nome.trim().toLowerCase()
+    setRegimes(prev => marcado ? prev.filter(r => r.trim().toLowerCase() !== chave) : [...prev, nome])
   }
 
   function tecladoCores(e: KeyboardEvent<HTMLDivElement>) {
@@ -134,6 +145,22 @@ export default function UsuarioDrawer({ perfil, currentUserId, onFechar, onSalvo
       setSalvando(false)
       setErro('Não foi possível salvar o usuário.')
       return
+    }
+    // Regimes de Minhas Tarefas: só quem tem o Fiscal e só se mudou.
+    const regimesMudaram = regimes.length !== regimesAtuais.length || regimes.some(r => !regimesAtuais.includes(r))
+    if (setores.includes('fiscal') && regimesMudaram) {
+      try {
+        const { error } = await salvarRegimesDoUsuario(perfil.id, regimes)
+        if (error) {
+          setSalvando(false)
+          setErro(`Usuário salvo, mas os regimes não: ${error}`)
+          return
+        }
+      } catch {
+        setSalvando(false)
+        setErro('Usuário salvo, mas os regimes não: falha de conexão. Tente de novo.')
+        return
+      }
     }
     setSalvando(false)
     onSalvo('Usuário salvo')
@@ -244,6 +271,23 @@ export default function UsuarioDrawer({ perfil, currentUserId, onFechar, onSalvo
           )}
         </Grupo>
       ))}
+
+      {perfil && setores.includes('fiscal') && (
+        <Grupo
+          rotulo="Regimes que atende em Minhas Tarefas (Fiscal)"
+          ajuda="Nada marcado: atende todas as empresas. Com regimes marcados, nas empresas dos outros regimes a tarefa fica com o responsável da empresa."
+        >
+          {idRotulo => (
+            <div role="group" aria-labelledby={idRotulo} className="flex flex-wrap gap-2">
+              {opcoesDeRegime(regimesCatalogo, regimes).map(o => (
+                <Chip key={o.nome} ativo={o.marcado} onClick={() => toggleRegime(o.nome, o.marcado)}>
+                  {o.nome}{o.foraDoCatalogo ? ' (fora do catálogo)' : ''}
+                </Chip>
+              ))}
+            </div>
+          )}
+        </Grupo>
+      )}
 
       <div role="alert">{erro && <Aviso tom="dng">{erro}</Aviso>}</div>
     </Drawer>

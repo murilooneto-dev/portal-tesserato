@@ -11,11 +11,13 @@ import AbaUsuarios from './AbaUsuarios'
 interface Props {
   profiles: Profile[]
   currentUserId: string
+  regimesCatalogo: string[]
+  regimesPorUsuario: Record<string, string[]>
   dashboardAnnouncement: string
   emailSettings?: Record<string, string>
 }
 
-export default function ParametrosClient({ profiles, currentUserId, dashboardAnnouncement, emailSettings = {} }: Props) {
+export default function ParametrosClient({ profiles, currentUserId, regimesCatalogo, regimesPorUsuario, dashboardAnnouncement, emailSettings = {} }: Props) {
   return (
     <Pagina>
       <CabecalhoPagina
@@ -36,7 +38,7 @@ export default function ParametrosClient({ profiles, currentUserId, dashboardAnn
             rotulo: 'Comunicado e e-mails',
             conteudo: <AbaComunicadoEmails dashboardAnnouncement={dashboardAnnouncement} emailSettings={emailSettings} />,
           },
-          { id: 'usuarios', rotulo: 'Usuários', conteudo: <AbaUsuarios profiles={profiles} currentUserId={currentUserId} /> },
+          { id: 'usuarios', rotulo: 'Usuários', conteudo: <AbaUsuarios profiles={profiles} currentUserId={currentUserId} regimesCatalogo={regimesCatalogo} regimesPorUsuario={regimesPorUsuario} /> },
         ]}
       />
     </Pagina>
