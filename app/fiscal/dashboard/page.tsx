@@ -14,7 +14,8 @@ import { sincronizarTarefasParcelamento, idsDeParcelamentosAtivos } from '@/lib/
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import { bucketDoRegime } from '@/lib/regime-bucket'
 import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
-import { filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
+import { filtrarTiposDoProgresso, donosNoRegime } from '@/lib/tarefa-tipo-visibilidade'
+import { buscarRegimesPorTipo } from '@/lib/tarefa-tipo-donos'
 import { calcularMeu, visaoDaUrl } from '@/lib/dashboard-meu'
 
 export const metadata = { title: 'Dashboard — Tesserato Fiscal' }
@@ -92,9 +93,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % do cliente.
   // Cópia rasa antes do filtro: o modo Meu precisa dos tipos completos.
   const tiposBrutos = { ...tiposMap }
-  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
+  const [donoNomePorTipo, regimesPorTipo] = await Promise.all([
+    buscarDonoNomePorTipoFiscal(),
+    buscarRegimesPorTipo(supabase, 'fiscal'),
+  ])
   for (const c of cs) {
-    tiposMap[c.id] = new Set(filtrarTiposDoProgresso(tiposMap[c.id], c.responsavel, donoNomePorTipo))
+    tiposMap[c.id] = new Set(filtrarTiposDoProgresso(tiposMap[c.id], c.responsavel, donosNoRegime(donoNomePorTipo, regimesPorTipo, c.regime)))
   }
 
   const alertas = ehMesAtual
@@ -108,7 +112,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // Visão: Setor usa tudo; Meu filtra os mesmos números para o usuário logado.
   const meu = visao === 'meu'
-    ? calcularMeu({ clientes: cs, nomeUsuario, tarefas: ts, tiposDoProgresso: tiposMap, tiposBrutos, donoNomePorTipo })
+    ? calcularMeu({ clientes: cs, nomeUsuario, tarefas: ts, tiposDoProgresso: tiposMap, tiposBrutos, donoNomePorTipo, regimesPorTipo })
     : null
   const clientesVisao = meu ? meu.clientes : cs
 

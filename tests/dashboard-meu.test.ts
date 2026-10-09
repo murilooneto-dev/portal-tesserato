@@ -103,3 +103,32 @@ test('tipo do próprio usuário em cliente próprio não some do Meu', () => {
   assert.deepEqual(r.pendencias.map(p => p.tipos), [['DAS', 'ENTRADA']])
   assert.deepEqual(r.encaminhadas, [])
 })
+
+test('encaminhadas respeitam os regimes que o dono marcou', () => {
+  const clientes = [
+    { id: 'c1', responsavel: 'Ana', regime: 'MEI' },
+    { id: 'c2', responsavel: 'Ana', regime: 'Lucro Real' },
+  ]
+  const r = calcularMeu({
+    clientes,
+    nomeUsuario: 'Bia',
+    tarefas: [],
+    tiposDoProgresso: {},
+    tiposBrutos: { c1: new Set(['DCTF']), c2: new Set(['DCTF']) },
+    donoNomePorTipo: { DCTF: 'Bia' },
+    regimesPorTipo: { DCTF: ['MEI'] },
+  })
+  assert.deepEqual(r.encaminhadas.map(e => e.cliente.id), ['c1'])
+})
+
+test('sem regimesPorTipo as encaminhadas ficam como antes', () => {
+  const r = calcularMeu({
+    clientes: [{ id: 'c2', responsavel: 'Ana', regime: 'Lucro Real' }],
+    nomeUsuario: 'Bia',
+    tarefas: [],
+    tiposDoProgresso: {},
+    tiposBrutos: { c2: new Set(['DCTF']) },
+    donoNomePorTipo: { DCTF: 'Bia' },
+  })
+  assert.equal(r.encaminhadas.length, 1)
+})

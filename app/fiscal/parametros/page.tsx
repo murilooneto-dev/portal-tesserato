@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import ParametrosClient from './ParametrosClient'
 
 export const metadata = { title: 'Parâmetros — Tesserato Fiscal' }
@@ -20,10 +21,18 @@ export default async function ParametrosPage() {
   const [
     { data: profiles },
     { data: appSettings },
+    catalogoFiscal,
+    { data: regimesRaw },
   ] = await Promise.all([
     supabase.from('profiles').select('*').order('nome'),
     supabase.from('app_settings').select('*').eq('id', 1).single(),
+    buscarCatalogoCliente(supabase, 'fiscal'),
+    supabase.from('minhas_tarefas_regimes').select('user_id, regimes').eq('setor', 'fiscal'),
   ])
+
+  // Regimes que cada usuário atende em Minhas Tarefas (Fiscal); sem linha = todos.
+  const regimesPorUsuario: Record<string, string[]> = {}
+  for (const l of regimesRaw ?? []) regimesPorUsuario[l.user_id as string] = (l.regimes ?? []) as string[]
 
   const s = (appSettings as Record<string, unknown> | null) ?? {}
   const emailKeys = [
@@ -39,6 +48,8 @@ export default async function ParametrosPage() {
       <ParametrosClient
         profiles={profiles ?? []}
         currentUserId={user.id}
+        regimesCatalogo={catalogoFiscal.regimes}
+        regimesPorUsuario={regimesPorUsuario}
         dashboardAnnouncement={typeof s.dashboard_announcement === 'string' ? s.dashboard_announcement : ''}
         emailSettings={emailSettings}
       />

@@ -6,7 +6,8 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { buscarPendenciasVinculoPorCliente } from '@/lib/vinculos'
 import { SELECT_CLIENTE_FISCAL, flattenClienteFiscal } from '@/lib/clientes-fiscal'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
-import { tipoVisivelParaUsuario, filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
+import { tipoVisivelParaUsuario, filtrarTiposDoProgresso, donoAtendeRegime, donosNoRegime } from '@/lib/tarefa-tipo-visibilidade'
+import { buscarRegimesPorTipo } from '@/lib/tarefa-tipo-donos'
 import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
 import type { Tarefa } from '@/lib/types'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
@@ -43,7 +44,10 @@ export default async function ClientesPage() {
   const clientes = (clientesRaw ?? []).map(flattenClienteFiscal)
 
   const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'fiscal', { mes, ano })
-  const donoNomePorTipo = await buscarDonoNomePorTipoFiscal()
+  const [donoNomePorTipo, regimesPorTipo] = await Promise.all([
+    buscarDonoNomePorTipoFiscal(),
+    buscarRegimesPorTipo(supabase, 'fiscal'),
+  ])
 
   const responsavelIdPorTipo = new Map(
     (tarefaTiposRaw ?? []).map(t => [t.nome as string, t.responsavel_id as string | null])
@@ -72,9 +76,12 @@ export default async function ClientesPage() {
   const tiposMap: Record<string, Set<string>> = {}
   for (const c of clientes) {
     const tiposBase = [...calcularTarefasEsperadas(c, mapaVinculos), ...(tiposParcelamentoPorCliente[c.id] ?? [])]
-    // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % deste cliente.
-    const tipos = filtrarTiposDoProgresso(new Set(tiposBase), c.responsavel, donoNomePorTipo)
-      .filter(tipo => tipoVisivelParaUsuario(responsavelIdPorTipo.get(tipo), user.id, profile?.role))
+    // Dono do tipo neste cliente: quem marcou regimes só é dono nos clientes deles.
+    const tipos = filtrarTiposDoProgresso(new Set(tiposBase), c.responsavel, donosNoRegime(donoNomePorTipo, regimesPorTipo, c.regime))
+      .filter(tipo => tipoVisivelParaUsuario(
+        donoAtendeRegime(regimesPorTipo[tipo], c.regime) ? responsavelIdPorTipo.get(tipo) : null,
+        user.id, profile?.role,
+      ))
     tiposMap[c.id] = new Set(tipos)
   }
 

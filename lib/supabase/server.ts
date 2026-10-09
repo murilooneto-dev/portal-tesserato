@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { escolherClienteLeituraVinculos } from '@/lib/vinculos-cliente'
 import { cabecalhosDeAutoria } from '@/lib/lixeira'
+import { donoAtendeRegime } from '@/lib/tarefa-tipo-visibilidade'
 
 // Service role client — bypassa RLS; requer SUPABASE_SERVICE_ROLE_KEY no Vercel
 // `usuarioId` (opcional) vai no header x-app-usuario: o trigger da Lixeira usa
@@ -113,6 +114,8 @@ export async function podeEditarCliente(clienteId: string): Promise<boolean> {
 // pessoa (ou admin) pode editar essa tarefa em qualquer cliente do Fiscal,
 // mesmo que ela não seja a responsável geral do cliente. Sem responsável
 // exclusivo no tipo, cai no comportamento de sempre (podeEditarCliente).
+// Se o dono marcou regimes e o cliente é de outro, o tipo
+// volta a ser tarefa comum naquele cliente.
 export async function podeEditarTarefaTipo(clienteId: string, tipo: string): Promise<boolean> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -125,7 +128,18 @@ export async function podeEditarTarefaTipo(clienteId: string, tipo: string): Pro
     .from('tarefa_tipos').select('responsavel_id')
     .eq('setor', 'fiscal').eq('nome', tipo).maybeSingle()
 
-  if (tarefaTipo?.responsavel_id) return tarefaTipo.responsavel_id === user.id
+  if (tarefaTipo?.responsavel_id) {
+    // O dono pode ter marcado os regimes que atende (o admin marca em Parâmetros). Fora
+    // deles o tipo é tarefa comum naquele cliente: vale podeEditarCliente.
+    const [{ data: marcacao }, { data: clienteFiscal }] = await Promise.all([
+      supabase.from('minhas_tarefas_regimes').select('regimes')
+        .eq('user_id', tarefaTipo.responsavel_id).eq('setor', 'fiscal').maybeSingle(),
+      supabase.from('clientes_fiscal').select('regime').eq('cliente_id', clienteId).maybeSingle(),
+    ])
+    if (donoAtendeRegime(marcacao?.regimes as string[] | null | undefined, clienteFiscal?.regime as string | null | undefined)) {
+      return tarefaTipo.responsavel_id === user.id
+    }
+  }
 
   return podeEditarCliente(clienteId)
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { tipoContaNoProgressoDoCliente, filtrarTiposDoProgresso } from '../lib/tarefa-tipo-visibilidade'
+import { tipoContaNoProgressoDoCliente, filtrarTiposDoProgresso, donosNoRegime } from '../lib/tarefa-tipo-visibilidade'
 
 test('tipo sem dono sempre conta', () => {
   assert.equal(tipoContaNoProgressoDoCliente(null, 'Ana'), true)
@@ -24,4 +24,9 @@ test('filtrarTiposDoProgresso mantém só os que contam', () => {
     filtrarTiposDoProgresso(['A', 'B', 'C'], 'Ana', { B: 'Bia', C: 'ana' }),
     ['A', 'C'],
   )
+})
+
+test('tipo com dono conta no cliente fora dos regimes do dono', () => {
+  const donos = donosNoRegime({ DCTF: 'Bia' }, { DCTF: ['MEI'] }, 'Lucro Real')
+  assert.deepEqual(filtrarTiposDoProgresso(['DCTF'], 'Ana', donos), ['DCTF'])
 })

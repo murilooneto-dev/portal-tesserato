@@ -56,7 +56,7 @@ test('Parâmetros: cabeçalho a-06, um só link de logs e duas abas', () => {
   tem(src, ['<Pagina>', 'titulo="Parâmetros"', 'subtitulo="Configurações gerais do portal, só para administradores"',
     'href="/fiscal/parametros/logs"', 'Logs do sistema', "rotulo: 'Comunicado e e-mails'", "rotulo: 'Usuários'", '<Abas',
     '<AbaComunicadoEmails dashboardAnnouncement={dashboardAnnouncement} emailSettings={emailSettings} />',
-    '<AbaUsuarios profiles={profiles} currentUserId={currentUserId} />'])
+    '<AbaUsuarios profiles={profiles} currentUserId={currentUserId} regimesCatalogo={regimesCatalogo} regimesPorUsuario={regimesPorUsuario} />'])
   for (const t of ['Log de Eventos', 'Log de Tarefas', 'taskLogs', 'logModal']) assert.ok(!src.includes(t), t)
   const page = ler(PAGE)
   assert.ok(!page.includes('taskLogs'))

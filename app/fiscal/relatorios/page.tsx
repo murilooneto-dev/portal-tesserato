@@ -13,8 +13,8 @@ import { buscarTodasTarefasDoMes } from '@/lib/tarefas-paginacao'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas, type MapaVinculosSetor } from '@/lib/tarefas-esperadas'
 import { bucketDoRegime } from '@/lib/regime-bucket'
-import { buscarDonoNomePorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
-import { filtrarTiposDoProgresso } from '@/lib/tarefa-tipo-visibilidade'
+import { buscarDonoNomePorTipoFiscal, buscarRegimesPorTipoFiscal } from '@/lib/tarefa-tipo-donos-actions'
+import { filtrarTiposDoProgresso, donosNoRegime } from '@/lib/tarefa-tipo-visibilidade'
 import { Pagina, CabecalhoPagina } from '@/components/ui/Pagina'
 import { Button } from '@/components/ui/Button'
 import { Badge, type BadgeTom } from '@/components/ui/Badge'
@@ -36,13 +36,13 @@ const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho
 
 const TOM_REGIME: Record<string, BadgeTom> = { normal: 'info', simples: 'ok', mei: 'warn', isento: 'neu' }
 
-function tiposDoCliente(cliente: ClienteComFiscal, mapa: MapaVinculosSetor, donos: Record<string, string>) {
+function tiposDoCliente(cliente: ClienteComFiscal, mapa: MapaVinculosSetor, donos: Record<string, string>, regimes: Record<string, string[]>) {
   // Tipo encaminhado a outro usuário (Minhas Tarefas) não entra na % do cliente.
-  return filtrarTiposDoProgresso(calcularTarefasEsperadas(cliente, mapa), cliente.responsavel, donos)
+  return filtrarTiposDoProgresso(calcularTarefasEsperadas(cliente, mapa), cliente.responsavel, donosNoRegime(donos, regimes, cliente.regime))
 }
 
-function progresso(cliente: ClienteComFiscal, tarefas: Tarefa[], mapa: MapaVinculosSetor, donos: Record<string, string>) {
-  const tipos = new Set(tiposDoCliente(cliente, mapa, donos))
+function progresso(cliente: ClienteComFiscal, tarefas: Tarefa[], mapa: MapaVinculosSetor, donos: Record<string, string>, regimes: Record<string, string[]>) {
+  const tipos = new Set(tiposDoCliente(cliente, mapa, donos, regimes))
   const clienteTarefas = tarefas.filter(t => t.cliente_id === cliente.id && tipos.has(t.tipo))
   const total = tipos.size
   const feitas = clienteTarefas.filter(t => t.concluida).length
@@ -59,6 +59,7 @@ export default function RelatoriosPage() {
   const [obsPorCliente, setObsPorCliente] = useState<Record<string, string>>({})
   const [mapaVinculos, setMapaVinculos] = useState<MapaVinculosSetor>({ porRegime: {}, porAtividade: {} })
   const [donoNomePorTipo, setDonoNomePorTipo] = useState<Record<string, string>>({})
+  const [regimesPorTipo, setRegimesPorTipo] = useState<Record<string, string[]>>({})
   const [atividadesCatalogo, setAtividadesCatalogo] = useState<string[]>([])
   const [filtroResp, setFiltroResp] = useFiltroPersistente('relatorios:responsavel', 'TODOS')
   const [filtroGrupo, setFiltroGrupo] = useFiltroPersistente('relatorios:grupo', 'TODOS')
@@ -100,7 +101,8 @@ export default function RelatoriosPage() {
           buscarMapaVinculosSetor(sb, 'fiscal', { mes, ano }),
           buscarDonoNomePorTipoFiscal(),
           sb.from('atividades').select('nome').eq('setor', 'fiscal').eq('ativo', true).order('nome'),
-        ]).then(([c, t, o, mapa, donos, at]) => {
+          buscarRegimesPorTipoFiscal(),
+        ]).then(([c, t, o, mapa, donos, at, regimes]) => {
           setClientes((c.data ?? []).map(flattenClienteFiscal))
           setTarefas(t)
           const obsMap: Record<string, string> = {}
@@ -110,6 +112,7 @@ export default function RelatoriosPage() {
           setObsPorCliente(obsMap)
           setMapaVinculos(mapa)
           setDonoNomePorTipo(donos)
+          setRegimesPorTipo(regimes)
           setAtividadesCatalogo((at.data ?? []).map(a => a.nome as string))
         })
       })
@@ -121,14 +124,14 @@ export default function RelatoriosPage() {
     : []
 
   const atividades = atividadesCatalogo
-  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => tiposDoCliente(c, mapaVinculos, donoNomePorTipo)))).sort()
+  const tarefasDisponiveis = Array.from(new Set(clientes.flatMap(c => tiposDoCliente(c, mapaVinculos, donoNomePorTipo, regimesPorTipo)))).sort()
 
   const filtrados = clientes
     .filter(c => filtroResp === 'TODOS' || c.responsavel === filtroResp)
     .filter(c => filtroGrupo === 'TODOS' || bucketDoRegime(c.regime) === filtroGrupo)
     .filter(c => filtroAtividade.length === 0 || ((c.atividade ?? []).length === filtroAtividade.length && filtroAtividade.every(a => (c.atividade ?? []).includes(a))))
-    .filter(c => filtroTarefa === 'TODAS' || tiposDoCliente(c, mapaVinculos, donoNomePorTipo).includes(filtroTarefa))
-    .map(c => ({ cliente: c, ...progresso(c, tarefas, mapaVinculos, donoNomePorTipo) }))
+    .filter(c => filtroTarefa === 'TODAS' || tiposDoCliente(c, mapaVinculos, donoNomePorTipo, regimesPorTipo).includes(filtroTarefa))
+    .map(c => ({ cliente: c, ...progresso(c, tarefas, mapaVinculos, donoNomePorTipo, regimesPorTipo) }))
     .filter(r => !apenasP || (filtroTarefa === 'TODAS' ? r.pct < 100 : r.pendentes.includes(filtroTarefa)))
     .sort((a, b) => {
       const cmp = ordenarPor === 'cliente'

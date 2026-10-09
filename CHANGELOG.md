@@ -5,6 +5,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [Não lançado] - 2026-10-09
+
+### Adicionado
+- Fiscal, Parâmetros, ficha do usuário: campo "Regimes que atende em Minhas Tarefas (Fiscal)", que só o admin define. Nada marcado continua valendo para todas as empresas. Nas empresas de outros regimes, ou sem regime, a tarefa volta para o responsável da empresa: aparece na ficha, na listagem e na tela de Tarefas, pode ser marcada por ele e entra na % de progresso (dashboard, relatórios e envio agendado). A escolha é por pessoa, não por tipo. O usuário não vê nem altera esse campo em Minhas Tarefas; a tela só filtra as seções pelos regimes definidos.
+
+### Corrigido
+- Fiscal, Preenchimento Rápido: a grade mostrava ao responsável da empresa tarefas que têm dono, e o clique nelas era recusado sem aviso. Agora a tarefa só aparece para quem pode marcá-la naquela empresa.
+
+### Arquivos alterados
+- `supabase/migrations/069_minhas_tarefas_regimes.sql` — tabela `minhas_tarefas_regimes` (com rollback e teste de fumaça)
+- `lib/tarefa-tipo-visibilidade.ts` — `donoAtendeRegime`, `donosNoRegime`, `tipoVisivelNoCliente`, `tiposOcultosNoCliente`
+- `lib/tarefa-tipo-donos.ts`, `lib/tarefa-tipo-donos-actions.ts` — leitura dos regimes por tipo
+- `lib/supabase/server.ts` — `podeEditarTarefaTipo` respeita os regimes do dono
+- `lib/minhas-tarefas-regimes.ts`, `lib/minhas-tarefas-regimes-actions.ts` — regras e gravação (só admin)
+- `app/fiscal/parametros/` (`page.tsx`, `ParametrosClient.tsx`, `AbaUsuarios.tsx`, `UsuarioDrawer.tsx`) — campo na ficha do usuário
+- `app/fiscal/minhas-tarefas/page.tsx` — só filtra as seções pelos regimes
+- `app/fiscal/minhas-tarefas/page.tsx`, `app/fiscal/clientes/page.tsx`, `app/fiscal/clientes/[id]/page.tsx`, `app/fiscal/tarefas/page.tsx`, `app/fiscal/dashboard/page.tsx`, `app/fiscal/relatorios/page.tsx`, `app/fiscal/preenchimento-rapido/page.tsx`
+- `lib/dashboard-meu.ts`, `lib/relatorio-fiscal.ts`, `lib/relatorio-fiscal-envio.ts` — % de progresso
+
+### Requer ação manual antes do deploy
+Aplicar a migration 069 em produção (já aplicada no dev). Sem ela o portal funciona como antes; só o salvar do campo novo dá erro.
+
+---
+
 ## [v0.7.5] - 2026-09-01
 
 ### Corrigido
