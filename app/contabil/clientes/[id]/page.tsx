@@ -181,7 +181,7 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
         }
         acoes={
           podeEditar
-            ? <ClienteContabilAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} catalogo={catalogo} podeDesabilitar={podeDesabilitar} />
+            ? <ClienteContabilAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} catalogo={catalogo} podeDesabilitar={podeDesabilitar} mes={mes} ano={ano} />
             : undefined
         }
       />

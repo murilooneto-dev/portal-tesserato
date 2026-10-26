@@ -132,7 +132,7 @@ test('janelas de tipo de tarefa: mesmos textos do formato nas duas', () => {
 
 test('novo tipo: props e action iguais', () => {
   const src = ler(NOVO)
-  tem(src, ['{ nome, setor, padrao = false, onCancel, onCriado }', 'criarTipoTarefa(setor, nome, tipoResposta, etapasFinal, padrao, mesesVisiveis)',
+  tem(src, ['{ nome, setor, padrao = false, inicioEm, onCancel, onCriado }', 'criarTipoTarefa(setor, nome, tipoResposta, etapasFinal, padrao, mesesVisiveis, inicioEm ?? null)',
     "(setor === 'societario' || setor === 'financeiro') ? mesesVisiveisDaPeriodicidade(periodicidade) : null", 'onCriado(nome)'])
 })
 

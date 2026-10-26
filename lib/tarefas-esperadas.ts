@@ -39,6 +39,19 @@ export function tarefaVigenteNoPeriodo(
   return !antesDoInicio(criadoEm, periodo) && !depoisDoFim(vigenteAte, periodo)
 }
 
+/**
+ * `criado_em` de um tipo criado com a tela num mês passado (ou futuro): o dia
+ * 1º daquele mês, ao meio-dia de São Paulo, pra antesDoInicio ler exatamente
+ * esse mês. Assim a tarefa vale do mês selecionado em diante, e não só do mês
+ * real de hoje. Período inválido = null (o banco usa now()).
+ */
+export function criadoEmDoPeriodo(periodo: PeriodoTarefas | null | undefined): string | null {
+  if (!periodo) return null
+  const { mes, ano } = periodo
+  if (!Number.isInteger(mes) || !Number.isInteger(ano) || mes < 1 || mes > 12 || ano < 2000 || ano > 2999) return null
+  return `${ano}-${String(mes).padStart(2, '0')}-01T12:00:00-03:00`
+}
+
 function antesDoInicio(criadoEm: string | null | undefined, periodo: PeriodoTarefas): boolean {
   if (!criadoEm) return false
   const criado = new Date(criadoEm)

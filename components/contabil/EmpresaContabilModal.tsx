@@ -14,6 +14,7 @@ import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
 import GruposTarefasModal from '@/components/geral/GruposTarefasModal'
 import { Secao } from '@/components/fiscal/CamposFiscais'
 import type { CatalogoCliente } from '@/lib/catalogo-cliente'
+import type { PeriodoTarefas } from '@/lib/tarefas-esperadas'
 import { salvarClienteContabil } from '@/app/contabil/clientes/actions'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -44,6 +45,9 @@ interface Props {
   catalogo: CatalogoCliente
   onClose: () => void
   readOnly?: boolean
+  // Mês selecionado na tela que abriu o cadastro: tarefa nova criada aqui
+  // vale dele em diante.
+  periodo?: PeriodoTarefas
 }
 
 const emptyForm = (tarefasPadrao: string[]): FormData => ({
@@ -56,7 +60,7 @@ const UFS = [
   'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
 ]
 
-export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false }: Props) {
+export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false, periodo }: Props) {
   const router = useRouter()
   const sb = createClient()
   const isEdit = !!clienteId
@@ -351,6 +355,7 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
         <NovoTipoTarefaModal
           nome={nomeParaCriar}
           setor="contabil"
+          inicioEm={periodo}
           onCancel={() => setNomeParaCriar(null)}
           onCriado={handleTipoCriado}
         />
