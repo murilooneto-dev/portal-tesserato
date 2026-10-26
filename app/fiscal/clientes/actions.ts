@@ -8,6 +8,7 @@ import { gravarDataParcelamento, isoParaDdMm } from '@/lib/parcelamento-tarefas'
 import { registrarEvento, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
 import { tarefasRemovidasDoCliente, apagarTarefasDoCliente, apagarTiposSemUso } from '@/lib/tarefas-do-cliente'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
+import { competenciaDaPlanilha } from '@/lib/planilha-competencia'
 
 interface ClientePayload {
   nome: string
@@ -311,7 +312,8 @@ export async function uploadArquivo(clienteId: string, formData: FormData) {
 
   if (!error) revalidatePath(`/fiscal/clientes/${clienteId}`)
 
-  return { error: error?.message ?? null, id: data?.id ?? null, uploaded_at: data?.uploaded_at ?? null }
+  const competencia = !error && /\.(xlsx?|csv)$/i.test(arquivo.name) ? competenciaDaPlanilha(base64) : null
+  return { error: error?.message ?? null, id: data?.id ?? null, uploaded_at: data?.uploaded_at ?? null, competencia }
 }
 
 export async function excluirArquivo(arquivoId: string) {
