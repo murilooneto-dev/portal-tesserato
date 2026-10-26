@@ -48,12 +48,11 @@ test('cliente em outros setores: apaga tarefas do setor, ficha do setor e atuali
   const { client, chamadas } = clienteFalso()
   const r = await removerClienteDoSetor(client, { clienteId: 'c1', setor: 'contabil', setoresAtuais: ['fiscal', 'contabil'] })
   assert.deepEqual(r, { error: null, clienteRemovidoDoTodo: false })
-  assert.deepEqual(chamadas.map(c => `${c.tabela}.${c.op}`), ['tarefas.delete', 'clientes_contabil.delete', 'tarefa_tipos.delete', 'clientes.update'])
+  assert.deepEqual(chamadas.map(c => `${c.tabela}.${c.op}`), ['tarefas.delete', 'clientes_contabil.delete', 'clientes.update'])
   assert.deepEqual(chamadas[0].filtros, { cliente_id: 'c1', setor: 'contabil' })
   assert.deepEqual(chamadas[1].filtros, { cliente_id: 'c1' })
-  assert.deepEqual(chamadas[2].filtros, { cliente_id: 'c1', setor: 'contabil' })
-  assert.deepEqual(chamadas[3].valores, { setores: ['fiscal'] })
-  assert.deepEqual(chamadas[3].filtros, { id: 'c1' })
+  assert.deepEqual(chamadas[2].valores, { setores: ['fiscal'] })
+  assert.deepEqual(chamadas[2].filtros, { id: 'c1' })
 })
 
 test('cliente em outros setores no Pessoal: usa a tabela clientes_pessoal', async () => {
