@@ -6,8 +6,8 @@ import { Layers, Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { buscarCnpj } from '@/lib/buscar-cnpj'
 import { SELECT_CLIENTE_CONTABIL, flattenClienteContabil } from '@/lib/clientes-contabil'
-import { tarefaExisteNoCatalogo } from '@/lib/tarefa-tipos'
-import { listarNomesDeTiposSemUso } from '@/lib/tarefa-tipos-actions'
+import { tarefaExisteNoCatalogo, nomeNoCatalogo } from '@/lib/tarefa-tipos'
+import type { NovoTipoConfig } from '@/lib/tipos-do-cliente'
 import NovoTipoTarefaModal from '@/components/geral/NovoTipoTarefaModal'
 import SeletorAtividades from '@/components/geral/SeletorAtividades'
 import TarefasAutomaticasCampo from '@/components/geral/TarefasAutomaticasCampo'
@@ -63,7 +63,10 @@ const UFS = [
 export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false, periodo }: Props) {
   const router = useRouter()
   const sb = createClient()
-  const isEdit = !!clienteId
+  // Id do cliente salvo nesta janela quando só os tipos falharam: a nova tentativa edita, não cria.
+  const [idSalvo, setIdSalvo] = useState<string | null>(null)
+  const idAtual = clienteId ?? idSalvo
+  const isEdit = !!idAtual
   const confirmar = useConfirmar()
   const identificacaoRef = useRef<HTMLDivElement>(null)
 
@@ -71,6 +74,8 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
   const [personalizadasOriginais, setPersonalizadasOriginais] = useState<string[]>([])
   const [novaTarefa, setNovaTarefa] = useState('')
   const [catalogoNomes, setCatalogoNomes] = useState<string[]>(tarefasPadrao)
+  // Tipos personalizados criados nesta janela: só são gravados ao salvar.
+  const [tiposNovos, setTiposNovos] = useState<Record<string, NovoTipoConfig>>({})
   const [nomeParaCriar, setNomeParaCriar] = useState<string | null>(null)
   const [gruposAberto, setGruposAberto] = useState(false)
   const [loading, setLoading] = useState(isEdit)
@@ -107,9 +112,9 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
   }, [clienteId])
 
   useEffect(() => {
-    // Tipo que ninguém usa não conta como existente: digitar o nome dele abre a criação.
-    Promise.all([sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil'), listarNomesDeTiposSemUso('contabil')]).then(([{ data }, semUso]) => {
-      setCatalogoNomes((data ?? []).map(t => t.nome as string).filter(n => !semUso.includes(n)))
+    // Só os tipos do setor: o nome que não está aqui abre a criação de uma tarefa do cliente.
+    sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').is('cliente_id', null).then(({ data }) => {
+      setCatalogoNomes((data ?? []).map(t => t.nome as string))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -135,24 +140,37 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
   function addTarefa() {
     const t = novaTarefa.trim()
     if (!t) return
-    if (tarefaExisteNoCatalogo(catalogoNomes, t)) {
-      set('tarefas_personalizadas', [...form.tarefas_personalizadas, t])
+    if (tarefaExisteNoCatalogo(form.tarefas_personalizadas, t)) { setNovaTarefa(''); return }
+    const doCatalogo = nomeNoCatalogo(catalogoNomes, t)
+    if (doCatalogo) {
+      set('tarefas_personalizadas', [...form.tarefas_personalizadas, doCatalogo])
       setNovaTarefa('')
     } else {
       setNomeParaCriar(t)
     }
   }
 
-  function handleTipoCriado(nome: string) {
-    setCatalogoNomes(prev => [...prev, nome])
+  function handleTipoCriado(nome: string, config?: NovoTipoConfig) {
+    if (config) setTiposNovos(prev => ({ ...prev, [nome]: config }))
     set('tarefas_personalizadas', [...form.tarefas_personalizadas, nome])
     setNovaTarefa('')
     setNomeParaCriar(null)
   }
 
+  function removerTarefa(i: number) {
+    const nome = form.tarefas_personalizadas[i]
+    // Tipo criado nesta janela e que ainda não existia: só descarta do estado.
+    if (nome in tiposNovos && !personalizadasOriginais.includes(nome)) {
+      setTiposNovos(prev => Object.fromEntries(Object.entries(prev).filter(([n]) => n !== nome)))
+    }
+    set('tarefas_personalizadas', form.tarefas_personalizadas.filter((_, idx) => idx !== i))
+  }
+
   async function handleSave() {
     if (!form.nome.trim()) return
-    const removidas = personalizadasOriginais.filter(t => !form.tarefas_personalizadas.includes(t))
+    // Recriadas (nome de tipo novo que já estava na ficha) também perdem o histórico.
+    // Depois de uma falha parcial (idSalvo) o cliente já está salvo: só conta o que saiu da ficha.
+    const removidas = personalizadasOriginais.filter(t => !form.tarefas_personalizadas.includes(t) || (!idSalvo && t in tiposNovos))
     if (removidas.length > 0 && !(await confirmar({
       titulo: 'Remover tarefas deste cliente?',
       descricao: `Remover ${removidas.map(t => `"${t}"`).join(', ')} deste cliente apaga o histórico dessa tarefa nele (concluída, respostas, anexos). Outros clientes não são afetados. Continuar?`,
@@ -178,8 +196,17 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
       tarefas_excluidas: form.tarefas_excluidas,
     }
 
-    const { error } = await salvarClienteContabil(clienteId, clientePayload, contabilPayload)
-    if (error) { setSaving(false); setErro(error); return }
+    const { error, id } = await salvarClienteContabil(idAtual, clientePayload, contabilPayload, tiposNovos)
+    if (error) {
+      if (id) {
+        setIdSalvo(id)
+        setPersonalizadasOriginais(form.tarefas_personalizadas)
+        router.refresh()
+      }
+      setSaving(false)
+      setErro(error)
+      return
+    }
 
     setSaving(false)
     router.refresh()
@@ -296,7 +323,7 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
               <div>
                 <div className="mb-2 flex items-center gap-2.5">
                   <span className="text-[13px] font-medium text-fg-2">Tarefas ({form.tarefas_personalizadas.length})</span>
-                  {isEdit && clienteId && !readOnly && (
+                  {isEdit && idAtual && !readOnly && (
                     <Button className="ml-auto" tamanho="p" icone={<Layers size={14} aria-hidden="true" />} onClick={() => setGruposAberto(true)}>
                       Agrupar tarefas
                     </Button>
@@ -314,7 +341,7 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
                       {!readOnly && (
                         <button type="button"
                           aria-label={`Remover ${t}`}
-                          onClick={() => set('tarefas_personalizadas', form.tarefas_personalizadas.filter((_, idx) => idx !== i))}
+                          onClick={() => removerTarefa(i)}
                           className="-mr-1.5 inline-grid h-6 w-6 max-sm:h-11 max-sm:w-11 place-items-center rounded-full text-fg-3 transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc">
                           <X size={13} aria-hidden="true" />
                         </button>
@@ -356,13 +383,14 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
           nome={nomeParaCriar}
           setor="contabil"
           inicioEm={periodo}
+          adiar
           onCancel={() => setNomeParaCriar(null)}
           onCriado={handleTipoCriado}
         />
       )}
-      {gruposAberto && clienteId && (
+      {gruposAberto && idAtual && (
         <GruposTarefasModal
-          clienteId={clienteId}
+          clienteId={idAtual}
           setor="contabil"
           tarefasDisponiveis={form.tarefas_personalizadas}
           onClose={() => setGruposAberto(false)}

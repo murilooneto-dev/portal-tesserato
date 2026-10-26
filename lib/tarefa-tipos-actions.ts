@@ -109,6 +109,7 @@ export async function criarTipoTarefa(
         .from('tarefa_tipos')
         .select('tipo_resposta, etapas, meses_visiveis')
         .eq('setor', setor)
+        .is('cliente_id', null)
         .eq('nome', nomeTrim)
         .maybeSingle()
 

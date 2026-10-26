@@ -60,6 +60,7 @@ const ROTULOS: Record<string, [string, string]> = {
   cliente_notas: ['nota', 'notas'],
   observacoes_clientes: ['observação', 'observações'],
   tarefa_grupos: ['grupo de tarefas', 'grupos de tarefas'],
+  tarefa_tipos: ['tarefa personalizada do cliente', 'tarefas personalizadas do cliente'],
   parcelamentos: ['parcelamento', 'parcelamentos'],
   financeiro_movimentos: ['movimento financeiro', 'movimentos financeiros'],
   procedimentos_societario: ['procedimento do Societário', 'procedimentos do Societário'],
@@ -71,7 +72,7 @@ const PRIORIDADE_RAIZ = [
   'clientes', 'parcelamentos', 'procedimentos_societario', 'financeiro_movimentos', 'tarefas_avulsas',
   'tarefas', 'clientes_fiscal', 'clientes_contabil', 'clientes_pessoal', 'cliente_notas',
   'observacoes_clientes', 'tarefa_grupos', 'client_files', 'cliente_responsavel_historico',
-  'tarefa_etapas', 'tarefa_arquivos', 'evento_arquivos', 'procedimento_arquivos',
+  'tarefa_etapas', 'tarefa_arquivos', 'evento_arquivos', 'procedimento_arquivos', 'tarefa_tipos',
 ]
 
 function rotulo(tabela: string, n: number): string {
@@ -127,6 +128,7 @@ export function tituloDaLinha(tabela: string, campos: Record<string, string>): s
       if (c.name) return c.name
       break
     case 'tarefa_grupos':
+    case 'tarefa_tipos':
     case 'tarefa_etapas':
       if (c.nome) return c.nome
       break

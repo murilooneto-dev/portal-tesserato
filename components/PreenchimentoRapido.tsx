@@ -32,6 +32,8 @@ interface Props {
   mapaVinculos: MapaVinculosSetor
   tiposData: string[]
   tiposNaoData?: string[]
+  // clienteId → tipos personalizados dele que não são checkbox simples.
+  naoDataPorCliente?: Record<string, string[]>
   filtroPendentes?: boolean
   estadoInicial: Record<string, Record<string, boolean>>
   onToggle: (clienteId: string, tipo: string, concluida: boolean) => Promise<void>
@@ -43,6 +45,7 @@ export default function PreenchimentoRapido({
   mapaVinculos,
   tiposData,
   tiposNaoData,
+  naoDataPorCliente,
   filtroPendentes = false,
   estadoInicial,
   onToggle,
@@ -63,6 +66,12 @@ export default function PreenchimentoRapido({
   const tiposDataSet = useMemo(() => new Set(tiposData), [tiposData])
   const tiposNaoDataSet = useMemo(() => new Set(tiposNaoData ?? []), [tiposNaoData])
 
+  const naoDataPorClienteSet = useMemo(() => {
+    const m: Record<string, Set<string>> = {}
+    for (const [id, nomes] of Object.entries(naoDataPorCliente ?? {})) m[id] = new Set(nomes)
+    return m
+  }, [naoDataPorCliente])
+
   const valores = useMemo(
     () => (campo ? valoresDistintos(clientes, campo) : []),
     [clientes, campo],
@@ -80,14 +89,14 @@ export default function PreenchimentoRapido({
   const tarefasAplicaveisPorCliente = useMemo(() => {
     const porCliente: Record<string, Set<string>> = {}
     for (const c of clientesFiltrados) {
-      porCliente[c.id] = tarefasAplicaveisCliente(c, mapaVinculos, tiposDataSet, tiposNaoDataSet)
+      porCliente[c.id] = tarefasAplicaveisCliente(c, mapaVinculos, tiposDataSet, tiposNaoDataSet, naoDataPorClienteSet)
     }
     return porCliente
-  }, [clientesFiltrados, mapaVinculos, tiposDataSet, tiposNaoDataSet])
+  }, [clientesFiltrados, mapaVinculos, tiposDataSet, tiposNaoDataSet, naoDataPorClienteSet])
 
   const tarefasDisponiveis = useMemo(
-    () => tarefasDisponiveisParaClientes(clientesFiltrados, mapaVinculos, tiposDataSet, tiposNaoDataSet),
-    [clientesFiltrados, mapaVinculos, tiposDataSet, tiposNaoDataSet],
+    () => tarefasDisponiveisParaClientes(clientesFiltrados, mapaVinculos, tiposDataSet, tiposNaoDataSet, naoDataPorClienteSet),
+    [clientesFiltrados, mapaVinculos, tiposDataSet, tiposNaoDataSet, naoDataPorClienteSet],
   )
 
   function handleCampoChange(novoCampo: CampoFiltro) {
