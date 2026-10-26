@@ -170,6 +170,7 @@ export default function ClientesListaContabil({ clientes, progressoAnualMap, mes
           responsaveis={responsaveis.slice(1)}
           tarefasPadrao={tarefasPadrao}
           catalogo={catalogo}
+          periodo={{ mes, ano }}
           onClose={() => setModalNovoOpen(false)}
         />
       )}

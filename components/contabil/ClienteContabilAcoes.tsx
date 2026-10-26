@@ -24,9 +24,12 @@ interface Props {
   // Desabilitar/reabilitar vale para a empresa em todos os setores: só Admin e
   // Societário (mesma regra do Cadastro de clientes e da action).
   podeDesabilitar?: boolean
+  // Mês da ficha: tarefa nova criada no "Editar dados" vale dele em diante.
+  mes: number
+  ano: number
 }
 
-export default function ClienteContabilAcoes({ cliente, responsaveis, tarefasPadrao, catalogo, podeDesabilitar = false }: Props) {
+export default function ClienteContabilAcoes({ cliente, responsaveis, tarefasPadrao, catalogo, podeDesabilitar = false, mes, ano }: Props) {
   const router = useRouter()
   const confirmar = useConfirmar()
   const toast = useToast()
@@ -72,6 +75,7 @@ export default function ClienteContabilAcoes({ cliente, responsaveis, tarefasPad
           responsaveis={responsaveis}
           tarefasPadrao={tarefasPadrao}
           catalogo={catalogo}
+          periodo={{ mes, ano }}
           onClose={() => setEditando(false)}
         />
       )}
