@@ -28,6 +28,7 @@ import { buscarRegimesPorTipo } from '@/lib/tarefa-tipo-donos'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import { bucketDoRegime } from '@/lib/regime-bucket'
 import HistoricoResponsavel from '@/components/HistoricoResponsavel'
+import { competenciaDaPlanilha } from '@/lib/planilha-competencia'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -275,7 +276,16 @@ export default async function ClienteDetalhePage({ params }: Props) {
           {
             chave: 'arquivos',
             aba: 'arquivos',
-            conteudo: <ClienteArquivos clienteId={id} arquivosIniciais={arquivos ?? []} podeEditar={podeEditar} />,
+            conteudo: (
+              <ClienteArquivos
+                clienteId={id}
+                arquivosIniciais={(arquivos ?? []).map(a => ({
+                  id: a.id, name: a.name, size: a.size, uploaded_at: a.uploaded_at,
+                  competencia: /\.(xlsx?|csv)$/i.test(a.name) && a.content_base64 ? competenciaDaPlanilha(a.content_base64) : null,
+                }))}
+                podeEditar={podeEditar}
+              />
+            ),
           },
         ]}
       />

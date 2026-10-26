@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { CheckCircle2, Download, Loader2, Printer, ScanSearch, Upload } from 'lucide-react'
 import { escapeHtml } from '@/lib/escape-html'
+import { encontrarCol, normalizar } from '@/lib/planilha-competencia'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Aviso } from '@/components/ui/Aviso'
@@ -26,14 +27,6 @@ interface EntradaDTE {
   data: string
   fornecedor: string
   valor: string
-}
-
-function normalizar(v: unknown): string {
-  return String(v ?? '').replace(/\D/g, '')
-}
-
-function encontrarCol(keys: string[], ...termos: string[]): string | undefined {
-  return keys.find(k => termos.some(t => k.toLowerCase().replace(/[\s._-]/g, '').includes(t)))
 }
 
 function formatarValor(v: unknown): string {

@@ -10,7 +10,10 @@ import { Aviso } from '@/components/ui/Aviso'
 import { cn } from '@/components/ui/cn'
 import { criarTipoTarefa } from '@/lib/tarefa-tipos-actions'
 import { mesesVisiveisDaPeriodicidade, type Periodicidade } from '@/lib/tarefas-societario-periodicidade'
+import { MESES } from '@/lib/mes-navegacao'
+import type { PeriodoTarefas } from '@/lib/tarefas-esperadas'
 import type { UserSetor, TipoResposta } from '@/lib/types'
+import type { NovoTipoConfig } from '@/lib/tipos-do-cliente'
 
 type Formato = 'data' | 'texto' | 'opcoes' | 'checklist'
 
@@ -23,8 +26,14 @@ interface Props {
   // provisionar cliente novo). Nos demais call sites (criação ad-hoc a
   // partir do cadastro de um cliente específico) permanece false.
   padrao?: boolean
+  // Mês selecionado na tela: a tarefa nova vale dele em diante (e não só do
+  // mês real de hoje). Sem ele, vale a partir de hoje.
+  inicioEm?: PeriodoTarefas
+  // Contábil (tipo personalizado do cliente): não grava no catálogo, devolve a
+  // configuração em onCriado e quem chamou grava junto com o cadastro do cliente.
+  adiar?: boolean
   onCancel: () => void
-  onCriado: (nome: string) => void
+  onCriado: (nome: string, config?: NovoTipoConfig) => void
 }
 
 const FORMATOS_BASE: { value: Formato; label: string; desc: string }[] = [
@@ -44,7 +53,7 @@ const PERIODICIDADES: { value: Periodicidade; label: string }[] = [
   { value: 'anual', label: 'Anual (Jan)' },
 ]
 
-export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCancel, onCriado }: Props) {
+export default function NovoTipoTarefaModal({ nome, setor, padrao = false, inicioEm, adiar = false, onCancel, onCriado }: Props) {
   const FORMATOS = setor === 'contabil' ? [...FORMATOS_BASE, FORMATO_CHECKLIST] : FORMATOS_BASE
   const [formato, setFormato] = useState<Formato>('data')
   const [etapas, setEtapas] = useState<string[]>([])
@@ -63,13 +72,17 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
 
   async function handleCriar() {
     if (temEtapas && etapas.length === 0) return
-    setSalvando(true)
+    if (!adiar) setSalvando(true)
     setErro(null)
     const tipoResposta: TipoResposta = formato === 'checklist' ? 'checklist' : formato === 'texto' ? 'texto' : 'data'
     const etapasFinal = temEtapas ? etapas : null
     const mesesVisiveis = (setor === 'societario' || setor === 'financeiro') ? mesesVisiveisDaPeriodicidade(periodicidade) : null
+    if (adiar) {
+      onCriado(nome, { tipoResposta, etapas: etapasFinal, mesesVisiveis, inicioEm: inicioEm ?? null })
+      return
+    }
     try {
-      const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal, padrao, mesesVisiveis)
+      const { error } = await criarTipoTarefa(setor, nome, tipoResposta, etapasFinal, padrao, mesesVisiveis, inicioEm ?? null)
       if (error) { setErro(error); return }
       onCriado(nome)
     } catch {
@@ -85,7 +98,7 @@ export default function NovoTipoTarefaModal({ nome, setor, padrao = false, onCan
       onFechar={onCancel}
       bloqueado={salvando}
       titulo="Novo tipo de tarefa"
-      subtitulo={`"${nome}" ainda não existe no catálogo`}
+      subtitulo={`"${nome}" ainda não existe no catálogo${inicioEm ? ` · vale a partir de ${MESES[inicioEm.mes - 1]}/${inicioEm.ano}` : ''}`}
       largura="p"
       rodape={
         <>

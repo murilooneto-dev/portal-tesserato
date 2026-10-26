@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calcularTarefasEsperadas, tarefasAutomaticasVisiveis, type MapaVinculosSetor } from '../lib/tarefas-esperadas'
+import { calcularTarefasEsperadas, criadoEmDoPeriodo, tarefaVigenteNoPeriodo, tarefasAutomaticasVisiveis, type MapaVinculosSetor } from '../lib/tarefas-esperadas'
 
 const mapaVazio: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
 
@@ -109,4 +109,44 @@ test('tarefasAutomaticasVisiveis: mostra as automáticas, tira as excluídas e a
   }
   const resultado = tarefasAutomaticasVisiveis(cliente, mapa)
   assert.deepEqual(resultado.sort(), ['DAS'])
+})
+
+test('criadoEmDoPeriodo: tarefa criada com a tela em ago/2026 vale de agosto em diante', () => {
+  const criadoEm = criadoEmDoPeriodo({ mes: 8, ano: 2026 })
+  assert.equal(criadoEm, '2026-08-01T12:00:00-03:00')
+  assert.equal(tarefaVigenteNoPeriodo(criadoEm, { mes: 7, ano: 2026 }), false)
+  assert.equal(tarefaVigenteNoPeriodo(criadoEm, { mes: 8, ano: 2026 }), true)
+  assert.equal(tarefaVigenteNoPeriodo(criadoEm, { mes: 10, ano: 2026 }), true)
+  assert.equal(tarefaVigenteNoPeriodo(criadoEm, { mes: 1, ano: 2027 }), true)
+})
+
+test('criadoEmDoPeriodo: sem período ou período inválido devolve null (banco usa now())', () => {
+  assert.equal(criadoEmDoPeriodo(undefined), null)
+  assert.equal(criadoEmDoPeriodo({ mes: 13, ano: 2026 }), null)
+  assert.equal(criadoEmDoPeriodo({ mes: 0, ano: 2026 }), null)
+  assert.equal(criadoEmDoPeriodo({ mes: 1.5, ano: 2026 }), null)
+})
+
+test('calcularTarefasEsperadas: data de início por cliente vale só para aquele cliente', () => {
+  const mapa: MapaVinculosSetor = {
+    porRegime: {}, porAtividade: {}, inicioPorTarefa: {},
+    inicioPorCliente: { c1: { X: '2026-10-01T12:00:00-03:00' } },
+  }
+  const c1 = { id: 'c1', tarefas_personalizadas: ['X'] }
+  assert.deepEqual(calcularTarefasEsperadas(c1, mapa, { mes: 9, ano: 2026 }), [])
+  assert.deepEqual(calcularTarefasEsperadas(c1, mapa, { mes: 10, ano: 2026 }), ['X'])
+  const c2 = { id: 'c2', tarefas_personalizadas: ['X'] }
+  assert.deepEqual(calcularTarefasEsperadas(c2, mapa, { mes: 9, ano: 2026 }), ['X'])
+})
+
+test('calcularTarefasEsperadas: tipo próprio do cliente com data nula não herda a do setor', () => {
+  const mapa: MapaVinculosSetor = {
+    porRegime: {}, porAtividade: {},
+    inicioPorTarefa: { X: '2026-10-01T12:00:00-03:00' },
+    tipoProprioPorCliente: { c1: ['X'] },
+  }
+  const c1 = { id: 'c1', tarefas_personalizadas: ['X'] }
+  const c2 = { id: 'c2', tarefas_personalizadas: ['X'] }
+  assert.deepEqual(calcularTarefasEsperadas(c1, mapa, { mes: 9, ano: 2026 }), ['X'])
+  assert.deepEqual(calcularTarefasEsperadas(c2, mapa, { mes: 9, ano: 2026 }), [])
 })

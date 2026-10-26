@@ -22,6 +22,7 @@ import { buscarNotasCliente } from '@/lib/cliente-notas'
 import { buscarCatalogoCliente } from '@/lib/catalogo-cliente'
 import type { Tarefa, TarefaEtapa, TarefaArquivo, TipoResposta, CalendarioEvento, TarefaGrupo } from '@/lib/types'
 import { labelRegime } from '@/lib/atividades-regimes'
+import { resolverTiposDoCliente } from '@/lib/tarefa-tipos'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 import HistoricoResponsavel from '@/components/HistoricoResponsavel'
 
@@ -69,7 +70,7 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
   const [{ data: tarefas }, { data: usuariosContabil }, { data: tiposRaw }, { data: eventosCalRaw }, labelsParcelamento, { data: gruposRaw }] = await Promise.all([
     supabase.from('tarefas').select('*').eq('cliente_id', id).eq('mes', mes).eq('ano', ano).eq('setor', 'contabil'),
     supabase.from('profiles').select('nome, cor').contains('setores', ['contabil']),
-    supabase.from('tarefa_tipos').select('nome, etapas, tipo_resposta, vigente_ate').eq('setor', 'contabil'),
+    supabase.from('tarefa_tipos').select('nome, cliente_id, etapas, tipo_resposta, vigente_ate').eq('setor', 'contabil').or(`cliente_id.is.null,cliente_id.eq.${id}`),
     supabase.from('calendario_eventos').select('*').eq('setor', 'contabil'),
     buscarLabelsParcelamentoAtivo(supabase, cliente.cnpj ?? null),
     supabase.from('tarefa_grupos').select('id, cliente_id, setor, nome, tarefas').eq('cliente_id', id).eq('setor', 'contabil'),
@@ -95,13 +96,15 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
   const corResponsavel = (usuariosContabil ?? []).find(p => p.nome?.toUpperCase() === cliente.responsavel?.toUpperCase())?.cor || 'var(--acc)'
 
   const tarefaTipos: Record<string, { etapas: string[] | null; tipoResposta: TipoResposta }> = {}
-  for (const t of tiposRaw ?? []) {
+  // Tipo do cliente vence o do setor de mesmo nome (migration 070).
+  const tiposDoCliente = resolverTiposDoCliente((tiposRaw ?? []) as { nome: string; cliente_id: string | null; etapas: string[] | null; tipo_resposta: string | null; vigente_ate: string | null }[], id)
+  for (const t of tiposDoCliente) {
     tarefaTipos[t.nome as string] = {
       etapas: t.etapas as string[] | null,
       tipoResposta: (t.tipo_resposta as TipoResposta) ?? 'data',
     }
   }
-  const tarefasPadrao = (tiposRaw ?? []).filter(t => !t.vigente_ate).map(t => t.nome as string)
+  const tarefasPadrao = (tiposRaw ?? []).filter(t => !t.vigente_ate && !t.cliente_id).map(t => t.nome as string)
   const catalogo = await buscarCatalogoCliente(supabase, 'contabil')
 
   const tarefaIds = (tarefas ?? []).map(t => t.id)
@@ -181,7 +184,7 @@ export default async function ClienteContabilDetalhePage({ params, searchParams 
         }
         acoes={
           podeEditar
-            ? <ClienteContabilAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} catalogo={catalogo} podeDesabilitar={podeDesabilitar} />
+            ? <ClienteContabilAcoes cliente={cliente} responsaveis={responsaveis} tarefasPadrao={tarefasPadrao} catalogo={catalogo} podeDesabilitar={podeDesabilitar} mes={mes} ano={ano} />
             : undefined
         }
       />

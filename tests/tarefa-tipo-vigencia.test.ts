@@ -119,13 +119,14 @@ test('calcularTarefasEsperadas: tarefa encerrada em setembro some de outubro, do
 test('migration 064 e leitura do encerramento', () => {
   assert.ok(ler('supabase/migrations/064_tarefa_tipos_vigente_ate.sql').includes('add column if not exists vigente_ate date'))
   const lib = ler('lib/tarefas-esperadas.ts')
-  assert.ok(lib.includes("select('nome, criado_em, vigente_ate')"))
-  assert.ok(lib.includes("or('criado_em.not.is.null,vigente_ate.not.is.null')"))
+  assert.ok(lib.includes("select('nome, cliente_id, criado_em, vigente_ate')"))
+  assert.ok(lib.includes("or('criado_em.not.is.null,vigente_ate.not.is.null,cliente_id.not.is.null')"))
 })
 
 test('tipo encerrado não entra na lista padrão de cliente novo (Pessoal e Contábil)', () => {
   for (const arq of ['app/pessoal/clientes/page.tsx', 'app/pessoal/clientes/[id]/page.tsx', 'app/contabil/clientes/page.tsx', 'app/contabil/clientes/[id]/page.tsx']) {
-    assert.ok(ler(arq).includes('.filter(t => !t.vigente_ate).map(t => t.nome as string)'), arq)
+    // Na ficha do Contábil o filtro também tira os tipos personalizados de cliente (migration 070).
+    assert.ok(/\.filter\(t => !t\.vigente_ate( && !t\.cliente_id)?\)\.map\(t => t\.nome as string\)/.test(ler(arq)), arq)
   }
 })
 

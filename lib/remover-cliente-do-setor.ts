@@ -62,6 +62,11 @@ export async function removerClienteDoSetor(
     if (ficha.error) return { error: mensagemErroExclusao(ficha.error.message), clienteRemovidoDoTodo: false }
   }
 
+  // Os tipos personalizados do cliente no Contábil (tarefa_tipos.cliente_id) NÃO
+  // são apagados aqui: valem só para este cliente, voltam junto com a ficha se
+  // ela for restaurada da Lixeira, e recriar o mesmo nome depois substitui a
+  // sobra. Apagar o cliente inteiro os remove por cascata, no mesmo grupo.
+
   const atualizacao = await supabase.from('clientes').update({ setores: plano.novosSetores }).eq('id', clienteId)
   if (atualizacao.error) return { error: mensagemErroExclusao(atualizacao.error.message), clienteRemovidoDoTodo: false }
 

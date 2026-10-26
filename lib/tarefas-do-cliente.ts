@@ -62,7 +62,7 @@ export async function buscarTiposSemUso(
   const tabela = TABELA_CLIENTES_DO_SETOR[setor]
   if (!tabela || nomes?.length === 0) return { tipos: [] }
 
-  let consultaTipos = supabase.from('tarefa_tipos').select('id, nome, padrao, vigente_ate').eq('setor', setor)
+  let consultaTipos = supabase.from('tarefa_tipos').select('id, nome, padrao, vigente_ate').eq('setor', setor).is('cliente_id', null)
   if (nomes) consultaTipos = consultaTipos.in('nome', nomes)
   const { data: tipos, error: errTipos } = await consultaTipos
   if (errTipos) return { tipos: [], error: errTipos.message }

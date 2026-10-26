@@ -63,6 +63,7 @@ export async function listarTarefaTiposDoSetor(
     .from('tarefa_tipos')
     .select('id, nome, ativo, responsavel_id, tipo_resposta, etapas, meses_visiveis, vigente_ate')
     .eq('setor', setor)
+    .is('cliente_id', null)
     .order('nome')
 
   if (queryError) return { data: [], error: queryError.message }

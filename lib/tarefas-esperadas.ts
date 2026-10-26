@@ -14,6 +14,14 @@ export interface MapaVinculosSetor {
   // Nome da tarefa → último mês em que ela conta (tarefa_tipos.vigente_ate,
   // 'AAAA-MM-DD'). Só entram os tipos encerrados; os demais não têm fim.
   fimPorTarefa?: Record<string, string>
+  // Igual aos dois acima, mas para tipos personalizados de um cliente
+  // (tarefa_tipos.cliente_id, migration 070): clienteId → nome → data. A data
+  // do cliente vence a do setor.
+  inicioPorCliente?: Record<string, Record<string, string>>
+  fimPorCliente?: Record<string, Record<string, string>>
+  // Nomes que o cliente tem como tipo PRÓPRIO (tarefa_tipos.cliente_id): para eles
+  // valem só as datas do tipo do cliente, mesmo nulas, nunca as do tipo do setor.
+  tipoProprioPorCliente?: Record<string, string[]>
   // Mês/ano que a tela está mostrando, quando buscarMapaVinculosSetor recebe
   // um. calcularTarefasEsperadas usa este período se não receber outro, então
   // quem monta a tela de UM mês só precisa informar o mês ao buscar o mapa.
@@ -37,6 +45,19 @@ export function tarefaVigenteNoPeriodo(
   vigenteAte?: string | null,
 ): boolean {
   return !antesDoInicio(criadoEm, periodo) && !depoisDoFim(vigenteAte, periodo)
+}
+
+/**
+ * `criado_em` de um tipo criado com a tela num mês passado (ou futuro): o dia
+ * 1º daquele mês, ao meio-dia de São Paulo, pra antesDoInicio ler exatamente
+ * esse mês. Assim a tarefa vale do mês selecionado em diante, e não só do mês
+ * real de hoje. Período inválido = null (o banco usa now()).
+ */
+export function criadoEmDoPeriodo(periodo: PeriodoTarefas | null | undefined): string | null {
+  if (!periodo) return null
+  const { mes, ano } = periodo
+  if (!Number.isInteger(mes) || !Number.isInteger(ano) || mes < 1 || mes > 12 || ano < 2000 || ano > 2999) return null
+  return `${ano}-${String(mes).padStart(2, '0')}-01T12:00:00-03:00`
 }
 
 function antesDoInicio(criadoEm: string | null | undefined, periodo: PeriodoTarefas): boolean {
@@ -74,17 +95,24 @@ export async function buscarMapaVinculosSetor(
       .from('tarefa_tipo_vinculos')
       .select('entidade_tipo, entidade_id, regime_id, tarefa_tipos!inner(nome, setor)')
       .eq('tarefa_tipos.setor', setor),
-    supabase.from('tarefa_tipos').select('nome, criado_em, vigente_ate').eq('setor', setor).or('criado_em.not.is.null,vigente_ate.not.is.null'),
+    supabase.from('tarefa_tipos').select('nome, cliente_id, criado_em, vigente_ate').eq('setor', setor).or('criado_em.not.is.null,vigente_ate.not.is.null,cliente_id.not.is.null'),
   ])
 
   const nomePorId: Record<string, string> = {}
   for (const r of regimes ?? []) nomePorId[r.id as string] = r.nome as string
   for (const a of atividades ?? []) nomePorId[a.id as string] = a.nome as string
 
-  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {}, inicioPorTarefa: {}, fimPorTarefa: {}, periodo }
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {}, inicioPorTarefa: {}, fimPorTarefa: {}, inicioPorCliente: {}, fimPorCliente: {}, tipoProprioPorCliente: {}, periodo }
   for (const t of tiposComData ?? []) {
-    if (t.criado_em) mapa.inicioPorTarefa![t.nome as string] = t.criado_em as string
-    if (t.vigente_ate) mapa.fimPorTarefa![t.nome as string] = t.vigente_ate as string
+    const clienteId = t.cliente_id as string | null
+    const nome = t.nome as string
+    // Tipo do setor (cliente_id nulo) vai pros mapas por nome; o de cliente
+    // para os mapas por cliente.
+    if (clienteId) (mapa.tipoProprioPorCliente![clienteId] ??= []).push(nome)
+    const inicio = clienteId ? (mapa.inicioPorCliente![clienteId] ??= {}) : mapa.inicioPorTarefa!
+    const fim = clienteId ? (mapa.fimPorCliente![clienteId] ??= {}) : mapa.fimPorTarefa!
+    if (t.criado_em) inicio[nome] = t.criado_em as string
+    if (t.vigente_ate) fim[nome] = t.vigente_ate as string
   }
 
   for (const v of vinculos ?? []) {
@@ -144,7 +172,7 @@ function tarefasAutomaticas(cliente: ClienteVinculo, mapa: MapaVinculosSetor): s
 // nenhum dos dois devolve tudo — é o que o cadastro do cliente usa, onde não
 // existe mês.
 export function calcularTarefasEsperadas(
-  cliente: ClienteVinculo & { tarefas_personalizadas: string[]; tarefas_excluidas?: string[] },
+  cliente: ClienteVinculo & { id?: string | null; cliente_id?: string | null; tarefas_personalizadas: string[]; tarefas_excluidas?: string[] },
   mapa: MapaVinculosSetor,
   periodo?: PeriodoTarefas,
 ): string[] {
@@ -153,7 +181,16 @@ export function calcularTarefasEsperadas(
   const todas = Array.from(new Set([...automaticasAtivas, ...cliente.tarefas_personalizadas]))
   const p = periodo ?? mapa.periodo
   if (!p) return todas
-  return todas.filter(t => tarefaVigenteNoPeriodo(mapa.inicioPorTarefa?.[t], p, mapa.fimPorTarefa?.[t]))
+  // Chave do cliente: `cliente_id` (linhas de tarefas) ou `id` (o próprio cliente).
+  const chave = cliente.cliente_id ?? cliente.id
+  const inicioCli = chave ? mapa.inicioPorCliente?.[chave] : undefined
+  const fimCli = chave ? mapa.fimPorCliente?.[chave] : undefined
+  const proprios = chave ? mapa.tipoProprioPorCliente?.[chave] : undefined
+  return todas.filter(t => {
+    // Tipo próprio do cliente vence por inteiro: data nula dele não herda a do setor.
+    if (proprios?.includes(t)) return tarefaVigenteNoPeriodo(inicioCli?.[t], p, fimCli?.[t])
+    return tarefaVigenteNoPeriodo(inicioCli?.[t] ?? mapa.inicioPorTarefa?.[t], p, fimCli?.[t] ?? mapa.fimPorTarefa?.[t])
+  })
 }
 
 // Pra UI do cadastro: as tarefas automáticas ainda ativas (não excluídas) e

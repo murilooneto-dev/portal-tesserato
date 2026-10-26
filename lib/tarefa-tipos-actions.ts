@@ -3,6 +3,7 @@
 import { getAuthenticatedAdmin } from './supabase/server'
 import { podeAcessarPagina } from './route-permissions'
 import { buscarTiposSemUso } from './tarefas-do-cliente'
+import { criadoEmDoPeriodo, type PeriodoTarefas } from './tarefas-esperadas'
 import type { UserSetor, TipoResposta } from './types'
 
 // ENTRADA/SAIDAS são reconhecidas por nome literal (case-sensitive) em
@@ -24,6 +25,9 @@ export async function criarTipoTarefa(
   etapas: string[] | null,
   padrao: boolean = false,
   mesesVisiveis: number[] | null = null,
+  // Mês selecionado na tela de onde o tipo foi criado: a tarefa passa a valer
+  // a partir dele (ver criadoEmDoPeriodo). Sem ele, vale a partir de hoje.
+  inicioEm: PeriodoTarefas | null = null,
 ): Promise<{ error: string | null }> {
   const nomeTrim = nome.trim()
   if (setor === 'fiscal' && NOMES_RESERVADOS_FISCAL.includes(nomeTrim)) {
@@ -67,6 +71,7 @@ export async function criarTipoTarefa(
   // impõe sozinho. O catálogo global de admin (app/admin/configuracoes)
   // passa padrao=true explicitamente, pois lá a expectativa é justamente
   // criar um tipo padrão.
+  const criadoEm = criadoEmDoPeriodo(inicioEm)
   const inserir = () => supabase.from('tarefa_tipos').insert({
     setor,
     nome: nomeTrim,
@@ -74,6 +79,7 @@ export async function criarTipoTarefa(
     etapas,
     padrao,
     meses_visiveis: mesesVisiveis,
+    ...(criadoEm ? { criado_em: criadoEm } : {}),
   })
   const { error } = await inserir()
 
@@ -90,7 +96,7 @@ export async function criarTipoTarefa(
       // Antes disso: se o registro existente é um tipo que ninguém usa
       // (sobrou de uma tarefa removida, ou de um cadastro cancelado antes de
       // salvar), ele não vale como "já existe". Sai o antigo e entra o novo,
-      // com o formato escolhido agora e criado_em de hoje.
+      // com o formato escolhido agora e criado_em de hoje (ou do mês da tela).
       const { tipos: semUso } = await buscarTiposSemUso(supabase, setor, [nomeTrim])
       if (semUso.length > 0) {
         const { error: errApagar } = await supabase.from('tarefa_tipos').delete().in('id', semUso.map(t => t.id))
@@ -103,6 +109,7 @@ export async function criarTipoTarefa(
         .from('tarefa_tipos')
         .select('tipo_resposta, etapas, meses_visiveis')
         .eq('setor', setor)
+        .is('cliente_id', null)
         .eq('nome', nomeTrim)
         .maybeSingle()
 
