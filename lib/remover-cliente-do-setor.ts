@@ -62,6 +62,13 @@ export async function removerClienteDoSetor(
     if (ficha.error) return { error: mensagemErroExclusao(ficha.error.message), clienteRemovidoDoTodo: false }
   }
 
+  // Tipos personalizados do cliente no Contábil (tarefa_tipos.cliente_id) não
+  // têm uso fora dele: saem com o setor.
+  if (setor === 'contabil') {
+    const tipos = await supabase.from('tarefa_tipos').delete().eq('cliente_id', clienteId).eq('setor', 'contabil')
+    if (tipos.error) return { error: mensagemErroExclusao(tipos.error.message), clienteRemovidoDoTodo: false }
+  }
+
   const atualizacao = await supabase.from('clientes').update({ setores: plano.novosSetores }).eq('id', clienteId)
   if (atualizacao.error) return { error: mensagemErroExclusao(atualizacao.error.message), clienteRemovidoDoTodo: false }
 

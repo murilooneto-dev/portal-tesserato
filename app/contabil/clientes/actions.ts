@@ -5,9 +5,10 @@ import { getAuthenticatedAdmin, podeEditarClienteContabil } from '@/lib/supabase
 import { removerClienteDoSetor } from '@/lib/remover-cliente-do-setor'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { registrarEvento, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
-import { tarefasRemovidasDoCliente, apagarTarefasDoCliente, apagarTiposSemUso } from '@/lib/tarefas-do-cliente'
-import { resolverTiposDoCliente } from '@/lib/tarefa-tipos'
-import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
+import { apagarTarefasDoCliente } from '@/lib/tarefas-do-cliente'
+import { resolverTiposDoCliente, nomeNoCatalogo } from '@/lib/tarefa-tipos'
+import { buscarMapaVinculosSetor, calcularTarefasEsperadas, criadoEmDoPeriodo } from '@/lib/tarefas-esperadas'
+import { nomesParaApagar, type NovoTipoConfig } from '@/lib/tipos-do-cliente'
 
 interface ClientePayload {
   nome: string
@@ -31,10 +32,39 @@ async function nomeDoUsuario(supabase: Awaited<ReturnType<typeof getAuthenticate
   return data?.nome ?? 'Desconhecido'
 }
 
+// Grava os tipos personalizados criados no cadastro (cliente_id = o cliente).
+// Só os que continuam na ficha; nome de tipo do setor nunca vira tipo do cliente.
+async function gravarTiposNovos(
+  supabase: NonNullable<Awaited<ReturnType<typeof getAuthenticatedAdmin>>['supabase']>,
+  clienteId: string,
+  personalizadas: string[],
+  tiposNovos: Record<string, NovoTipoConfig>,
+): Promise<{ error?: string }> {
+  const nomes = Object.keys(tiposNovos).filter(n => personalizadas.includes(n))
+  if (nomes.length === 0) return {}
+  const { data: doSetor, error: errSetor } = await supabase
+    .from('tarefa_tipos').select('nome').eq('setor', 'contabil').is('cliente_id', null)
+  if (errSetor) return { error: errSetor.message }
+  const nomesDoSetor = (doSetor ?? []).map(t => t.nome as string)
+  for (const nome of nomes) {
+    if (nomeNoCatalogo(nomesDoSetor, nome)) continue
+    const cfg = tiposNovos[nome]
+    const criadoEm = criadoEmDoPeriodo(cfg.inicioEm)
+    const { error } = await supabase.from('tarefa_tipos').insert({
+      setor: 'contabil', cliente_id: clienteId, nome, padrao: false,
+      tipo_resposta: cfg.tipoResposta, etapas: cfg.etapas, meses_visiveis: cfg.mesesVisiveis,
+      ...(criadoEm ? { criado_em: criadoEm } : {}),
+    })
+    if (error) return { error: error.message }
+  }
+  return {}
+}
+
 export async function salvarClienteContabil(
   clienteId: string | null,
   clientePayload: ClientePayload,
   contabilPayload: ContabilPayload,
+  tiposNovos: Record<string, NovoTipoConfig> = {},
 ): Promise<{ error?: string; id?: string }> {
   if (clienteId && !(await podeEditarClienteContabil(clienteId))) return { error: 'Não autorizado.' }
 
@@ -51,19 +81,23 @@ export async function salvarClienteContabil(
     const { error: errContabil } = await supabase.from('clientes_contabil').update(contabilPayload).eq('cliente_id', clienteId)
     if (errContabil) return { error: errContabil.message }
 
-    // Tarefa personalizada removida deste cliente perde o histórico dele (as linhas
-    // de `tarefas` casam por nome e voltariam ao recriar o mesmo nome). Só este
-    // cliente: os outros clientes não são tocados. O tipo só sai do catálogo se
-    // ninguém mais o usa (apagarTiposSemUso).
+    // Tarefa personalizada removida (ou recriada) deste cliente perde o histórico
+    // e o tipo dele (as linhas de `tarefas` casam por nome e voltariam ao
+    // recriar o mesmo nome). Só este cliente: o catálogo do setor e os outros
+    // clientes não são tocados. Roda antes de gravar os tipos novos.
     const mapaVinculos = await buscarMapaVinculosSetor(supabase, 'contabil')
-    const removidas = tarefasRemovidasDoCliente(
-      antes?.tarefas_personalizadas,
+    const apagar = nomesParaApagar(
+      antes?.tarefas_personalizadas ?? [],
       calcularTarefasEsperadas(contabilPayload, mapaVinculos),
+      Object.keys(tiposNovos),
     )
-    const { error: errLimpeza } = await apagarTarefasDoCliente(supabase, clienteId, 'contabil', removidas)
+    const { error: errLimpeza } = await apagarTarefasDoCliente(supabase, clienteId, 'contabil', apagar)
     if (errLimpeza) return { error: errLimpeza }
-    const { error: errCatalogo } = await apagarTiposSemUso(supabase, 'contabil', removidas)
-    if (errCatalogo) return { error: errCatalogo }
+    if (apagar.length > 0) {
+      const { error: errTipos } = await supabase.from('tarefa_tipos').delete()
+        .eq('setor', 'contabil').eq('cliente_id', clienteId).in('nome', apagar)
+      if (errTipos) return { error: errTipos.message }
+    }
 
     await registrarMudancaTarefas(supabase, {
       setor: 'contabil', clienteId, clienteNome: clientePayload.nome,
@@ -103,6 +137,10 @@ export async function salvarClienteContabil(
     }
     clienteId = novoCliente.id
   }
+
+  if (!clienteId) return { error: 'Falha ao salvar cliente' }
+  const { error: errNovosTipos } = await gravarTiposNovos(supabase, clienteId, contabilPayload.tarefas_personalizadas, tiposNovos)
+  if (errNovosTipos) return { error: errNovosTipos }
 
   revalidatePath(`/contabil/clientes/${clienteId}`)
   revalidatePath('/contabil/clientes')

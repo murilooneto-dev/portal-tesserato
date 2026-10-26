@@ -7,7 +7,7 @@ import { join } from 'node:path'
 const ler = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8')
 
 const JANELAS = [
-  { arq: 'components/contabil/EmpresaContabilModal.tsx', setor: 'contabil', action: 'salvarClienteContabil(clienteId, clientePayload, contabilPayload)', props: 'EmpresaContabilModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false, periodo }: Props)' },
+  { arq: 'components/contabil/EmpresaContabilModal.tsx', setor: 'contabil', action: 'salvarClienteContabil(clienteId, clientePayload, contabilPayload, tiposNovos)', props: 'EmpresaContabilModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false, periodo }: Props)' },
   { arq: 'components/pessoal/EmpresaPessoalModal.tsx', setor: 'pessoal', action: 'salvarClientePessoal(clienteId, clientePayload, pessoalPayload)', props: 'EmpresaPessoalModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false }: Props)' },
 ]
 const FICHA = 'app/fiscal/clientes/[id]/page.tsx'
