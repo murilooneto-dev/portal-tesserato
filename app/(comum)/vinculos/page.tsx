@@ -19,7 +19,7 @@ export default async function VinculosPage() {
     supabase.from('clientes_fiscal').select('tarefas_personalizadas'),
     supabase.from('clientes_contabil').select('tarefas_personalizadas'),
     supabase.from('clientes_pessoal').select('tarefas_personalizadas'),
-    supabase.from('tarefa_tipos').select('setor, nome'),
+    supabase.from('tarefa_tipos').select('setor, nome').is('cliente_id', null),
   ])
 
   const vinculos = (vinculosRaw ?? []) as TarefaVinculo[]

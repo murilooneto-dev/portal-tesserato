@@ -108,7 +108,7 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
 
   useEffect(() => {
     // Tipo que ninguém usa não conta como existente: digitar o nome dele abre a criação.
-    Promise.all([sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil'), listarNomesDeTiposSemUso('contabil')]).then(([{ data }, semUso]) => {
+    Promise.all([sb.from('tarefa_tipos').select('nome').eq('setor', 'contabil').is('cliente_id', null), listarNomesDeTiposSemUso('contabil')]).then(([{ data }, semUso]) => {
       setCatalogoNomes((data ?? []).map(t => t.nome as string).filter(n => !semUso.includes(n)))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps

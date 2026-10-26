@@ -18,7 +18,7 @@ export default async function ClientesContabilPage() {
   const [{ data: clientesRaw }, tarefasDoAno, { data: tiposRaw }, { data: usuariosSetor }] = await Promise.all([
     supabase.from('clientes').select(SELECT_CLIENTE_CONTABIL).order('nome'),
     buscarTodasTarefasDoAno<Pick<Tarefa, 'cliente_id' | 'concluida' | 'tipo' | 'mes'>>(supabase, ano, 'cliente_id, concluida, tipo, mes', 'contabil'),
-    supabase.from('tarefa_tipos').select('nome, vigente_ate').eq('setor', 'contabil').order('nome'),
+    supabase.from('tarefa_tipos').select('nome, vigente_ate').eq('setor', 'contabil').is('cliente_id', null).order('nome'),
     supabase.from('profiles').select('nome, cor').contains('setores', ['contabil']),
   ])
 
