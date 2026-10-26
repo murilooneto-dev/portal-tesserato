@@ -6,6 +6,7 @@ import { removerClienteDoSetor } from '@/lib/remover-cliente-do-setor'
 import { TIPOS_ARQUIVO_PERMITIDOS, TAMANHO_MAX_ARQUIVO } from '@/lib/anexos'
 import { registrarEvento, abrirHistoricoResponsavel, trocarResponsavel, registrarMudancaTarefas } from '@/lib/logs'
 import { tarefasRemovidasDoCliente, apagarTarefasDoCliente, apagarTiposSemUso } from '@/lib/tarefas-do-cliente'
+import { resolverTiposDoCliente } from '@/lib/tarefa-tipos'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas } from '@/lib/tarefas-esperadas'
 
 interface ClientePayload {
@@ -223,10 +224,12 @@ export async function atualizarEtapa(
   }
 
   // 3. Recalcula concluida da tarefa-pai: todas as etapas esperadas (de tarefa_tipos) concluídas?
-  const { data: tipoRow } = await supabase
-    .from('tarefa_tipos').select('etapas')
+  const { data: tiposRows } = await supabase
+    .from('tarefa_tipos').select('nome, etapas, cliente_id')
     .eq('setor', 'contabil').eq('nome', tipo)
-    .maybeSingle()
+    .or(`cliente_id.is.null,cliente_id.eq.${clienteId}`)
+  // Mesmo nome pode existir no setor e no cliente: o do cliente vence.
+  const tipoRow = resolverTiposDoCliente(tiposRows ?? [], clienteId)[0]
   const etapasEsperadas: string[] = tipoRow?.etapas ?? []
 
   const { data: etapasAtuais } = await supabase

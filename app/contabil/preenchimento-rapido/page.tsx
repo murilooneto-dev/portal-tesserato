@@ -41,7 +41,7 @@ export default async function PreenchimentoRapidoContabilPage() {
       .eq('clientes_contabil.ativo', true)
       .order('nome'),
     buscarMapaVinculosSetor(supabase, 'contabil', { mes, ano }),
-    supabase.from('tarefa_tipos').select('nome, tipo_resposta, etapas').eq('setor', 'contabil'),
+    supabase.from('tarefa_tipos').select('nome, cliente_id, tipo_resposta, etapas').eq('setor', 'contabil'),
     buscarTodasTarefasDoMes<Pick<Tarefa, 'cliente_id' | 'tipo' | 'concluida'>>(
       supabase, mes, ano, 'cliente_id, tipo, concluida', 'contabil',
     ),
@@ -65,8 +65,16 @@ export default async function PreenchimentoRapidoContabilPage() {
     ? clientesTodos
     : clientesTodos.filter(c => c.responsavel?.toUpperCase() === profile?.nome?.toUpperCase())
 
-  const tiposData = nomesTarefaTipoData(tiposRaw ?? [])
-  const tiposNaoData = nomesTarefaTipoNaoData(tiposRaw ?? [])
+  // Catálogo do setor (cliente_id nulo) decide data/não-data por nome; o tipo
+  // personalizado de um cliente só vale para ele (naoDataPorCliente).
+  const tiposSetor = (tiposRaw ?? []).filter(t => !t.cliente_id)
+  const tiposData = nomesTarefaTipoData(tiposSetor)
+  const tiposNaoData = nomesTarefaTipoNaoData(tiposSetor)
+  const naoDataPorCliente: Record<string, string[]> = {}
+  for (const t of (tiposRaw ?? []).filter(t => t.cliente_id)) {
+    if (nomesTarefaTipoNaoData([t]).length === 0) continue
+    ;(naoDataPorCliente[t.cliente_id as string] ??= []).push(t.nome as string)
+  }
 
   const idsPermitidos = new Set(clientes.map(c => c.id))
   const estadoInicial: Record<string, Record<string, boolean>> = {}
@@ -93,6 +101,7 @@ export default async function PreenchimentoRapidoContabilPage() {
         mapaVinculos={mapaVinculos}
         tiposData={tiposData}
         tiposNaoData={tiposNaoData}
+        naoDataPorCliente={naoDataPorCliente}
         filtroPendentes
         estadoInicial={estadoInicial}
         onToggle={onToggle}

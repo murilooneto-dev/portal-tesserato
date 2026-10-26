@@ -79,14 +79,20 @@ export function tarefasAplicaveisCliente(
   mapa: MapaVinculosSetor,
   tiposData: Set<string>,
   tiposNaoData: Set<string> = new Set(),
+  // Tipos personalizados de UM cliente (tarefa_tipos.cliente_id) que não são
+  // checkbox simples (texto, opções ou etapas): saem só da linha desse cliente.
+  naoDataPorCliente: Record<string, Set<string>> = {},
 ): Set<string> {
   const esperadas = calcularTarefasEsperadas(
     { ...cliente, tarefas_personalizadas: cliente.tarefas_personalizadas ?? [] },
     mapa,
   )
   const personalizadas = new Set(cliente.tarefas_personalizadas ?? [])
+  const naoDataDoCliente = naoDataPorCliente[cliente.id]
   return new Set(
-    esperadas.filter(t => tiposData.has(t) || (personalizadas.has(t) && !tiposNaoData.has(t))),
+    esperadas
+      .filter(t => !naoDataDoCliente?.has(t))
+      .filter(t => tiposData.has(t) || (personalizadas.has(t) && !tiposNaoData.has(t))),
   )
 }
 
@@ -98,10 +104,11 @@ export function tarefasDisponiveisParaClientes(
   mapa: MapaVinculosSetor,
   tiposData: Set<string>,
   tiposNaoData: Set<string> = new Set(),
+  naoDataPorCliente: Record<string, Set<string>> = {},
 ): string[] {
   const nomes = new Set<string>()
   for (const c of clientes) {
-    for (const t of tarefasAplicaveisCliente(c, mapa, tiposData, tiposNaoData)) nomes.add(t)
+    for (const t of tarefasAplicaveisCliente(c, mapa, tiposData, tiposNaoData, naoDataPorCliente)) nomes.add(t)
   }
   return Array.from(nomes).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }

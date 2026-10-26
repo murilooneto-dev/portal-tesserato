@@ -176,3 +176,12 @@ test('clientesPorValor: campo atividade filtra quem tem aquele valor entre as su
   const filtrados = clientesPorValor(clientes, 'atividade', 'Comércio')
   assert.deepEqual(filtrados.map(c => c.id), ['1', '2'])
 })
+
+test('tarefasAplicaveisCliente: tipo não-data do próprio cliente sai só para ele', () => {
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {} }
+  const naoDataPorCliente = { c1: new Set(['S']) }
+  const c1 = { id: 'c1', nome: 'C1', tarefas_personalizadas: ['S'] }
+  const c2 = { id: 'c2', nome: 'C2', tarefas_personalizadas: ['S'] }
+  assert.ok(!tarefasAplicaveisCliente(c1, mapa, new Set(), new Set(), naoDataPorCliente).has('S'))
+  assert.ok(tarefasAplicaveisCliente(c2, mapa, new Set(), new Set(), naoDataPorCliente).has('S'))
+})
