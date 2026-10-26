@@ -151,6 +151,8 @@ completo por `grep` (`tarefa_tipos`, `tarefas_personalizadas`) antes de planejar
 ## Entrega
 
 Dev primeiro: migration aplicada no banco de dev, PR contra `dev`. Produção só
-com OK explícito do usuário, backup e smoke, conforme `CLAUDE.md`. A migration
-depende do código novo (os leitores antigos quebrariam com nomes repetidos):
-aplicar em produção junto do deploy, na ordem definida no plano.
+com OK explícito do usuário, backup e smoke, conforme `CLAUDE.md`. A migração é
+dividida para o código antigo nunca quebrar: **070** (só esquema + Lixeira) é
+aplicada ANTES do deploy (todas as linhas seguem com cliente_id nulo, então o
+código antigo funciona igual); **071** (separação dos dados + autoverificação)
+é aplicada DEPOIS do deploy ficar "Ready". Ambas idempotentes.

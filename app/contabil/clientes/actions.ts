@@ -8,7 +8,7 @@ import { registrarEvento, abrirHistoricoResponsavel, trocarResponsavel, registra
 import { apagarTarefasDoCliente } from '@/lib/tarefas-do-cliente'
 import { resolverTiposDoCliente, nomeNoCatalogo } from '@/lib/tarefa-tipos'
 import { buscarMapaVinculosSetor, calcularTarefasEsperadas, criadoEmDoPeriodo } from '@/lib/tarefas-esperadas'
-import { nomesParaApagar, type NovoTipoConfig } from '@/lib/tipos-do-cliente'
+import { nomesParaApagar, validarTiposNovos, type NovoTipoConfig } from '@/lib/tipos-do-cliente'
 
 interface ClientePayload {
   nome: string
@@ -50,6 +50,11 @@ async function gravarTiposNovos(
     if (nomeNoCatalogo(nomesDoSetor, nome)) continue
     const cfg = tiposNovos[nome]
     const criadoEm = criadoEmDoPeriodo(cfg.inicioEm)
+    // Sobra de uma falha anterior não pode travar o nome: o nome não estava na
+    // ficha do cliente, então qualquer tipo dele aqui é lixo.
+    const { error: errSobra } = await supabase.from('tarefa_tipos').delete()
+      .eq('setor', 'contabil').eq('cliente_id', clienteId).eq('nome', nome)
+    if (errSobra) return { error: errSobra.message }
     const { error } = await supabase.from('tarefa_tipos').insert({
       setor: 'contabil', cliente_id: clienteId, nome, padrao: false,
       tipo_resposta: cfg.tipoResposta, etapas: cfg.etapas, meses_visiveis: cfg.mesesVisiveis,
@@ -64,8 +69,11 @@ export async function salvarClienteContabil(
   clienteId: string | null,
   clientePayload: ClientePayload,
   contabilPayload: ContabilPayload,
-  tiposNovos: Record<string, NovoTipoConfig> = {},
+  tiposNovosBrutos: Record<string, NovoTipoConfig> = {},
 ): Promise<{ error?: string; id?: string }> {
+  const validacao = validarTiposNovos(tiposNovosBrutos)
+  if (validacao.error) return { error: validacao.error }
+  const tiposNovos = validacao.tipos
   if (clienteId && !(await podeEditarClienteContabil(clienteId))) return { error: 'Não autorizado.' }
 
   const { user, supabase } = await getAuthenticatedAdmin()
@@ -140,7 +148,14 @@ export async function salvarClienteContabil(
 
   if (!clienteId) return { error: 'Falha ao salvar cliente' }
   const { error: errNovosTipos } = await gravarTiposNovos(supabase, clienteId, contabilPayload.tarefas_personalizadas, tiposNovos)
-  if (errNovosTipos) return { error: errNovosTipos }
+  if (errNovosTipos) {
+    // O cliente já foi salvo: atualiza as telas e devolve o id para a janela
+    // seguir em modo de edição (nova tentativa não cria cliente duplicado).
+    revalidatePath(`/contabil/clientes/${clienteId}`)
+    revalidatePath('/contabil/clientes')
+    revalidatePath('/contabil/dashboard')
+    return { error: errNovosTipos, id: clienteId }
+  }
 
   revalidatePath(`/contabil/clientes/${clienteId}`)
   revalidatePath('/contabil/clientes')

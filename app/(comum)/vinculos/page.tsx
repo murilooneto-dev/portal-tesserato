@@ -14,10 +14,9 @@ export default async function VinculosPage() {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') redirect('/intranet')
 
-  const [{ data: vinculosRaw }, { data: fiscalRows }, { data: contabilRows }, { data: pessoalRows }, { data: catalogoRows }] = await Promise.all([
+  const [{ data: vinculosRaw }, { data: fiscalRows }, { data: pessoalRows }, { data: catalogoRows }] = await Promise.all([
     supabase.from('tarefa_vinculos').select('*').order('created_at'),
     supabase.from('clientes_fiscal').select('tarefas_personalizadas'),
-    supabase.from('clientes_contabil').select('tarefas_personalizadas'),
     supabase.from('clientes_pessoal').select('tarefas_personalizadas'),
     supabase.from('tarefa_tipos').select('setor, nome').is('cliente_id', null),
   ])
@@ -28,7 +27,8 @@ export default async function VinculosPage() {
     (rows ?? []).flatMap(r => (r.tarefas_personalizadas ?? []) as string[])
   const tiposPorSetor = montarTiposPorSetor(
     (catalogoRows ?? []) as { setor: string; nome: string }[],
-    { fiscal: usadasPor(fiscalRows), contabil: usadasPor(contabilRows), pessoal: usadasPor(pessoalRows) },
+    { fiscal: usadasPor(fiscalRows), contabil: [], // personalizada do Contábil é do cliente (tarefa_tipos.cliente_id): não se vincula por nome
+    pessoal: usadasPor(pessoalRows) },
   )
 
   return (

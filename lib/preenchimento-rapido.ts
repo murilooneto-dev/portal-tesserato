@@ -89,10 +89,12 @@ export function tarefasAplicaveisCliente(
   )
   const personalizadas = new Set(cliente.tarefas_personalizadas ?? [])
   const naoDataDoCliente = naoDataPorCliente[cliente.id]
+  // Quem tem tipo próprio do nome decide só por ele (data = checkbox), sem olhar o tipo do setor.
+  const proprios = new Set(mapa.tipoProprioPorCliente?.[cliente.id] ?? [])
   return new Set(
     esperadas
       .filter(t => !naoDataDoCliente?.has(t))
-      .filter(t => tiposData.has(t) || (personalizadas.has(t) && !tiposNaoData.has(t))),
+      .filter(t => proprios.has(t) || tiposData.has(t) || (personalizadas.has(t) && !tiposNaoData.has(t))),
   )
 }
 

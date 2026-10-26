@@ -138,3 +138,15 @@ test('calcularTarefasEsperadas: data de início por cliente vale só para aquele
   const c2 = { id: 'c2', tarefas_personalizadas: ['X'] }
   assert.deepEqual(calcularTarefasEsperadas(c2, mapa, { mes: 9, ano: 2026 }), ['X'])
 })
+
+test('calcularTarefasEsperadas: tipo próprio do cliente com data nula não herda a do setor', () => {
+  const mapa: MapaVinculosSetor = {
+    porRegime: {}, porAtividade: {},
+    inicioPorTarefa: { X: '2026-10-01T12:00:00-03:00' },
+    tipoProprioPorCliente: { c1: ['X'] },
+  }
+  const c1 = { id: 'c1', tarefas_personalizadas: ['X'] }
+  const c2 = { id: 'c2', tarefas_personalizadas: ['X'] }
+  assert.deepEqual(calcularTarefasEsperadas(c1, mapa, { mes: 9, ano: 2026 }), ['X'])
+  assert.deepEqual(calcularTarefasEsperadas(c2, mapa, { mes: 9, ano: 2026 }), [])
+})

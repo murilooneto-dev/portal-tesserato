@@ -120,7 +120,7 @@ test('migration 064 e leitura do encerramento', () => {
   assert.ok(ler('supabase/migrations/064_tarefa_tipos_vigente_ate.sql').includes('add column if not exists vigente_ate date'))
   const lib = ler('lib/tarefas-esperadas.ts')
   assert.ok(lib.includes("select('nome, cliente_id, criado_em, vigente_ate')"))
-  assert.ok(lib.includes("or('criado_em.not.is.null,vigente_ate.not.is.null')"))
+  assert.ok(lib.includes("or('criado_em.not.is.null,vigente_ate.not.is.null,cliente_id.not.is.null')"))
 })
 
 test('tipo encerrado não entra na lista padrão de cliente novo (Pessoal e Contábil)', () => {

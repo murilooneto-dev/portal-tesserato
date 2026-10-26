@@ -123,4 +123,4 @@
 ### Task 5: Verificação final e PR
 
 - [ ] **Step 1:** `npm test`, `npx tsc --noEmit`, `npm run build` → todos ok (colar contagem de testes).
-- [ ] **Step 2:** `git push -u origin feat/tarefa-personalizada-por-cliente` e `gh pr create --base dev` com: problema (caso Banco Santander), o que muda, migration 070 já aplicada no dev, "não testado no navegador", e **ordem para produção: aplicar 070 ANTES do merge da promoção** (as cópias têm o mesmo formato, então o código antigo continua funcionando com o banco novo; o código novo quebra sem a coluna).
+- [ ] **Step 2:** `git push -u origin feat/tarefa-personalizada-por-cliente` e `gh pr create --base dev` com: problema (caso Banco Santander), o que muda, migration 070 já aplicada no dev, "não testado no navegador", e **ordem para produção: 070 (esquema + Lixeira) ANTES do deploy da promoção (com todas as linhas cliente_id nulo o código antigo segue funcionando); 071 (separação dos dados + autoverificação) DEPOIS do deploy ficar "Ready"**. Backup antes de cada uma; ambas idempotentes. Dev: 070 antiga já aplicada completa; reaplicar 070 e 071 novas (idempotentes) para validar.

@@ -185,3 +185,11 @@ test('tarefasAplicaveisCliente: tipo não-data do próprio cliente sai só para 
   assert.ok(!tarefasAplicaveisCliente(c1, mapa, new Set(), new Set(), naoDataPorCliente).has('S'))
   assert.ok(tarefasAplicaveisCliente(c2, mapa, new Set(), new Set(), naoDataPorCliente).has('S'))
 })
+
+test('tarefasAplicaveisCliente: tipo Data próprio do cliente vence tipo não-data do setor', () => {
+  const mapa: MapaVinculosSetor = { porRegime: {}, porAtividade: {}, tipoProprioPorCliente: { c1: ['S'] } }
+  const c1 = { id: 'c1', nome: 'C1', tarefas_personalizadas: ['S'] }
+  const c2 = { id: 'c2', nome: 'C2', tarefas_personalizadas: ['S'] }
+  assert.ok(tarefasAplicaveisCliente(c1, mapa, new Set(), new Set(['S'])).has('S'))
+  assert.ok(!tarefasAplicaveisCliente(c2, mapa, new Set(), new Set(['S'])).has('S'))
+})

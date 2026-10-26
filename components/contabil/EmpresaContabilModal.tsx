@@ -63,7 +63,10 @@ const UFS = [
 export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasPadrao, catalogo, onClose, readOnly = false, periodo }: Props) {
   const router = useRouter()
   const sb = createClient()
-  const isEdit = !!clienteId
+  // Id do cliente salvo nesta janela quando só os tipos falharam: a nova tentativa edita, não cria.
+  const [idSalvo, setIdSalvo] = useState<string | null>(null)
+  const idAtual = clienteId ?? idSalvo
+  const isEdit = !!idAtual
   const confirmar = useConfirmar()
   const identificacaoRef = useRef<HTMLDivElement>(null)
 
@@ -166,7 +169,8 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
   async function handleSave() {
     if (!form.nome.trim()) return
     // Recriadas (nome de tipo novo que já estava na ficha) também perdem o histórico.
-    const removidas = personalizadasOriginais.filter(t => !form.tarefas_personalizadas.includes(t) || t in tiposNovos)
+    // Depois de uma falha parcial (idSalvo) o cliente já está salvo: só conta o que saiu da ficha.
+    const removidas = personalizadasOriginais.filter(t => !form.tarefas_personalizadas.includes(t) || (!idSalvo && t in tiposNovos))
     if (removidas.length > 0 && !(await confirmar({
       titulo: 'Remover tarefas deste cliente?',
       descricao: `Remover ${removidas.map(t => `"${t}"`).join(', ')} deste cliente apaga o histórico dessa tarefa nele (concluída, respostas, anexos). Outros clientes não são afetados. Continuar?`,
@@ -192,8 +196,17 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
       tarefas_excluidas: form.tarefas_excluidas,
     }
 
-    const { error } = await salvarClienteContabil(clienteId, clientePayload, contabilPayload, tiposNovos)
-    if (error) { setSaving(false); setErro(error); return }
+    const { error, id } = await salvarClienteContabil(idAtual, clientePayload, contabilPayload, tiposNovos)
+    if (error) {
+      if (id) {
+        setIdSalvo(id)
+        setPersonalizadasOriginais(form.tarefas_personalizadas)
+        router.refresh()
+      }
+      setSaving(false)
+      setErro(error)
+      return
+    }
 
     setSaving(false)
     router.refresh()
@@ -310,7 +323,7 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
               <div>
                 <div className="mb-2 flex items-center gap-2.5">
                   <span className="text-[13px] font-medium text-fg-2">Tarefas ({form.tarefas_personalizadas.length})</span>
-                  {isEdit && clienteId && !readOnly && (
+                  {isEdit && idAtual && !readOnly && (
                     <Button className="ml-auto" tamanho="p" icone={<Layers size={14} aria-hidden="true" />} onClick={() => setGruposAberto(true)}>
                       Agrupar tarefas
                     </Button>
@@ -375,9 +388,9 @@ export default function EmpresaContabilModal({ clienteId, responsaveis, tarefasP
           onCriado={handleTipoCriado}
         />
       )}
-      {gruposAberto && clienteId && (
+      {gruposAberto && idAtual && (
         <GruposTarefasModal
-          clienteId={clienteId}
+          clienteId={idAtual}
           setor="contabil"
           tarefasDisponiveis={form.tarefas_personalizadas}
           onClose={() => setGruposAberto(false)}
