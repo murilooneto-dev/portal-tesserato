@@ -56,7 +56,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
   const filtrados = useMemo(() => clientes.filter(c => {
     if (busca) {
       const q = busca.toLowerCase()
-      if (!c.nome.toLowerCase().includes(q) && !(c.cnpj ?? '').includes(q)) return false
+      if (!c.nome.toLowerCase().includes(q) && !(c.cnpj ?? '').includes(q) && !(c.codigo ?? '').toLowerCase().includes(q)) return false
     }
     if (filtroResponsavel !== 'TODOS' && c.responsavel !== filtroResponsavel) return false
     if (filtroRegime !== 'TODOS' && c.regime !== filtroRegime) return false
@@ -104,7 +104,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex w-full min-w-0 items-end gap-2 sm:w-[300px]">
           <Field rotulo="Buscar" className="min-w-0 flex-1">
-            {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Cliente ou CNPJ" value={busca} onChange={e => setBusca(e.target.value)} />}
+            {c => <Input id={c.id} type="search" iconeEsquerda={<Search size={16} />} placeholder="Cliente, CNPJ ou código" value={busca} onChange={e => setBusca(e.target.value)} />}
           </Field>
           <IconButton
             borda
@@ -168,7 +168,8 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
               const vinculos = pendenciasVinculo[cliente.id] ?? []
               const temObs = !!(cliente.obs?.trim())
               const temP = (cliente.prioridade ?? 0) > 0
-              const temSelos = vinculos.length > 0 || temObs || temP || cliente.ativo === false
+              const codigo = cliente.codigo?.trim()
+              const temSelos = !!codigo || vinculos.length > 0 || temObs || temP || cliente.ativo === false
               return (
                 <li key={cliente.id}>
                   <Link
@@ -181,6 +182,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
                     </div>
                     {temSelos && (
                       <div className="flex flex-wrap gap-1.5">
+                        {codigo && <Badge><span className="font-mono">Cód. {codigo}</span></Badge>}
                         {temP && <Badge tom="dng">P{cliente.prioridade}</Badge>}
                         {vinculos.map((p, i) => (
                           <Badge
@@ -214,10 +216,11 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
 
           <Card semPadding className="hidden overflow-hidden sm:block">
           <div className="relative overflow-x-auto xl:overflow-visible">
-            <Tabela className="min-w-[560px]">
+            <Tabela className="min-w-[680px]">
               <thead>
                 <tr>
                   <Th>Cliente</Th>
+                  <Th largura={120}>Código</Th>
                   <Th largura={190}>Responsável</Th>
                   <Th largura={170}>Progresso do mês</Th>
                   <Th largura={56}><span className="sr-only">Abrir</span></Th>
@@ -262,6 +265,7 @@ export default function ClientesListaPessoal({ clientes, progressoMap, mes, ano,
                           />
                         </Link>
                       </Td>
+                      <Td className="font-mono text-fg-2">{cliente.codigo?.trim() ? <span className="block truncate" title={cliente.codigo}>{cliente.codigo}</span> : <span className="text-fg-3">—</span>}</Td>
                       <Td className="text-fg-2">{cliente.responsavel ? <span className="block truncate" title={cliente.responsavel}>{cliente.responsavel}</span> : <span className="text-fg-3">—</span>}</Td>
                       <Td>
                         {total > 0 ? (

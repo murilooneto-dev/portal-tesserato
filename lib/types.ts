@@ -130,6 +130,7 @@ export interface ClienteContabil {
 
 export interface ClientePessoal {
   cliente_id: string
+  codigo: string | null
   atividade: string[]
   regime: string | null
   responsavel: string | null
