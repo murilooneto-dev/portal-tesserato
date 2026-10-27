@@ -37,7 +37,7 @@ alter table clientes add column if not exists setores user_setor[] not null defa
 
 - [ ] **Step 2: Aplicar no banco de dev**
 
-Run: `cd "D:/DEV/Site Tesserato + Fiscal/portal-tesserato" && SUPABASE_ACCESS_TOKEN=sbp_9bc3c793265418cdb693c62e5231e04ea9a5aa46 npx supabase db push --password 'Tesserato@123password' --yes`
+Run: `cd "D:/DEV/Site Tesserato + Fiscal/portal-tesserato" && SUPABASE_ACCESS_TOKEN="$SUPABASE_ACCESS_TOKEN" npx supabase db push --password "$DEV_DB_PASSWORD" --yes`
 
 Expected: `Applying migration 005_clientes_setores.sql...` seguido de `Finished supabase db push.`, sem erro.
 
@@ -50,7 +50,7 @@ node -e "
 const { createClient } = require('@supabase/supabase-js');
 const sb = createClient(
   'https://fcpcorqquovvgtoukxry.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcGNvcnFxdW92dmd0b3VreHJ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mzk1MjU4OSwiZXhwIjoyMDk5NTI4NTg5fQ.dKzBJ5VEhVmODw3JWSqC_D1zIvgyDV-UPUTvsNyDA50',
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 sb.from('clientes').select('id,nome,setores').limit(3).then(({ data, error }) => {
