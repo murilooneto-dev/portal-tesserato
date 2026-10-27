@@ -14,7 +14,7 @@
 - Todo teste/verificação roda contra o banco de **dev** (`fcpcorqquovvgtoukxry`, via `.env.development.local` — já configurado e sincronizado). Nunca rodar migration ou seed contra produção (`qilwxzpxkjzbfrwlbydt`).
 - Projeto **não tem suíte de testes automatizada** (sem Jest/Vitest configurado) — toda verificação de cada task é manual, no navegador (Browser pane), como já vem sendo feito nesta sessão. "Escrever teste" nas tasks abaixo significa "roteiro de verificação manual", não código de teste.
 - Seguir os tokens de tema já existentes (`var(--fg)`, `var(--bg-surface)`, `var(--accent)`, etc.) — não introduzir cores fixas novas.
-- Migrations do Supabase vão em `supabase/migrations/*.sql`, numeradas em sequência, aplicadas via `npx supabase db push --password 'Tesserato@123password'` (CLI já linkado ao projeto dev).
+- Migrations do Supabase vão em `supabase/migrations/*.sql`, numeradas em sequência, aplicadas via `npx supabase db push --password "$DEV_DB_PASSWORD"` (CLI já linkado ao projeto dev).
 
 ---
 
@@ -59,7 +59,7 @@ $$ language plpgsql security definer set search_path = public;
 
 - [ ] **Step 2: Aplicar no banco de dev**
 
-Run: `cd "D:/DEV/Site Tesserato + Fiscal/portal-tesserato" && SUPABASE_ACCESS_TOKEN=sbp_9bc3c793265418cdb693c62e5231e04ea9a5aa46 npx supabase db push --password 'Tesserato@123password' --yes`
+Run: `cd "D:/DEV/Site Tesserato + Fiscal/portal-tesserato" && SUPABASE_ACCESS_TOKEN="$SUPABASE_ACCESS_TOKEN" npx supabase db push --password "$DEV_DB_PASSWORD" --yes`
 
 Expected: `Applying migration 004_multi_setor.sql...` seguido de `Finished supabase db push.`, sem erro.
 
