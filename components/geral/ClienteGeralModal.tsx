@@ -18,18 +18,28 @@ import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
 import { Input, Checkbox, Switch } from '@/components/ui/Input'
 import { Chip } from '@/components/ui/Chip'
+import { Segmentado, type OpcaoSegmentada } from '@/components/ui/Segmentado'
 import { Aviso } from '@/components/ui/Aviso'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { EsqueletoLinhas } from '@/components/ui/Esqueleto'
 import { useConfirmar } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/components/ui/cn'
 
+type TipoPessoa = 'PJ' | 'PF'
+
+const OPCOES_TIPO_PESSOA: OpcaoSegmentada<TipoPessoa>[] = [
+  { valor: 'PJ', rotulo: 'Pessoa Jurídica' },
+  { valor: 'PF', rotulo: 'Pessoa Física' },
+]
+
 interface FormData extends CamposFiscaisData {
+  tipo_pessoa: TipoPessoa
   nome: string
   cnpj: string
   municipio: string
   uf: string
   contato_chat: string
+  email: string
   setores: UserSetor[]
   vinculosAtivos: string[]
 }
@@ -45,7 +55,7 @@ interface Props {
 }
 
 const emptyForm = (): FormData => ({
-  nome: '', cnpj: '', municipio: '', uf: '', contato_chat: '', setores: ['fiscal'],
+  tipo_pessoa: 'PJ', nome: '', cnpj: '', municipio: '', uf: '', contato_chat: '', email: '', setores: ['fiscal'],
   vinculosAtivos: [],
   cod: '', regime: '', atividade: [], responsavel: '', prioridade: 3,
   declaracao_anual: false, envia_iss: false, confere_siga: false, faz_dossie: false,
@@ -89,11 +99,13 @@ export default function ClienteGeralModal({ clienteId, vinculosCatalogo, onClose
       setIdentidadeSalva({ nome: data.nome ?? '', setores: (data.setores ?? ['fiscal']) as UserSetor[] })
       const mitParts = (data.mit ?? '').split('/')
       setForm({
+        tipo_pessoa: data.tipo_pessoa === 'PF' ? 'PF' : 'PJ',
         nome: data.nome ?? '',
         cnpj: data.cnpj ?? '',
         municipio: data.municipio ?? mitParts[0] ?? '',
         uf: data.uf ?? mitParts[1] ?? '',
         contato_chat: data.contato_chat ?? '',
+        email: data.email ?? '',
         // Só setores de cliente: um 'configuracoes' antigo ficaria invisível e burlaria a validação de setor.
         setores: ((data.setores ?? ['fiscal']) as UserSetor[]).filter(s => SETORES_DE_CLIENTE.includes(s)),
         vinculosAtivos: data.tarefas_vinculadas_ativas ?? [],
@@ -156,7 +168,10 @@ export default function ClienteGeralModal({ clienteId, vinculosCatalogo, onClose
     setSaving(true)
     setErro(null)
 
-    const mit = form.municipio && form.uf
+    // Pessoa Física só tem CPF, nome, contato e e-mail: município/UF não vão;
+    // Pessoa Jurídica não tem e-mail no formulário. O CPF fica em `cnpj`.
+    const ehPF = form.tipo_pessoa === 'PF'
+    const mit = ehPF ? null : form.municipio && form.uf
       ? `${form.municipio}/${form.uf}`
       : form.municipio || null
 
@@ -168,12 +183,14 @@ export default function ClienteGeralModal({ clienteId, vinculosCatalogo, onClose
     const setoresEfetivos = form.setores
 
     const clientePayload = {
+      tipo_pessoa:  form.tipo_pessoa,
       nome:         form.nome,
       cnpj:         form.cnpj || null,
-      municipio:    form.municipio || null,
-      uf:           form.uf || null,
+      municipio:    ehPF ? null : form.municipio || null,
+      uf:           ehPF ? null : form.uf || null,
       mit,
       contato_chat: form.contato_chat || null,
+      email:        ehPF ? form.email.trim() || null : null,
       setores:      setoresEfetivos,
       tarefas_vinculadas_ativas: form.vinculosAtivos,
     }
@@ -283,23 +300,44 @@ export default function ClienteGeralModal({ clienteId, vinculosCatalogo, onClose
         ) : (
           <>
             <Secao titulo="Identificação">
+              <Segmentado rotulo="Tipo de pessoa" opcoes={OPCOES_TIPO_PESSOA} valor={form.tipo_pessoa} onMudar={v => set('tipo_pessoa', v)} disabled={readOnly} className="self-start" />
               <div ref={identificacaoRef} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                <Field rotulo="CNPJ" ajuda={loadingCnpj ? 'Buscando dados do CNPJ…' : undefined} className="sm:col-span-2">
-                  {c => <Input id={c.id} aria-describedby={c.describedBy} className="font-mono" placeholder="00.000.000/0000-00" disabled={readOnly}
-                    value={form.cnpj} onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }} />}
-                </Field>
-                <Field rotulo="Razão social" obrigatorio className="sm:col-span-2">
-                  {c => <Input id={c.id} data-autofocus disabled={readOnly} value={form.nome} onChange={e => set('nome', e.target.value)} />}
-                </Field>
-                <Field rotulo="Município" className="sm:col-span-2">
-                  {c => <Input id={c.id} disabled={readOnly} value={form.municipio} onChange={e => set('municipio', e.target.value)} />}
-                </Field>
-                <Field rotulo="UF">
-                  {c => <Input id={c.id} className="uppercase" maxLength={2} disabled={readOnly} value={form.uf} onChange={e => set('uf', e.target.value.toUpperCase().slice(0, 2))} />}
-                </Field>
-                <Field rotulo="Contato">
-                  {c => <Input id={c.id} placeholder="Nome ou telefone" disabled={readOnly} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} />}
-                </Field>
+                {form.tipo_pessoa === 'PF' ? (
+                  <>
+                    <Field rotulo="CPF" className="sm:col-span-2">
+                      {c => <Input id={c.id} className="font-mono" placeholder="000.000.000-00" disabled={readOnly}
+                        value={form.cnpj} onChange={e => set('cnpj', e.target.value)} />}
+                    </Field>
+                    <Field rotulo="Nome" obrigatorio className="sm:col-span-2">
+                      {c => <Input id={c.id} data-autofocus disabled={readOnly} value={form.nome} onChange={e => set('nome', e.target.value)} />}
+                    </Field>
+                    <Field rotulo="Contato" className="sm:col-span-2">
+                      {c => <Input id={c.id} placeholder="Nome ou telefone" disabled={readOnly} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} />}
+                    </Field>
+                    <Field rotulo="E-mail" className="sm:col-span-2">
+                      {c => <Input id={c.id} type="email" disabled={readOnly} value={form.email} onChange={e => set('email', e.target.value)} />}
+                    </Field>
+                  </>
+                ) : (
+                  <>
+                    <Field rotulo="CNPJ" ajuda={loadingCnpj ? 'Buscando dados do CNPJ…' : undefined} className="sm:col-span-2">
+                      {c => <Input id={c.id} aria-describedby={c.describedBy} className="font-mono" placeholder="00.000.000/0000-00" disabled={readOnly}
+                        value={form.cnpj} onChange={e => { set('cnpj', e.target.value); fetchCnpj(e.target.value) }} />}
+                    </Field>
+                    <Field rotulo="Razão social" obrigatorio className="sm:col-span-2">
+                      {c => <Input id={c.id} data-autofocus disabled={readOnly} value={form.nome} onChange={e => set('nome', e.target.value)} />}
+                    </Field>
+                    <Field rotulo="Município" className="sm:col-span-2">
+                      {c => <Input id={c.id} disabled={readOnly} value={form.municipio} onChange={e => set('municipio', e.target.value)} />}
+                    </Field>
+                    <Field rotulo="UF">
+                      {c => <Input id={c.id} className="uppercase" maxLength={2} disabled={readOnly} value={form.uf} onChange={e => set('uf', e.target.value.toUpperCase().slice(0, 2))} />}
+                    </Field>
+                    <Field rotulo="Contato">
+                      {c => <Input id={c.id} placeholder="Nome ou telefone" disabled={readOnly} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} />}
+                    </Field>
+                  </>
+                )}
               </div>
             </Secao>
 

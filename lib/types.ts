@@ -35,12 +35,14 @@ export interface Profile {
 
 export interface Cliente {
   id: string
+  tipo_pessoa: 'PJ' | 'PF'
   nome: string
   cnpj: string | null
   mit: string | null
   municipio: string | null
   uf: string | null
   contato_chat: string | null
+  email: string | null
   setores: UserSetor[]
   tarefas_vinculadas_ativas: string[]
   created_at: string
