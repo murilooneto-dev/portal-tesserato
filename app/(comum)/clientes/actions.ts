@@ -9,12 +9,14 @@ import type { UserSetor } from '@/lib/types'
 import { verificarSenhaUsuarioAtual } from '@/lib/verificar-senha'
 
 interface ClientePayload {
+  tipo_pessoa: 'PJ' | 'PF'
   nome: string
   cnpj: string | null
   municipio: string | null
   uf: string | null
   mit: string | null
   contato_chat: string | null
+  email: string | null
   setores: UserSetor[]
   tarefas_vinculadas_ativas: string[]
 }
