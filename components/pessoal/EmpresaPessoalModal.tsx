@@ -25,6 +25,7 @@ import { useConfirmar } from '@/components/ui/ConfirmDialog'
 
 interface FormData {
   cnpj: string
+  codigo: string
   nome: string
   atividade: string[]
   regime: string
@@ -47,7 +48,7 @@ interface Props {
 }
 
 const emptyForm = (tarefasPadrao: string[]): FormData => ({
-  cnpj: '', nome: '', atividade: [], regime: '', municipio: '', uf: '', responsavel: '', contato_chat: '',
+  cnpj: '', codigo: '', nome: '', atividade: [], regime: '', municipio: '', uf: '', responsavel: '', contato_chat: '',
   prioridade: 3, tarefas_personalizadas: tarefasPadrao, tarefas_excluidas: [],
 })
 
@@ -81,6 +82,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
       const data = flattenClientePessoal(raw)
       setForm({
         cnpj: data.cnpj ?? '',
+        codigo: data.codigo ?? '',
         nome: data.nome ?? '',
         atividade: data.atividade ?? [],
         regime: data.regime ?? '',
@@ -166,6 +168,7 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
       contato_chat: form.contato_chat || null,
     }
     const pessoalPayload = {
+      codigo: form.codigo.trim() || null,
       atividade: form.atividade,
       regime: form.regime || null,
       responsavel: form.responsavel || null,
@@ -238,7 +241,10 @@ export default function EmpresaPessoalModal({ clienteId, responsaveis, tarefasPa
                 <Field rotulo="Município">
                   {c => <Input id={c.id} disabled={readOnly} value={form.municipio} onChange={e => set('municipio', e.target.value)} />}
                 </Field>
-                <Field rotulo="Contato" className="sm:col-span-4">
+                <Field rotulo="Código" ajuda="Código do cliente em outro sistema">
+                  {c => <Input id={c.id} aria-describedby={c.describedBy} className="font-mono" disabled={readOnly} value={form.codigo} onChange={e => set('codigo', e.target.value)} />}
+                </Field>
+                <Field rotulo="Contato" className="sm:col-span-3">
                   {c => <Input id={c.id} placeholder="Nome ou telefone" disabled={readOnly} value={form.contato_chat} onChange={e => set('contato_chat', e.target.value)} />}
                 </Field>
               </div>
