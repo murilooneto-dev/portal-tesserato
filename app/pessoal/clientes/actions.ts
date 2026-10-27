@@ -18,6 +18,7 @@ interface ClientePayload {
 }
 
 interface PessoalPayload {
+  codigo: string | null
   atividade: string[]
   regime: string | null
   responsavel: string | null
