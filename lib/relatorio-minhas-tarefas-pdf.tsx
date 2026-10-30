@@ -6,7 +6,7 @@ const styles = StyleSheet.create({
   h1: { fontSize: 14, marginBottom: 2 },
   sub: { fontSize: 9, color: '#666', marginBottom: 4 },
   filtros: { fontSize: 8, color: '#888', marginBottom: 10 },
-  secaoTitulo: { fontSize: 10, fontWeight: 700, marginTop: 14, marginBottom: 4, textTransform: 'uppercase' },
+  secaoTitulo: { fontSize: 10, fontFamily: 'Helvetica-Bold', marginTop: 14, marginBottom: 4, textTransform: 'uppercase' },
   table: { display: 'flex', width: '100%' },
   th: { backgroundColor: '#1a1a2e', color: '#fff', padding: 4, fontSize: 7, textTransform: 'uppercase' },
   tr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
@@ -50,8 +50,11 @@ function RelatorioMinhasTarefasDocument({ nomeUsuario, mesNome, ano, filtrosResu
         {filtrosResumo && <Text style={styles.filtros}>Filtros: {filtrosResumo}</Text>}
 
         {secoes.map(secao => (
-          <View key={secao.tipo} wrap={false}>
-            <Text style={styles.secaoTitulo}>{secao.tipo}</Text>
+          // A seção quebra entre páginas (com wrap={false} uma seção maior que a
+          // página era espremida numa só, com as linhas sobrepostas). O título
+          // não fica sozinho no pé da página e o cabeçalho repete a cada página.
+          <View key={secao.tipo}>
+            <Text style={styles.secaoTitulo} minPresenceAhead={60}>{secao.tipo}</Text>
             {secao.mensagem ? (
               <Text style={styles.vazio}>{secao.mensagem}</Text>
             ) : secao.linhas.length === 0 ? (

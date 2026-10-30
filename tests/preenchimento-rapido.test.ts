@@ -155,6 +155,25 @@ test('linhasVisiveis: apenasPendentes remove quem já concluiu todas as colunas 
   assert.deepEqual(linhas.map(c => c.id), ['1', '3'])
 })
 
+test('linhasVisiveis: apenasPreenchidos remove quem não concluiu nenhuma coluna aplicável', () => {
+  const porCliente = {
+    '1': new Set(['DAS', 'ISS']), // DAS concluído, ISS pendente -> fica
+    '2': new Set(['DAS']), // DAS concluído -> fica
+    '3': new Set(['DAS']), // DAS pendente -> some
+    '4': new Set(['FGTS']), // concluído, mas fora das colunas -> some
+  }
+  const concluida = (clienteId: string, tipo: string) =>
+    (clienteId === '1' && tipo === 'DAS') || clienteId === '2' || clienteId === '4'
+  const clientes = [
+    { id: '1', nome: 'A' },
+    { id: '2', nome: 'B' },
+    { id: '3', nome: 'C' },
+    { id: '4', nome: 'D' },
+  ]
+  const linhas = linhasVisiveis(clientes, ['DAS', 'ISS'], porCliente, concluida, false, true)
+  assert.deepEqual(linhas.map(c => c.id), ['1', '2'])
+})
+
 test('valoresDistintos: campo atividade achata os arrays e ordena', () => {
   const valores = valoresDistintos(
     [
