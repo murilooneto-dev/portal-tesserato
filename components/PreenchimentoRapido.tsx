@@ -55,7 +55,19 @@ export default function PreenchimentoRapido({
   const [tarefasSelecionadas, setTarefasSelecionadas] = useState<Set<string>>(new Set())
   const [overlay, setOverlay] = useState<Record<string, Record<string, boolean>>>({})
   const [apenasPendentes, setApenasPendentes] = useState(false)
+  const [apenasPreenchidos, setApenasPreenchidos] = useState(false)
   const [, startTransition] = useTransition()
+
+  // Os dois filtros são opostos: ligar um desliga o outro.
+  function handleApenasPendentes(ligado: boolean) {
+    setApenasPendentes(ligado)
+    if (ligado) setApenasPreenchidos(false)
+  }
+
+  function handleApenasPreenchidos(ligado: boolean) {
+    setApenasPreenchidos(ligado)
+    if (ligado) setApenasPendentes(false)
+  }
 
   function getConcluida(clienteId: string, tipo: string): boolean {
     return overlay[clienteId]?.[tipo] ?? estadoInicial[clienteId]?.[tipo] ?? false
@@ -137,13 +149,15 @@ export default function PreenchimentoRapido({
   // realmente aplicável — cliente sem nenhuma delas não aparece nem como
   // linha vazia (ex: AB Preço Único não deve aparecer pra "Distribuição
   // de Lucros" se essa tarefa não é dela). Com o filtro "Só pendentes"
-  // ativo, quem já tem todas as colunas selecionadas concluídas também some.
+  // ativo, quem já tem todas as colunas selecionadas concluídas também some;
+  // com "Só preenchidos", some quem não tem nenhuma delas concluída.
   const linhas = calcularLinhasVisiveis(
     clientesFiltrados,
     colunas,
     tarefasAplicaveisPorCliente,
     getConcluida,
     filtroPendentes && apenasPendentes,
+    filtroPendentes && apenasPreenchidos,
   )
 
   const passoPronto = modoDireto || Boolean(campo && valor)
@@ -214,7 +228,10 @@ export default function PreenchimentoRapido({
         titulo={<><span className="mr-2.5 inline-grid h-7 w-7 place-items-center rounded-full bg-acc align-middle text-sm font-semibold text-acc-ink"><span aria-hidden="true">3</span></span><span className="sr-only">Passo 3: </span>Marque o que já foi feito</>}
         meta={colunas.length > 0 && linhas.length > 0 ? <Badge tom="neu">{linhas.length} {linhas.length === 1 ? 'cliente' : 'clientes'}</Badge> : undefined}
         acoes={filtroPendentes && colunas.length > 0 ? (
-          <Switch ligado={apenasPendentes} onMudar={setApenasPendentes} rotulo="Só pendentes" />
+          <div className="flex flex-wrap items-center gap-4">
+            <Switch ligado={apenasPendentes} onMudar={handleApenasPendentes} rotulo="Só pendentes" />
+            <Switch ligado={apenasPreenchidos} onMudar={handleApenasPreenchidos} rotulo="Só preenchidos" />
+          </div>
         ) : undefined}
         semPadding
       >
@@ -233,8 +250,14 @@ export default function PreenchimentoRapido({
             icone={<Check size={20} aria-hidden="true" />}
             titulo={apenasPendentes
               ? 'Nenhum cliente com essa(s) tarefa(s) pendente(s)'
-              : 'Nenhum cliente tem essa(s) tarefa(s) aplicável(is)'}
-            descricao={apenasPendentes ? 'Desligue “Só pendentes” para ver também os já concluídos.' : 'Escolha outras tarefas no passo 2.'}
+              : apenasPreenchidos
+                ? 'Nenhum cliente com essa(s) tarefa(s) preenchida(s)'
+                : 'Nenhum cliente tem essa(s) tarefa(s) aplicável(is)'}
+            descricao={apenasPendentes
+              ? 'Desligue “Só pendentes” para ver também os já concluídos.'
+              : apenasPreenchidos
+                ? 'Desligue “Só preenchidos” para ver também os pendentes.'
+                : 'Escolha outras tarefas no passo 2.'}
           />
         ) : (
           <div className="relative overflow-x-auto">
