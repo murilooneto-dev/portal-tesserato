@@ -6,6 +6,7 @@ import { useMesAno } from '@/lib/mes-atual-context'
 import { useFiltroPersistente } from '@/lib/use-filtro-persistente'
 import type { StatusParcelamento } from '@/lib/parcelamentos-aviso'
 import { criarSecaoParcelamento } from '@/lib/parcelamento-secoes-actions'
+import { removerTarefasFuturasDoParcelamento } from '@/lib/parcelamento-tarefas-actions'
 import GerenciarSecoesModal from '@/components/fiscal/GerenciarSecoesModal'
 
 interface SecaoParcelamento {
@@ -86,7 +87,7 @@ export default function ParcelamentosPage() {
   const [novaSecaoErro, setNovaSecaoErro] = useState<string | null>(null)
   const [novaSecaoSalvando, setNovaSecaoSalvando] = useState(false)
 
-  const { ano } = useMesAno()
+  const { mes, ano } = useMesAno()
 
   const sb = createClient()
 
@@ -163,6 +164,15 @@ export default function ParcelamentosPage() {
       // enquanto o modal estava aberto.
       const { jan, fev, mar, abr, mai, jun, jul, ago, set, out, nov, dez, ...formSemMeses } = form
       await sb.from('parcelamentos').update(formSemMeses).eq('id', editItem.id)
+
+      // Cancelar/liquidar apaga a tarefa gerada por esse parcelamento da
+      // competência selecionada em diante — meses anteriores ficam intactos
+      // como histórico. Reverter pro EM ANDAMENTO recria a tarefa quando a
+      // ficha do cliente for visitada de novo (sincronizarTarefasParcelamento
+      // lê o valor já salvo em parcelamentos.<mes>, que nunca é apagado aqui).
+      if (form.status === 'CANCELADO' || form.status === 'LIQUIDADO') {
+        await removerTarefasFuturasDoParcelamento(editItem.id, mes, ano)
+      }
     } else {
       await sb.from('parcelamentos').insert(form)
     }
